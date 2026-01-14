@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attention Firewall - AI-Powered Notification Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            padding: 60px 80px;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        /* Typography */
+        .headline {
+            font-size: 72px;
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.1;
+            margin-bottom: 24px;
+        }
+
+        .subhead {
+            font-size: 28px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.4;
+        }
+
+        .section-label {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #FF6B6B;
+            margin-bottom: 16px;
+        }
+
+        .medium-headline {
+            font-size: 48px;
+            font-weight: 600;
+            letter-spacing: -1px;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+
+        /* Layout helpers */
+        .center {
+            text-align: center;
+            align-items: center;
+        }
+
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+            margin-top: 32px;
+        }
+
+        .halves {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 32px;
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #FF6B6B;
+        }
+
+        .card-text {
+            font-size: 15px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.5;
+        }
+
+        /* Notification mockups */
+        .notification {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 8px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .notification.blocked {
+            opacity: 0.4;
+            border-color: rgba(255, 69, 58, 0.3);
+        }
+
+        .notification.surfaced {
+            border-color: rgba(48, 209, 88, 0.5);
+            background: rgba(48, 209, 88, 0.1);
+        }
+
+        .notif-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .notif-icon.teams { background: #464EB8; }
+        .notif-icon.whatsapp { background: #25D366; }
+        .notif-icon.outlook { background: #0078D4; }
+
+        .notif-content {
+            flex: 1;
+        }
+
+        .notif-app {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 4px;
+        }
+
+        .notif-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .notif-body {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .notif-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .notif-badge.blocked {
+            background: rgba(255, 69, 58, 0.2);
+            color: #FF453A;
+        }
+
+        .notif-badge.vip {
+            background: rgba(48, 209, 88, 0.2);
+            color: #30D158;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px 28px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 15px;
+            line-height: 1.5;
+            color: #98D4A0;
+            margin: 16px 0;
+            overflow-x: auto;
+        }
+
+        .code-comment {
+            color: rgba(255,255,255,0.4);
+        }
+
+        /* Flow diagram */
+        .flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin: 32px 0;
+            flex-wrap: wrap;
+        }
+
+        .flow-step {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 20px 28px;
+            text-align: center;
+        }
+
+        .flow-step.capture {
+            border-color: #0A84FF;
+            background: rgba(10, 132, 255, 0.1);
+        }
+
+        .flow-step.analyze {
+            border-color: #BF5AF2;
+            background: rgba(191, 90, 242, 0.1);
+        }
+
+        .flow-step.decide {
+            border-color: #FF6B6B;
+            background: rgba(255, 107, 107, 0.1);
+        }
+
+        .flow-step.action {
+            border-color: #30D158;
+            background: rgba(48, 209, 88, 0.1);
+        }
+
+        .flow-arrow {
+            font-size: 24px;
+            color: rgba(255,255,255,0.3);
+        }
+
+        /* Stats */
+        .stat-row {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin-top: 40px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 64px;
+            font-weight: 700;
+            color: #FF6B6B;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 8px;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: #FF6B6B;
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .small-text {
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 12px;
+        }
+
+        /* Highlight box */
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(255, 107, 107, 0.1));
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            border-radius: 12px;
+            padding: 20px 28px;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+
+        /* Digest mockup */
+        .digest {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 24px;
+        }
+
+        .digest-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #FF6B6B;
+        }
+
+        .digest-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 14px;
+        }
+
+        .digest-item:last-child {
+            border-bottom: none;
+        }
+
+        .digest-count {
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Velocity stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-top: 40px;
+        }
+
+        .velocity-stat {
+            text-align: center;
+        }
+
+        .velocity-number {
+            font-size: 48px;
+            font-weight: 700;
+            color: #FF6B6B;
+        }
+
+        .velocity-label {
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Slide 1: Title -->
+    <div class="slide active center">
+        <div class="section-label">Built with Amplifier</div>
+        <h1 class="headline">Attention Firewall</h1>
+        <p class="subhead">AI-powered Windows notification control.<br>Surface what matters. Batch the rest.</p>
+        <div class="small-text" style="margin-top: 40px;">January 2026</div>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Notifications are broken</h2>
+        <div class="thirds">
+            <div class="card">
+                <div class="card-title">Constant Interruption</div>
+                <div class="card-text">Every "liked your message" breaks your flow. Context switching costs 23 minutes to recover.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">All-or-Nothing</div>
+                <div class="card-text">Turn off notifications? Miss the urgent ones. Leave them on? Drown in noise.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">No Intelligence</div>
+                <div class="card-text">Your OS treats "server is on fire" the same as "👍 reaction".</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: The Solution -->
+    <div class="slide center">
+        <div class="section-label">The Solution</div>
+        <h2 class="headline">AI that guards your attention</h2>
+        <p class="subhead" style="max-width: 800px; margin-top: 24px;">
+            Attention Firewall intercepts Windows notifications, scores their relevance,<br>
+            and only surfaces what truly matters. Everything else goes into digests.
+        </p>
+    </div>
+
+    <!-- Slide 4: How It Works -->
+    <div class="slide">
+        <div class="section-label">How It Works</div>
+        <h2 class="medium-headline">Intercept → Analyze → Decide → Act</h2>
+        
+        <div class="flow">
+            <div class="flow-step capture">
+                <strong>Capture</strong><br>
+                <small>All Windows toasts</small>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step analyze">
+                <strong>Analyze</strong><br>
+                <small>AI relevance scoring</small>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step decide">
+                <strong>Decide</strong><br>
+                <small>VIPs, keywords, context</small>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step action">
+                <strong>Act</strong><br>
+                <small>Surface or batch</small>
+            </div>
+        </div>
+        
+        <div class="highlight-box">
+            <strong>Key insight:</strong> Disable native toast banners in Windows settings, but keep notifications enabled. 
+            Attention Firewall captures them all, then decides what you actually see.
+        </div>
+    </div>
+
+    <!-- Slide 5: Before/After -->
+    <div class="slide">
+        <div class="section-label">The Difference</div>
+        <h2 class="medium-headline">Before vs After</h2>
+        
+        <div class="halves">
+            <div>
+                <p style="color: #FF453A; font-weight: 600; margin-bottom: 16px;">WITHOUT ATTENTION FIREWALL</p>
+                <div class="notification">
+                    <div class="notif-icon teams">T</div>
+                    <div class="notif-content">
+                        <div class="notif-app">Microsoft Teams</div>
+                        <div class="notif-title">Alice Chen liked your message</div>
+                    </div>
+                </div>
+                <div class="notification">
+                    <div class="notif-icon teams">T</div>
+                    <div class="notif-content">
+                        <div class="notif-app">Microsoft Teams</div>
+                        <div class="notif-title">Bob: 👍</div>
+                    </div>
+                </div>
+                <div class="notification">
+                    <div class="notif-icon outlook">O</div>
+                    <div class="notif-content">
+                        <div class="notif-app">Outlook</div>
+                        <div class="notif-title">Newsletter: 10 Tips for...</div>
+                    </div>
+                </div>
+                <div class="notification">
+                    <div class="notif-icon teams">T</div>
+                    <div class="notif-content">
+                        <div class="notif-app">Microsoft Teams</div>
+                        <div class="notif-title">CEO: Need you in the war room NOW</div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <p style="color: #30D158; font-weight: 600; margin-bottom: 16px;">WITH ATTENTION FIREWALL</p>
+                <div class="notification blocked">
+                    <div class="notif-icon teams">T</div>
+                    <div class="notif-content">
+                        <div class="notif-app">Microsoft Teams</div>
+                        <div class="notif-title">Alice Chen liked your message</div>
+                    </div>
+                    <span class="notif-badge blocked">Batched</span>
+                </div>
+                <div class="notification blocked">
+                    <div class="notif-icon teams">T</div>
+                    <div class="notif-content">
+                        <div class="notif-app">Microsoft Teams</div>
+                        <div class="notif-title">Bob: 👍</div>
+                    </div>
+                    <span class="notif-badge blocked">Batched</span>
+                </div>
+                <div class="notification blocked">
+                    <div class="notif-icon outlook">O</div>
+                    <div class="notif-content">
+                        <div class="notif-app">Outlook</div>
+                        <div class="notif-title">Newsletter: 10 Tips for...</div>
+                    </div>
+                    <span class="notif-badge blocked">Batched</span>
+                </div>
+                <div class="notification surfaced">
+                    <div class="notif-icon teams">T</div>
+                    <div class="notif-content">
+                        <div class="notif-app">Microsoft Teams</div>
+                        <div class="notif-title">CEO: Need you in the war room NOW</div>
+                    </div>
+                    <span class="notif-badge vip">VIP + Urgent</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: Features -->
+    <div class="slide">
+        <div class="section-label">Features</div>
+        <h2 class="medium-headline">Smart filtering, your rules</h2>
+        
+        <div class="thirds">
+            <div class="card">
+                <div class="card-title">VIP Senders</div>
+                <div class="card-text">Messages from your VIP list always get through. Boss, spouse, on-call team - you decide.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Priority Keywords</div>
+                <div class="card-text">"urgent", "outage", "ASAP", your project names - anything that signals importance.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Noise Detection</div>
+                <div class="card-text">Automatically filters reactions, "liked your message", read receipts, and other low-signal noise.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Periodic Digests</div>
+                <div class="card-text">Everything filtered goes into hourly or daily summaries. Nothing is lost, just deferred.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">App Muting</div>
+                <div class="card-text">Completely silence specific apps during focus time. One command to toggle.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Agent Toasts</div>
+                <div class="card-text">When something surfaces, the toast explains why: "VIP sender" or "Contains 'outage'".</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: CLI -->
+    <div class="slide">
+        <div class="section-label">Usage</div>
+        <h2 class="medium-headline">Simple CLI, conversational config</h2>
+        
+        <div class="code-block">
+<span class="code-comment"># Start the daemon</span>
+attention-firewall run
+
+<span class="code-comment"># Add a VIP (their messages always get through)</span>
+attention-firewall add-vip "Alice Chen"
+
+<span class="code-comment"># Add priority keywords</span>
+attention-firewall add-keyword "outage" "ASAP" "prod-down"
+
+<span class="code-comment"># View your digest</span>
+attention-firewall summary --hours 24
+
+<span class="code-comment"># Check system readiness</span>
+attention-firewall check
+        </div>
+        
+        <p class="small-text">Or just talk to it in an Amplifier session: "Add my manager to VIPs"</p>
+    </div>
+
+    <!-- Slide 8: Digest Example -->
+    <div class="slide">
+        <div class="section-label">Digests</div>
+        <h2 class="medium-headline">Nothing is lost, just organized</h2>
+        
+        <div class="halves">
+            <div>
+                <p class="subhead">End of day, you get a summary:</p>
+                <div class="digest">
+                    <div class="digest-header">📋 Notification Digest (Last 8 hours)</div>
+                    <div class="digest-item">
+                        <span>Microsoft Teams</span>
+                        <span class="digest-count">23 notifications batched</span>
+                    </div>
+                    <div class="digest-item">
+                        <span>Outlook</span>
+                        <span class="digest-count">12 notifications batched</span>
+                    </div>
+                    <div class="digest-item">
+                        <span>WhatsApp</span>
+                        <span class="digest-count">8 notifications batched</span>
+                    </div>
+                    <div class="digest-item">
+                        <span><strong>Surfaced to you</strong></span>
+                        <span class="digest-count"><strong>4 notifications</strong></span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="stat-row" style="flex-direction: column; gap: 24px; margin-top: 0;">
+                    <div class="stat">
+                        <div class="stat-number">43</div>
+                        <div class="stat-label">Interruptions prevented</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">4</div>
+                        <div class="stat-label">Actually needed your attention</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: Built with Amplifier -->
+    <div class="slide center">
+        <div class="section-label">The Point</div>
+        <h2 class="headline">Built with Amplifier.<br>In a few days.</h2>
+        <p class="subhead" style="max-width: 800px; margin-top: 24px;">
+            No AI expertise required. Just describe what you want,<br>
+            iterate on the results, and ship something useful.
+        </p>
+    </div>
+
+    <!-- Slide 10: Velocity -->
+    <div class="slide center">
+        <h2 class="medium-headline">Development velocity</h2>
+        <p class="subhead">From idea to working system</p>
+        
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">1</div>
+                <div class="velocity-label">Repository</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">~5</div>
+                <div class="velocity-label">Days of development</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">0</div>
+                <div class="velocity-label">Technical direction needed</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">100%</div>
+                <div class="velocity-label">Outcome-driven prompts</div>
+            </div>
+        </div>
+        
+        <div class="highlight-box" style="margin-top: 40px; display: inline-block;">
+            "I explained outcomes and what I wanted. Asked questions about what was possible.<br>
+            Told it to try things. Gave feedback. That's it." — Brian Krabach
+        </div>
+    </div>
+
+    <!-- Slide 11: CTA -->
+    <div class="slide center">
+        <h2 class="headline">Take back your attention.</h2>
+        <p class="subhead" style="margin-top: 24px;">github.com/bkrabach/amplifier-bundle-attention-firewall</p>
+        <div class="small-text" style="margin-top: 60px;">
+            Built with Amplifier<br>
+            github.com/microsoft/amplifier
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = () => showSlide(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
+            if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        updateNav();
+    </script>
+</body>
+</html>
