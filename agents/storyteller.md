@@ -79,55 +79,10 @@ You can tell stories in multiple formats, each suited to different audiences and
 
 When creating a PowerPoint presentation (not HTML):
 
-1. **MANDATORY - Match Reference Presentation Style:**
-   
-   **Your presentations must match the professional style of these reference files:**
-   - `/Users/michaeljabbour/Downloads/Surface-Presentation.pptx`
-   - `/Users/michaeljabbour/Downloads/SDL-Integration-Presentation.pptx`
-   
-   **Extract and replicate the design:**
-   ```bash
-   # Unpack reference to analyze
-   python /Users/michaeljabbour/dev/anthropic-skills/skills/pptx/ooxml/scripts/unpack.py /Users/michaeljabbour/Downloads/Surface-Presentation.pptx /tmp/surface-reference
-   
-   # Read theme colors: /tmp/surface-reference/ppt/theme/theme1.xml
-   # Read slide layouts: /tmp/surface-reference/ppt/slideLayouts/
-   # Read actual slides: /tmp/surface-reference/ppt/slides/slide1.xml, slide2.xml, etc.
-   ```
-   
-   **CRITICAL - Document these exact style elements:**
-   
-   **Colors** (extract from theme1.xml and actual slides):
-   - Background colors (solid fills)
-   - Text colors (headings, body, code)
-   - Accent colors (highlights, borders, shapes)
-   - Record exact RGB/hex values
-   
-   **Typography** (extract from slide XML):
-   - Font families (e.g., Segoe UI, Calibri, Consolas)
-   - Font sizes for each level (Title: 44pt, Heading: 32pt, Body: 18pt, etc.)
-   - Font weights (bold, regular)
-   - Line heights and spacing
-   
-   **Layout patterns** (analyze 3-5 slides):
-   - Title slide structure
-   - Content slide structure (bullets, comparisons)
-   - Code example slide structure
-   - Margins and padding (measure from slide XML)
-   - Alignment patterns
-   
-   **Visual elements**:
-   - Shape styles (borders, fills, shadows)
-   - Iconography approach
-   - Dividers and separators
-   - Consistent visual language
-   
-   **Then replicate EXACTLY in your HTML:**
-   - Use the same color palette
-   - Use the same fonts and sizes
-   - Use the same layout patterns
-   - Match spacing and margins
-   - Match overall visual hierarchy
+1. **MANDATORY** - Use the professional template:
+   - Read: `@amplifier-stories:context/powerpoint-template.md`
+   - This template defines the complete visual style based on Surface-Presentation.pptx
+   - Follow ALL specifications exactly: colors, fonts, layouts, spacing
 
 2. **MANDATORY** - Read the complete html2pptx guide:
    - `/Users/michaeljabbour/dev/anthropic-skills/skills/pptx/html2pptx.md` (625 lines)
