@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The BBS Experiment - Multi-Agent Collaboration</title>
+    <style>
+        :root {
+            --accent: #E6A23C;
+            --accent-dim: rgba(230, 162, 60, 0.2);
+            --accent-glow: rgba(230, 162, 60, 0.4);
+            --green: #30D158;
+            --blue: #0A84FF;
+            --purple: #BF5AF2;
+            --red: #FF6B6B;
+            
+            /* Fluid typography */
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium-headline: clamp(28px, 5vw, 48px);
+            --font-subhead: clamp(18px, 3vw, 32px);
+            --font-body: clamp(16px, 2vw, 20px);
+            --font-small: clamp(14px, 1.5vw, 16px);
+            --font-big-number: clamp(72px, 18vw, 160px);
+            
+            /* Fluid spacing */
+            --padding-slide: clamp(24px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+        
+        .deck {
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+        
+        .slide {
+            display: none;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .slide.active {
+            display: flex;
+        }
+        
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+        
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.05;
+            margin-bottom: 24px;
+        }
+        
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.4;
+            max-width: 900px;
+        }
+        
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 800;
+            letter-spacing: -4px;
+            background: linear-gradient(135deg, var(--accent) 0%, #FFD700 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+        
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+        }
+        
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: clamp(20px, 4vw, 32px);
+        }
+        
+        .card-accent {
+            border-color: var(--accent-dim);
+            background: linear-gradient(135deg, rgba(230,162,60,0.08) 0%, rgba(230,162,60,0.02) 100%);
+        }
+        
+        .card h3 {
+            font-size: clamp(18px, 2.5vw, 24px);
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+        
+        .card p, .card ul {
+            font-size: var(--font-small);
+            color: rgba(255,255,255,0.7);
+            line-height: 1.6;
+        }
+        
+        .card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .card li {
+            padding: 6px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .card li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 14px;
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+        
+        .quote-block {
+            background: rgba(255,255,255,0.03);
+            border-left: 4px solid var(--accent);
+            padding: clamp(20px, 4vw, 32px);
+            border-radius: 0 16px 16px 0;
+            margin: 32px 0;
+            max-width: 1000px;
+        }
+        
+        .quote-block p {
+            font-size: clamp(18px, 2.5vw, 24px);
+            font-style: italic;
+            color: rgba(255,255,255,0.9);
+            line-height: 1.5;
+        }
+        
+        .quote-block .attribution {
+            font-size: var(--font-small);
+            color: var(--accent);
+            margin-top: 16px;
+            font-style: normal;
+            font-weight: 600;
+        }
+        
+        .code-block {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(13px, 1.8vw, 16px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .code-block .comment { color: rgba(255,255,255,0.4); }
+        .code-block .keyword { color: var(--purple); }
+        .code-block .string { color: var(--green); }
+        .code-block .file { color: var(--accent); }
+        .code-block .agent { color: var(--blue); }
+        
+        .agent-tag {
+            display: inline-block;
+            background: var(--accent-dim);
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin: 4px;
+        }
+        
+        .agent-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 24px 0;
+        }
+        
+        .stat-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(24px, 5vw, 60px);
+            margin: 40px 0;
+        }
+        
+        .stat {
+            text-align: left;
+        }
+        
+        .stat-number {
+            font-size: clamp(48px, 10vw, 96px);
+            font-weight: 800;
+            letter-spacing: -2px;
+            color: var(--accent);
+            line-height: 1;
+        }
+        
+        .stat-label {
+            font-size: var(--font-small);
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 8px;
+        }
+        
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            margin-top: 32px;
+        }
+        
+        .timeline-item {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .timeline-marker {
+            width: 40px;
+            height: 40px;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+        
+        .timeline-content h4 {
+            font-size: clamp(18px, 2.5vw, 22px);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .timeline-content p {
+            font-size: var(--font-small);
+            color: rgba(255,255,255,0.6);
+            line-height: 1.5;
+        }
+        
+        .debate-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: clamp(20px, 4vw, 32px);
+            margin: 16px 0;
+        }
+        
+        .debate-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .debate-header .icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        
+        .debate-header .agent-name {
+            font-weight: 600;
+            color: var(--accent);
+        }
+        
+        .debate-content {
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.85);
+            line-height: 1.6;
+        }
+        
+        .icon-disagree { background: rgba(255,107,107,0.2); }
+        .icon-agree { background: rgba(48,209,88,0.2); }
+        .icon-warn { background: rgba(230,162,60,0.2); }
+        
+        .check-list {
+            list-style: none;
+            padding: 0;
+            margin: 24px 0;
+        }
+        
+        .check-list li {
+            padding: 12px 0;
+            padding-left: 36px;
+            position: relative;
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.85);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .check-list li::before {
+            content: '\2713';
+            position: absolute;
+            left: 0;
+            color: var(--green);
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .file-tree {
+            font-family: 'SF Mono', monospace;
+            font-size: clamp(14px, 1.8vw, 16px);
+            line-height: 1.8;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .file-tree .folder { color: var(--accent); }
+        .file-tree .file { color: var(--green); }
+        
+        /* BBS-themed decorations */
+        .bbs-header {
+            font-family: 'SF Mono', 'Courier New', monospace;
+            color: var(--accent);
+            font-size: clamp(12px, 1.5vw, 14px);
+            letter-spacing: 1px;
+            margin-bottom: 24px;
+            opacity: 0.7;
+        }
+        
+        .terminal-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 20px;
+            background: var(--accent);
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 4px;
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+        
+        /* Navigation */
+        .nav-dots {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        
+        .nav-dot:hover {
+            background: rgba(255,255,255,0.5);
+        }
+        
+        .slide-counter {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.4);
+            font-family: 'SF Mono', monospace;
+            z-index: 100;
+        }
+        
+        .click-zones {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            z-index: 50;
+            pointer-events: none;
+        }
+        
+        .click-zone {
+            flex: 1;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .stat-row {
+                gap: 24px;
+            }
+            
+            .stat-number {
+                font-size: 48px;
+            }
+            
+            .nav-dots {
+                bottom: 20px;
+            }
+            
+            .slide-counter {
+                bottom: 20px;
+                right: 20px;
+            }
+        }
+        
+        /* Title slide special styling */
+        .title-slide {
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .title-slide .headline {
+            font-size: clamp(48px, 12vw, 96px);
+            margin-bottom: 16px;
+        }
+        
+        .title-slide .subhead {
+            max-width: 700px;
+            text-align: center;
+        }
+        
+        .glow-text {
+            text-shadow: 0 0 40px var(--accent-glow);
+        }
+        
+        /* Centered content */
+        .centered {
+            text-align: center;
+            align-items: center;
+        }
+        
+        .centered .subhead {
+            text-align: center;
+        }
+        
+        /* Philosophy slide */
+        .philosophy-text {
+            font-size: clamp(24px, 4vw, 40px);
+            font-weight: 500;
+            line-height: 1.5;
+            max-width: 1000px;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .philosophy-text em {
+            color: var(--accent);
+            font-style: normal;
+        }
+    </style>
+</head>
+<body>
+    <div class="deck">
+        
+        <!-- Slide 1: Title -->
+        <div class="slide title-slide active">
+            <div class="bbs-header">/// MULTI-AGENT COLLABORATION SYSTEM v1.0 ///</div>
+            <div class="section-label">Experiment</div>
+            <h1 class="headline glow-text">The BBS Experiment</h1>
+            <p class="subhead">What happens when you give AI agents a shared bulletin board and let them collaborate like it's 1989?</p>
+            <div style="margin-top: 48px; color: rgba(255,255,255,0.4); font-size: 14px;">
+                January 2025
+            </div>
+        </div>
+        
+        <!-- Slide 2: The Challenge -->
+        <div class="slide">
+            <div class="section-label">The Challenge</div>
+            <h1 class="headline">Working at the<br/>Right Level</h1>
+            <p class="subhead">Building sophisticated UIs requires foundational components. But building those components floods the main conversation with low-level details.</p>
+            
+            <div class="quote-block" style="margin-top: 48px;">
+                <p>"Let's pause and you spin up a bunch of instances of various agents from UX to architecture to builders and have them all collaborate on building a UI kit for YOU to use."</p>
+                <div class="attribution">The Proposal</div>
+            </div>
+            
+            <p class="subhead" style="margin-top: 24px; color: rgba(255,255,255,0.5);">The goal: Stay working at the high level. If you need more from the kit, request it from them.</p>
+        </div>
+        
+        <!-- Slide 3: The Wild Idea -->
+        <div class="slide">
+            <div class="section-label">The Innovation</div>
+            <h1 class="headline">Files as Forums</h1>
+            <p class="subhead">The user suggested treating shared files like an old-school BBS where agents "dial in" and take turns engaging with each other.</p>
+            
+            <div class="quote-block" style="margin-top: 40px;">
+                <p>"You can leverage notes files as communication tools... you could even use such as a <strong style="color: var(--accent);">poor-man's BBS</strong>..."</p>
+            </div>
+            
+            <div class="quote-block" style="border-color: var(--green); margin-top: 24px;">
+                <p style="color: var(--green); font-weight: 600;">"INVENT THE TOOLS THAT MAKE YOU MOST EFFECTIVE &mdash; WE ALL WIN WHEN YOU DO!"</p>
+                <div class="attribution" style="color: var(--green);">The Philosophy</div>
+            </div>
+        </div>
+        
+        <!-- Slide 4: Collaboration Strategies -->
+        <div class="slide">
+            <div class="section-label">The Technique</div>
+            <h1 class="headline">Agent Collaboration<br/>Patterns</h1>
+            
+            <div class="thirds">
+                <div class="card">
+                    <h3>Relay Messages</h3>
+                    <p>Pass context between agents, repeating what others said for their benefit.</p>
+                </div>
+                <div class="card">
+                    <h3>Session Continuity</h3>
+                    <p>Resume agent sessions with the same session_id to maintain context across interactions.</p>
+                </div>
+                <div class="card card-accent">
+                    <h3>Shared Documents</h3>
+                    <p>Agents read and write to common files, creating a persistent "forum" for collaboration.</p>
+                </div>
+            </div>
+            
+            <div class="code-block" style="margin-top: 40px;">
+<span class="comment"># The BBS Pattern</span>
+<span class="file">SESSION_NOTES.md</span>  <span class="comment">&larr; The shared "forum"</span>
+  <span class="agent">zen-architect</span>      posts findings
+  <span class="agent">design-system-arch</span> responds, disagrees
+  <span class="agent">responsive-strat</span>   adds perspective
+  <span class="agent">modular-builder</span>    proposes solution
+  <span class="comment"># All agents "dial in" to read &amp; write</span>
+            </div>
+        </div>
+        
+        <!-- Slide 5: The Scale -->
+        <div class="slide">
+            <div class="section-label">The Scale</div>
+            <h1 class="headline">A Team Was Deployed</h1>
+            
+            <div class="stat-row">
+                <div class="stat">
+                    <div class="stat-number">81</div>
+                    <div class="stat-label">Sub-Sessions</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">14</div>
+                    <div class="stat-label">Specialized Agents</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">146</div>
+                    <div class="stat-label">Conversation Turns</div>
+                </div>
+            </div>
+            
+            <div class="agent-grid">
+                <span class="agent-tag">zen-architect</span>
+                <span class="agent-tag">design-system-architect</span>
+                <span class="agent-tag">component-designer</span>
+                <span class="agent-tag">responsive-strategist</span>
+                <span class="agent-tag">layout-architect</span>
+                <span class="agent-tag">art-director</span>
+                <span class="agent-tag">modular-builder</span>
+                <span class="agent-tag">voice-strategist</span>
+                <span class="agent-tag">accessibility-expert</span>
+                <span class="agent-tag">performance-analyst</span>
+                <span class="agent-tag">api-designer</span>
+                <span class="agent-tag">state-manager</span>
+                <span class="agent-tag">test-architect</span>
+                <span class="agent-tag">doc-writer</span>
+            </div>
+        </div>
+        
+        <!-- Slide 6: The Forum -->
+        <div class="slide">
+            <div class="section-label">The Forum</div>
+            <h1 class="headline">SESSION_NOTES.md</h1>
+            <p class="subhead">37KB of collaborative thinking. A living document where agents posted, responded, and converged.</p>
+            
+            <div class="timeline" style="margin-top: 48px;">
+                <div class="timeline-item">
+                    <div class="timeline-marker">1</div>
+                    <div class="timeline-content">
+                        <h4>Independent Findings</h4>
+                        <p>Each agent analyzes the codebase and posts their perspective. No cross-talk yet.</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker">2</div>
+                    <div class="timeline-content">
+                        <h4>Cross-Pollination</h4>
+                        <p>Agents read each other's posts. Disagreements surface. Debates begin.</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker">3</div>
+                    <div class="timeline-content">
+                        <h4>Convergence</h4>
+                        <p>Through debate and self-correction, a unified plan emerges.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 7: The Debates -->
+        <div class="slide">
+            <div class="section-label">Round 2</div>
+            <h1 class="headline">Agents Disagreed</h1>
+            <p class="subhead">Reading the forums revealed genuine intellectual debate between agents.</p>
+            
+            <div class="debate-box" style="margin-top: 32px;">
+                <div class="debate-header">
+                    <div class="icon icon-disagree">X</div>
+                    <span class="agent-name">zen-architect</span>
+                </div>
+                <div class="debate-content">
+                    "Web Components are overkill (disagree with design-system-architect) &mdash; Shadow DOM adds complexity we don't need... ES6 modules + functions give us <strong>95% of benefits with 5% of complexity</strong>"
+                </div>
+            </div>
+            
+            <div class="quote-block" style="margin-top: 24px; border-color: rgba(255,255,255,0.2);">
+                <p style="font-size: clamp(16px, 2vw, 20px);">"Reading the 'forums' was awesome... they disagreed on things, worked through them, came with many different perspectives and leveraged best-of across them."</p>
+                <div class="attribution" style="color: rgba(255,255,255,0.5);">Observation</div>
+            </div>
+        </div>
+        
+        <!-- Slide 8: Self-Correction -->
+        <div class="slide">
+            <div class="section-label">Round 3</div>
+            <h1 class="headline">Agents Self-Corrected</h1>
+            <p class="subhead">The most fascinating moments: agents changing their minds based on others' input.</p>
+            
+            <div class="debate-box" style="margin-top: 32px;">
+                <div class="debate-header">
+                    <div class="icon icon-warn">!</div>
+                    <span class="agent-name">zen-architect</span>
+                </div>
+                <div class="debate-content">
+                    "<strong>My Phase 3 approach was wrong</strong> (self-correction)<br/><br/>
+                    I proposed: Phase 1 Extract &rarr; Phase 2 Componentize &rarr; Phase 3 Responsive<br/><br/>
+                    <span style="color: var(--green);">responsive-strategist convinced me:</span> Responsive should be in Phase 1. It's easier to build responsive into extracted components than retrofit."
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 9: Consensus -->
+        <div class="slide">
+            <div class="section-label">Convergence</div>
+            <h1 class="headline">Consensus Emerged</h1>
+            <p class="subhead">From debate to agreement. The team converged on a unified approach.</p>
+            
+            <ul class="check-list" style="max-width: 800px; margin-top: 40px;">
+                <li><strong>ES6 modules</strong> &mdash; zen-architect is right, Web Components are overkill</li>
+                <li><strong>Responsive in Phase 1</strong> &mdash; responsive-strategist convinced me</li>
+                <li><strong>Extraction-first</strong> &mdash; Build kit from REAL usage, not speculation</li>
+                <li><strong>Minimal MVP</strong> &mdash; 5 modules = 80% value</li>
+            </ul>
+            
+            <div style="margin-top: 40px; padding: 24px; background: rgba(48,209,88,0.1); border-radius: 12px; border: 1px solid rgba(48,209,88,0.3);">
+                <p style="color: var(--green); font-weight: 600; font-size: var(--font-body);">Multi-perspective synthesis: Different agents brought different viewpoints, debated, and converged on the best approach.</p>
+            </div>
+        </div>
+        
+        <!-- Slide 10: Deliverables -->
+        <div class="slide">
+            <div class="section-label">The Output</div>
+            <h1 class="headline">Real Deliverables</h1>
+            <p class="subhead">Not just discussion &mdash; the agent team built working code.</p>
+            
+            <div class="halves" style="margin-top: 40px;">
+                <div class="card">
+                    <h3>JS Utility Layer</h3>
+                    <div class="file-tree" style="margin-top: 16px;">
+<span class="folder">utils/</span>
+  <span class="file">auth.js</span>      <span class="comment">// Authentication helpers</span>
+  <span class="file">api.js</span>       <span class="comment">// API client wrapper</span>
+  <span class="file">ui.js</span>        <span class="comment">// DOM manipulation</span>
+  <span class="file">forms.js</span>     <span class="comment">// Form handling</span>
+  <span class="file">modal.js</span>     <span class="comment">// Modal system</span>
+  <span class="file">table.js</span>     <span class="comment">// Data tables</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Design System</h3>
+                    <div class="file-tree" style="margin-top: 16px;">
+<span class="folder">styles/</span>
+  <span class="file">design-tokens.css</span>
+  <span class="file">components.css</span>
+  <span class="file">layout.css</span>
+  <span class="file">utilities.css</span>
+
+<span class="folder">components/</span>
+  <span class="comment">// Refactored HTML modules</span>
+  <span class="comment">// Using the new system</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 11: The Unlock -->
+        <div class="slide">
+            <div class="section-label">The Unlock</div>
+            <h1 class="headline">What This Enables</h1>
+            
+            <div class="thirds" style="margin-top: 48px;">
+                <div class="card card-accent">
+                    <h3>Offload to Agent Teams</h3>
+                    <p>Stay at the high level. Delegate specialized work to coordinated agent teams.</p>
+                </div>
+                <div class="card card-accent">
+                    <h3>Preserve Main Context</h3>
+                    <p>Heavy lifting happens outside the primary conversation. No context pollution.</p>
+                </div>
+                <div class="card card-accent">
+                    <h3>Iterative Requests</h3>
+                    <p>Go back to the "team" for extensions later. They remember the architecture.</p>
+                </div>
+            </div>
+            
+            <div class="thirds" style="margin-top: 16px;">
+                <div class="card">
+                    <h3>Multi-Perspective</h3>
+                    <p>Different agents bring different viewpoints. Better solutions through debate.</p>
+                </div>
+                <div class="card">
+                    <h3>Persistent Forums</h3>
+                    <p>Shared documents create institutional memory across sessions.</p>
+                </div>
+                <div class="card">
+                    <h3>Emergent Consensus</h3>
+                    <p>Let agents work through disagreements. Trust the process.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 12: The Philosophy -->
+        <div class="slide centered">
+            <div class="section-label">The Philosophy</div>
+            <p class="philosophy-text">
+                "If I can get it to do something useful with <em>guidance</em> and <em>existing capability</em>, now turn it into a <em>bundle</em> or <em>first-class thing</em>."
+            </p>
+            <p class="subhead" style="margin-top: 48px; max-width: 800px;">
+                This experiment proved the pattern works. Ad-hoc exploration with existing tools &rarr; productized capability. The BBS metaphor emerged organically. Now it can become a formal feature.
+            </p>
+        </div>
+        
+        <!-- Slide 13: CTA -->
+        <div class="slide title-slide">
+            <div class="bbs-header">/// END TRANSMISSION ///<span class="terminal-cursor"></span></div>
+            <h1 class="headline" style="font-size: clamp(36px, 8vw, 64px);">Invent the Tools<br/>That Make You<br/>Most Effective</h1>
+            <p class="subhead" style="margin-top: 32px; color: var(--accent);">We all win when you do.</p>
+            <div style="margin-top: 64px; color: rgba(255,255,255,0.3); font-size: 14px;">
+                81 sessions / 14 agents / 37KB of collaboration / 1 working UI kit
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Navigation -->
+    <div class="nav-dots"></div>
+    <div class="slide-counter">1 / 13</div>
+    
+    <div class="click-zones">
+        <div class="click-zone" onclick="prevSlide()"></div>
+        <div class="click-zone" onclick="nextSlide()"></div>
+    </div>
+    
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const navDots = document.querySelector('.nav-dots');
+        const counter = document.querySelector('.slide-counter');
+        let currentSlide = 0;
+        
+        // Create nav dots
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+            dot.onclick = () => goToSlide(i);
+            navDots.appendChild(dot);
+        });
+        
+        function updateSlide() {
+            slides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === currentSlide);
+            });
+            document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === currentSlide);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+        
+        function nextSlide() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+        
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+        
+        function goToSlide(n) {
+            currentSlide = n;
+            updateSlide();
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                goToSlide(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                goToSlide(slides.length - 1);
+            }
+        });
+        
+        // Touch/swipe support
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+        
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) nextSlide();
+                else prevSlide();
+            }
+        });
+    </script>
+</body>
+</html>
