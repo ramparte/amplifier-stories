@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proving Parallel Execution with Timestamps</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .deck {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px 80px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Accent color: Cyan/Teal for technical precision */
+        :root {
+            --accent: #00D4AA;
+            --accent-dim: rgba(0, 212, 170, 0.15);
+            --accent-glow: rgba(0, 212, 170, 0.4);
+        }
+
+        h1 {
+            font-size: 72px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            letter-spacing: -2px;
+        }
+
+        h2 {
+            font-size: 56px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.2;
+            margin-bottom: 32px;
+            letter-spacing: -1px;
+        }
+
+        h3 {
+            font-size: 36px;
+            font-weight: 500;
+            color: #888;
+            margin-bottom: 24px;
+        }
+
+        .subtitle {
+            font-size: 28px;
+            color: #888;
+            text-align: center;
+            max-width: 800px;
+        }
+
+        .accent {
+            color: var(--accent);
+        }
+
+        .big-number {
+            font-size: 180px;
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1;
+            letter-spacing: -8px;
+        }
+
+        .metric-label {
+            font-size: 32px;
+            color: #888;
+            margin-top: 16px;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 32px 40px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 18px;
+            line-height: 1.6;
+            color: #ccc;
+            text-align: left;
+            max-width: 900px;
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .code-block .highlight {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .code-block .dim {
+            color: #666;
+        }
+
+        /* Timeline visualization */
+        .timeline {
+            width: 100%;
+            max-width: 1000px;
+            margin-top: 40px;
+        }
+
+        .timeline-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .timeline-label {
+            width: 140px;
+            font-family: 'SF Mono', monospace;
+            font-size: 16px;
+            color: #888;
+            text-align: right;
+            padding-right: 20px;
+        }
+
+        .timeline-bar-container {
+            flex: 1;
+            height: 40px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .timeline-bar {
+            position: absolute;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-glow));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #000;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .slide.active .timeline-bar {
+            opacity: 1;
+        }
+
+        /* Metrics grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 48px;
+            margin-top: 48px;
+        }
+
+        .metric-card {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 96px;
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .metric-desc {
+            font-size: 24px;
+            color: #888;
+            margin-top: 12px;
+        }
+
+        /* Quote styling */
+        .quote {
+            font-size: 48px;
+            font-weight: 600;
+            font-style: italic;
+            text-align: center;
+            max-width: 900px;
+            line-height: 1.4;
+        }
+
+        .quote::before {
+            content: '"';
+            color: var(--accent);
+            font-size: 72px;
+            line-height: 0;
+            vertical-align: -0.3em;
+            margin-right: 8px;
+        }
+
+        .quote::after {
+            content: '"';
+            color: var(--accent);
+            font-size: 72px;
+            line-height: 0;
+            vertical-align: -0.3em;
+            margin-left: 8px;
+        }
+
+        /* Comparison table */
+        .comparison {
+            display: flex;
+            gap: 60px;
+            margin-top: 48px;
+        }
+
+        .comparison-col {
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .comparison-header {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #333;
+        }
+
+        .comparison-header.before {
+            color: #ff6b6b;
+        }
+
+        .comparison-header.after {
+            color: var(--accent);
+        }
+
+        .comparison-item {
+            font-size: 20px;
+            color: #aaa;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .comparison-item::before {
+            content: '>';
+            color: #555;
+        }
+
+        /* Evidence callout */
+        .evidence-box {
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            border-radius: 16px;
+            padding: 32px 48px;
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .evidence-label {
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .evidence-value {
+            font-size: 64px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .evidence-desc {
+            font-size: 20px;
+            color: #aaa;
+            margin-top: 12px;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #444;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .nav-dot:hover {
+            background: #666;
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            font-size: 14px;
+            color: #555;
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* Click zones */
+        .click-zone {
+            position: fixed;
+            top: 0;
+            height: 100%;
+            width: 25%;
+            z-index: 50;
+            cursor: pointer;
+        }
+
+        .click-zone.prev {
+            left: 0;
+        }
+
+        .click-zone.next {
+            right: 0;
+        }
+
+        /* Animation for appearing elements */
+        .fade-in {
+            animation: fadeIn 0.8s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Session path styling */
+        .session-path {
+            font-family: 'SF Mono', monospace;
+            font-size: 14px;
+            color: #555;
+            background: #111;
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin-top: 24px;
+        }
+
+        /* JSON visualization */
+        .json-block {
+            background: #0d0d0d;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
+            padding: 24px 32px;
+            font-family: 'SF Mono', monospace;
+            font-size: 15px;
+            line-height: 1.8;
+            text-align: left;
+            max-width: 700px;
+        }
+
+        .json-key {
+            color: #ff79c6;
+        }
+
+        .json-string {
+            color: #f1fa8c;
+        }
+
+        .json-number {
+            color: var(--accent);
+        }
+
+        /* Bullet list */
+        .bullet-list {
+            text-align: left;
+            max-width: 800px;
+        }
+
+        .bullet-list li {
+            font-size: 28px;
+            color: #ccc;
+            margin-bottom: 20px;
+            list-style: none;
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .bullet-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 14px;
+            width: 12px;
+            height: 12px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        /* Timestamp table */
+        .timestamp-table {
+            border-collapse: collapse;
+            margin-top: 32px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .timestamp-table th {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 24px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        .timestamp-table td {
+            font-size: 18px;
+            padding: 16px 24px;
+            border-bottom: 1px solid #222;
+        }
+
+        .timestamp-table td:first-child {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .timestamp-table td:nth-child(2),
+        .timestamp-table td:nth-child(3) {
+            color: #888;
+        }
+
+        .timestamp-table tr:hover td {
+            background: rgba(0, 212, 170, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="deck">
+        <!-- Slide 1: Title -->
+        <div class="slide active" data-slide="1">
+            <h1>Proving Parallel Execution<br><span class="accent">with Timestamps</span></h1>
+            <p class="subtitle">How we verified concurrent agent execution through sub-second timestamp correlation</p>
+            <p class="session-path">Session Analysis | January 2026</p>
+        </div>
+
+        <!-- Slide 2: The Claim -->
+        <div class="slide" data-slide="2">
+            <h3>THE CLAIM</h3>
+            <h2>Recipe claims to run validation<br>checks <span class="accent">in parallel</span></h2>
+            <div class="code-block">
+                <span class="dim"># document-generation-parallel.yaml</span><br><br>
+                - id: "run-content-checks"<br>
+                &nbsp;&nbsp;foreach: "{{content_check_definitions}}"<br>
+                &nbsp;&nbsp;<span class="highlight">parallel: 3</span><br>
+                &nbsp;&nbsp;agent: "foundation:zen-architect"
+            </div>
+            <p class="subtitle" style="margin-top: 32px;">But how do we <em>know</em> it's actually running in parallel?</p>
+        </div>
+
+        <!-- Slide 3: The Question -->
+        <div class="slide" data-slide="3">
+            <h3>THE SKEPTIC'S QUESTION</h3>
+            <div class="quote">Is there another way to confirm this all executed in parallel?</div>
+            <p class="subtitle" style="margin-top: 40px;">Configuration isn't proof. Logs can mislead.<br>We needed hard evidence.</p>
+        </div>
+
+        <!-- Slide 4: The Investigation -->
+        <div class="slide" data-slide="4">
+            <h3>THE INVESTIGATION</h3>
+            <h2>Session Analyst traces<br><span class="accent">child agent sessions</span></h2>
+            <ul class="bullet-list" style="margin-top: 40px;">
+                <li>Located recipe execution sessions</li>
+                <li>Extracted start/end timestamps from each agent</li>
+                <li>Mapped timestamps to validation check types</li>
+                <li>Analyzed for temporal overlap</li>
+            </ul>
+        </div>
+
+        <!-- Slide 5: Content Validation Evidence -->
+        <div class="slide" data-slide="5">
+            <h3>CONTENT VALIDATION | 3 CHECKS</h3>
+            <table class="timestamp-table">
+                <tr>
+                    <th>Check</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Duration</th>
+                </tr>
+                <tr>
+                    <td>accuracy</td>
+                    <td>19:53:08.810</td>
+                    <td>19:54:34.104</td>
+                    <td>~85s</td>
+                </tr>
+                <tr>
+                    <td>completeness</td>
+                    <td>19:53:08.967</td>
+                    <td>19:54:42.803</td>
+                    <td>~94s</td>
+                </tr>
+                <tr>
+                    <td>instructions</td>
+                    <td>19:53:09.127</td>
+                    <td>19:54:41.310</td>
+                    <td>~92s</td>
+                </tr>
+            </table>
+            <div class="evidence-box">
+                <div class="evidence-label">Start Time Spread</div>
+                <div class="evidence-value">317ms</div>
+                <div class="evidence-desc">All 3 checks launched within 0.3 seconds of each other</div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Timeline Visualization -->
+        <div class="slide" data-slide="6">
+            <h3>CONTENT VALIDATION TIMELINE</h3>
+            <h2>Visual proof of <span class="accent">concurrent execution</span></h2>
+            <div class="timeline">
+                <div class="timeline-row">
+                    <div class="timeline-label">accuracy</div>
+                    <div class="timeline-bar-container">
+                        <div class="timeline-bar" style="left: 0%; width: 90%;">85s</div>
+                    </div>
+                </div>
+                <div class="timeline-row">
+                    <div class="timeline-label">completeness</div>
+                    <div class="timeline-bar-container">
+                        <div class="timeline-bar" style="left: 0%; width: 100%;">94s</div>
+                    </div>
+                </div>
+                <div class="timeline-row">
+                    <div class="timeline-label">instructions</div>
+                    <div class="timeline-bar-container">
+                        <div class="timeline-bar" style="left: 0%; width: 97%;">92s</div>
+                    </div>
+                </div>
+            </div>
+            <p class="subtitle" style="margin-top: 40px;">All three running concurrently for 85+ seconds</p>
+        </div>
+
+        <!-- Slide 7: Quality Validation Evidence -->
+        <div class="slide" data-slide="7">
+            <h3>QUALITY VALIDATION | 5 CHECKS, parallel: 3</h3>
+            <table class="timestamp-table">
+                <tr>
+                    <th>Check</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Duration</th>
+                </tr>
+                <tr>
+                    <td>depth</td>
+                    <td>19:57:41.459</td>
+                    <td>19:59:23.157</td>
+                    <td>~102s</td>
+                </tr>
+                <tr>
+                    <td>coherence</td>
+                    <td>19:57:41.624</td>
+                    <td>19:58:34.161</td>
+                    <td>~53s</td>
+                </tr>
+                <tr>
+                    <td>crossrefs</td>
+                    <td>19:57:41.989</td>
+                    <td>19:58:35.916</td>
+                    <td>~54s</td>
+                </tr>
+                <tr>
+                    <td>consistency</td>
+                    <td>19:58:34.830</td>
+                    <td>19:59:59.605</td>
+                    <td>~85s</td>
+                </tr>
+                <tr>
+                    <td>tone</td>
+                    <td>19:58:36.570</td>
+                    <td>19:59:12.742</td>
+                    <td>~36s</td>
+                </tr>
+            </table>
+            <div class="evidence-box">
+                <div class="evidence-label">First Wave Start Spread</div>
+                <div class="evidence-value">530ms</div>
+                <div class="evidence-desc">First 3 checks (depth, coherence, crossrefs) launched within 0.5 seconds</div>
+            </div>
+        </div>
+
+        <!-- Slide 8: The Impact -->
+        <div class="slide" data-slide="8">
+            <h3>QUANTIFIED IMPACT</h3>
+            <h2>Time saved through <span class="accent">parallelism</span></h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">65%</div>
+                    <div class="metric-desc">faster content validation</div>
+                    <div style="font-size: 16px; color: #555; margin-top: 8px;">271s sequential vs 94s parallel</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">58%</div>
+                    <div class="metric-desc">faster quality validation</div>
+                    <div style="font-size: 16px; color: #555; margin-top: 8px;">330s sequential vs 138s parallel</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: The Enhancement -->
+        <div class="slide" data-slide="9">
+            <h3>THE ENHANCEMENT</h3>
+            <h2>Self-documenting <span class="accent">parallel metrics</span></h2>
+            <p class="subtitle" style="margin-bottom: 32px;">Future runs now embed proof in tracker.json</p>
+            <div class="json-block">
+                <span class="json-key">"parallel_metrics"</span>: {<br>
+                &nbsp;&nbsp;<span class="json-key">"max_concurrent"</span>: <span class="json-number">3</span>,<br>
+                &nbsp;&nbsp;<span class="json-key">"wall_clock_time_seconds"</span>: <span class="json-number">94</span>,<br>
+                &nbsp;&nbsp;<span class="json-key">"total_check_time_seconds"</span>: <span class="json-number">271</span>,<br>
+                &nbsp;&nbsp;<span class="json-key">"parallelism_efficiency"</span>: <span class="json-number">2.88</span>,<br>
+                &nbsp;&nbsp;<span class="json-key">"time_saved_seconds"</span>: <span class="json-number">177</span><br>
+                }
+            </div>
+        </div>
+
+        <!-- Slide 10: Before/After -->
+        <div class="slide" data-slide="10">
+            <h3>VERIFICATION APPROACH</h3>
+            <div class="comparison">
+                <div class="comparison-col">
+                    <div class="comparison-header before">Before</div>
+                    <div class="comparison-item">Trust the config says parallel: 3</div>
+                    <div class="comparison-item">Dig through session logs manually</div>
+                    <div class="comparison-item">Cross-reference child session timestamps</div>
+                    <div class="comparison-item">Calculate metrics by hand</div>
+                </div>
+                <div class="comparison-col">
+                    <div class="comparison-header after">After</div>
+                    <div class="comparison-item">Check tracker.json for parallel_metrics</div>
+                    <div class="comparison-item">Efficiency ratio proves concurrency</div>
+                    <div class="comparison-item">time_saved_seconds shows real impact</div>
+                    <div class="comparison-item">Self-validating every run</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Key Takeaway -->
+        <div class="slide" data-slide="11">
+            <h2 style="font-size: 64px;">Claims aren't proof.<br><span class="accent">Timestamps don't lie.</span></h2>
+            <p class="subtitle" style="margin-top: 48px;">
+                317ms start spread across 3 agents<br>
+                proves true concurrent execution
+            </p>
+        </div>
+
+        <!-- Slide 12: CTA -->
+        <div class="slide" data-slide="12">
+            <h2>What We Learned</h2>
+            <ul class="bullet-list" style="margin-top: 40px;">
+                <li><strong>Verify, don't trust</strong> - Configuration != execution</li>
+                <li><strong>Session archaeology</strong> - Timestamps tell the real story</li>
+                <li><strong>Build in observability</strong> - Make systems self-documenting</li>
+                <li><strong>Quantify impact</strong> - "Parallel" means nothing without metrics</li>
+            </ul>
+            <p style="margin-top: 48px; font-size: 20px; color: #555;">
+                Recipe updated to v7.1.0 with embedded parallel execution tracking
+            </p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav" id="nav"></div>
+        <div class="slide-counter" id="counter">1 / 12</div>
+
+        <!-- Click zones -->
+        <div class="click-zone prev" onclick="prevSlide()"></div>
+        <div class="click-zone next" onclick="nextSlide()"></div>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const nav = document.getElementById('nav');
+        const counter = document.getElementById('counter');
+        let current = 0;
+        const total = slides.length;
+
+        // Create nav dots
+        for (let i = 0; i < total; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+            dot.onclick = () => goToSlide(i);
+            nav.appendChild(dot);
+        }
+
+        function updateSlide() {
+            slides.forEach((s, i) => {
+                s.classList.toggle('active', i === current);
+            });
+            document.querySelectorAll('.nav-dot').forEach((d, i) => {
+                d.classList.toggle('active', i === current);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
+
+        function nextSlide() {
+            if (current < total - 1) {
+                current++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (current > 0) {
+                current--;
+                updateSlide();
+            }
+        }
+
+        function goToSlide(n) {
+            current = n;
+            updateSlide();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                goToSlide(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                goToSlide(total - 1);
+            }
+        });
+
+        // Touch support
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        });
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) nextSlide();
+                else prevSlide();
+            }
+        });
+    </script>
+</body>
+</html>

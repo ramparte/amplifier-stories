@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three Branches, One Recipe</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-gradient: linear-gradient(135deg, #FF375F 0%, #FF9500 100%);
+            --branch-1: #0A84FF;
+            --branch-2: #30D158;
+            --branch-3: #BF5AF2;
+            --font-headline: clamp(32px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 32px);
+            --font-big-number: clamp(60px, 20vw, 140px);
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .deck { position: relative; width: 100%; height: 100vh; }
+        
+        .slide {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .slide.active { display: flex; }
+
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.1;
+            margin-bottom: 24px;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.4;
+            max-width: 900px;
+        }
+
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card h3 {
+            font-size: clamp(18px, 3vw, 24px);
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+
+        .card p {
+            font-size: clamp(14px, 2vw, 16px);
+            color: rgba(255,255,255,0.7);
+            line-height: 1.5;
+        }
+
+        .card.branch-1 { border-color: var(--branch-1); }
+        .card.branch-1 h3 { color: var(--branch-1); }
+        .card.branch-2 { border-color: var(--branch-2); }
+        .card.branch-2 h3 { color: var(--branch-2); }
+        .card.branch-3 { border-color: var(--branch-3); }
+        .card.branch-3 h3 { color: var(--branch-3); }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+        .metric .value {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .metric .label {
+            font-size: clamp(14px, 2vw, 18px);
+            color: rgba(255,255,255,0.6);
+            margin-top: 8px;
+        }
+
+        /* Navigation */
+        .nav-dots {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.2);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.4);
+            z-index: 100;
+        }
+
+        .highlight { color: var(--accent); }
+
+        /* Title slide special styling */
+        .title-slide {
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title-slide .headline {
+            font-size: clamp(40px, 10vw, 96px);
+        }
+
+        .date {
+            font-size: clamp(14px, 2vw, 18px);
+            color: rgba(255,255,255,0.5);
+            margin-top: 24px;
+        }
+
+        ul.feature-list {
+            list-style: none;
+            margin-top: 24px;
+        }
+
+        ul.feature-list li {
+            font-size: clamp(16px, 2.5vw, 22px);
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 16px;
+            padding-left: 24px;
+            position: relative;
+        }
+
+        ul.feature-list li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 10px;
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        /* Branch diagram */
+        .branch-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 40px;
+            gap: 20px;
+        }
+
+        .branch-line {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .branch-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        .branch-label {
+            font-size: clamp(14px, 2vw, 18px);
+            font-weight: 500;
+        }
+
+        .merge-arrow {
+            font-size: 48px;
+            color: var(--accent);
+            margin: 20px 0;
+        }
+
+        /* Code block */
+        .code-block {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 2vw, 15px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            margin-top: 24px;
+            color: #30D158;
+        }
+
+        .code-block .comment { color: rgba(255,255,255,0.4); }
+        .code-block .error { color: #FF453A; }
+        .code-block .highlight { color: var(--accent); }
+
+        /* Problem visualization */
+        .problem-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .file-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .file-icon .icon {
+            font-size: 64px;
+            opacity: 0.8;
+        }
+
+        .file-icon .size {
+            font-size: clamp(24px, 4vw, 36px);
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .file-icon .desc {
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 32px;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 16px 24px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .flow-step .number {
+            font-size: clamp(20px, 3vw, 28px);
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 40px;
+        }
+
+        .flow-step .text {
+            font-size: clamp(14px, 2vw, 18px);
+            color: rgba(255,255,255,0.8);
+        }
+
+        /* Issue callout */
+        .issue-callout {
+            background: rgba(255,69,58,0.1);
+            border: 1px solid rgba(255,69,58,0.3);
+            border-radius: 16px;
+            padding: 24px 32px;
+            margin-top: 32px;
+        }
+
+        .issue-callout h4 {
+            color: #FF453A;
+            font-size: clamp(16px, 2vw, 20px);
+            margin-bottom: 12px;
+        }
+
+        .issue-callout p {
+            color: rgba(255,255,255,0.7);
+            font-size: clamp(14px, 1.8vw, 16px);
+            line-height: 1.5;
+        }
+
+        /* Resolution callout */
+        .resolution-callout {
+            background: rgba(48,209,88,0.1);
+            border: 1px solid rgba(48,209,88,0.3);
+            border-radius: 16px;
+            padding: 24px 32px;
+            margin-top: 20px;
+        }
+
+        .resolution-callout h4 {
+            color: #30D158;
+            font-size: clamp(16px, 2vw, 20px);
+            margin-bottom: 12px;
+        }
+
+        .resolution-callout p {
+            color: rgba(255,255,255,0.7);
+            font-size: clamp(14px, 1.8vw, 16px);
+            line-height: 1.5;
+        }
+
+        /* Quote slide */
+        .quote {
+            font-size: clamp(24px, 5vw, 48px);
+            font-weight: 500;
+            font-style: italic;
+            line-height: 1.4;
+            max-width: 900px;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .quote::before {
+            content: '"';
+            color: var(--accent);
+        }
+
+        .quote::after {
+            content: '"';
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="deck">
+        <!-- Slide 1: Title -->
+        <div class="slide title-slide active">
+            <div class="section-label">Recipe Merge Story</div>
+            <h1 class="headline">Three Branches,<br>One Recipe</h1>
+            <p class="subhead">Merging parallel development into unified v8.0.0</p>
+            <div class="date">January 2026</div>
+        </div>
+
+        <!-- Slide 2: The Challenge -->
+        <div class="slide">
+            <div class="section-label">The Challenge</div>
+            <h2 class="headline">Three Teams,<br>Three Directions</h2>
+            <p class="subhead">Independent feature branches developed in parallel, each solving a different problem. Now they need to become one.</p>
+            <div class="thirds">
+                <div class="card branch-1">
+                    <h3>Phase 1: Parallel Timing</h3>
+                    <p>Concurrent execution of validation steps. 30-40% faster processing.</p>
+                </div>
+                <div class="card branch-2">
+                    <h3>Phase 2: Existing Docs</h3>
+                    <p>Support for feeding in existing documents. Preserve good content, update stale.</p>
+                </div>
+                <div class="card branch-3">
+                    <h3>Phase 3: Provider Prefs</h3>
+                    <p>Per-step model selection. Haiku for parsing, Sonnet for analysis, Opus for generation.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: The Problem -->
+        <div class="slide">
+            <div class="section-label">The Problem</div>
+            <h2 class="headline">Too Big to<br>Process</h2>
+            <p class="subhead">Asking the LLM to merge everything at once hit hard limits.</p>
+            <div class="problem-visual">
+                <div class="file-icon">
+                    <div class="icon">&#128196;</div>
+                    <div class="size">2,300</div>
+                    <div class="desc">lines of YAML</div>
+                </div>
+                <div style="font-size: 48px; color: rgba(255,255,255,0.3);">+</div>
+                <div class="file-icon">
+                    <div class="icon">&#128268;</div>
+                    <div class="size">3</div>
+                    <div class="desc">feature branches</div>
+                </div>
+                <div style="font-size: 48px; color: rgba(255,255,255,0.3);">=</div>
+                <div class="file-icon">
+                    <div class="icon" style="color: #FF453A;">&#9888;</div>
+                    <div class="size" style="color: #FF453A;">Timeout</div>
+                    <div class="desc">context overflow</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: The Strategy -->
+        <div class="slide">
+            <div class="section-label">The Strategy</div>
+            <h2 class="headline">Decompose<br>to Conquer</h2>
+            <p class="subhead">Break the monolithic merge into incremental, validatable steps.</p>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <span class="number">1</span>
+                    <span class="text">Merge Phase 1 (parallel timing) into main branch</span>
+                </div>
+                <div class="flow-step">
+                    <span class="number">2</span>
+                    <span class="text">Validate: run recipe-results-validator</span>
+                </div>
+                <div class="flow-step">
+                    <span class="number">3</span>
+                    <span class="text">Merge Phase 2 (existing docs) incrementally</span>
+                </div>
+                <div class="flow-step">
+                    <span class="number">4</span>
+                    <span class="text">Validate again: ensure both features work</span>
+                </div>
+                <div class="flow-step">
+                    <span class="number">5</span>
+                    <span class="text">Merge Phase 3 (provider prefs), final validation</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Validation -->
+        <div class="slide">
+            <div class="section-label">Validation</div>
+            <h2 class="headline">Trust, But<br>Verify</h2>
+            <p class="subhead">Each merge step validated with the recipe-results-validator to ensure all three feature sets still work together.</p>
+            <div class="code-block"><span class="comment"># Running validation after merge...</span>
+$ recipe-results-validator check
+
+<span class="highlight">Parallel timing:</span>     &#10003; 6 concurrent groups detected
+<span class="highlight">Existing doc input:</span>  &#10003; preserve/revise/replace logic intact  
+<span class="highlight">Provider fallbacks:</span>  &#10003; Haiku -> GPT-4o-mini chains configured
+
+<span style="color: #30D158;">All 3 feature sets validated successfully</span></div>
+        </div>
+
+        <!-- Slide 6: Issue Found -->
+        <div class="slide">
+            <div class="section-label">Plot Twist</div>
+            <h2 class="headline">Duplicate<br>Detected</h2>
+            <p class="subhead">Validation caught a merge conflict that would have broken production.</p>
+            <div class="issue-callout">
+                <h4>Issue: Duplicate provider_preferences blocks</h4>
+                <p>Both Phase 2 and Phase 3 branches had added their own <code>provider_preferences</code> section. The naive merge left both in place, causing YAML parse errors.</p>
+            </div>
+            <div class="resolution-callout">
+                <h4>Resolution: Unified configuration</h4>
+                <p>Consolidated both blocks into a single, comprehensive provider_preferences section with all fallback chains from both branches.</p>
+            </div>
+        </div>
+
+        <!-- Slide 7: The Results -->
+        <div class="slide">
+            <div class="section-label">Results</div>
+            <h2 class="headline">Mission<br>Accomplished</h2>
+            <div class="metric-grid">
+                <div class="metric">
+                    <div class="value">13</div>
+                    <div class="label">min execution</div>
+                </div>
+                <div class="metric">
+                    <div class="value">9/10</div>
+                    <div class="label">quality score</div>
+                </div>
+                <div class="metric">
+                    <div class="value">29</div>
+                    <div class="label">issues auto-fixed</div>
+                </div>
+                <div class="metric">
+                    <div class="value">v8.0</div>
+                    <div class="label">released</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Velocity -->
+        <div class="slide">
+            <div class="section-label">Velocity</div>
+            <h2 class="headline">Shipped It</h2>
+            <ul class="feature-list">
+                <li><strong>3 branches</strong> merged into unified recipe</li>
+                <li><strong>2,300+ lines</strong> of YAML consolidated</li>
+                <li><strong>PR created</strong> and pushed to GitHub</li>
+                <li><strong>Zero merge conflicts</strong> in final result</li>
+                <li><strong>Full test coverage</strong> via recipe-results-validator</li>
+            </ul>
+        </div>
+
+        <!-- Slide 9: Key Takeaway -->
+        <div class="slide title-slide">
+            <div class="section-label">Key Takeaway</div>
+            <p class="quote">AI can manage complexity, but sometimes you need to help it decompose the problem.</p>
+            <p class="subhead" style="margin-top: 40px; font-size: clamp(14px, 2vw, 20px);">When the task is too big, break it into validatable steps.<br>Let the AI excel at each piece.</p>
+        </div>
+
+        <!-- Slide 10: CTA -->
+        <div class="slide title-slide">
+            <div class="section-label">Try It</div>
+            <h2 class="headline">Recipe v8.0.0</h2>
+            <p class="subhead">All three optimizations unified and production-ready</p>
+            <div class="date" style="margin-top: 40px; font-family: monospace; font-size: 16px;">
+                amplifier/recipes/document-generation.yaml
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-dots"></div>
+    <div class="slide-counter">1 / 10</div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const navDots = document.querySelector('.nav-dots');
+        const counter = document.querySelector('.slide-counter');
+        let currentSlide = 0;
+
+        // Create nav dots
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+            dot.addEventListener('click', () => goToSlide(i));
+            navDots.appendChild(dot);
+        });
+
+        function goToSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            navDots.children[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            navDots.children[currentSlide].classList.add('active');
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goToSlide(currentSlide + 1);
+            if (e.key === 'ArrowLeft') goToSlide(currentSlide - 1);
+        });
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav-dots')) return;
+            const x = e.clientX / window.innerWidth;
+            if (x > 0.5) goToSlide(currentSlide + 1);
+            else goToSlide(currentSlide - 1);
+        });
+    </script>
+</body>
+</html>
