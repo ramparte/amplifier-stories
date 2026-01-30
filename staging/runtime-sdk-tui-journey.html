@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runtime SDK & TUI | Building IDE Integration for Amplifier</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: rgba(255,255,255,0.03);
+            --text: #ffffff;
+            --text-dim: rgba(255,255,255,0.55);
+            --text-muted: rgba(255,255,255,0.35);
+            --accent: #00D4AA;
+            --accent-glow: rgba(0,212,170,0.15);
+            --diego-green: #00D4AA;
+            --runtime-purple: #9D4EDD;
+            --tui-cyan: #00CED1;
+            --acp-orange: #FF9F0A;
+            --success-green: #30D158;
+            --warning-yellow: #FFD60A;
+            --error-red: #FF6B6B;
+            --microsoft-blue: #0078D4;
+            --font-display: 52px;
+            --font-headline: 38px;
+            --font-subhead: 20px;
+            --font-body: 16px;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text);
+            line-height: 1.5;
+            overflow: hidden;
+        }
+        
+        .slide-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 60px 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            background: var(--bg-primary);
+        }
+        
+        .slide.active { opacity: 1; visibility: visible; }
+        .title-slide { text-align: center; align-items: center; }
+        
+        .section-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+        
+        .chapter-label {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--runtime-purple), var(--tui-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+        
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -0.5px;
+        }
+        
+        .display {
+            font-size: var(--font-display);
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -1px;
+        }
+        
+        .subhead {
+            font-size: var(--font-subhead);
+            color: var(--text-dim);
+            max-width: 700px;
+        }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 24px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        
+        .terminal {
+            background: #1a1a24;
+            border-radius: 12px;
+            overflow: hidden;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+        }
+        
+        .terminal-header {
+            background: #252532;
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .terminal-dot.red { background: #ff5f57; }
+        .terminal-dot.yellow { background: #febc2e; }
+        .terminal-dot.green { background: #28c840; }
+        
+        .terminal-content {
+            padding: 20px;
+            line-height: 1.7;
+            color: #e0e0e0;
+            white-space: pre-wrap;
+        }
+        
+        .terminal-dim { color: rgba(255,255,255,0.4); }
+        .terminal-cyan { color: #00CED1; }
+        .terminal-green { color: #00D4AA; }
+        .terminal-purple { color: #9D4EDD; }
+        .terminal-orange { color: #FF9F0A; }
+        .terminal-success { color: #30D158; }
+        .terminal-error { color: #FF6B6B; }
+        
+        .status-done { color: var(--success-green); }
+        .status-partial { color: var(--warning-yellow); }
+        .status-todo { color: var(--error-red); }
+        
+        .quote-block {
+            background: linear-gradient(135deg, rgba(157,78,221,0.1), rgba(0,206,209,0.05));
+            border-left: 4px solid var(--runtime-purple);
+            padding: 24px 32px;
+            border-radius: 0 12px 12px 0;
+            margin: 20px 0;
+        }
+        
+        .quote-text {
+            font-size: 18px;
+            font-style: italic;
+            color: var(--text);
+            line-height: 1.5;
+        }
+        
+        .quote-author {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-top: 12px;
+        }
+        
+        .bullet-list { list-style: none; padding: 0; }
+        .bullet-list li {
+            padding: 8px 0 8px 24px;
+            position: relative;
+            color: var(--text-dim);
+        }
+        .bullet-list li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+        
+        .feature-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge-done { background: rgba(48,209,88,0.15); color: var(--success-green); }
+        .badge-partial { background: rgba(255,214,10,0.15); color: var(--warning-yellow); }
+        .badge-todo { background: rgba(255,107,107,0.15); color: var(--error-red); }
+        
+        .stat-row {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin: 32px 0;
+        }
+        
+        .stat { text-align: center; }
+        .stat-value {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--runtime-purple), var(--tui-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label { font-size: 14px; color: var(--text-dim); margin-top: 4px; }
+        
+        .architecture-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 24px;
+            font-family: 'SF Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .layer-box {
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin: 8px 0;
+            text-align: center;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(157,78,221,0.1), rgba(0,206,209,0.08));
+            border: 1px solid rgba(0,212,170,0.3);
+            border-radius: 12px;
+            padding: 20px 28px;
+            text-align: center;
+        }
+        
+        .protocol-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .protocol-table th, .protocol-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        
+        .protocol-table th {
+            color: var(--text-dim);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        code {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.9em;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--runtime-purple), var(--tui-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .ide-logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .transport-flow {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .transport-node {
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .nav-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(157,78,221,0.3);
+            border-color: var(--runtime-purple);
+        }
+        
+        .slide-counter {
+            font-size: 14px;
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .checklist { list-style: none; padding: 0; }
+        .checklist li {
+            padding: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 15px;
+        }
+        .checklist .check { color: var(--success-green); font-size: 18px; }
+        .checklist .partial { color: var(--warning-yellow); font-size: 18px; }
+        .checklist .cross { color: var(--error-red); font-size: 18px; }
+        
+        .pain-point {
+            background: rgba(255,107,107,0.1);
+            border: 1px solid rgba(255,107,107,0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 8px 0;
+        }
+        
+        .solution {
+            background: rgba(48,209,88,0.1);
+            border: 1px solid rgba(48,209,88,0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        
+        <!-- Slide 1: Title -->
+        <div class="slide title-slide active" data-slide="1">
+            <div style="display: flex; gap: 20px; margin-bottom: 32px;">
+                <div class="ide-logo">🖥️</div>
+                <div class="ide-logo">📡</div>
+                <div class="ide-logo">🎨</div>
+            </div>
+            <div class="chapter-label">Work in Progress</div>
+            <h1 class="display" style="margin-bottom: 24px;">Runtime SDK<br><span class="gradient-text">& TUI Client</span></h1>
+            <p class="subhead" style="text-align: center; margin: 0 auto;">
+                Building IDE integration for Amplifier: ACP protocol, multiple transports, and a terminal interface — with AI-assisted visual testing
+            </p>
+            <div style="margin-top: 48px; color: var(--text-muted); font-size: 14px;">
+                <img src="https://avatars.githubusercontent.com/u/375556?v=4" style="width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; margin-right: 8px; border: 2px solid var(--diego-green);">
+                Diego Colombo · January 29-30, 2026
+            </div>
+        </div>
+        
+        <!-- Slide 2: The Vision -->
+        <div class="slide" data-slide="2">
+            <div class="chapter-label">Chapter 1: The Vision</div>
+            <h2 class="headline" style="margin-bottom: 12px;">One Runtime, Many Clients</h2>
+            <p class="subhead" style="margin-bottom: 28px;">Amplifier should work anywhere — IDEs, terminals, web apps, remote servers.</p>
+            
+            <div class="quote-block">
+                <div class="quote-text">
+                    "I want to create a starting point for a TUI interface in Python... the TUI needs to either launch the amplifier-runtime and connect using stdio, or attach it to the HTTP and WS interface..."
+                </div>
+                <div class="quote-author">— Diego, Jan 29 initial session</div>
+            </div>
+            
+            <!-- Architecture Diagram -->
+            <div class="architecture-box" style="margin-top: 24px;">
+                <div style="text-align: center; margin-bottom: 16px; color: var(--text-dim);">Client Applications</div>
+                <div style="display: flex; justify-content: center; gap: 24px; margin-bottom: 20px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px;">⚡</div>
+                        <div style="font-size: 12px; color: var(--tui-cyan);">Zed</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px;">💻</div>
+                        <div style="font-size: 12px; color: var(--microsoft-blue);">VS Code</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px;">🧠</div>
+                        <div style="font-size: 12px; color: var(--acp-orange);">JetBrains</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px;">📝</div>
+                        <div style="font-size: 12px; color: var(--success-green);">Neovim</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px;">🖥️</div>
+                        <div style="font-size: 12px; color: var(--runtime-purple);">TUI</div>
+                    </div>
+                </div>
+                <div style="text-align: center; font-size: 20px; color: var(--accent); margin: 12px 0;">↓ ACP Protocol (JSON-RPC 2.0) ↓</div>
+                <div class="layer-box" style="background: rgba(157,78,221,0.2); border: 2px solid var(--runtime-purple);">
+                    <div style="font-weight: 700; color: var(--runtime-purple);">Amplifier Runtime</div>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">stdio · HTTP · WebSocket · SSE</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 3: ACP Protocol -->
+        <div class="slide" data-slide="3">
+            <div class="section-label" style="color: var(--acp-orange);">The Standard</div>
+            <h2 class="headline" style="margin-bottom: 28px;">Agent Client Protocol (ACP)</h2>
+            
+            <div class="grid-2">
+                <div class="card" style="border-color: var(--acp-orange);">
+                    <div class="card-title" style="color: var(--acp-orange);">What is ACP?</div>
+                    <ul class="bullet-list">
+                        <li>Standardized protocol for IDE ↔ AI agents</li>
+                        <li>Created by Anthropic, adopted by Zed, JetBrains</li>
+                        <li>JSON-RPC 2.0 based messaging</li>
+                        <li>Bidirectional capability negotiation</li>
+                        <li>Streaming updates via notifications</li>
+                    </ul>
+                    <div style="margin-top: 16px;">
+                        <span class="feature-badge badge-done">Protocol v2025-01-07</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">Key Methods</div>
+                    <table class="protocol-table">
+                        <tr>
+                            <td><code>initialize</code></td>
+                            <td>Handshake & capabilities</td>
+                        </tr>
+                        <tr>
+                            <td><code>session/new</code></td>
+                            <td>Create agent session</td>
+                        </tr>
+                        <tr>
+                            <td><code>session/prompt</code></td>
+                            <td>Send user message</td>
+                        </tr>
+                        <tr>
+                            <td><code>session/update</code></td>
+                            <td>Streaming responses</td>
+                        </tr>
+                        <tr>
+                            <td><code>session/cancel</code></td>
+                            <td>Stop execution</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div style="margin-top: 24px; text-align: center; font-size: 14px; color: var(--text-dim);">
+                Official SDK: <code>agent-client-protocol>=0.7.1</code> · 
+                Spec: <a href="https://agentclientprotocol.com" style="color: var(--acp-orange);">agentclientprotocol.com</a>
+            </div>
+        </div>
+        
+        <!-- Slide 4: Transport Modes -->
+        <div class="slide" data-slide="4">
+            <div class="section-label">Architecture</div>
+            <h2 class="headline" style="margin-bottom: 28px;">Four Transport Modes</h2>
+            
+            <div class="grid-4">
+                <div class="card" style="border-color: var(--success-green);">
+                    <div style="font-size: 32px; margin-bottom: 8px;">📥</div>
+                    <div class="card-title" style="color: var(--success-green);">Stdio</div>
+                    <div style="font-size: 13px; color: var(--text-dim);">
+                        Default mode. IDEs spawn as subprocess.
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <span class="feature-badge badge-done">✓ Working</span>
+                    </div>
+                </div>
+                
+                <div class="card" style="border-color: var(--microsoft-blue);">
+                    <div style="font-size: 32px; margin-bottom: 8px;">🌐</div>
+                    <div class="card-title" style="color: var(--microsoft-blue);">HTTP</div>
+                    <div style="font-size: 13px; color: var(--text-dim);">
+                        REST API for web apps and remote.
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <span class="feature-badge badge-done">✓ Working</span>
+                    </div>
+                </div>
+                
+                <div class="card" style="border-color: var(--runtime-purple);">
+                    <div style="font-size: 32px; margin-bottom: 8px;">🔌</div>
+                    <div class="card-title" style="color: var(--runtime-purple);">WebSocket</div>
+                    <div style="font-size: 13px; color: var(--text-dim);">
+                        Full-duplex real-time communication.
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <span class="feature-badge badge-done">✓ Working</span>
+                    </div>
+                </div>
+                
+                <div class="card" style="border-color: var(--tui-cyan);">
+                    <div style="font-size: 32px; margin-bottom: 8px;">📡</div>
+                    <div class="card-title" style="color: var(--tui-cyan);">SSE</div>
+                    <div style="font-size: 13px; color: var(--text-dim);">
+                        Server-Sent Events for streaming.
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <span class="feature-badge badge-done">✓ Working</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="terminal" style="margin-top: 28px; max-width: 700px; margin-left: auto; margin-right: auto;">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                </div>
+                <div class="terminal-content"><span class="terminal-dim"># Stdio mode (default) - for IDEs</span>
+<span class="terminal-green">$ amplifier-runtime</span>
+
+<span class="terminal-dim"># HTTP mode with ACP endpoints</span>
+<span class="terminal-green">$ amplifier-runtime --http --acp</span>
+
+<span class="terminal-dim"># Check health</span>
+<span class="terminal-green">$ amplifier-runtime --health</span></div>
+            </div>
+        </div>
+        
+        <!-- Slide 5: SDK Design -->
+        <div class="slide" data-slide="5">
+            <div class="section-label">Implementation</div>
+            <h2 class="headline" style="margin-bottom: 28px;">Transport-Agnostic SDK</h2>
+            
+            <div class="grid-2">
+                <div>
+                    <div class="card" style="margin-bottom: 20px;">
+                        <div class="card-title">Client Modes</div>
+                        <div class="terminal" style="margin-top: 12px;">
+                            <div class="terminal-content" style="padding: 16px; font-size: 12px;"><span class="terminal-purple">class</span> <span class="terminal-cyan">TransportMode</span>(str, Enum):
+    SSE = <span class="terminal-orange">"sse"</span>        <span class="terminal-dim"># HTTP/1.1, HTTP/2</span>
+    WEBSOCKET = <span class="terminal-orange">"websocket"</span>  <span class="terminal-dim"># Full duplex</span>
+    STDIO = <span class="terminal-orange">"stdio"</span>    <span class="terminal-dim"># Subprocess/IPC</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-title">Factory Methods</div>
+                        <div class="terminal" style="margin-top: 12px;">
+                            <div class="terminal-content" style="padding: 16px; font-size: 12px;"><span class="terminal-dim"># Launch as subprocess</span>
+client = <span class="terminal-cyan">create_subprocess_client</span>()
+
+<span class="terminal-dim"># Connect to running server</span>
+client = <span class="terminal-cyan">create_attach_client</span>(
+    url=<span class="terminal-orange">"http://localhost:4096"</span>
+)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="border-color: var(--runtime-purple);">
+                    <div class="card-title" style="color: var(--runtime-purple);">Project Structure</div>
+                    <div class="terminal" style="margin-top: 12px;">
+                        <div class="terminal-content" style="padding: 16px; font-size: 11px;">src/amplifier_app_runtime/
+├── <span class="terminal-purple">acp/</span>           <span class="terminal-dim"># ACP implementation</span>
+│   ├── agent.py     <span class="terminal-dim"># SDK-based agent</span>
+│   ├── routes.py    <span class="terminal-dim"># HTTP/SSE/WS endpoints</span>
+│   ├── tools.py     <span class="terminal-dim"># Client-side tools</span>
+│   └── __main__.py  <span class="terminal-dim"># Stdio entry</span>
+├── <span class="terminal-cyan">sdk/</span>           <span class="terminal-dim"># Client SDK</span>
+│   ├── client.py    <span class="terminal-dim"># TransportClient</span>
+│   └── types.py     <span class="terminal-dim"># Type definitions</span>
+├── <span class="terminal-orange">transport/</span>     <span class="terminal-dim"># Transport layer</span>
+├── <span class="terminal-green">routes/</span>        <span class="terminal-dim"># HTTP routes</span>
+├── session.py       <span class="terminal-dim"># Session management</span>
+└── app.py           <span class="terminal-dim"># Starlette app</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 6: Client-Side Tools -->
+        <div class="slide" data-slide="6">
+            <div class="section-label">Capabilities</div>
+            <h2 class="headline" style="margin-bottom: 28px;">Client-Side Tools (ACP)</h2>
+            
+            <p class="subhead" style="margin-bottom: 24px;">When clients advertise capabilities, the agent gains access to IDE-provided tools.</p>
+            
+            <div class="grid-3">
+                <div class="card" style="border-color: var(--success-green);">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🖥️</div>
+                    <div class="card-title">Terminal</div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">
+                        Run commands in IDE's integrated terminal
+                    </div>
+                    <code style="font-size: 11px;">terminal: true</code>
+                    <div style="margin-top: 12px; font-size: 12px; color: var(--success-green);">
+                        → ide_terminal tool
+                    </div>
+                </div>
+                
+                <div class="card" style="border-color: var(--microsoft-blue);">
+                    <div style="font-size: 32px; margin-bottom: 12px;">📖</div>
+                    <div class="card-title">Read Files</div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">
+                        Read files through IDE's file system
+                    </div>
+                    <code style="font-size: 11px;">fs.read_text_file: true</code>
+                    <div style="margin-top: 12px; font-size: 12px; color: var(--microsoft-blue);">
+                        → ide_read_file tool
+                    </div>
+                </div>
+                
+                <div class="card" style="border-color: var(--runtime-purple);">
+                    <div style="font-size: 32px; margin-bottom: 12px;">✍️</div>
+                    <div class="card-title">Write Files</div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">
+                        Write files through IDE's file system
+                    </div>
+                    <code style="font-size: 11px;">fs.write_text_file: true</code>
+                    <div style="margin-top: 12px; font-size: 12px; color: var(--runtime-purple);">
+                        → ide_write_file tool
+                    </div>
+                </div>
+            </div>
+            
+            <div class="highlight-box" style="margin-top: 28px;">
+                <div style="font-size: 16px;">
+                    <strong>Capability Negotiation</strong>: Agent adapts to what the client can provide
+                </div>
+                <div style="font-size: 14px; color: var(--text-dim); margin-top: 8px;">
+                    Full IDE integration → More tools available → Better agent capabilities
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 7: TUI Client -->
+        <div class="slide" data-slide="7">
+            <div class="chapter-label">Chapter 2: The TUI</div>
+            <h2 class="headline" style="margin-bottom: 12px;">Terminal User Interface</h2>
+            <p class="subhead" style="margin-bottom: 28px;">A rich terminal client built with Textual/Rich for Amplifier.</p>
+            
+            <div class="grid-2">
+                <div>
+                    <div class="card" style="margin-bottom: 16px;">
+                        <div class="card-title">Features Implemented</div>
+                        <ul class="checklist">
+                            <li><span class="check">✓</span> Transport agnostic (subprocess or HTTP)</li>
+                            <li><span class="check">✓</span> Event bridge routing to UI</li>
+                            <li><span class="check">✓</span> Status bar with connection status</li>
+                            <li><span class="check">✓</span> Message area for conversation</li>
+                            <li><span class="partial">◐</span> Slash command completion</li>
+                            <li><span class="cross">✗</span> @ agent completion</li>
+                            <li><span class="partial">◐</span> Multi-line input (Ctrl+J)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card" style="border-color: var(--tui-cyan);">
+                    <div class="card-title" style="color: var(--tui-cyan);">Slash Commands</div>
+                    <div class="terminal" style="margin-top: 12px;">
+                        <div class="terminal-content" style="padding: 16px; font-size: 11px;"><span class="terminal-cyan">/help</span>       <span class="terminal-dim">Show this help</span>
+<span class="terminal-cyan">/bundle</span>     <span class="terminal-dim">Bundle information</span>
+<span class="terminal-cyan">/agents</span>     <span class="terminal-dim">List available agents</span>
+<span class="terminal-cyan">/tools</span>      <span class="terminal-dim">List available tools</span>
+<span class="terminal-cyan">/mode</span>       <span class="terminal-dim">Activate a mode</span>
+<span class="terminal-cyan">/session</span>    <span class="terminal-dim">Session management</span>
+<span class="terminal-cyan">/init</span>       <span class="terminal-dim">Setup wizard</span>
+<span class="terminal-cyan">/config</span>     <span class="terminal-dim">Show configuration</span>
+<span class="terminal-cyan">/quit</span>       <span class="terminal-dim">Exit application</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 8: The Challenges -->
+        <div class="slide" data-slide="8">
+            <div class="section-label" style="color: var(--error-red);">Pain Points</div>
+            <h2 class="headline" style="margin-bottom: 28px;">Visual Debugging is Hard</h2>
+            
+            <div class="grid-2">
+                <div>
+                    <div class="pain-point">
+                        <div style="font-weight: 600; color: var(--error-red); margin-bottom: 8px;">🔴 Completion UI Issues</div>
+                        <div style="font-size: 14px; color: var(--text-dim);">
+                            "Completion for / works but is at the end and not fully visible, only 2 items showing..."
+                        </div>
+                    </div>
+                    
+                    <div class="pain-point">
+                        <div style="font-weight: 600; color: var(--error-red); margin-bottom: 8px;">🔴 Tab Inserts Too Much</div>
+                        <div style="font-size: 14px; color: var(--text-dim);">
+                            "Hitting tab brings in the input both command and description"
+                        </div>
+                    </div>
+                    
+                    <div class="pain-point">
+                        <div style="font-weight: 600; color: var(--error-red); margin-bottom: 8px;">🔴 @ Completion Broken</div>
+                        <div style="font-size: 14px; color: var(--text-dim);">
+                            "The @ is not working at all"
+                        </div>
+                    </div>
+                    
+                    <div class="pain-point">
+                        <div style="font-weight: 600; color: var(--error-red); margin-bottom: 8px;">🔴 Can't See What's Wrong</div>
+                        <div style="font-size: 14px; color: var(--text-dim);">
+                            "I need to see the screenshots of the terminal to see what is happening"
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="border-color: var(--warning-yellow);">
+                    <div class="card-title" style="color: var(--warning-yellow);">The Core Problem</div>
+                    <div class="quote-block" style="margin: 16px 0; border-color: var(--warning-yellow);">
+                        <div style="font-size: 15px; font-style: italic;">
+                            "The main struggle is that I need it to be able to spin off a terminal and launch the TUI experience, drive it and then <strong>see the screenshots</strong> of the terminal to see what is happening and be able to fix it."
+                        </div>
+                        <div class="quote-author">— Diego, creating tui-tester</div>
+                    </div>
+                    <div style="font-size: 14px; color: var(--text-dim);">
+                        Without visual feedback, Amplifier can't know what the TUI looks like, making it impossible to debug layout and rendering issues.
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 9: The Solution - TUI Tester Bundle -->
+        <div class="slide" data-slide="9">
+            <div class="chapter-label">Chapter 3: The Solution</div>
+            <h2 class="headline" style="margin-bottom: 12px;">TUI Tester Bundle</h2>
+            <p class="subhead" style="margin-bottom: 28px;">AI-assisted visual testing for terminal interfaces.</p>
+            
+            <div class="grid-2">
+                <div class="card" style="border-color: var(--tui-cyan);">
+                    <div class="card-title" style="color: var(--tui-cyan);">Capabilities</div>
+                    <ul class="checklist">
+                        <li><span class="check">✓</span> <strong>Spawn</strong> - Launch TUI in headless pseudo-terminal</li>
+                        <li><span class="check">✓</span> <strong>Drive</strong> - Send keystrokes (arrows, enter, special keys)</li>
+                        <li><span class="check">✓</span> <strong>Capture</strong> - Get text, ANSI, and PNG screenshots</li>
+                        <li><span class="check">✓</span> <strong>Analyze</strong> - AI vision for visual issues</li>
+                        <li><span class="check">✓</span> <strong>Headless</strong> - No X11/display required (CI/CD)</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <div class="terminal">
+                        <div class="terminal-header">
+                            <div class="terminal-dot red"></div>
+                            <div class="terminal-dot yellow"></div>
+                            <div class="terminal-dot green"></div>
+                        </div>
+                        <div class="terminal-content" style="font-size: 11px;"><span class="terminal-dim"># Spawn a TUI application</span>
+result = <span class="terminal-cyan">tui_terminal</span>(
+    operation=<span class="terminal-orange">"spawn"</span>,
+    command=<span class="terminal-orange">"amplifier-tui run"</span>
+)
+session_id = result[<span class="terminal-orange">"session_id"</span>]
+
+<span class="terminal-dim"># Send keystrokes</span>
+<span class="terminal-cyan">tui_terminal</span>(
+    operation=<span class="terminal-orange">"send_keys"</span>,
+    session_id=session_id,
+    keys=<span class="terminal-orange">"/help{ENTER}"</span>
+)
+
+<span class="terminal-dim"># Capture screenshot for analysis</span>
+capture = <span class="terminal-cyan">tui_terminal</span>(
+    operation=<span class="terminal-orange">"capture"</span>,
+    session_id=session_id
+)
+<span class="terminal-dim"># → {text, ansi, image_path}</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 10: TUI Tester Special Keys -->
+        <div class="slide" data-slide="10">
+            <div class="section-label">TUI Tester</div>
+            <h2 class="headline" style="margin-bottom: 28px;">Driving TUI Interactions</h2>
+            
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-title">Navigation Keys</div>
+                    <div class="terminal" style="margin-top: 12px;">
+                        <div class="terminal-content" style="padding: 12px; font-size: 12px;"><span class="terminal-cyan">{UP}</span>    <span class="terminal-dim">Arrow up</span>
+<span class="terminal-cyan">{DOWN}</span>  <span class="terminal-dim">Arrow down</span>
+<span class="terminal-cyan">{LEFT}</span>  <span class="terminal-dim">Arrow left</span>
+<span class="terminal-cyan">{RIGHT}</span> <span class="terminal-dim">Arrow right</span>
+<span class="terminal-cyan">{HOME}</span>  <span class="terminal-dim">Home key</span>
+<span class="terminal-cyan">{END}</span>   <span class="terminal-dim">End key</span>
+<span class="terminal-cyan">{PGUP}</span>  <span class="terminal-dim">Page up</span>
+<span class="terminal-cyan">{PGDN}</span>  <span class="terminal-dim">Page down</span></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">Action Keys</div>
+                    <div class="terminal" style="margin-top: 12px;">
+                        <div class="terminal-content" style="padding: 12px; font-size: 12px;"><span class="terminal-green">{ENTER}</span>     <span class="terminal-dim">Enter/Return</span>
+<span class="terminal-green">{TAB}</span>       <span class="terminal-dim">Tab key</span>
+<span class="terminal-green">{ESC}</span>       <span class="terminal-dim">Escape</span>
+<span class="terminal-green">{BACKSPACE}</span> <span class="terminal-dim">Backspace</span>
+<span class="terminal-green">{DELETE}</span>    <span class="terminal-dim">Delete</span></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">Control Keys</div>
+                    <div class="terminal" style="margin-top: 12px;">
+                        <div class="terminal-content" style="padding: 12px; font-size: 12px;"><span class="terminal-orange">{CTRL+C}</span> <span class="terminal-dim">Interrupt</span>
+<span class="terminal-orange">{CTRL+D}</span> <span class="terminal-dim">EOF</span>
+<span class="terminal-orange">{CTRL+Z}</span> <span class="terminal-dim">Suspend</span>
+<span class="terminal-orange">{CTRL+L}</span> <span class="terminal-dim">Clear</span>
+<span class="terminal-orange">{F1}</span> - <span class="terminal-orange">{F12}</span> <span class="terminal-dim">Function keys</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="highlight-box" style="margin-top: 28px;">
+                <div style="font-size: 16px;">
+                    Uses <strong>pyte</strong> for VT100 terminal emulation + <strong>PIL</strong> for rendering
+                </div>
+                <div style="font-size: 14px; color: var(--text-dim); margin-top: 8px;">
+                    Works in CI/CD without display — perfect for automated visual testing
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 11: Testing Workflow -->
+        <div class="slide" data-slide="11">
+            <div class="section-label">Workflow</div>
+            <h2 class="headline" style="margin-bottom: 28px;">Visual Testing with AI</h2>
+            
+            <!-- Flow Diagram -->
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 700px; margin: 0 auto;">
+                <div style="display: flex; align-items: center; gap: 16px; width: 100%;">
+                    <div style="flex: 1; background: rgba(157,78,221,0.2); border: 2px solid var(--runtime-purple); border-radius: 12px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 4px;">1️⃣</div>
+                        <div style="font-weight: 600;">Spawn TUI</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">Launch in headless terminal</div>
+                    </div>
+                    <div style="font-size: 28px; color: var(--accent);">→</div>
+                    <div style="flex: 1; background: rgba(0,206,209,0.2); border: 2px solid var(--tui-cyan); border-radius: 12px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 4px;">2️⃣</div>
+                        <div style="font-weight: 600;">Drive Interactions</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">Send keystrokes</div>
+                    </div>
+                </div>
+                
+                <div style="font-size: 28px; color: var(--accent);">↓</div>
+                
+                <div style="display: flex; align-items: center; gap: 16px; width: 100%;">
+                    <div style="flex: 1; background: rgba(48,209,88,0.2); border: 2px solid var(--success-green); border-radius: 12px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 4px;">3️⃣</div>
+                        <div style="font-weight: 600;">Capture Screenshot</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">Text + ANSI + PNG</div>
+                    </div>
+                    <div style="font-size: 28px; color: var(--accent);">→</div>
+                    <div style="flex: 1; background: rgba(255,159,10,0.2); border: 2px solid var(--acp-orange); border-radius: 12px; padding: 16px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 4px;">4️⃣</div>
+                        <div style="font-weight: 600;">AI Vision Analysis</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">Identify issues</div>
+                    </div>
+                </div>
+                
+                <div style="font-size: 28px; color: var(--accent);">↓</div>
+                
+                <div style="background: rgba(0,212,170,0.2); border: 2px solid var(--accent); border-radius: 12px; padding: 16px; text-align: center; width: 50%;">
+                    <div style="font-size: 24px; margin-bottom: 4px;">5️⃣</div>
+                    <div style="font-weight: 600;">Fix & Iterate</div>
+                    <div style="font-size: 12px; color: var(--text-dim);">Until visual tests pass</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 12: What's Working -->
+        <div class="slide" data-slide="12">
+            <div class="chapter-label">Status Report</div>
+            <h2 class="headline" style="margin-bottom: 28px;">What's Fully Working</h2>
+            
+            <div class="grid-2">
+                <div class="card" style="border-color: var(--success-green);">
+                    <div class="card-title" style="color: var(--success-green);">✓ Amplifier Runtime</div>
+                    <ul class="checklist">
+                        <li><span class="check">✓</span> All 4 transports (stdio, HTTP, WS, SSE)</li>
+                        <li><span class="check">✓</span> ACP protocol v2025-01-07</li>
+                        <li><span class="check">✓</span> Session management (create, resume, list)</li>
+                        <li><span class="check">✓</span> Bundle & provider management</li>
+                        <li><span class="check">✓</span> Client capability negotiation</li>
+                        <li><span class="check">✓</span> Init command wizard</li>
+                        <li><span class="check">✓</span> End-to-end tests passing</li>
+                    </ul>
+                </div>
+                
+                <div class="card" style="border-color: var(--success-green);">
+                    <div class="card-title" style="color: var(--success-green);">✓ TUI Tester Bundle</div>
+                    <ul class="checklist">
+                        <li><span class="check">✓</span> PTY-based terminal emulation</li>
+                        <li><span class="check">✓</span> All special key support</li>
+                        <li><span class="check">✓</span> Text and ANSI capture</li>
+                        <li><span class="check">✓</span> PNG screenshot rendering</li>
+                        <li><span class="check">✓</span> Session management</li>
+                        <li><span class="check">✓</span> Headless operation</li>
+                        <li><span class="check">✓</span> Agent for visual analysis</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="stat-row" style="margin-top: 32px;">
+                <div class="stat">
+                    <div class="stat-value">4</div>
+                    <div class="stat-label">transports working</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">258</div>
+                    <div class="stat-label">tests passing</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">15+</div>
+                    <div class="stat-label">CLI commands</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 13: Work in Progress -->
+        <div class="slide" data-slide="13">
+            <div class="section-label" style="color: var(--warning-yellow);">Work in Progress</div>
+            <h2 class="headline" style="margin-bottom: 28px;">What Needs Completion</h2>
+            
+            <div class="grid-2">
+                <div class="card" style="border-color: var(--warning-yellow);">
+                    <div class="card-title" style="color: var(--warning-yellow);">◐ TUI Client Issues</div>
+                    <table class="protocol-table">
+                        <tr>
+                            <td>@ agent completion</td>
+                            <td><span class="feature-badge badge-todo">Not Working</span></td>
+                        </tr>
+                        <tr>
+                            <td>Completion visibility</td>
+                            <td><span class="feature-badge badge-partial">2 items only</span></td>
+                        </tr>
+                        <tr>
+                            <td>Tab completion</td>
+                            <td><span class="feature-badge badge-partial">Inserts too much</span></td>
+                        </tr>
+                        <tr>
+                            <td>Thinking events display</td>
+                            <td><span class="feature-badge badge-partial">Not shown</span></td>
+                        </tr>
+                        <tr>
+                            <td>Multi-turn with agents</td>
+                            <td><span class="feature-badge badge-partial">Second turn fails</span></td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">Next Steps</div>
+                    <ul class="bullet-list">
+                        <li><strong>Use TUI Tester</strong> to capture visual state</li>
+                        <li><strong>Fix @ completion</strong> - agent suggestions not showing</li>
+                        <li><strong>Fix completion UI</strong> - show more items, better positioning</li>
+                        <li><strong>Fix tab behavior</strong> - only insert command, not description</li>
+                        <li><strong>Add thinking display</strong> - show agent reasoning</li>
+                        <li><strong>Create automated tests</strong> - visual regression suite</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 14: IDE Compatibility -->
+        <div class="slide" data-slide="14">
+            <div class="section-label">Compatibility</div>
+            <h2 class="headline" style="margin-bottom: 28px;">IDE Integration Ready</h2>
+            
+            <div class="grid-4">
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 12px;">⚡</div>
+                    <div style="font-weight: 700; font-size: 18px; color: var(--tui-cyan);">Zed</div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin: 8px 0;">Native ACP support</div>
+                    <span class="feature-badge badge-done">Documented</span>
+                </div>
+                
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 12px;">💻</div>
+                    <div style="font-weight: 700; font-size: 18px; color: var(--microsoft-blue);">VS Code</div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin: 8px 0;">Via stdio subprocess</div>
+                    <span class="feature-badge badge-done">Supported</span>
+                </div>
+                
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 12px;">🧠</div>
+                    <div style="font-weight: 700; font-size: 18px; color: var(--acp-orange);">JetBrains</div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin: 8px 0;">AI Assistant ACP</div>
+                    <span class="feature-badge badge-done">Supported</span>
+                </div>
+                
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 12px;">📝</div>
+                    <div style="font-weight: 700; font-size: 18px; color: var(--success-green);">Neovim</div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin: 8px 0;">Via ACP adapters</div>
+                    <span class="feature-badge badge-done">Supported</span>
+                </div>
+            </div>
+            
+            <div class="terminal" style="margin-top: 28px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                    <span style="margin-left: auto; color: var(--text-dim); font-size: 12px;">~/.config/zed/settings.json</span>
+                </div>
+                <div class="terminal-content" style="font-size: 12px;">{
+  <span class="terminal-cyan">"assistant"</span>: {
+    <span class="terminal-cyan">"provider"</span>: <span class="terminal-orange">"acp"</span>,
+    <span class="terminal-cyan">"acp"</span>: {
+      <span class="terminal-cyan">"command"</span>: [<span class="terminal-orange">"amplifier-runtime"</span>]
+    }
+  }
+}</div>
+            </div>
+        </div>
+        
+        <!-- Slide 15: Amplifier Taking the Load -->
+        <div class="slide" data-slide="15">
+            <div class="section-label">The Amplifier Effect</div>
+            <h2 class="headline" style="margin-bottom: 28px;">What Amplifier Took Off My Plate</h2>
+            
+            <div class="grid-2">
+                <div>
+                    <div class="pain-point" style="background: rgba(255,107,107,0.05);">
+                        <div style="font-weight: 600; margin-bottom: 8px;">Before: Manual Everything</div>
+                        <ul style="font-size: 13px; color: var(--text-dim); list-style: disc; padding-left: 20px;">
+                            <li>Write transport abstractions by hand</li>
+                            <li>Debug protocol mismatches manually</li>
+                            <li>Test TUI by running and watching</li>
+                            <li>Parse and implement ACP from scratch</li>
+                            <li>No way to "see" terminal output in agent</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="solution">
+                        <div style="font-weight: 600; color: var(--success-green); margin-bottom: 8px;">After: Amplifier Assists</div>
+                        <ul style="font-size: 13px; color: var(--text-dim); list-style: disc; padding-left: 20px;">
+                            <li>zen-architect designed SDK architecture</li>
+                            <li>modular-builder implemented transports</li>
+                            <li>design-intelligence laid out TUI</li>
+                            <li>Created tui-tester bundle for visual testing</li>
+                            <li>Agents can now "see" and fix TUI issues</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="highlight-box" style="margin-top: 28px;">
+                <div style="font-size: 18px; font-weight: 600;">The Meta-Achievement</div>
+                <div style="font-size: 15px; color: var(--text-dim); margin-top: 8px;">
+                    Built a bundle (tui-tester) that enables Amplifier to help me build the TUI client for Amplifier
+                </div>
+                <div style="font-size: 14px; color: var(--accent); margin-top: 12px;">
+                    🔄 Self-improving development loop
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 16: Statistics -->
+        <div class="slide" data-slide="16">
+            <div class="section-label">By The Numbers</div>
+            <h2 class="headline" style="margin-bottom: 40px;">Two Days of Building</h2>
+            
+            <div class="stat-row">
+                <div class="stat">
+                    <div class="stat-value">2</div>
+                    <div class="stat-label">repos created</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">1</div>
+                    <div class="stat-label">bundle created</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">4</div>
+                    <div class="stat-label">transport modes</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">15+</div>
+                    <div class="stat-label">CLI commands</div>
+                </div>
+            </div>
+            
+            <div class="grid-3" style="margin-top: 40px;">
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 36px; font-weight: 800; color: var(--runtime-purple);">78</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">turns in main TUI session</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 36px; font-weight: 800; color: var(--tui-cyan);">258</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">tests passing</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 36px; font-weight: 800; color: var(--acp-orange);">1</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">ACP protocol implemented</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 17: What's Next -->
+        <div class="slide title-slide" data-slide="17">
+            <div class="chapter-label">Looking Forward</div>
+            <h2 class="display" style="max-width: 900px;">The Path Ahead</h2>
+            <p class="subhead" style="margin-top: 24px; text-align: center; max-width: 700px;">
+                Runtime is solid. TUI Tester is ready. Now: fix the TUI client with visual AI assistance.
+            </p>
+            
+            <div style="margin-top: 48px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 800px;">
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🔧</div>
+                    <div style="font-weight: 600;">Fix TUI Issues</div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin-top: 8px;">
+                        Use tui-tester to debug completion, @ mentions, display
+                    </div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🧪</div>
+                    <div style="font-weight: 600;">Visual Test Suite</div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin-top: 8px;">
+                        Automated regression testing with screenshots
+                    </div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🚀</div>
+                    <div style="font-weight: 600;">IDE Integration</div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin-top: 8px;">
+                        Test with Zed, VS Code, JetBrains
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 48px;">
+                <img src="https://avatars.githubusercontent.com/u/375556?v=4" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--diego-green);">
+            </div>
+            <div style="margin-top: 16px; font-size: 16px; color: var(--text-dim);">
+                Runtime SDK: ✓ Ready · TUI Tester: ✓ Ready · TUI Client: 🚧 In Progress
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Navigation -->
+    <div class="nav-controls">
+        <span class="slide-counter" id="slideCounter">1 / 17</span>
+        <button class="nav-btn" onclick="changeSlide(-1)">←</button>
+        <button class="nav-btn" onclick="changeSlide(1)">→</button>
+    </div>
+    
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 17;
+        
+        function showSlide(n) {
+            if (n < 1) n = 1;
+            if (n > totalSlides) n = totalSlides;
+            
+            document.querySelectorAll('.slide').forEach(slide => {
+                slide.classList.remove('active');
+            });
+            
+            const targetSlide = document.querySelector(`[data-slide="${n}"]`);
+            if (targetSlide) {
+                targetSlide.classList.add('active');
+                currentSlide = n;
+                document.getElementById('slideCounter').textContent = `${n} / ${totalSlides}`;
+            }
+        }
+        
+        function changeSlide(delta) {
+            showSlide(currentSlide + delta);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                changeSlide(1);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                changeSlide(-1);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                showSlide(1);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                showSlide(totalSlides);
+            }
+        });
+        
+        showSlide(1);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building M365 Multi-Agent Collaboration | Diego Colombo</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: rgba(255,255,255,0.03);
+            --text: #ffffff;
+            --text-dim: rgba(255,255,255,0.55);
+            --text-muted: rgba(255,255,255,0.35);
+            --accent: #00D4AA;
+            --accent-glow: rgba(0,212,170,0.15);
+            --m365-purple: #7B68EE;
+            --m365-light: #9B7BFF;
+            --microsoft-blue: #0078D4;
+            --error-red: #FF6B6B;
+            --warning-orange: #FF9F0A;
+            --success-green: #30D158;
+            --diego-green: #00D4AA;
+            --marc-blue: #0078D4;
+            --samuel-orange: #FF9F0A;
+            --brian-purple: #7B68EE;
+            --alex-green: #30D158;
+            --font-display: 56px;
+            --font-headline: 40px;
+            --font-subhead: 20px;
+            --font-body: 16px;
+            --font-small: 14px;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text);
+            line-height: 1.5;
+            overflow: hidden;
+        }
+        
+        .slide-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 60px 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            background: var(--bg-primary);
+        }
+        
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .title-slide {
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .section-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--m365-purple);
+            margin-bottom: 16px;
+        }
+        
+        .chapter-label {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--m365-purple), var(--m365-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+        
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -0.5px;
+        }
+        
+        .display {
+            font-size: var(--font-display);
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -1px;
+        }
+        
+        .subhead {
+            font-size: var(--font-subhead);
+            color: var(--text-dim);
+            max-width: 700px;
+        }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 24px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        
+        .grid-5 {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+        }
+        
+        .quote-block {
+            background: linear-gradient(135deg, rgba(123,104,238,0.1), rgba(0,212,170,0.05));
+            border-left: 4px solid var(--m365-purple);
+            padding: 24px 32px;
+            border-radius: 0 12px 12px 0;
+            margin: 24px 0;
+        }
+        
+        .quote-text {
+            font-size: 22px;
+            font-style: italic;
+            color: var(--text);
+            line-height: 1.5;
+        }
+        
+        .quote-author {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-top: 12px;
+        }
+        
+        .terminal {
+            background: #1a1a24;
+            border-radius: 12px;
+            overflow: hidden;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+        }
+        
+        .terminal-header {
+            background: #252532;
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .terminal-dot.red { background: #ff5f57; }
+        .terminal-dot.yellow { background: #febc2e; }
+        .terminal-dot.green { background: #28c840; }
+        
+        .terminal-content {
+            padding: 20px;
+            line-height: 1.7;
+            color: #e0e0e0;
+            white-space: pre-wrap;
+        }
+        
+        .terminal-error { color: #FF6B6B; }
+        .terminal-success { color: #30D158; }
+        .terminal-warning { color: #FF9F0A; }
+        .terminal-dim { color: rgba(255,255,255,0.4); }
+        .terminal-purple { color: #9B7BFF; }
+        
+        .pain-card {
+            border-color: var(--error-red);
+            background: rgba(255,107,107,0.05);
+        }
+        
+        .solution-card {
+            border-color: var(--success-green);
+            background: rgba(48,209,88,0.05);
+        }
+        
+        .agent-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 28px;
+            margin: 0 auto 12px;
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--error-red), var(--warning-orange), var(--success-green));
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 28px;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -32px;
+            top: 6px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--bg-primary);
+            border: 3px solid var(--m365-purple);
+        }
+        
+        .timeline-item.pain::before { border-color: var(--error-red); }
+        .timeline-item.progress::before { border-color: var(--warning-orange); }
+        .timeline-item.success::before { border-color: var(--success-green); }
+        
+        .bullet-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .bullet-list li {
+            padding: 8px 0 8px 24px;
+            position: relative;
+            color: var(--text-dim);
+        }
+        
+        .bullet-list li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--m365-purple);
+        }
+        
+        .stat-row {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin: 32px 0;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--m365-purple), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+        
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 16px 20px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .flow-number {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--m365-purple), var(--m365-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .nav-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(123,104,238,0.3);
+            border-color: var(--m365-purple);
+        }
+        
+        .slide-counter {
+            font-size: 14px;
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .m365-gradient {
+            background: linear-gradient(135deg, var(--m365-purple), var(--m365-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .diego-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid var(--m365-purple);
+            margin: 0 auto 24px;
+        }
+        
+        code {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.9em;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(123,104,238,0.15), rgba(0,212,170,0.08));
+            border: 1px solid rgba(123,104,238,0.3);
+            border-radius: 12px;
+            padding: 20px 28px;
+            text-align: center;
+        }
+        
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        
+        .tool-chip {
+            background: rgba(123,104,238,0.1);
+            border: 1px solid rgba(123,104,238,0.3);
+            border-radius: 8px;
+            padding: 10px 14px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .permission-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .permission-chip {
+            background: rgba(255,107,107,0.15);
+            border: 1px solid rgba(255,107,107,0.3);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-family: 'SF Mono', monospace;
+            color: var(--error-red);
+        }
+        
+        .permission-chip.granted {
+            background: rgba(48,209,88,0.15);
+            border-color: rgba(48,209,88,0.3);
+            color: var(--success-green);
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        
+        <!-- Slide 1: Title -->
+        <div class="slide title-slide active" data-slide="1">
+            <img src="https://avatars.githubusercontent.com/u/375556?v=4" class="diego-avatar" alt="Diego Colombo">
+            <div class="chapter-label">A Development Journey</div>
+            <h1 class="display" style="margin-bottom: 24px;">Building M365<br><span class="m365-gradient">Multi-Agent Collaboration</span></h1>
+            <p class="subhead" style="text-align: center; margin: 0 auto;">
+                From vision to working system — with Amplifier as my co-developer
+            </p>
+            <div style="margin-top: 48px; color: var(--text-muted); font-size: 14px;">
+                Diego Colombo · January 2026
+            </div>
+        </div>
+        
+        <!-- Slide 2: The Dream -->
+        <div class="slide" data-slide="2">
+            <div class="chapter-label">Chapter 1</div>
+            <h2 class="headline" style="margin-bottom: 32px;">The Dream</h2>
+            <div class="quote-block" style="max-width: 800px;">
+                <div class="quote-text">
+                    "I want different instances of Amplifier to collaborate on a project — using Teams channels for posting findings, Planner for shared tasks, and M365 as a way to share context in a collaborative way."
+                </div>
+                <div class="quote-author">— My initial request to Amplifier</div>
+            </div>
+            <div class="grid-3" style="margin-top: 40px;">
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 40px; margin-bottom: 12px;">💬</div>
+                    <div class="card-title">Teams Channels</div>
+                    <div style="color: var(--text-dim); font-size: 14px;">Agents post findings and communicate</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 40px; margin-bottom: 12px;">📋</div>
+                    <div class="card-title">Planner Tasks</div>
+                    <div style="color: var(--text-dim); font-size: 14px;">Shared work plans and assignments</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 40px; margin-bottom: 12px;">🤝</div>
+                    <div class="card-title">Shared Context</div>
+                    <div style="color: var(--text-dim); font-size: 14px;">M365 as collaboration backbone</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 3: The Challenge Begins -->
+        <div class="slide" data-slide="3">
+            <div class="chapter-label">Chapter 2</div>
+            <h2 class="headline" style="margin-bottom: 12px;">The Challenge</h2>
+            <p class="subhead" style="margin-bottom: 32px;">Authentication hell, permissions maze, and licensing gotchas.</p>
+            
+            <div class="terminal" style="max-width: 800px;">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                </div>
+                <div class="terminal-content"><span class="terminal-error">AADSTS65002: Consent between first party application 
+'1950a258-227b-4e31-a9cf-717495945fc2' and first party resource 
+'00000003-0000-0000-c000-000000000000' must be configured via 
+preauthorization - applications owned and operated by Microsoft 
+must get approval from the API owner before requesting tokens.</span>
+
+<span class="terminal-dim"># My reaction:</span>
+<span class="terminal-warning">"mm failed"</span>
+<span class="terminal-warning">"try device code again once and cache token"</span></div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 24px; color: var(--text-dim);">
+                This was just the beginning...
+            </div>
+        </div>
+        
+        <!-- Slide 4: The Pain Points -->
+        <div class="slide" data-slide="4">
+            <div class="section-label" style="color: var(--error-red);">The Pain</div>
+            <h2 class="headline" style="margin-bottom: 28px;">Four Walls I Hit</h2>
+            
+            <div class="grid-2">
+                <div class="card pain-card">
+                    <div class="card-title" style="color: var(--error-red);">🔐 Authentication Maze</div>
+                    <ul class="bullet-list">
+                        <li>Device Code Flow vs Client Credentials vs ROPC</li>
+                        <li>Each method has different limitations</li>
+                        <li>"Why not using client auth flow so you can capture the token?"</li>
+                    </ul>
+                </div>
+                <div class="card pain-card">
+                    <div class="card-title" style="color: var(--error-red);">📝 Permission Iterations</div>
+                    <ul class="bullet-list">
+                        <li>"I granted the permission you wanted..."</li>
+                        <li>"Test now, I granted the permission you asked"</li>
+                        <li>"What do I need to add to permissions?"</li>
+                    </ul>
+                </div>
+                <div class="card pain-card">
+                    <div class="card-title" style="color: var(--error-red);">🔑 MFA Complications</div>
+                    <ul class="bullet-list">
+                        <li>"The password is ... there can be MFA"</li>
+                        <li>"Do you have options to automate the authenticator?"</li>
+                        <li>"Ok let's exclude the agent accounts from MFA"</li>
+                    </ul>
+                </div>
+                <div class="card pain-card">
+                    <div class="card-title" style="color: var(--error-red);">💳 Licensing Gotchas</div>
+                    <ul class="bullet-list">
+                        <li>Created users without licenses</li>
+                        <li>"Users must have Microsoft Teams Enterprise"</li>
+                        <li>"Microsoft 365 E5 (no Teams) isn't enough"</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 5: Enter Amplifier -->
+        <div class="slide" data-slide="5">
+            <div class="chapter-label">Chapter 3</div>
+            <h2 class="headline" style="margin-bottom: 12px;">Enter Amplifier</h2>
+            <p class="subhead" style="margin-bottom: 36px;">Not just an assistant — a co-developer that took work off my plate.</p>
+            
+            <div class="grid-3">
+                <div class="card solution-card">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🏗️</div>
+                    <div class="card-title" style="color: var(--success-green);">zen-architect</div>
+                    <div style="color: var(--text-dim); font-size: 14px;">Designed the complete architecture — auth flows, tool modules, bundle structure</div>
+                </div>
+                <div class="card solution-card">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🔧</div>
+                    <div class="card-title" style="color: var(--success-green);">modular-builder</div>
+                    <div style="color: var(--text-dim); font-size: 14px;">Implemented all 13 tool modules and the complete bundle</div>
+                </div>
+                <div class="card solution-card">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🧪</div>
+                    <div class="card-title" style="color: var(--success-green);">shadow-operator</div>
+                    <div style="color: var(--text-dim); font-size: 14px;">Tested in isolated environments without breaking main session</div>
+                </div>
+            </div>
+            
+            <div class="highlight-box" style="margin-top: 32px;">
+                <div style="font-size: 18px; font-weight: 600;">The Pattern That Emerged</div>
+                <div style="margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                    <span style="color: var(--m365-purple); font-weight: 600;">I describe the vision</span>
+                    <span style="font-size: 24px;">→</span>
+                    <span style="color: var(--accent); font-weight: 600;">Amplifier architects</span>
+                    <span style="font-size: 24px;">→</span>
+                    <span style="color: var(--success-green); font-weight: 600;">Amplifier builds</span>
+                    <span style="font-size: 24px;">→</span>
+                    <span style="color: var(--microsoft-blue); font-weight: 600;">Amplifier tests</span>
+                    <span style="font-size: 24px;">→</span>
+                    <span style="color: var(--warning-orange); font-weight: 600;">I grant permissions</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 6: Amplifier Asking Questions -->
+        <div class="slide" data-slide="6">
+            <div class="section-label">Before Building</div>
+            <h2 class="headline" style="margin-bottom: 28px;">Amplifier Asked First</h2>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">Authentication Method?</div>
+                    <table style="width: 100%; font-size: 13px; margin-top: 12px;">
+                        <tr style="color: var(--text-dim);">
+                            <td style="padding: 8px 0;"><strong>Client Credentials</strong></td>
+                            <td>App-only, best for automation</td>
+                        </tr>
+                        <tr style="color: var(--text-dim);">
+                            <td style="padding: 8px 0;"><strong>Device Code Flow</strong></td>
+                            <td>User signs in via browser</td>
+                        </tr>
+                        <tr style="color: var(--accent);">
+                            <td style="padding: 8px 0;"><strong>ROPC (chosen)</strong></td>
+                            <td>Automation with user context</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="card">
+                    <div class="card-title">Capabilities Needed?</div>
+                    <div style="margin-top: 12px;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <span class="tool-chip" style="background: rgba(48,209,88,0.15); border-color: rgba(48,209,88,0.3);">✓ Users & Groups</span>
+                            <span class="tool-chip" style="background: rgba(48,209,88,0.15); border-color: rgba(48,209,88,0.3);">✓ Email</span>
+                            <span class="tool-chip" style="background: rgba(48,209,88,0.15); border-color: rgba(48,209,88,0.3);">✓ Teams</span>
+                            <span class="tool-chip" style="background: rgba(48,209,88,0.15); border-color: rgba(48,209,88,0.3);">✓ Calendar</span>
+                            <span class="tool-chip" style="background: rgba(48,209,88,0.15); border-color: rgba(48,209,88,0.3);">✓ Planner</span>
+                            <span class="tool-chip" style="background: rgba(48,209,88,0.15); border-color: rgba(48,209,88,0.3);">✓ To-Do</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="quote-block" style="margin-top: 32px; max-width: 700px;">
+                <div class="quote-text" style="font-size: 18px;">
+                    "Do you have an Azure AD App Registration already? What specific capabilities do you need?"
+                </div>
+                <div class="quote-author">— Amplifier, before writing a single line of code</div>
+            </div>
+        </div>
+        
+        <!-- Slide 7: The Build - Tools Created -->
+        <div class="slide" data-slide="7">
+            <div class="chapter-label">Chapter 4</div>
+            <h2 class="headline" style="margin-bottom: 12px;">The Build</h2>
+            <p class="subhead" style="margin-bottom: 28px;">13 tool modules created — comprehensive Graph API integration.</p>
+            
+            <div class="tool-grid">
+                <div class="tool-chip">🔐 token_manager</div>
+                <div class="tool-chip">🌐 graph_client</div>
+                <div class="tool-chip">👥 m365_users</div>
+                <div class="tool-chip">👥 m365_groups</div>
+                <div class="tool-chip">📧 m365_email</div>
+                <div class="tool-chip">💬 m365_teams</div>
+                <div class="tool-chip">📅 m365_calendar</div>
+                <div class="tool-chip">📋 m365_planner</div>
+                <div class="tool-chip">✅ m365_todo</div>
+                <div class="tool-chip">🟢 m365_presence</div>
+                <div class="tool-chip">⚠️ errors</div>
+                <div class="tool-chip">📄 bundle.md</div>
+                <div class="tool-chip">📖 M365_GUIDE</div>
+            </div>
+            
+            <div class="terminal" style="margin-top: 28px; max-width: 700px;">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                </div>
+                <div class="terminal-content"><span class="terminal-dim">amplifier-bundle-m365/</span>
+├── bundle.md
+├── pyproject.toml
+├── src/amplifier_bundle_m365/
+│   ├── auth/
+│   │   ├── <span class="terminal-purple">token_manager.py</span>  <span class="terminal-dim"># ROPC + caching</span>
+│   │   └── <span class="terminal-purple">graph_client.py</span>   <span class="terminal-dim"># HTTP client</span>
+│   └── tools/
+│       ├── <span class="terminal-success">m365_teams.py</span>
+│       ├── <span class="terminal-success">m365_planner.py</span>
+│       └── <span class="terminal-success">... 6 more</span></div>
+            </div>
+        </div>
+        
+        <!-- Slide 8: The Agents -->
+        <div class="slide" data-slide="8">
+            <div class="section-label">Agent Personas</div>
+            <h2 class="headline" style="margin-bottom: 32px;">Five Collaborators Created</h2>
+            
+            <div class="grid-5">
+                <div style="text-align: center;">
+                    <div class="agent-avatar" style="background: rgba(0,212,170,0.2); border: 3px solid var(--diego-green); color: var(--diego-green);">D</div>
+                    <div style="font-weight: 700; font-size: 18px; color: var(--diego-green);">Diego</div>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">amplifier-diego</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Research & Architecture</div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="agent-avatar" style="background: rgba(0,120,212,0.2); border: 3px solid var(--marc-blue); color: var(--marc-blue);">M</div>
+                    <div style="font-weight: 700; font-size: 18px; color: var(--marc-blue);">Marc</div>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">amplifier-marc</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Review & Guidance</div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="agent-avatar" style="background: rgba(255,159,10,0.2); border: 3px solid var(--samuel-orange); color: var(--samuel-orange);">S</div>
+                    <div style="font-weight: 700; font-size: 18px; color: var(--samuel-orange);">Samuel</div>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">amplifier-samuel</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Testing & Validation</div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="agent-avatar" style="background: rgba(123,104,238,0.2); border: 3px solid var(--brian-purple); color: var(--brian-purple);">B</div>
+                    <div style="font-weight: 700; font-size: 18px; color: var(--brian-purple);">Brian</div>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">amplifier-brian</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Final Review</div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="agent-avatar" style="background: rgba(48,209,88,0.2); border: 3px solid var(--alex-green); color: var(--alex-green);">A</div>
+                    <div style="font-weight: 700; font-size: 18px; color: var(--alex-green);">Alex</div>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">amplifier-alex</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Implementation</div>
+                </div>
+            </div>
+            
+            <div class="highlight-box" style="margin-top: 40px;">
+                <div style="font-size: 16px;">Each agent has their own M365 account with E5 license, excluded from MFA</div>
+                <div style="font-size: 14px; color: var(--text-dim); margin-top: 8px;">All agents can post to Teams, create Planner tasks, and collaborate through the tenant</div>
+            </div>
+        </div>
+        
+        <!-- Slide 9: Permission Journey -->
+        <div class="slide" data-slide="9">
+            <div class="section-label">The Iteration</div>
+            <h2 class="headline" style="margin-bottom: 28px;">Permission by Permission</h2>
+            
+            <div class="timeline" style="max-width: 700px;">
+                <div class="timeline-item pain">
+                    <div style="font-weight: 600; color: var(--error-red);">First attempt: AADSTS65002</div>
+                    <div style="color: var(--text-dim); font-size: 14px; margin-top: 4px;">Consent error — needed admin approval</div>
+                </div>
+                <div class="timeline-item pain">
+                    <div style="font-weight: 600; color: var(--error-red);">"I granted the permissions you wanted"</div>
+                    <div style="color: var(--text-dim); font-size: 14px; margin-top: 4px;">Still failing — missing User.Read.All</div>
+                </div>
+                <div class="timeline-item progress">
+                    <div style="font-weight: 600; color: var(--warning-orange);">Teams working, but no channel access</div>
+                    <div style="color: var(--text-dim); font-size: 14px; margin-top: 4px;">Added Channel.Message.Send</div>
+                </div>
+                <div class="timeline-item progress">
+                    <div style="font-weight: 600; color: var(--warning-orange);">"Permission added for calendar"</div>
+                    <div style="color: var(--text-dim); font-size: 14px; margin-top: 4px;">Calendars.ReadWrite enabled</div>
+                </div>
+                <div class="timeline-item success">
+                    <div style="font-weight: 600; color: var(--success-green);">Full collaboration working!</div>
+                    <div style="color: var(--text-dim); font-size: 14px; margin-top: 4px;">Teams + Planner + Calendar integrated</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 32px;">
+                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">PERMISSIONS GRANTED:</div>
+                <div class="permission-list">
+                    <span class="permission-chip granted">User.Read.All</span>
+                    <span class="permission-chip granted">Group.ReadWrite.All</span>
+                    <span class="permission-chip granted">Team.ReadBasic.All</span>
+                    <span class="permission-chip granted">Channel.Message.Send</span>
+                    <span class="permission-chip granted">Tasks.ReadWrite</span>
+                    <span class="permission-chip granted">Calendars.ReadWrite</span>
+                    <span class="permission-chip granted">Mail.ReadWrite</span>
+                    <span class="permission-chip granted">Presence.Read.All</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 10: Shadow Testing -->
+        <div class="slide" data-slide="10">
+            <div class="section-label">Safe Testing</div>
+            <h2 class="headline" style="margin-bottom: 12px;">Shadow Environments</h2>
+            <p class="subhead" style="margin-bottom: 28px;">"Use shadow environment so the current session is not compromised"</p>
+            
+            <div class="grid-2">
+                <div>
+                    <div class="terminal">
+                        <div class="terminal-header">
+                            <div class="terminal-dot red"></div>
+                            <div class="terminal-dot yellow"></div>
+                            <div class="terminal-dot green"></div>
+                        </div>
+                        <div class="terminal-content"><span class="terminal-dim"># Shadow test scenario</span>
+
+<span class="terminal-purple">1.</span> Create shadow with local source:
+   /home/colombod/amplifier-bundle-m365
+
+<span class="terminal-purple">2.</span> Install Amplifier + M365 bundle
+
+<span class="terminal-purple">3.</span> Configure automation credentials
+
+<span class="terminal-purple">4.</span> Test ROPC delegated auth for Diego
+
+<span class="terminal-purple">5.</span> Post message to Findings channel
+
+<span class="terminal-success">✓ Results verified in isolation</span></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Why Shadow Testing?</div>
+                    <ul class="bullet-list">
+                        <li>Test auth changes without breaking main session</li>
+                        <li>Isolated from production environment</li>
+                        <li>Can fail safely and retry</li>
+                        <li>Validates the complete integration</li>
+                    </ul>
+                    <div style="margin-top: 20px; padding: 16px; background: rgba(48,209,88,0.1); border-radius: 8px;">
+                        <div style="font-size: 32px; font-weight: 800; color: var(--success-green);">3</div>
+                        <div style="font-size: 13px; color: var(--text-dim);">Shadow sessions created</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 11: The Collaboration Request -->
+        <div class="slide" data-slide="11">
+            <div class="chapter-label">Chapter 5</div>
+            <h2 class="headline" style="margin-bottom: 32px;">Proving It Works</h2>
+            
+            <div class="quote-block" style="max-width: 800px; margin-bottom: 32px;">
+                <div class="quote-text" style="font-size: 18px;">
+                    "Can the agents use other collaborative features, not only Teams? Can they use Planner or To-Do lists? Set up tasks that a session on behalf of Marc can see, and produce a final response for Brian."
+                </div>
+                <div class="quote-author">— Pushing for real multi-agent collaboration</div>
+            </div>
+            
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div>
+                    <div style="font-weight: 600;">Diego researches</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">Analyzes codebase, posts findings to Teams</div>
+                </div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div>
+                    <div style="font-weight: 600;">Creates Planner tasks</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">Assigns work items to Marc and Samuel</div>
+                </div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div>
+                    <div style="font-weight: 600;">Marc reviews</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">Sees the Planner tasks, reviews findings</div>
+                </div>
+            </div>
+            <div class="flow-step">
+                <div class="flow-number">4</div>
+                <div>
+                    <div style="font-weight: 600;">Samuel validates</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">Tests integration points</div>
+                </div>
+            </div>
+            <div class="flow-step" style="border: 1px solid var(--success-green);">
+                <div class="flow-number" style="background: var(--success-green);">5</div>
+                <div>
+                    <div style="font-weight: 600; color: var(--success-green);">Brian receives final report</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">All context aggregated from collaborative work</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 12: Collaboration Architecture -->
+        <div class="slide" data-slide="12">
+            <div class="section-label">How It Works</div>
+            <h2 class="headline" style="margin-bottom: 32px;">Collaboration Architecture</h2>
+            
+            <!-- M365 Tenant Box -->
+            <div style="background: rgba(123,104,238,0.08); border: 2px solid var(--m365-purple); border-radius: 20px; padding: 32px; max-width: 900px; margin: 0 auto;">
+                <div style="text-align: center; font-size: 14px; font-weight: 600; color: var(--m365-light); letter-spacing: 2px; margin-bottom: 24px;">MICROSOFT 365 TENANT</div>
+                
+                <!-- Services Row -->
+                <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 32px;">
+                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 16px 24px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 6px;">💬</div>
+                        <div style="font-weight: 600;">Teams</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 16px 24px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 6px;">📋</div>
+                        <div style="font-weight: 600;">Planner</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 16px 24px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 6px;">✅</div>
+                        <div style="font-weight: 600;">To-Do</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 16px 24px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 6px;">📅</div>
+                        <div style="font-weight: 600;">Calendar</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 16px 24px; text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 6px;">🟢</div>
+                        <div style="font-weight: 600;">Presence</div>
+                    </div>
+                </div>
+                
+                <!-- Agents Row -->
+                <div style="text-align: center; font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">AGENT COLLABORATION LAYER</div>
+                <div style="display: flex; justify-content: center; gap: 24px;">
+                    <div style="text-align: center;">
+                        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(0,212,170,0.2); border: 3px solid var(--diego-green); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-weight: 700; font-size: 22px; color: var(--diego-green);">D</span>
+                        </div>
+                        <div style="font-size: 13px; font-weight: 600; margin-top: 8px; color: var(--diego-green);">Diego</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(0,120,212,0.2); border: 3px solid var(--marc-blue); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-weight: 700; font-size: 22px; color: var(--marc-blue);">M</span>
+                        </div>
+                        <div style="font-size: 13px; font-weight: 600; margin-top: 8px; color: var(--marc-blue);">Marc</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(255,159,10,0.2); border: 3px solid var(--samuel-orange); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-weight: 700; font-size: 22px; color: var(--samuel-orange);">S</span>
+                        </div>
+                        <div style="font-size: 13px; font-weight: 600; margin-top: 8px; color: var(--samuel-orange);">Samuel</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(123,104,238,0.2); border: 3px solid var(--brian-purple); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-weight: 700; font-size: 22px; color: var(--brian-purple);">B</span>
+                        </div>
+                        <div style="font-size: 13px; font-weight: 600; margin-top: 8px; color: var(--brian-purple);">Brian</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(48,209,88,0.2); border: 3px solid var(--alex-green); display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-weight: 700; font-size: 22px; color: var(--alex-green);">A</span>
+                        </div>
+                        <div style="font-size: 13px; font-weight: 600; margin-top: 8px; color: var(--alex-green);">Alex</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 13: Discovery Feature -->
+        <div class="slide" data-slide="13">
+            <div class="section-label">Going Further</div>
+            <h2 class="headline" style="margin-bottom: 12px;">Agent Discovery</h2>
+            <p class="subhead" style="margin-bottom: 32px;">"Can the bundle help find other team members who are active and contributing?"</p>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">The Request</div>
+                    <div class="quote-block" style="margin: 16px 0; padding: 16px;">
+                        <div style="font-size: 15px; font-style: italic; color: var(--text);">
+                            "Add discovery to see who is active and contributing — that would help with direct messages and call-outs"
+                        </div>
+                    </div>
+                    <ul class="bullet-list">
+                        <li>See online/away status via Presence API</li>
+                        <li>Know who's available for collaboration</li>
+                        <li>Enable targeted communication</li>
+                    </ul>
+                </div>
+                <div class="card solution-card">
+                    <div class="card-title" style="color: var(--success-green);">The Solution</div>
+                    <div class="terminal" style="margin-top: 12px; background: #1a1a24;">
+                        <div class="terminal-content" style="padding: 16px; font-size: 12px;"><span class="terminal-dim"># Check who's available</span>
+<span class="terminal-purple">presence = await m365_presence.get_user_presence()</span>
+
+<span class="terminal-success">Diego:  🟢 Available</span>
+<span class="terminal-warning">Marc:   🟡 Away</span>
+<span class="terminal-success">Samuel: 🟢 Available</span>
+<span class="terminal-dim">Brian:  ⚫ Offline</span>
+<span class="terminal-success">Alex:   🟢 Available</span>
+
+<span class="terminal-dim"># Route task to available agent</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 14: What I Learned - Technical -->
+        <div class="slide" data-slide="14">
+            <div class="chapter-label">Chapter 6</div>
+            <h2 class="headline" style="margin-bottom: 32px;">What I Learned</h2>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">Technical Insights</div>
+                    <ul class="bullet-list">
+                        <li><strong>Auth is complex</strong> — Device Code vs Client Creds vs ROPC all have trade-offs</li>
+                        <li><strong>Permissions are iterative</strong> — expect multiple grant cycles</li>
+                        <li><strong>Licensing is hidden</strong> — E5 required for Teams features</li>
+                        <li><strong>MFA adds friction</strong> — automation accounts need exclusion</li>
+                        <li><strong>Token caching matters</strong> — asyncio.Lock prevents race conditions</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <div class="card-title">Development Patterns</div>
+                    <ul class="bullet-list">
+                        <li><strong>Vision first</strong> — describe what you want, not how to build it</li>
+                        <li><strong>Let AI architect</strong> — zen-architect designs better than I would</li>
+                        <li><strong>Test in isolation</strong> — shadow environments save sessions</li>
+                        <li><strong>Iterate on permissions</strong> — expect the cycle</li>
+                        <li><strong>Trust the delegation</strong> — agents know their domains</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 15: What Amplifier Took Off My Plate -->
+        <div class="slide" data-slide="15">
+            <div class="section-label">The Real Value</div>
+            <h2 class="headline" style="margin-bottom: 32px;">What Amplifier Did For Me</h2>
+            
+            <div class="grid-2">
+                <div class="card pain-card">
+                    <div class="card-title" style="color: var(--error-red);">What I Would Have Done</div>
+                    <ul class="bullet-list">
+                        <li>Research Graph API documentation for hours</li>
+                        <li>Write boilerplate auth code from scratch</li>
+                        <li>Debug permission errors one by one</li>
+                        <li>Build each tool module manually</li>
+                        <li>Test in production, break things</li>
+                        <li>Write documentation myself</li>
+                    </ul>
+                    <div style="margin-top: 16px; padding: 12px; background: rgba(255,107,107,0.1); border-radius: 8px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--error-red);">~3-4 weeks</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">estimated time</div>
+                    </div>
+                </div>
+                <div class="card solution-card">
+                    <div class="card-title" style="color: var(--success-green);">What Amplifier Did</div>
+                    <ul class="bullet-list">
+                        <li>Architected the complete solution</li>
+                        <li>Implemented all 13 tool modules</li>
+                        <li>Handled token caching with proper locking</li>
+                        <li>Created comprehensive error handling</li>
+                        <li>Tested in shadow environments</li>
+                        <li>Generated documentation</li>
+                    </ul>
+                    <div style="margin-top: 16px; padding: 12px; background: rgba(48,209,88,0.1); border-radius: 8px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--success-green);">1 day</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">actual time</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="highlight-box" style="margin-top: 32px;">
+                <div style="font-size: 20px; font-weight: 600;">My role: Vision, permissions, validation</div>
+                <div style="font-size: 16px; color: var(--text-dim); margin-top: 8px;">Amplifier's role: Everything else</div>
+            </div>
+        </div>
+        
+        <!-- Slide 16: Statistics -->
+        <div class="slide" data-slide="16">
+            <div class="section-label">By The Numbers</div>
+            <h2 class="headline" style="margin-bottom: 40px;">The M365 Bundle</h2>
+            
+            <div class="stat-row">
+                <div class="stat">
+                    <div class="stat-value">54</div>
+                    <div class="stat-label">conversation turns</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">13</div>
+                    <div class="stat-label">tool modules</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">agent personas</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">shadow tests</div>
+                </div>
+            </div>
+            
+            <div class="grid-3" style="margin-top: 40px;">
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 36px; font-weight: 800; color: var(--m365-purple);">5+</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">M365 services integrated</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Teams, Planner, To-Do, Calendar, Email, Presence</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 36px; font-weight: 800; color: var(--m365-purple);">8</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">Graph API permissions</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Configured through iteration</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 36px; font-weight: 800; color: var(--m365-purple);">1</div>
+                    <div style="font-size: 14px; color: var(--text-dim);">day to working system</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">From vision to collaboration</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 17: The Key Insight -->
+        <div class="slide title-slide" data-slide="17">
+            <div class="chapter-label">The Takeaway</div>
+            <h2 class="display" style="max-width: 900px;">I described what I wanted.<br><span class="m365-gradient">Amplifier built it.</span></h2>
+            <p class="subhead" style="margin-top: 32px; text-align: center;">
+                My job was vision, permissions, and validation.<br>
+                Everything else was handled.
+            </p>
+            
+            <div style="margin-top: 48px; display: flex; gap: 24px; justify-content: center;">
+                <div style="text-align: center;">
+                    <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">Started with</div>
+                    <div style="font-size: 18px; font-weight: 600; color: var(--error-red);">A vision</div>
+                </div>
+                <div style="font-size: 32px; color: var(--text-muted);">→</div>
+                <div style="text-align: center;">
+                    <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">Ended with</div>
+                    <div style="font-size: 18px; font-weight: 600; color: var(--success-green);">Working multi-agent collaboration</div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Navigation -->
+    <div class="nav-controls">
+        <span class="slide-counter" id="slideCounter">1 / 17</span>
+        <button class="nav-btn" onclick="changeSlide(-1)">←</button>
+        <button class="nav-btn" onclick="changeSlide(1)">→</button>
+    </div>
+    
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 17;
+        
+        function showSlide(n) {
+            if (n < 1) n = 1;
+            if (n > totalSlides) n = totalSlides;
+            
+            document.querySelectorAll('.slide').forEach(slide => {
+                slide.classList.remove('active');
+            });
+            
+            const targetSlide = document.querySelector(`[data-slide="${n}"]`);
+            if (targetSlide) {
+                targetSlide.classList.add('active');
+                currentSlide = n;
+                document.getElementById('slideCounter').textContent = `${n} / ${totalSlides}`;
+            }
+        }
+        
+        function changeSlide(delta) {
+            showSlide(currentSlide + delta);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                changeSlide(1);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                changeSlide(-1);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                showSlide(1);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                showSlide(totalSlides);
+            }
+        });
+        
+        // Number keys for direct navigation
+        for (let i = 1; i <= totalSlides; i++) {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === String(i) && !e.ctrlKey && !e.altKey) {
+                    showSlide(i);
+                }
+            });
+        }
+        
+        showSlide(1);
+    </script>
+</body>
+</html>
