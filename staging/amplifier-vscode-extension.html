@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amplifier VS Code Extension</title>
+    <style>
+        :root {
+            --accent: #0078D4;
+            --accent-dim: rgba(0, 120, 212, 0.3);
+            --bg: #000;
+            --text: #fff;
+            --text-dim: rgba(255, 255, 255, 0.6);
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.1);
+            
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(18px, 3vw, 32px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-big-number: clamp(64px, 18vw, 160px);
+            
+            --padding-slide: clamp(24px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .deck {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            position: relative;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: var(--padding-slide);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .section-label {
+            font-size: clamp(11px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.05;
+            margin-bottom: 24px;
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium);
+            font-weight: 600;
+            letter-spacing: -1px;
+            line-height: 1.15;
+            margin-bottom: 20px;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            color: var(--text-dim);
+            line-height: 1.4;
+            max-width: 800px;
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-dim);
+            line-height: 1.6;
+        }
+
+        .accent {
+            color: var(--accent);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 32px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 32px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 32px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(20px, 4vw, 32px);
+        }
+
+        .card-title {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        .card-desc {
+            font-size: clamp(13px, 1.8vw, 16px);
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .code-block {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(11px, 1.5vw, 14px);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .code-block .keyword { color: #FF7B72; }
+        .code-block .string { color: #A5D6FF; }
+        .code-block .comment { color: rgba(255,255,255,0.4); }
+        .code-block .type { color: #79C0FF; }
+        .code-block .function { color: #D2A8FF; }
+        .code-block .code-green { color: #7EE787; }
+
+        .architecture-diagram {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(24px, 4vw, 40px);
+            margin-top: 32px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: clamp(10px, 1.3vw, 13px);
+            line-height: 1.4;
+            overflow-x: auto;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(12px, 3vw, 32px);
+            flex-wrap: wrap;
+            margin: 24px 0;
+        }
+
+        .flow-box {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .flow-box-title {
+            font-weight: 600;
+            font-size: clamp(14px, 2vw, 18px);
+            margin-bottom: 4px;
+        }
+
+        .flow-box-subtitle {
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--text-dim);
+        }
+
+        .flow-arrow {
+            font-size: 24px;
+            color: var(--accent);
+        }
+
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent) 0%, #50E3C2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: clamp(14px, 2vw, 18px);
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: clamp(24px, 4vw, 40px);
+        }
+
+        .event-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .event-tag {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-family: 'SF Mono', monospace;
+            font-size: clamp(11px, 1.5vw, 13px);
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--gap-grid);
+            margin-top: 32px;
+        }
+
+        @media (max-width: 600px) {
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .comparison-col {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(20px, 4vw, 32px);
+        }
+
+        .comparison-title {
+            font-size: clamp(14px, 2vw, 18px);
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .comparison-title.before { color: #FF6B6B; }
+        .comparison-title.after { color: #7EE787; }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-dim);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+
+        /* Navigation */
+        .nav-dots {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .nav-dot:hover {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 24px;
+            right: 32px;
+            font-size: 14px;
+            color: var(--text-dim);
+            font-family: 'SF Mono', monospace;
+            z-index: 100;
+        }
+
+        /* Click zones */
+        .click-prev, .click-next {
+            position: fixed;
+            top: 0;
+            width: 20%;
+            height: 100%;
+            z-index: 50;
+            cursor: pointer;
+        }
+
+        .click-prev { left: 0; }
+        .click-next { right: 0; }
+
+        /* Title slide centering */
+        .slide.title-slide {
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title-slide .subhead {
+            margin: 0 auto;
+        }
+
+        .list-styled {
+            list-style: none;
+            padding: 0;
+        }
+
+        .list-styled li {
+            padding: 8px 0;
+            padding-left: 24px;
+            position: relative;
+            font-size: var(--font-body);
+            color: var(--text-dim);
+        }
+
+        .list-styled li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, var(--accent-dim) 0%, rgba(80, 227, 194, 0.1) 100%);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            margin-top: 24px;
+        }
+
+        .diagram-text {
+            font-family: 'SF Mono', monospace;
+            font-size: clamp(9px, 1.2vw, 12px);
+            white-space: pre;
+            line-height: 1.3;
+            color: var(--text-dim);
+        }
+
+        @media (max-width: 768px) {
+            .diagram-text {
+                font-size: 9px;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="deck">
+        <!-- Slide 1: Title -->
+        <div class="slide title-slide active" data-slide="1">
+            <div class="section-label">Amplifier Framework</div>
+            <h1 class="headline">VS Code Extension</h1>
+            <p class="subhead">Native AI assistance in your IDE, powered by the modular Amplifier agent framework</p>
+            <p style="margin-top: 48px; color: var(--text-dim); font-size: 14px;">January 2026</p>
+        </div>
+
+        <!-- Slide 2: The Challenge -->
+        <div class="slide" data-slide="2">
+            <div class="section-label">The Challenge</div>
+            <h2 class="headline">Two worlds,<br>one experience</h2>
+            <p class="subhead">How do you bring a Python-based AI agent framework into a TypeScript VS Code extension?</p>
+            
+            <div class="comparison">
+                <div class="comparison-col">
+                    <div class="comparison-title before">Amplifier Core</div>
+                    <ul class="list-styled">
+                        <li>Python ecosystem</li>
+                        <li>Async event-driven architecture</li>
+                        <li>Modular providers, tools, hooks</li>
+                        <li>Extended thinking & streaming</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <div class="comparison-title after">VS Code Extension</div>
+                    <ul class="list-styled">
+                        <li>TypeScript/JavaScript</li>
+                        <li>Webview panels & providers</li>
+                        <li>Extension host process</li>
+                        <li>Native IDE integration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: The Solution -->
+        <div class="slide" data-slide="3">
+            <div class="section-label">The Solution</div>
+            <h2 class="headline">Two-tier architecture</h2>
+            <p class="subhead">A Python FastAPI backend bridges Amplifier Core to the TypeScript extension via HTTP + Server-Sent Events</p>
+            
+            <div class="flow-row">
+                <div class="flow-box">
+                    <div class="flow-box-title">VS Code Extension</div>
+                    <div class="flow-box-subtitle">TypeScript</div>
+                </div>
+                <div class="flow-arrow">&#8596;</div>
+                <div class="flow-box">
+                    <div class="flow-box-title">Python Server</div>
+                    <div class="flow-box-subtitle">FastAPI + SSE</div>
+                </div>
+                <div class="flow-arrow">&#8596;</div>
+                <div class="flow-box">
+                    <div class="flow-box-title">amplifier-core</div>
+                    <div class="flow-box-subtitle">AI Kernel</div>
+                </div>
+            </div>
+            
+            <div class="highlight-box">
+                <p class="body-text"><strong style="color: var(--text);">Key insight:</strong> HTTP for commands, SSE for streaming events. Local-only server on 127.0.0.1 for security. Credentials passed per-session, never stored.</p>
+            </div>
+        </div>
+
+        <!-- Slide 4: Architecture Diagram -->
+        <div class="slide" data-slide="4">
+            <div class="section-label">Architecture</div>
+            <h2 class="medium-headline">Full system overview</h2>
+            
+            <div class="architecture-diagram">
+                <pre class="diagram-text" style="color: var(--text);">
+<span style="color: var(--accent);">VS Code Extension (TypeScript)</span>
+  <span style="color: #7EE787;">ChatViewProvider</span>    <span style="color: #7EE787;">CodeActionProvider</span>    <span style="color: #7EE787;">ServerManager</span>
+         |                    |                    |
+         +--------------------+--------------------+
+                              |
+                       <span style="color: #79C0FF;">AmplifierClient</span>
+                  EventStreamManager (SSE)
+                     ApprovalHandler
+                              |
+                    HTTP + SSE (localhost:8765)
+                              |
+<span style="color: var(--accent);">Python Backend (FastAPI)</span>
+                   <span style="color: #7EE787;">SessionRunner</span>
+                   <span style="color: #7EE787;">SessionManager</span>
+                              |
+<span style="color: var(--accent);">amplifier-core (kernel)</span>
+  <span style="color: #79C0FF;">Providers</span>  <span style="color: #79C0FF;">Tools</span>  <span style="color: #79C0FF;">Hooks</span>  <span style="color: #79C0FF;">Orchestrators</span>  <span style="color: #79C0FF;">Context</span>
+                </pre>
+            </div>
+        </div>
+
+        <!-- Slide 5: Feature - Chat Panel -->
+        <div class="slide" data-slide="5">
+            <div class="section-label">Features</div>
+            <h2 class="headline">Chat Panel</h2>
+            <p class="subhead">Interactive AI chat in the VS Code sidebar with real-time streaming</p>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <div class="feature-icon">&#128172;</div>
+                    <div class="card-title">Streaming Responses</div>
+                    <div class="card-desc">Watch AI think in real-time with progressive text rendering and thinking indicators</div>
+                </div>
+                <div class="card">
+                    <div class="feature-icon">&#128221;</div>
+                    <div class="card-title">Markdown Rendering</div>
+                    <div class="card-desc">Syntax highlighting, code blocks with copy-to-clipboard, formatted lists and tables</div>
+                </div>
+                <div class="card">
+                    <div class="feature-icon">&#128736;</div>
+                    <div class="card-title">Tool Visibility</div>
+                    <div class="card-desc">See tools execute in real-time: file reads, bash commands, web searches, all streaming</div>
+                </div>
+                <div class="card">
+                    <div class="feature-icon">&#128200;</div>
+                    <div class="card-title">Token Usage</div>
+                    <div class="card-desc">Track input/output tokens per response with live accumulation during streaming</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Feature - Approval Gates -->
+        <div class="slide" data-slide="6">
+            <div class="section-label">Features</div>
+            <h2 class="headline">Approval Gates</h2>
+            <p class="subhead">Human-in-the-loop for sensitive operations with smart session memory</p>
+            
+            <div class="grid-2">
+                <div>
+                    <div class="card" style="margin-bottom: var(--gap-grid);">
+                        <div class="card-title">QuickPick UI</div>
+                        <div class="card-desc">Native VS Code QuickPick for clean, consistent approval prompts that match the IDE experience</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">"Always Allow" Memory</div>
+                        <div class="card-desc">Session-scoped tool allowlists reduce approval fatigue while maintaining security boundaries</div>
+                    </div>
+                </div>
+                <div class="code-block">
+<span class="comment">// Approval event from server</span>
+{
+  <span class="string">"event"</span>: <span class="string">"approval:required"</span>,
+  <span class="string">"data"</span>: {
+    <span class="string">"approval_id"</span>: <span class="string">"abc123"</span>,
+    <span class="string">"prompt"</span>: <span class="string">"Run: rm -rf build/"</span>,
+    <span class="string">"options"</span>: [<span class="string">"allow"</span>, <span class="string">"deny"</span>],
+    <span class="string">"timeout"</span>: <span class="code-green">30</span>,
+    <span class="string">"default"</span>: <span class="string">"deny"</span>
+  }
+}</div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Feature - Context Gathering -->
+        <div class="slide" data-slide="7">
+            <div class="section-label">Features</div>
+            <h2 class="headline">Context Gathering</h2>
+            <p class="subhead">Rich workspace awareness sent with every prompt</p>
+            
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-title">Workspace Root</div>
+                    <div class="card-desc">Smart detection with multi-folder support. Active editor priority, then visible editors, then first folder.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Open Files</div>
+                    <div class="card-desc">Prioritized by visibility. Active file first, then visible editors, then background tabs. Content included.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Git State</div>
+                    <div class="card-desc">Current branch, staged files, modified files, untracked files. Full repo awareness.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Selection</div>
+                    <div class="card-desc">Current text selection with file path and range. Perfect for "explain this" or "fix this".</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Diagnostics</div>
+                    <div class="card-desc">Errors and warnings from VS Code. AI sees what you see in the Problems panel.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Cursor Position</div>
+                    <div class="card-desc">Line and character position in active file. Context-aware completions and suggestions.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Feature - Server Management -->
+        <div class="slide" data-slide="8">
+            <div class="section-label">Features</div>
+            <h2 class="headline">Server Management</h2>
+            <p class="subhead">Automatic lifecycle handling for the Python backend</p>
+            
+            <div class="grid-2">
+                <div>
+                    <ul class="list-styled" style="margin-top: 24px;">
+                        <li><strong style="color: var(--text);">Auto-start</strong> on extension activation</li>
+                        <li><strong style="color: var(--text);">Health polling</strong> every 5 seconds</li>
+                        <li><strong style="color: var(--text);">Crash detection</strong> with auto-restart</li>
+                        <li><strong style="color: var(--text);">Prerequisites check</strong> (Python 3.11+, uv)</li>
+                        <li><strong style="color: var(--text);">Clean shutdown</strong> on extension deactivate</li>
+                        <li><strong style="color: var(--text);">Port configuration</strong> via settings</li>
+                    </ul>
+                </div>
+                <div class="code-block">
+<span class="comment">// ServerManager lifecycle</span>
+<span class="keyword">class</span> <span class="type">ServerManager</span> {
+  <span class="keyword">async</span> <span class="function">start</span>(): <span class="type">Promise</span>&lt;<span class="type">void</span>&gt;
+  <span class="keyword">async</span> <span class="function">stop</span>(): <span class="type">Promise</span>&lt;<span class="type">void</span>&gt;
+  <span class="keyword">async</span> <span class="function">checkHealth</span>(): <span class="type">Promise</span>&lt;<span class="type">boolean</span>&gt;
+  <span class="keyword">async</span> <span class="function">waitForReady</span>(): <span class="type">Promise</span>&lt;<span class="type">void</span>&gt;
+}
+
+<span class="comment">// Health response</span>
+{
+  <span class="string">"status"</span>: <span class="string">"healthy"</span>,
+  <span class="string">"version"</span>: <span class="string">"0.1.0"</span>,
+  <span class="string">"uptime_seconds"</span>: <span class="code-green">3847</span>,
+  <span class="string">"active_sessions"</span>: <span class="code-green">2</span>
+}</div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Technical Craft - Event Streaming -->
+        <div class="slide" data-slide="9">
+            <div class="section-label">The Craft</div>
+            <h2 class="headline">Event Streaming</h2>
+            <p class="subhead">11+ event types bridge the Python kernel to the TypeScript UI</p>
+            
+            <div class="event-list">
+                <span class="event-tag">content_delta</span>
+                <span class="event-tag">thinking_delta</span>
+                <span class="event-tag">thinking_final</span>
+                <span class="event-tag">tool:pre</span>
+                <span class="event-tag">tool:post</span>
+                <span class="event-tag">tool:error</span>
+                <span class="event-tag">approval:required</span>
+                <span class="event-tag">approval:granted</span>
+                <span class="event-tag">approval:denied</span>
+                <span class="event-tag">session:start</span>
+                <span class="event-tag">session:end</span>
+                <span class="event-tag">prompt:complete</span>
+            </div>
+            
+            <div class="highlight-box" style="margin-top: 32px;">
+                <p class="body-text"><strong style="color: var(--text);">Exponential backoff reconnection:</strong> SSE connections auto-reconnect on failure. Starting at 1s, maxing at 30s, with 10 attempts before surfacing error to user.</p>
+            </div>
+        </div>
+
+        <!-- Slide 10: Code Actions -->
+        <div class="slide" data-slide="10">
+            <div class="section-label">Features</div>
+            <h2 class="headline">Code Actions</h2>
+            <p class="subhead">Lightbulb menu integration for instant AI assistance</p>
+            
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-title" style="color: var(--accent);">Explain with Amplifier</div>
+                    <div class="card-desc">Select code, click lightbulb, get a clear explanation of what the code does and why.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="color: #7EE787;">Improve with Amplifier</div>
+                    <div class="card-desc">Get suggestions for better patterns, performance improvements, and cleaner code.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="color: #FF7B72;">Fix with Amplifier</div>
+                    <div class="card-desc">AI analyzes diagnostics and selection to propose fixes for errors and warnings.</div>
+                </div>
+            </div>
+            
+            <div class="code-block" style="margin-top: 32px;">
+<span class="comment">// Code action triggers chat with context</span>
+<span class="keyword">const</span> <span class="type">action</span> = <span class="keyword">new</span> <span class="type">vscode</span>.<span class="type">CodeAction</span>(
+  <span class="string">'Explain with Amplifier'</span>,
+  <span class="type">vscode</span>.<span class="type">CodeActionKind</span>.<span class="type">QuickFix</span>
+);
+action.command = {
+  command: <span class="string">'amplifier.explainSelection'</span>,
+  arguments: [selection.getText(), document.uri]
+};</div>
+        </div>
+
+        <!-- Slide 11: Security -->
+        <div class="slide" data-slide="11">
+            <div class="section-label">Security</div>
+            <h2 class="headline">Built secure<br>by default</h2>
+            
+            <div class="grid-2" style="margin-top: 40px;">
+                <div class="card">
+                    <div class="card-title">Local-only Server</div>
+                    <div class="card-desc">Backend binds to 127.0.0.1 only. No network exposure, no attack surface from outside.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">No Credential Storage</div>
+                    <div class="card-desc">API keys from VS Code SecretStorage or environment variables. Passed per-session, never persisted on server.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Content Security Policy</div>
+                    <div class="card-desc">Webviews use strict CSP with nonce-based script execution. No inline script injection.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Workspace Sandbox</div>
+                    <div class="card-desc">File operations restricted to workspace root. Tools can't escape the project boundary.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Profile System -->
+        <div class="slide" data-slide="12">
+            <div class="section-label">Configuration</div>
+            <h2 class="headline">Profile System</h2>
+            <p class="subhead">Switch AI behaviors via declarative profiles</p>
+            
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-title">vscode-simple</div>
+                    <div class="card-desc">Minimal tools for quick Q&A. Fast responses, low token usage.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">vscode-dev</div>
+                    <div class="card-desc">Full development tools: filesystem, bash, web, search. Complete coding assistant.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">vscode-test</div>
+                    <div class="card-desc">Approval testing profile. Every tool requires confirmation.</div>
+                </div>
+            </div>
+            
+            <div class="code-block" style="margin-top: 32px;">
+<span class="comment"># Profile bundle example (vscode-dev.md)</span>
+---
+profile: vscode-dev
+extends: @foundation/dev
+orchestrator: loop-streaming
+tools:
+  - filesystem
+  - bash  
+  - web_search
+  - web_fetch
+hooks:
+  - workspace-sandbox
+---</div>
+        </div>
+
+        <!-- Slide 13: Stats -->
+        <div class="slide" data-slide="13">
+            <div class="section-label">By The Numbers</div>
+            <h2 class="medium-headline">Project velocity</h2>
+            
+            <div class="grid-4">
+                <div class="card stat-card">
+                    <div class="big-number">2</div>
+                    <div class="stat-label">Languages<br>(TS + Python)</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="big-number">11+</div>
+                    <div class="stat-label">SSE Event<br>Types</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="big-number">6</div>
+                    <div class="stat-label">Core<br>Services</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="big-number">4</div>
+                    <div class="stat-label">Profile<br>Bundles</div>
+                </div>
+            </div>
+            
+            <div class="highlight-box" style="margin-top: 40px; text-align: center;">
+                <p class="body-text" style="font-size: clamp(16px, 2.5vw, 20px); color: var(--text);">
+                    Full Amplifier kernel integration: Providers, Tools, Hooks, Orchestrators, Context
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 14: CTA -->
+        <div class="slide title-slide" data-slide="14">
+            <div class="section-label">Get Started</div>
+            <h2 class="headline">Try it today</h2>
+            <p class="subhead" style="margin-bottom: 48px;">Clone, run, chat. One command to launch.</p>
+            
+            <div class="code-block" style="max-width: 600px; text-align: left;">
+git clone https://github.com/samueljklee/amplifier-app-vscode
+cd amplifier-app-vscode
+<span class="code-green">./scripts/run.sh</span></div>
+            
+            <p style="margin-top: 48px; color: var(--text-dim);">
+                <a href="https://github.com/samueljklee/amplifier-app-vscode" style="color: var(--accent); text-decoration: none;">github.com/samueljklee/amplifier-app-vscode</a>
+            </p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-dots"></div>
+        <div class="slide-counter"><span id="current">1</span> / <span id="total">14</span></div>
+        <div class="click-prev"></div>
+        <div class="click-next"></div>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const navDotsContainer = document.querySelector('.nav-dots');
+        const currentSpan = document.getElementById('current');
+        const totalSpan = document.getElementById('total');
+        const clickPrev = document.querySelector('.click-prev');
+        const clickNext = document.querySelector('.click-next');
+        
+        let currentSlide = 0;
+        const totalSlides = slides.length;
+        
+        totalSpan.textContent = totalSlides;
+        
+        // Create nav dots
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+            dot.addEventListener('click', () => goToSlide(i));
+            navDotsContainer.appendChild(dot);
+        });
+        
+        const navDots = document.querySelectorAll('.nav-dot');
+        
+        function goToSlide(index) {
+            if (index < 0) index = 0;
+            if (index >= totalSlides) index = totalSlides - 1;
+            
+            slides[currentSlide].classList.remove('active');
+            navDots[currentSlide].classList.remove('active');
+            
+            currentSlide = index;
+            
+            slides[currentSlide].classList.add('active');
+            navDots[currentSlide].classList.add('active');
+            currentSpan.textContent = currentSlide + 1;
+        }
+        
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) goToSlide(currentSlide + 1);
+        }
+        
+        function prevSlide() {
+            if (currentSlide > 0) goToSlide(currentSlide - 1);
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                goToSlide(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                goToSlide(totalSlides - 1);
+            }
+        });
+        
+        // Click navigation
+        clickPrev.addEventListener('click', prevSlide);
+        clickNext.addEventListener('click', nextSlide);
+        
+        // Touch navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) nextSlide();
+                else prevSlide();
+            }
+        }, { passive: true });
+    </script>
+</body>
+</html>
