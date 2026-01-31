@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eval-recipes | v0.0.28 → v0.0.31</title>
+    <style>
+        :root {
+            --accent: #00D4AA;
+            --accent-secondary: #00FFD4;
+            --accent-glow: rgba(0, 212, 170, 0.3);
+            --bg: #000;
+            --text: #fff;
+            --text-muted: rgba(255,255,255,0.6);
+            --card-bg: rgba(255,255,255,0.05);
+            --card-border: rgba(255,255,255,0.1);
+            
+            --font-headline: clamp(32px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-big-number: clamp(48px, 15vw, 120px);
+            
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .deck {
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.1;
+            margin-bottom: 24px;
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 600;
+            letter-spacing: -1px;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            color: var(--text-muted);
+            line-height: 1.5;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        .highlight {
+            color: var(--accent);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+            text-align: left;
+        }
+
+        .card-title {
+            font-size: clamp(18px, 2.5vw, 24px);
+            font-weight: 600;
+            margin-bottom: 12px;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .card-desc {
+            font-size: var(--font-body);
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .code-block {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.8vw, 15px);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            margin-top: 24px;
+            text-align: left;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .code-comment { color: rgba(255,255,255,0.4); }
+        .code-keyword { color: #FF79C6; }
+        .code-string { color: #F1FA8C; }
+        .code-function { color: var(--accent); }
+        .code-param { color: #8BE9FD; }
+        .code-new { color: #50FA7B; font-weight: 600; }
+
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 700;
+            letter-spacing: -3px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: clamp(14px, 2vw, 18px);
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .stat-card {
+            text-align: center !important;
+            padding: clamp(24px, 4vw, 40px);
+        }
+
+        .version-badge {
+            display: inline-block;
+            font-family: 'SF Mono', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
+        .badge-028 {
+            background: rgba(0, 212, 170, 0.2);
+            color: var(--accent);
+        }
+
+        .badge-029 {
+            background: rgba(255, 159, 10, 0.2);
+            color: #FF9F0A;
+        }
+
+        .badge-030 {
+            background: rgba(191, 90, 242, 0.2);
+            color: #BF5AF2;
+        }
+
+        .badge-031 {
+            background: rgba(100, 210, 255, 0.2);
+            color: #64D2FF;
+        }
+
+        .feature-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+
+        .badge-feature {
+            background: rgba(0, 212, 170, 0.2);
+            color: var(--accent);
+        }
+
+        .badge-docs {
+            background: rgba(255, 159, 10, 0.2);
+            color: #FF9F0A;
+        }
+
+        .badge-ci {
+            background: rgba(191, 90, 242, 0.2);
+            color: #BF5AF2;
+        }
+
+        .badge-cleanup {
+            background: rgba(255, 107, 107, 0.2);
+            color: #FF6B6B;
+        }
+
+        .flow-diagram {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .flow-step {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px 28px;
+            text-align: center;
+            min-width: 160px;
+        }
+
+        .flow-step-number {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .flow-step-label {
+            font-size: clamp(14px, 2vw, 16px);
+            font-weight: 600;
+        }
+
+        .flow-step-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .flow-arrow {
+            font-size: 24px;
+            color: var(--accent);
+        }
+
+        .file-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+            justify-content: flex-start;
+        }
+
+        .file-tag {
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            color: var(--text-muted);
+        }
+
+        .file-tag.added {
+            border-color: rgba(0, 212, 170, 0.4);
+            color: var(--accent);
+        }
+
+        .file-tag.deleted {
+            border-color: rgba(255, 107, 107, 0.4);
+            color: #FF6B6B;
+            text-decoration: line-through;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .comparison-side {
+            padding: clamp(20px, 4vw, 32px);
+            border-radius: 16px;
+            text-align: left;
+        }
+
+        .comparison-before {
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+
+        .comparison-after {
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+        }
+
+        .comparison-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        .comparison-before .comparison-label { color: #FF6B6B; }
+        .comparison-after .comparison-label { color: var(--accent); }
+
+        .timeline {
+            margin-top: 32px;
+            width: 100%;
+            max-width: 900px;
+            text-align: left;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 20px;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .timeline-item:last-child {
+            border-bottom: none;
+        }
+
+        .timeline-version {
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: var(--accent);
+            font-weight: 600;
+            min-width: 80px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-title {
+            font-size: clamp(16px, 2vw, 20px);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .timeline-desc {
+            font-size: var(--font-body);
+            color: var(--text-muted);
+        }
+
+        .pr-badge {
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+            background: var(--card-bg);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-row-label {
+            color: var(--text-muted);
+        }
+
+        .stat-row-value {
+            font-family: 'SF Mono', monospace;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .nav-dots {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.2);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 24px;
+            right: 32px;
+            font-size: 14px;
+            color: var(--text-muted);
+            font-family: 'SF Mono', monospace;
+            z-index: 100;
+        }
+
+        .click-zones {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .click-zone {
+            flex: 1;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .click-zone-left { cursor: w-resize; }
+        .click-zone-right { cursor: e-resize; }
+
+        .callout {
+            margin-top: 40px;
+            padding: 24px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border-left: 3px solid var(--accent);
+            max-width: 900px;
+            width: 100%;
+            text-align: left;
+        }
+
+        .version-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .version-chip {
+            font-family: 'SF Mono', monospace;
+            font-size: clamp(14px, 2vw, 18px);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .version-arrow {
+            font-size: 20px;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .flow-diagram {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+            
+            .timeline-item {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .timeline-version {
+                min-width: auto;
+            }
+
+            .version-flow {
+                flex-direction: column;
+            }
+
+            .version-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="deck">
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="section-label">Release Progress</div>
+            <h1 class="headline">eval-recipes</h1>
+            <p class="subhead">
+                Comparison benchmarking, streamlined interfaces,<br>
+                and enhanced debugging capabilities
+            </p>
+            
+            <div class="version-flow">
+                <div class="version-chip badge-028">v0.0.28</div>
+                <div class="version-arrow">→</div>
+                <div class="version-chip badge-029">v0.0.29</div>
+                <div class="version-arrow">→</div>
+                <div class="version-chip badge-031">v0.0.31</div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Overview -->
+        <div class="slide">
+            <div class="section-label">Overview</div>
+            <h2 class="headline">Four Releases,<br><span class="highlight">Major Progress</span></h2>
+            
+            <div class="grid-3">
+                <div class="card" style="text-align: center;">
+                    <div class="version-badge badge-028">v0.0.28</div>
+                    <div class="card-title" style="font-size: 16px;">Comparison</div>
+                    <div class="card-desc" style="font-size: 13px;">Side-by-side agent benchmarking</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div class="version-badge badge-029">v0.0.29</div>
+                    <div class="card-title" style="font-size: 16px;">Interfaces</div>
+                    <div class="card-desc" style="font-size: 13px;">Simplified APIs & docs</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div class="version-badge badge-031">v0.0.31</div>
+                    <div class="card-title" style="font-size: 16px;">Debugging</div>
+                    <div class="card-desc" style="font-size: 13px;">Log context for semantic tests</div>
+                </div>
+            </div>
+
+            <div class="callout">
+                <p class="body-text" style="color: var(--text);">
+                    <strong>Key themes:</strong> New comparison capability • Improved developer experience • 
+                    Code quality improvements • Enhanced debugging
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 3: v0.0.28 Comparison Benchmarking -->
+        <div class="slide">
+            <div class="version-badge badge-028">v0.0.28</div>
+            <h2 class="headline">Comparison-Based<br><span class="highlight">Benchmarking</span></h2>
+            <p class="subhead">
+                Evaluate multiple AI agents on the same tasks and rank them relative to each other using an LLM judge.
+            </p>
+            
+            <div class="grid-3">
+                <div class="card">
+                    <div class="feature-badge badge-feature">Harness</div>
+                    <div class="card-title">Parallel Execution</div>
+                    <div class="card-desc">Each agent completes tasks independently in isolated Docker containers</div>
+                </div>
+                <div class="card">
+                    <div class="feature-badge badge-feature">Evaluation</div>
+                    <div class="card-title">Blind Comparison</div>
+                    <div class="card-desc">Judge agent evaluates anonymized outputs, ranking agents from best to worst</div>
+                </div>
+                <div class="card">
+                    <div class="feature-badge badge-feature">Reporting</div>
+                    <div class="card-title">Rich HTML Reports</div>
+                    <div class="card-desc">Interactive dashboards with rankings, win rates, and Kendall's W agreement scores</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 32px; text-align: center;">
+                <span class="pr-badge">PR #36</span>
+                <span style="color: var(--text-muted); margin-left: 12px;">28 files changed, +3,479 lines</span>
+            </div>
+        </div>
+
+        <!-- Slide 4: How Comparison Works -->
+        <div class="slide">
+            <div class="version-badge badge-028">v0.0.28</div>
+            <h2 class="medium-headline">How Comparison Benchmarking Works</h2>
+            
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <div class="flow-step-number">01</div>
+                    <div class="flow-step-label">Trial Execution</div>
+                    <div class="flow-step-desc">Agents complete tasks</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <div class="flow-step-number">02</div>
+                    <div class="flow-step-label">Blind Comparison</div>
+                    <div class="flow-step-desc">Judge evaluates anonymized outputs</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <div class="flow-step-number">03</div>
+                    <div class="flow-step-label">Aggregation</div>
+                    <div class="flow-step-desc">Multi-trial for consistency</div>
+                </div>
+            </div>
+
+            <div class="grid-4" style="margin-top: 32px;">
+                <div class="card" style="text-align: center;">
+                    <div class="card-title" style="font-size: 14px;">Avg Rank</div>
+                    <div class="card-desc" style="font-size: 12px;">Mean position across runs (lower is better)</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div class="card-title" style="font-size: 14px;">Win Rate</div>
+                    <div class="card-desc" style="font-size: 12px;">% of runs ranked #1</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div class="card-title" style="font-size: 14px;">Task Wins</div>
+                    <div class="card-desc" style="font-size: 12px;">Tasks with best avg rank</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div class="card-title" style="font-size: 14px;">Kendall's W</div>
+                    <div class="card-desc" style="font-size: 12px;">Inter-rater agreement (0-1)</div>
+                </div>
+            </div>
+
+            <div class="callout" style="margin-top: 24px;">
+                <p class="body-text" style="color: var(--text);">
+                    <strong>Multi-trial consistency:</strong> Each comparison runs multiple times to reduce variance. 
+                    Kendall's W >= 0.33 indicates significant results; lower values suggest similar agent outputs.
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 5: v0.0.29 Interface & Documentation -->
+        <div class="slide">
+            <div class="version-badge badge-029">v0.0.29</div>
+            <h2 class="headline">Streamlined<br><span class="highlight">Interfaces</span></h2>
+            <p class="subhead">
+                Major documentation overhaul and simplified harness interface for better developer experience.
+            </p>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <div class="feature-badge badge-docs">Documentation</div>
+                    <div class="card-title">BENCHMARKING.md Overhaul</div>
+                    <div class="card-desc" style="margin-bottom: 16px;">
+                        Complete rewrite with 474 lines of updated guidance, examples, and best practices for running benchmarks.
+                    </div>
+                    <div class="file-list">
+                        <span class="file-tag added">BENCHMARKING.md</span>
+                        <span class="file-tag added">prepare-release.md</span>
+                        <span class="file-tag added">AGENTS.md</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="feature-badge badge-feature">Simplified</div>
+                    <div class="card-title">Harness Interface Refactor</div>
+                    <div class="card-desc" style="margin-bottom: 16px;">
+                        320 lines refactored for cleaner, more intuitive API. Easier to configure and extend.
+                    </div>
+                    <div class="file-list">
+                        <span class="file-tag">harness.py</span>
+                        <span class="file-tag added">score-default.yaml</span>
+                        <span class="file-tag">comparison-default.yaml</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 32px; text-align: center;">
+                <span class="pr-badge">PR #39</span>
+                <span style="color: var(--text-muted); margin-left: 12px;">18 files changed, +1,563 / -1,199 lines</span>
+            </div>
+        </div>
+
+        <!-- Slide 6: v0.0.29 Code Quality -->
+        <div class="slide">
+            <div class="version-badge badge-029">v0.0.29</div>
+            <h2 class="headline">Less Code,<br><span class="highlight">More Value</span></h2>
+            <p class="subhead">
+                Sometimes the best code is the code you delete.
+            </p>
+            
+            <div class="comparison">
+                <div class="comparison-side comparison-before">
+                    <div class="comparison-label">Removed</div>
+                    <div class="card-title" style="margin-bottom: 16px;">filters.py</div>
+                    <ul class="body-text" style="list-style: none;">
+                        <li style="margin-bottom: 8px; text-decoration: line-through; opacity: 0.6;">150 lines of filtering logic</li>
+                        <li style="margin-bottom: 8px; text-decoration: line-through; opacity: 0.6;">Unused task filtering functions</li>
+                        <li style="margin-bottom: 8px; text-decoration: line-through; opacity: 0.6;">Complex conditional branches</li>
+                        <li style="text-decoration: line-through; opacity: 0.6;">Dead code maintenance burden</li>
+                    </ul>
+                </div>
+                <div class="comparison-side comparison-after">
+                    <div class="comparison-label">Result</div>
+                    <div class="card-title" style="margin-bottom: 16px;">Cleaner Codebase</div>
+                    <ul class="body-text" style="list-style: none;">
+                        <li style="margin-bottom: 8px;">✓ Reduced cognitive load</li>
+                        <li style="margin-bottom: 8px;">✓ Fewer files to navigate</li>
+                        <li style="margin-bottom: 8px;">✓ No unused dependencies</li>
+                        <li>✓ Simpler test surface</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="callout">
+                <p class="body-text" style="color: var(--text);">
+                    <strong>Net change:</strong> -364 lines across v0.0.29 — proving that refactoring toward simplicity delivers real value.
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 7: v0.0.31 Semantic Test Log Context -->
+        <div class="slide">
+            <div class="version-badge badge-031">v0.0.31</div>
+            <h2 class="headline">Semantic Test<br><span class="highlight">Log Context</span></h2>
+            <p class="subhead">
+                Pass agent execution logs directly into semantic tests for richer evaluation and debugging.
+            </p>
+            
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-title">Capture</div>
+                    <div class="card-desc">Agent logs are captured during trial execution and stored in structured format</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Pass Through</div>
+                    <div class="card-desc">Logs are automatically included in semantic test context via updated schemas</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Analyze</div>
+                    <div class="card-desc">LLM evaluator has full context to understand agent behavior and failures</div>
+                </div>
+            </div>
+
+            <div class="code-block"><span class="code-comment"># Agent logs are now available in semantic tests</span>
+<span class="code-keyword">class</span> <span class="code-function">SemanticTestContext</span>:
+    task_description: <span class="code-param">str</span>
+    expected_outcome: <span class="code-param">str</span>
+    actual_result: <span class="code-param">str</span>
+    <span class="code-new">agent_logs: Optional[List[LogEntry]]</span>  <span class="code-comment"># NEW!</span>
+
+<span class="code-comment"># Debug failures with full visibility into agent's execution</span></div>
+
+            <div style="margin-top: 24px; text-align: center;">
+                <span class="pr-badge">PR #44</span>
+                <span style="color: var(--text-muted); margin-left: 12px;">10 files changed, +344 lines</span>
+            </div>
+        </div>
+
+        <!-- Slide 9: Velocity Stats -->
+        <div class="slide">
+            <div class="section-label">Velocity</div>
+            <h2 class="medium-headline">By the Numbers</h2>
+            
+            <div class="grid-4">
+                <div class="card stat-card">
+                    <div class="big-number">3</div>
+                    <div class="stat-label">Releases</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="big-number">6</div>
+                    <div class="stat-label">PRs Merged</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="big-number">56+</div>
+                    <div class="stat-label">Files Changed</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="big-number">5K+</div>
+                    <div class="stat-label">Lines Added</div>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-top: 32px;">
+                <div class="card">
+                    <div class="card-title">Features Shipped</div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Comparison Benchmarking</span>
+                        <span class="stat-row-value">v0.0.28</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Simplified Harness Interface</span>
+                        <span class="stat-row-value">v0.0.29</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Semantic Test Log Context</span>
+                        <span class="stat-row-value">v0.0.31</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Improvements</div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Documentation Overhaul</span>
+                        <span class="stat-row-value">v0.0.29</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Dead Code Removal</span>
+                        <span class="stat-row-value">v0.0.29</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: What's Next -->
+        <div class="slide">
+            <div class="section-label">What's Next</div>
+            <h2 class="headline">Try It Out</h2>
+            <p class="subhead" style="margin-bottom: 40px;">
+                All features are available now in <span class="highlight">v0.0.31</span>
+            </p>
+            
+            <div class="code-block" style="max-width: 650px;"><span class="code-comment"># Install the latest version</span>
+uv add "eval-recipes @ git+https://github.com/microsoft/eval-recipes@v0.0.31"
+
+<span class="code-comment"># Run comparison benchmarks</span>
+uv run eval_recipes.benchmark compare \
+    --agents agent_a agent_b \
+    --tasks ppt-1 ppt-2 ppt-3
+
+<span class="code-comment"># Run with log context for debugging</span>
+uv run eval_recipes.benchmark run \
+    --task my_task \
+    --with-log-context</div>
+            
+            <div class="grid-3" style="margin-top: 40px;">
+                <div class="card" style="text-align: center;">
+                    <div class="card-title">Documentation</div>
+                    <div class="card-desc">Updated BENCHMARKING.md guide</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div class="card-title">Examples</div>
+                    <div class="card-desc">PowerPoint tasks (ppt-1, ppt-2, ppt-3)</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div class="card-title">Support</div>
+                    <div class="card-desc">AGENTS.md for contribution guidelines</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 40px;">
+                <a href="https://github.com/microsoft/eval-recipes" style="display: inline-block; background: var(--accent); color: #000; font-weight: 600; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; position: relative; z-index: 60;">View on GitHub &#8594;</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-dots" id="navDots"></div>
+    <div class="slide-counter" id="slideCounter">1 / 9</div>
+    
+    <!-- Click zones for navigation -->
+    <div class="click-zones">
+        <div class="click-zone click-zone-left" onclick="prevSlide()"></div>
+        <div class="click-zone click-zone-right" onclick="nextSlide()"></div>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const navDotsContainer = document.getElementById('navDots');
+        const slideCounter = document.getElementById('slideCounter');
+        let currentSlide = 0;
+
+        // Create nav dots
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+            dot.onclick = () => goToSlide(i);
+            navDotsContainer.appendChild(dot);
+        });
+
+        function updateSlide() {
+            slides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === currentSlide);
+            });
+            document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === currentSlide);
+            });
+            slideCounter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        function nextSlide() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        function goToSlide(index) {
+            currentSlide = index;
+            updateSlide();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                goToSlide(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                goToSlide(slides.length - 1);
+            }
+        });
+
+        // Touch swipe support
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) nextSlide();
+                else prevSlide();
+            }
+        });
+    </script>
+</body>
+</html>
