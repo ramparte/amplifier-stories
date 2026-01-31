@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Source-Driven Content Generation | withamplifier.com</title>
+    <style>
+        :root {
+            --accent: #FF2D55;
+            --accent-dim: rgba(255, 45, 85, 0.15);
+            --success: #30D158;
+            --warning: #FF9F0A;
+            --error: #FF453A;
+            
+            --font-headline: clamp(32px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-big-number: clamp(80px, 25vw, 200px);
+            --font-stat-number: clamp(48px, 12vw, 96px);
+            
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .section-label {
+            font-size: clamp(11px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.1;
+            margin-bottom: 24px;
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 600;
+            letter-spacing: -1px;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 700px;
+            line-height: 1.5;
+        }
+
+        .small-text {
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 40px;
+        }
+
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 800;
+            letter-spacing: -6px;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent) 0%, #FF6B8A 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .big-number.error {
+            background: linear-gradient(135deg, var(--error) 0%, #FF6B6B 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-number {
+            font-size: var(--font-stat-number);
+            font-weight: 700;
+            letter-spacing: -3px;
+            background: linear-gradient(135deg, var(--accent) 0%, #FF6B8A 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: clamp(14px, 2vw, 18px);
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 8px;
+        }
+
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .fourths {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(20px, 4vw, 32px);
+        }
+
+        .card.highlight {
+            background: var(--accent-dim);
+            border-color: rgba(255, 45, 85, 0.3);
+        }
+
+        .card.error {
+            background: rgba(255, 69, 58, 0.1);
+            border-color: rgba(255, 69, 58, 0.3);
+        }
+
+        .card.success {
+            background: rgba(48, 209, 88, 0.1);
+            border-color: rgba(48, 209, 88, 0.3);
+        }
+
+        .card-title {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+
+        .card-title.accent {
+            color: var(--accent);
+        }
+
+        .card-title.error {
+            color: var(--error);
+        }
+
+        .card-title.success {
+            color: var(--success);
+        }
+
+        .card-desc {
+            font-size: var(--font-body);
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+        }
+
+        .card-number {
+            font-size: clamp(36px, 8vw, 56px);
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .code-block {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.8vw, 15px);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: 24px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .code-block .comment {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .code-block .keyword {
+            color: var(--accent);
+        }
+
+        .code-block .string {
+            color: var(--success);
+        }
+
+        .code-block .number {
+            color: #FF9F0A;
+        }
+
+        .code-block .property {
+            color: #64D2FF;
+        }
+
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .pipeline-step {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px 28px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .pipeline-step.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .pipeline-step-num {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 600;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .pipeline-step-name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .pipeline-arrow {
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 32px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .timeline-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        .timeline-marker.success {
+            background: var(--success);
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-title {
+            font-size: clamp(16px, 2vw, 18px);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .timeline-desc {
+            font-size: var(--font-body);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: 24px;
+            margin-top: 40px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .comparison-side {
+            padding: 24px;
+            border-radius: 16px;
+        }
+
+        .comparison-side.before {
+            background: rgba(255, 69, 58, 0.08);
+            border: 1px solid rgba(255, 69, 58, 0.2);
+        }
+
+        .comparison-side.after {
+            background: rgba(48, 209, 88, 0.08);
+            border: 1px solid rgba(48, 209, 88, 0.2);
+        }
+
+        .comparison-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+
+        .comparison-side.before .comparison-label {
+            color: var(--error);
+        }
+
+        .comparison-side.after .comparison-label {
+            color: var(--success);
+        }
+
+        .comparison-content {
+            font-size: var(--font-body);
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.8;
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .tag {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 500;
+        }
+
+        .tag.verbatim {
+            background: rgba(48, 209, 88, 0.15);
+            color: var(--success);
+        }
+
+        .tag.synthesized {
+            background: rgba(255, 159, 10, 0.15);
+            color: var(--warning);
+        }
+
+        .tag.marketing {
+            background: rgba(255, 45, 85, 0.15);
+            color: var(--accent);
+        }
+
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 48px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .velocity-stat {
+            text-align: center;
+        }
+
+        .velocity-number {
+            font-size: clamp(48px, 10vw, 72px);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent) 0%, #FF6B8A 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .velocity-label {
+            font-size: clamp(14px, 2vw, 16px);
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 8px;
+        }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 32px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 16px 20px;
+        }
+
+        .file-icon {
+            font-size: 24px;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-family: 'SF Mono', monospace;
+            font-size: clamp(14px, 2vw, 16px);
+            color: var(--accent);
+        }
+
+        .file-desc {
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 4px;
+        }
+
+        .file-size {
+            font-size: clamp(14px, 2vw, 16px);
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: 500;
+        }
+
+        .highlight-text {
+            color: var(--accent);
+        }
+
+        .nav {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.2);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.3);
+            z-index: 100;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px var(--padding-slide) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+                padding-top: 40px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Slide 1: Title -->
+    <div class="slide active center">
+        <div class="section-label">withamplifier.com</div>
+        <h1 class="headline">Source-Driven<br>Content Generation</h1>
+        <p class="subhead">Building a system where website content is always accurate, always traceable, and always validated</p>
+        <div class="small-text">Two Amplifier Sessions | January 2026</div>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Content Drift</h2>
+        <p class="subhead">Website content diverges from source truth over time</p>
+        <div class="thirds">
+            <div class="card">
+                <div class="card-title">Manual Updates</div>
+                <div class="card-desc">Website content is copied from docs, edited, and quickly becomes stale as source files evolve</div>
+            </div>
+            <div class="card">
+                <div class="card-title">No Traceability</div>
+                <div class="card-desc">When content is wrong, there's no way to know which source file should be the authority</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Silent Failures</div>
+                <div class="card-desc">Broken links, outdated commands, and wrong module names go undetected until users complain</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: The Discovery -->
+    <div class="slide center">
+        <div class="section-label">The Discovery</div>
+        <div class="big-number error">12/12</div>
+        <h2 class="medium-headline">Community Bundle Links Return 404</h2>
+        <p class="subhead">Every single bundle link on the live withamplifier.com website is broken. This wasn't a theoretical problem—it was already happening.</p>
+    </div>
+
+    <!-- Slide 4: Session 1 Overview -->
+    <div class="slide">
+        <div class="section-label">Session 1</div>
+        <h2 class="headline">The Design Phase</h2>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Analyzed withamplifier.com HTML structure</div>
+                    <div class="timeline-desc">Mapped all 8 data-sections and their content patterns</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker" style="background: var(--error)"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Discovered the 404 crisis</div>
+                    <div class="timeline-desc">All 12 community bundle links broken—dramatic proof the system is needed</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Mapped content sources</div>
+                    <div class="timeline-desc">13 sections → README.md, MODULES.md, USER_ONBOARDING.md</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker success"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Created the outline pattern</div>
+                    <div class="timeline-desc">withamplifier-content.json mapping sources → content</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker success"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Built the recipe architecture</div>
+                    <div class="timeline-desc">4-stage validation pipeline: Initialize → Generate → Validate → Output</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Source Mapping -->
+    <div class="slide">
+        <div class="section-label">The Pattern</div>
+        <h2 class="headline">Sources → Content</h2>
+        <p class="subhead">Every website element traces back to an authoritative source file</p>
+        <div class="code-block"><span class="comment">// withamplifier-content.json</span>
+{
+  <span class="property">"section"</span>: <span class="string">"quick-install"</span>,
+  <span class="property">"web_element"</span>: <span class="string">"data-section='quick-install'"</span>,
+  <span class="property">"source_files"</span>: [<span class="string">"README.md#installation"</span>],
+  <span class="property">"accuracy"</span>: <span class="string">"verbatim"</span>,
+  <span class="property">"validation"</span>: {
+    <span class="property">"priority"</span>: <span class="string">"critical"</span>,
+    <span class="property">"checks"</span>: [<span class="string">"command_syntax"</span>, <span class="string">"url_validity"</span>]
+  }
+}</div>
+    </div>
+
+    <!-- Slide 6: Recipe Architecture -->
+    <div class="slide center">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">4-Stage Validation Pipeline</h2>
+        <div class="pipeline">
+            <div class="pipeline-step">
+                <div class="pipeline-step-num">STAGE 1</div>
+                <div class="pipeline-step-name">Initialize</div>
+            </div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step active">
+                <div class="pipeline-step-num">STAGE 2</div>
+                <div class="pipeline-step-name">Generate</div>
+            </div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step">
+                <div class="pipeline-step-num">STAGE 3</div>
+                <div class="pipeline-step-name">Validate</div>
+            </div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step">
+                <div class="pipeline-step-num">STAGE 4</div>
+                <div class="pipeline-step-name">Output</div>
+            </div>
+        </div>
+        <div class="thirds" style="margin-top: 48px;">
+            <div class="card">
+                <div class="card-title accent">Critical</div>
+                <div class="card-desc">Commands, URLs, installation steps—must be exact</div>
+            </div>
+            <div class="card">
+                <div class="card-title accent">High</div>
+                <div class="card-desc">Module names, bundle identifiers—must match source</div>
+            </div>
+            <div class="card">
+                <div class="card-title accent">Medium/Low</div>
+                <div class="card-desc">Descriptions and marketing—can be synthesized</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Session 2 Overview -->
+    <div class="slide">
+        <div class="section-label">Session 2</div>
+        <h2 class="headline">The Implementation Phase</h2>
+        <p class="subhead">Turning design into a working system—through iterative debugging</p>
+        <div class="timeline" style="margin-top: 40px;">
+            <div class="timeline-item">
+                <div class="timeline-marker" style="background: var(--error)"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">First run: 6 schema issues</div>
+                    <div class="timeline-desc">Recipe template system had strict constraints we hadn't anticipated</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Iterative debugging</div>
+                    <div class="timeline-desc">Fixed each issue: description fields, output_key→output, Handlebars syntax</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Redesigned output format</div>
+                    <div class="timeline-desc">From multi-file cross-reference to single unified JSON</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker success"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">3 complete iterations</div>
+                    <div class="timeline-desc">Each run improved coverage and accuracy</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: The 6 Fixes -->
+    <div class="slide">
+        <div class="section-label">Debugging</div>
+        <h2 class="headline">6 Schema Fixes</h2>
+        <p class="subhead">Recipe template constraints required careful iteration</p>
+        <div class="halves">
+            <div class="card error">
+                <div class="card-title error">Issues Found</div>
+                <div class="card-desc">
+                    • description field on wrong elements<br>
+                    • output_key not recognized<br>
+                    • Handlebars {{#each}} incompatible<br>
+                    • Missing required fields<br>
+                    • Invalid template references<br>
+                    • Context variable scoping
+                </div>
+            </div>
+            <div class="card success">
+                <div class="card-title success">Fixes Applied</div>
+                <div class="card-desc">
+                    • Moved descriptions to step level<br>
+                    • Changed to output: key format<br>
+                    • Used prose instructions instead<br>
+                    • Added all required schema fields<br>
+                    • Fixed file path references<br>
+                    • Restructured context flow
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: Output Design Evolution -->
+    <div class="slide">
+        <div class="section-label">Evolution</div>
+        <h2 class="headline">Output Design Matters</h2>
+        <div class="comparison">
+            <div class="comparison-side before">
+                <div class="comparison-label">Before: Multi-File</div>
+                <div class="comparison-content">
+                    • outline.json (structure)<br>
+                    • content.json (text)<br>
+                    • validation.json (rules)<br>
+                    • mapping.json (web elements)<br><br>
+                    <em style="color: rgba(255,255,255,0.4);">Required cross-referencing 4 files to understand any single section</em>
+                </div>
+            </div>
+            <div class="comparison-side after">
+                <div class="comparison-label">After: Unified JSON</div>
+                <div class="comparison-content">
+                    • Single website-content.json<br>
+                    • Web element mapping embedded<br>
+                    • Source files inline<br>
+                    • Validation rules included<br><br>
+                    <em style="color: rgba(255,255,255,0.4);">Everything needed in one self-documenting file</em>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 10: Coverage Expansion -->
+    <div class="slide center">
+        <div class="section-label">Coverage</div>
+        <div style="display: flex; align-items: baseline; justify-content: center; gap: 24px;">
+            <div class="stat-number">13</div>
+            <div style="font-size: 48px; color: rgba(255,255,255,0.3);">→</div>
+            <div class="stat-number">33</div>
+        </div>
+        <h2 class="medium-headline">Sections Mapped</h2>
+        <p class="subhead">Expanded from initial mapping to cover all 8 data-sections on withamplifier.com</p>
+        <div class="tag-list" style="justify-content: center; margin-top: 32px;">
+            <div class="tag">quick-install</div>
+            <div class="tag">main-features</div>
+            <div class="tag">ai-integration</div>
+            <div class="tag">terminal-experience</div>
+            <div class="tag">modules</div>
+            <div class="tag">enterprise</div>
+            <div class="tag">bundles</div>
+            <div class="tag">community</div>
+        </div>
+    </div>
+
+    <!-- Slide 11: Accuracy Classification -->
+    <div class="slide">
+        <div class="section-label">Classification</div>
+        <h2 class="headline">Accuracy Types</h2>
+        <p class="subhead">Different content requires different validation strategies</p>
+        <div class="thirds">
+            <div class="card">
+                <div class="card-number" style="color: var(--success)">14</div>
+                <div class="card-title">Verbatim</div>
+                <div class="card-desc">Commands, URLs, code—extracted exactly as written in source files</div>
+                <div class="tag-list" style="margin-top: 16px;">
+                    <div class="tag verbatim">install commands</div>
+                    <div class="tag verbatim">module names</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-number" style="color: var(--warning)">10</div>
+                <div class="card-title">Synthesized</div>
+                <div class="card-desc">Descriptions derived from source content but reworded for web context</div>
+                <div class="tag-list" style="margin-top: 16px;">
+                    <div class="tag synthesized">feature descriptions</div>
+                    <div class="tag synthesized">benefit summaries</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-number" style="color: var(--accent)">9</div>
+                <div class="card-title">Marketing</div>
+                <div class="card-desc">Creative content like taglines that can be generated fresh</div>
+                <div class="tag-list" style="margin-top: 16px;">
+                    <div class="tag marketing">hero headlines</div>
+                    <div class="tag marketing">CTAs</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 12: The Final Output -->
+    <div class="slide center">
+        <div class="section-label">The Output</div>
+        <div class="big-number">83KB</div>
+        <h2 class="medium-headline">website-content.json</h2>
+        <p class="subhead">Complete, validated, source-traced content for every section of withamplifier.com</p>
+    </div>
+
+    <!-- Slide 13: Value Proposition -->
+    <div class="slide">
+        <div class="section-label">The Value</div>
+        <h2 class="headline">Content That Can't Drift</h2>
+        <div class="fourths">
+            <div class="card highlight">
+                <div class="card-title accent">Always Accurate</div>
+                <div class="card-desc">Generated directly from source files—no manual copying</div>
+            </div>
+            <div class="card highlight">
+                <div class="card-title accent">Always Traceable</div>
+                <div class="card-desc">Every item links to its authoritative source</div>
+            </div>
+            <div class="card highlight">
+                <div class="card-title accent">Always Validated</div>
+                <div class="card-desc">URLs checked, commands verified, names matched</div>
+            </div>
+            <div class="card highlight">
+                <div class="card-title accent">Always Fresh</div>
+                <div class="card-desc">Regenerate when sources change—automated updates</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 14: Technical Artifacts -->
+    <div class="slide">
+        <div class="section-label">Artifacts</div>
+        <h2 class="headline">What We Built</h2>
+        <div class="file-list">
+            <div class="file-item">
+                <div class="file-icon">📋</div>
+                <div class="file-info">
+                    <div class="file-name">outlines/withamplifier-content.json</div>
+                    <div class="file-desc">Content mapping with 33 sections, sources, and validation rules</div>
+                </div>
+                <div class="file-size">48 KB</div>
+            </div>
+            <div class="file-item">
+                <div class="file-icon">⚙️</div>
+                <div class="file-info">
+                    <div class="file-name">recipes/website-content-generation.yaml</div>
+                    <div class="file-desc">4-stage validation pipeline recipe</div>
+                </div>
+                <div class="file-size">22 KB</div>
+            </div>
+            <div class="file-item">
+                <div class="file-icon">✅</div>
+                <div class="file-info">
+                    <div class="file-name">generated/website-content.json</div>
+                    <div class="file-desc">Complete output with everything needed</div>
+                </div>
+                <div class="file-size">83 KB</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 15: Velocity Stats -->
+    <div class="slide center">
+        <div class="section-label">Velocity</div>
+        <h2 class="medium-headline">Development Stats</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">2</div>
+                <div class="velocity-label">Amplifier Sessions</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">3</div>
+                <div class="velocity-label">Recipe Iterations</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">6</div>
+                <div class="velocity-label">Schema Fixes</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">33</div>
+                <div class="velocity-label">Sections Mapped</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 16: Key Insights -->
+    <div class="slide">
+        <div class="section-label">Insights</div>
+        <h2 class="headline">What We Learned</h2>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">The 404 Discovery</div>
+                    <div class="timeline-desc">Real broken links on production proved the system wasn't theoretical—it was urgent</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Recipe Constraints Are Features</div>
+                    <div class="timeline-desc">The 6 schema issues forced us to think more carefully about output structure</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Output Design Is UX</div>
+                    <div class="timeline-desc">Unified JSON beats multi-file—consumers shouldn't need to cross-reference</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Classification Enables Automation</div>
+                    <div class="timeline-desc">Verbatim vs synthesized vs marketing determines what validation is possible</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 17: CTA -->
+    <div class="slide center">
+        <div class="section-label">Next Steps</div>
+        <h2 class="headline">Ready for Integration</h2>
+        <p class="subhead">The content generation system is complete and ready to power withamplifier.com updates</p>
+        <div class="halves" style="margin-top: 48px;">
+            <div class="card">
+                <div class="card-title">Run the Recipe</div>
+                <div class="card-desc">Execute website-content-generation.yaml to regenerate all content from latest sources</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Integrate with CI</div>
+                <div class="card-desc">Automate content regeneration when source files change</div>
+            </div>
+        </div>
+        <div class="small-text">Sessions 5e8b6e41 & 43feb37a | MADE Team</div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>
