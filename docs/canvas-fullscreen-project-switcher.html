@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Fullscreen Project Switcher | Canvas</title>
+    <style>
+        :root {
+            --accent: #00D4FF;
+            --accent-dim: rgba(0, 212, 255, 0.15);
+            --accent-glow: rgba(0, 212, 255, 0.3);
+            --green: #34D399;
+            --red: #F87171;
+            --yellow: #FBBF24;
+            --blue: #60A5FA;
+            --purple: #A78BFA;
+            --pink: #F472B6;
+            
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium-headline: clamp(28px, 5vw, 48px);
+            --font-subhead: clamp(18px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-small: clamp(12px, 1.5vw, 14px);
+            --font-code: clamp(11px, 1.5vw, 14px);
+            --font-big-number: clamp(48px, 12vw, 96px);
+            
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .section-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.1;
+            margin-bottom: 24px;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--blue) 50%, var(--purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 600;
+            letter-spacing: -1px;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            color: rgba(255,255,255,0.7);
+            max-width: 750px;
+            line-height: 1.5;
+        }
+
+        .small-text {
+            font-size: var(--font-small);
+            color: rgba(255,255,255,0.4);
+            margin-top: 32px;
+        }
+
+        /* Animated badge */
+        .badge-animated {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--accent-dim), rgba(167, 139, 250, 0.15));
+            border: 1px solid var(--accent);
+            border-radius: 20px;
+            padding: 8px 20px;
+            font-size: var(--font-small);
+            font-weight: 600;
+            color: var(--accent);
+            margin-top: 24px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+            50% { box-shadow: 0 0 20px 4px var(--accent-glow); }
+        }
+
+        /* Fork comparison */
+        .fork-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: clamp(24px, 4vw, 48px);
+            margin-top: 48px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .fork-side {
+            padding: clamp(24px, 4vw, 40px);
+            border-radius: 20px;
+        }
+
+        .fork-for {
+            background: linear-gradient(135deg, rgba(96,165,250,0.1), rgba(96,165,250,0.02));
+            border: 1px solid rgba(96,165,250,0.2);
+        }
+
+        .fork-with {
+            background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,212,255,0.03));
+            border: 2px solid var(--accent);
+        }
+
+        .fork-label {
+            font-size: var(--font-small);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .fork-for .fork-label { color: var(--blue); }
+        .fork-with .fork-label { color: var(--accent); }
+
+        .fork-title {
+            font-size: clamp(18px, 3vw, 24px);
+            font-weight: 600;
+            margin-bottom: 16px;
+            line-height: 1.3;
+        }
+
+        .fork-desc {
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.6);
+            line-height: 1.6;
+        }
+
+        /* Feature cards with emojis */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .feature-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: clamp(20px, 3vw, 28px);
+        }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .feature-title {
+            font-size: clamp(14px, 2vw, 16px);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .feature-desc {
+            font-size: var(--font-small);
+            color: rgba(255,255,255,0.5);
+            line-height: 1.5;
+        }
+
+        /* Quote box */
+        .quote-box {
+            background: var(--accent-dim);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 16px 16px 0;
+            padding: clamp(20px, 3vw, 28px) clamp(24px, 4vw, 32px);
+            margin-top: 32px;
+            font-size: var(--font-body);
+            font-style: italic;
+            color: rgba(255,255,255,0.9);
+            line-height: 1.5;
+            max-width: 700px;
+        }
+
+        /* Cycle diagram */
+        .cycle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(8px, 2vw, 16px);
+            margin-top: 48px;
+            flex-wrap: wrap;
+        }
+
+        .cycle-step {
+            padding: clamp(14px, 2.5vw, 20px) clamp(16px, 3vw, 24px);
+            border-radius: 14px;
+            font-size: var(--font-body);
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .cycle-blue {
+            background: rgba(96, 165, 250, 0.15);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            color: var(--blue);
+        }
+
+        .cycle-yellow {
+            background: rgba(251, 191, 36, 0.15);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: var(--yellow);
+        }
+
+        .cycle-red {
+            background: rgba(248, 113, 113, 0.15);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            color: var(--red);
+        }
+
+        .cycle-green {
+            background: rgba(52, 211, 153, 0.15);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+            color: var(--green);
+        }
+
+        .cycle-dim {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .cycle-arrow {
+            font-size: clamp(18px, 3vw, 28px);
+            color: rgba(255,255,255,0.3);
+        }
+
+        .cycle-caption {
+            margin-top: 32px;
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+        }
+
+        /* UI Mockup card */
+        .mockup-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: clamp(24px, 4vw, 32px);
+            max-width: 400px;
+            margin: 32px auto 0;
+            text-align: left;
+        }
+
+        .mockup-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 16px;
+        }
+
+        .mockup-search {
+            flex: 1;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: var(--font-small);
+            color: rgba(255,255,255,0.4);
+        }
+
+        .mockup-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: var(--font-body);
+            margin-bottom: 4px;
+        }
+
+        .mockup-item.current {
+            background: var(--accent-dim);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .mockup-item .status-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .mockup-item .status-check { color: var(--green); }
+        .mockup-item .status-spinner { 
+            color: var(--yellow);
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .mockup-item .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .mockup-item-name {
+            flex: 1;
+        }
+
+        /* Icon cards grid (4 col) */
+        .icon-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .icon-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: clamp(20px, 3vw, 24px);
+            text-align: center;
+        }
+
+        .icon-card-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .icon-card-title {
+            font-size: clamp(14px, 2vw, 16px);
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        /* Interaction table */
+        .interaction-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: 12px;
+            margin-top: 40px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .interaction-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 18px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+        }
+
+        .interaction-key {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: var(--font-code);
+            color: var(--accent);
+            background: rgba(0, 212, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .interaction-action {
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.7);
+        }
+
+        /* Technical flow (3-column) */
+        .flow-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: clamp(16px, 3vw, 24px);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        .flow-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .flow-header {
+            font-size: var(--font-small);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 8px;
+            padding-left: 12px;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            font-size: var(--font-code);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        .flow-step.highlight {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .flow-step.green {
+            background: rgba(52, 211, 153, 0.1);
+            border-color: rgba(52, 211, 153, 0.3);
+        }
+
+        .flow-num {
+            width: 24px;
+            height: 24px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 12px;
+            flex-shrink: 0;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .flow-step.highlight .flow-num {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .flow-step.green .flow-num {
+            background: var(--green);
+            color: #000;
+        }
+
+        .flow-arrow {
+            text-align: center;
+            color: rgba(255,255,255,0.2);
+            font-size: 16px;
+            padding: 4px 0;
+        }
+
+        /* Timeline */
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+            gap: 16px;
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .timeline-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: clamp(16px, 2.5vw, 24px);
+            text-align: center;
+        }
+
+        .timeline-item.blue { border-color: rgba(96, 165, 250, 0.3); }
+        .timeline-item.yellow { border-color: rgba(251, 191, 36, 0.3); }
+        .timeline-item.red { border-color: rgba(248, 113, 113, 0.3); }
+        .timeline-item.green { border-color: rgba(52, 211, 153, 0.3); }
+
+        .timeline-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+        }
+
+        .timeline-item.blue .timeline-dot { background: var(--blue); }
+        .timeline-item.yellow .timeline-dot { background: var(--yellow); }
+        .timeline-item.red .timeline-dot { background: var(--red); }
+        .timeline-item.green .timeline-dot { background: var(--green); }
+
+        .timeline-title {
+            font-size: var(--font-small);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .timeline-desc {
+            font-size: clamp(11px, 1.3vw, 12px);
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Guidance (do/don't) */
+        .guidance-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: clamp(24px, 4vw, 48px);
+            margin-top: 48px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .guidance-side {
+            padding: clamp(20px, 3vw, 32px);
+            border-radius: 16px;
+        }
+
+        .guidance-do {
+            background: rgba(52, 211, 153, 0.1);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+
+        .guidance-dont {
+            background: rgba(248, 113, 113, 0.08);
+            border: 1px solid rgba(248, 113, 113, 0.2);
+        }
+
+        .guidance-header {
+            font-size: var(--font-small);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+
+        .guidance-do .guidance-header { color: var(--green); }
+        .guidance-dont .guidance-header { color: var(--red); }
+
+        .guidance-list {
+            list-style: none;
+        }
+
+        .guidance-list li {
+            font-size: var(--font-body);
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .guidance-list li:last-child {
+            border-bottom: none;
+        }
+
+        .guidance-list .icon-check { color: var(--green); }
+        .guidance-list .icon-x { color: var(--red); }
+
+        /* Big numbers */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 48px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(167, 139, 250, 0.05));
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 20px;
+            padding: clamp(24px, 4vw, 40px) clamp(20px, 3vw, 32px);
+            text-align: center;
+        }
+
+        .metric-number {
+            font-size: var(--font-big-number);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .metric-label {
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.6);
+            margin-top: 12px;
+        }
+
+        /* Outcome cards */
+        .outcome-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .outcome-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: clamp(24px, 4vw, 32px);
+            text-align: center;
+        }
+
+        .outcome-icon {
+            font-size: 40px;
+            margin-bottom: 16px;
+        }
+
+        .outcome-title {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .outcome-desc {
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.6);
+            line-height: 1.5;
+        }
+
+        /* Quote */
+        .quote {
+            font-size: clamp(20px, 4vw, 32px);
+            font-style: italic;
+            color: rgba(255,255,255,0.8);
+            max-width: 800px;
+            line-height: 1.5;
+            margin-top: 32px;
+        }
+
+        .quote-author {
+            font-size: var(--font-body);
+            color: var(--accent);
+            margin-top: 16px;
+            font-style: normal;
+        }
+
+        /* CTA button */
+        .cta-btn {
+            display: inline-block;
+            padding: 16px 40px;
+            background: var(--accent);
+            color: #000;
+            font-weight: 600;
+            font-size: var(--font-body);
+            border-radius: 30px;
+            text-decoration: none;
+            margin-top: 32px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--accent-glow);
+        }
+
+        /* Badge row */
+        .badge-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .badge {
+            background: var(--accent-dim);
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: var(--font-small);
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+            z-index: 100;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Responsive */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px var(--padding-slide) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+                padding-top: 40px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Emphasis text */
+        .em-accent { color: var(--accent); }
+        .em-green { color: var(--green); }
+        .em-red { color: var(--red); }
+        .em-blue { color: var(--blue); }
+        .em-yellow { color: var(--yellow); }
+        .em-dim { color: rgba(255,255,255,0.5); }
+    </style>
+</head>
+<body>
+    <!-- Slide 1: Title -->
+    <div class="slide active center">
+        <div class="section-label">Canvas Feature</div>
+        <h1 class="headline"><span class="gradient-text">Fullscreen<br>Project Switcher</span></h1>
+        <p class="subhead">Seamless Multi-Project Workflow</p>
+        <div class="badge-animated">AI-Assisted Development</div>
+        <div class="small-text">PR #312 • January 2026</div>
+    </div>
+
+    <!-- Slide 2: What is Canvas -->
+    <div class="slide center">
+        <div class="section-label">The Philosophy</div>
+        <h2 class="medium-headline">Two visions of AI are emerging</h2>
+        <div class="fork-container">
+            <div class="fork-side fork-for">
+                <div class="fork-label">AI For You</div>
+                <div class="fork-title">Autonomous execution without supervision</div>
+                <p class="fork-desc">Give AI a task, let it run. More tokens, longer context, less human involvement. The goal: AI that works without you.</p>
+            </div>
+            <div class="fork-side fork-with">
+                <div class="fork-label">AI With You — Canvas</div>
+                <div class="fork-title">Compounding work toward better outcomes</div>
+                <p class="fork-desc">AI as a collaborator. Every interaction makes the next one smarter. Human intention stays central. The goal: AI that amplifies you.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: User Feedback -->
+    <div class="slide center">
+        <div class="section-label">User Feedback</div>
+        <h2 class="medium-headline">What users loved about fullscreen</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">💬</div>
+                <div class="feature-title">Chat Visible</div>
+                <div class="feature-desc">See the entire conversation with the AI agent as it works</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">👁️</div>
+                <div class="feature-title">Preview Visible</div>
+                <div class="feature-desc">Watch what's being built in real-time, side by side</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <div class="feature-title">Focused Mode</div>
+                <div class="feature-desc">No distractions — just you and your project</div>
+            </div>
+        </div>
+        <div class="quote-box">
+            "Many users preferred the focused fullscreen experience over the parallel canvas view — until they needed to switch projects."
+        </div>
+    </div>
+
+    <!-- Slide 4: The Problem (cycle diagram) -->
+    <div class="slide center">
+        <div class="section-label">The Problem</div>
+        <h2 class="medium-headline">The Context Switch Tax</h2>
+        <p class="subhead">To switch projects, users had to exit fullscreen — breaking flow</p>
+        <div class="cycle-container">
+            <div class="cycle-step cycle-blue">Fullscreen</div>
+            <div class="cycle-arrow">→</div>
+            <div class="cycle-step cycle-yellow">Exit to Canvas</div>
+            <div class="cycle-arrow">→</div>
+            <div class="cycle-step cycle-yellow">Find Project</div>
+            <div class="cycle-arrow">→</div>
+            <div class="cycle-step cycle-yellow">Open</div>
+            <div class="cycle-arrow">→</div>
+            <div class="cycle-step cycle-red">Re-enter Fullscreen</div>
+            <div class="cycle-arrow">→</div>
+            <div class="cycle-step cycle-dim">Repeat...</div>
+        </div>
+        <p class="cycle-caption"><span class="em-red">5 steps</span> just to check another project</p>
+    </div>
+
+    <!-- Slide 5: The Solution -->
+    <div class="slide center">
+        <div class="section-label">The Solution</div>
+        <h1 class="headline"><span class="gradient-text">Click. Switch.<br>Continue.</span></h1>
+        <p class="subhead">Stay in fullscreen, navigate freely</p>
+        <div class="cycle-container" style="margin-top: 48px;">
+            <div class="cycle-step cycle-green">Click Title</div>
+            <div class="cycle-arrow" style="color: var(--green);">→</div>
+            <div class="cycle-step cycle-green">Select Project</div>
+            <div class="cycle-arrow" style="color: var(--green);">→</div>
+            <div class="cycle-step cycle-green">Keep Working</div>
+        </div>
+        <p class="cycle-caption"><span class="em-green">3 steps</span> — never leave fullscreen</p>
+    </div>
+
+    <!-- Slide 6: UI Mockup -->
+    <div class="slide center">
+        <div class="section-label">The Interface</div>
+        <h2 class="medium-headline">Project Switcher UI</h2>
+        <p class="subhead">A searchable, keyboard-navigable project list</p>
+        <div class="mockup-card">
+            <div class="mockup-header">
+                <div class="mockup-search">🔍 Search projects...</div>
+            </div>
+            <div class="mockup-item current">
+                <div class="status-icon status-check">✓</div>
+                <div class="mockup-item-name">Current Project</div>
+            </div>
+            <div class="mockup-item">
+                <div class="status-icon status-spinner">◐</div>
+                <div class="mockup-item-name">Background Task Running</div>
+            </div>
+            <div class="mockup-item">
+                <div class="status-icon"><div class="status-dot"></div></div>
+                <div class="mockup-item-name">Has New Activity</div>
+            </div>
+            <div class="mockup-item">
+                <div class="status-icon" style="opacity: 0.3">○</div>
+                <div class="mockup-item-name">Inactive Project</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Capabilities (icon cards) -->
+    <div class="slide center">
+        <div class="section-label">Capabilities</div>
+        <h2 class="medium-headline">What you can do</h2>
+        <div class="icon-cards">
+            <div class="icon-card">
+                <div class="icon-card-icon">🔍</div>
+                <div class="icon-card-title">Searchable List</div>
+            </div>
+            <div class="icon-card">
+                <div class="icon-card-icon">⌨️</div>
+                <div class="icon-card-title">⌘K Shortcut</div>
+            </div>
+            <div class="icon-card">
+                <div class="icon-card-icon">🔔</div>
+                <div class="icon-card-title">Background Alerts</div>
+            </div>
+            <div class="icon-card">
+                <div class="icon-card-icon">✨</div>
+                <div class="icon-card-title">Status Indicators</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: Interactions Table -->
+    <div class="slide center">
+        <div class="section-label">Interactions</div>
+        <h2 class="medium-headline">Intuitive by design</h2>
+        <div class="interaction-grid">
+            <div class="interaction-item">
+                <div class="interaction-key">Click</div>
+                <div class="interaction-action">Open switcher</div>
+            </div>
+            <div class="interaction-item">
+                <div class="interaction-key">Double-click</div>
+                <div class="interaction-action">Rename (preserved)</div>
+            </div>
+            <div class="interaction-item">
+                <div class="interaction-key">⌘K</div>
+                <div class="interaction-action">Open switcher</div>
+            </div>
+            <div class="interaction-item">
+                <div class="interaction-key">↑ ↓</div>
+                <div class="interaction-action">Navigate list</div>
+            </div>
+            <div class="interaction-item">
+                <div class="interaction-key">Enter</div>
+                <div class="interaction-action">Select project</div>
+            </div>
+            <div class="interaction-item">
+                <div class="interaction-key">Esc</div>
+                <div class="interaction-action">Close switcher</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: Technical Flow -->
+    <div class="slide center">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">How it works under the hood</h2>
+        <div class="flow-grid">
+            <div class="flow-column">
+                <div class="flow-header">User Action</div>
+                <div class="flow-step highlight">
+                    <div class="flow-num">1</div>
+                    <span>Click project title</span>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-step">
+                    <div class="flow-num">2</div>
+                    <span>Search / navigate</span>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-step highlight">
+                    <div class="flow-num">3</div>
+                    <span>Select new project</span>
+                </div>
+            </div>
+            <div class="flow-column">
+                <div class="flow-header">Frontend</div>
+                <div class="flow-step">
+                    <div class="flow-num">4</div>
+                    <span>Open modal overlay</span>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-step">
+                    <div class="flow-num">5</div>
+                    <span>Filter & sort list</span>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-step">
+                    <div class="flow-num">6</div>
+                    <span>Update global state</span>
+                </div>
+            </div>
+            <div class="flow-column">
+                <div class="flow-header">Backend</div>
+                <div class="flow-step">
+                    <div class="flow-num">7</div>
+                    <span>Fetch project list</span>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-step">
+                    <div class="flow-num">8</div>
+                    <span>Track execution status</span>
+                </div>
+                <div class="flow-arrow">↓</div>
+                <div class="flow-step green">
+                    <div class="flow-num">9</div>
+                    <span>SSE updates (live)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 10: Development Timeline -->
+    <div class="slide center">
+        <div class="section-label">The Journey</div>
+        <h2 class="medium-headline">20 commits of iteration</h2>
+        <div class="timeline-grid">
+            <div class="timeline-item blue">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">Core</div>
+                <div class="timeline-desc">ProjectSwitcher component</div>
+            </div>
+            <div class="timeline-item blue">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">CI Fixes</div>
+                <div class="timeline-desc">Lint & format</div>
+            </div>
+            <div class="timeline-item yellow">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">Test Coverage</div>
+                <div class="timeline-desc">Struggle begins</div>
+            </div>
+            <div class="timeline-item red">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">Timeouts</div>
+                <div class="timeline-desc">Multiple attempts</div>
+            </div>
+            <div class="timeline-item yellow">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">Code Review</div>
+                <div class="timeline-desc">Theming fixes</div>
+            </div>
+            <div class="timeline-item green">
+                <div class="timeline-dot"></div>
+                <div class="timeline-title">Success</div>
+                <div class="timeline-desc">44 tests passing</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 11: AI Struggles (do/don't) -->
+    <div class="slide center">
+        <div class="section-label">Honest Story</div>
+        <h2 class="medium-headline">Amplifier struggled with CI tests</h2>
+        <div class="guidance-container">
+            <div class="guidance-side guidance-dont">
+                <div class="guidance-header">What Failed</div>
+                <ul class="guidance-list">
+                    <li><span class="icon-x">✕</span> Tests passed locally, failed CI</li>
+                    <li><span class="icon-x">✕</span> fireEvent switch — still hanging</li>
+                    <li><span class="icon-x">✕</span> 10 tests — timeout</li>
+                    <li><span class="icon-x">✕</span> 4 tests — timeout</li>
+                    <li><span class="icon-x">✕</span> Removed tests temporarily</li>
+                </ul>
+            </div>
+            <div class="guidance-side guidance-do">
+                <div class="guidance-header">What Worked</div>
+                <ul class="guidance-list">
+                    <li><span class="icon-check">✓</span> Root cause: fake timers + waitFor</li>
+                    <li><span class="icon-check">✓</span> Fix: vi.advanceTimersByTimeAsync()</li>
+                    <li><span class="icon-check">✓</span> Proper act() wrapping</li>
+                    <li><span class="icon-check">✓</span> 44 tests now passing</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 12: Stats (big numbers) -->
+    <div class="slide center">
+        <div class="section-label">Velocity</div>
+        <h2 class="medium-headline">By the numbers</h2>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-number">1,694</div>
+                <div class="metric-label">Lines Added</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-number">13</div>
+                <div class="metric-label">Files Changed</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-number">20</div>
+                <div class="metric-label">Commits</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-number">44</div>
+                <div class="metric-label">Tests Passing</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 13: Outcome -->
+    <div class="slide center">
+        <div class="section-label">Impact</div>
+        <h2 class="medium-headline">What users get</h2>
+        <div class="outcome-cards">
+            <div class="outcome-card">
+                <div class="outcome-icon">🚀</div>
+                <div class="outcome-title">Zero Context Switch</div>
+                <div class="outcome-desc">Stay in fullscreen, switch freely between projects</div>
+            </div>
+            <div class="outcome-card">
+                <div class="outcome-icon">👁️</div>
+                <div class="outcome-title">Background Visibility</div>
+                <div class="outcome-desc">Always know what's happening in other projects</div>
+            </div>
+            <div class="outcome-card">
+                <div class="outcome-icon">⌨️</div>
+                <div class="outcome-title">Keyboard-First</div>
+                <div class="outcome-desc">Power users can navigate without touching the mouse</div>
+            </div>
+        </div>
+        <p class="quote">"Drive your entire workflow from fullscreen"</p>
+    </div>
+
+    <!-- Slide 14: Closing -->
+    <div class="slide center">
+        <div class="section-label">Canvas Feature</div>
+        <h1 class="headline"><span class="gradient-text">Fullscreen<br>Project Switcher</span></h1>
+        <p class="subhead">Seamless multi-project workflow in Canvas</p>
+        <div class="badge-row">
+            <span class="badge">AI-Assisted</span>
+            <span class="badge">100% Amplifier Generated</span>
+            <span class="badge">PR #312</span>
+        </div>
+        <a href="https://github.com/anthropics/canvas/pull/312" class="cta-btn" target="_blank">View PR #312</a>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="../index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('.cta-btn') || e.target.closest('.more-stories')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('.more-stories')) return;
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>
