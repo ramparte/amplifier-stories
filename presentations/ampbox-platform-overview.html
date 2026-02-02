@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ampbox - AI Agent Sandbox Platform</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#8B5CF6',
+                primaryTextColor: '#F8FAFC',
+                primaryBorderColor: '#7C3AED',
+                lineColor: '#06B6D4',
+                secondaryColor: '#1E293B',
+                tertiaryColor: '#0F172A',
+                background: '#0F172A',
+                mainBkg: '#1E293B',
+                secondBkg: '#334155',
+                border1: '#475569',
+                border2: '#64748B'
+            }
+        });
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        :root {
+            --primary: #8B5CF6;
+            --primary-dark: #7C3AED;
+            --accent: #06B6D4;
+            --accent-bright: #0EA5E9;
+            --bg-dark: #0F172A;
+            --bg-darker: #020617;
+            --bg-card: rgba(30, 41, 59, 0.5);
+            --text-primary: #F8FAFC;
+            --text-secondary: #CBD5E1;
+            --text-muted: #64748B;
+            --border: rgba(148, 163, 184, 0.1);
+            --glow-primary: rgba(139, 92, 246, 0.4);
+            --glow-accent: rgba(6, 182, 212, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+            position: relative;
+        }
+
+        /* Animated background gradient */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 50%);
+            animation: gradientShift 20s ease infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(5%, 5%); }
+        }
+
+        .slides {
+            display: flex;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .slide {
+            min-width: 100vw;
+            height: 100vh;
+            padding: clamp(40px, 6vw, 100px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide-content {
+            max-width: 1200px;
+            width: 100%;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-label {
+            font-size: clamp(11px, 1.2vw, 13px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: var(--accent);
+            margin-bottom: 16px;
+            display: inline-block;
+            position: relative;
+        }
+
+        .section-label::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+        }
+
+        .headline {
+            font-size: clamp(36px, 6vw, 72px);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subhead {
+            font-size: clamp(18px, 2.5vw, 28px);
+            font-weight: 400;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        /* Glassmorphic Cards */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: clamp(24px, 4vw, 36px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 60px var(--glow-primary);
+        }
+
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: clamp(20px, 3vw, 32px);
+            margin-top: 40px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: clamp(20px, 3vw, 28px);
+            margin-top: 40px;
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 8px 24px var(--glow-primary);
+        }
+
+        .feature-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+            stroke-width: 2;
+        }
+
+        .feature-content h3 {
+            font-size: clamp(18px, 2.5vw, 22px);
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .feature-content p {
+            font-size: clamp(14px, 1.8vw, 16px);
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        /* Code Blocks */
+        .code-container {
+            position: relative;
+            margin-top: 24px;
+        }
+
+        .code-block {
+            background: #1E293B;
+            border: 1px solid rgba(100, 116, 139, 0.2);
+            border-radius: 16px;
+            padding: 28px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(13px, 1.6vw, 15px);
+            line-height: 1.7;
+            overflow-x: auto;
+            position: relative;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .code-block::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 32px;
+            background: linear-gradient(180deg, rgba(100, 116, 139, 0.1), transparent);
+            border-radius: 16px 16px 0 0;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+        }
+
+        .code-lang {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .copy-btn {
+            background: rgba(100, 116, 139, 0.2);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .copy-btn:hover {
+            background: rgba(139, 92, 246, 0.2);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .code-content {
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .code-comment { color: #64748B; }
+        .code-keyword { color: #C084FC; font-weight: 500; }
+        .code-string { color: #34D399; }
+        .code-function { color: #60A5FA; }
+        .code-variable { color: #06B6D4; }
+        .code-number { color: #F472B6; }
+
+        /* Badges */
+        .badge-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 12px;
+            font-size: clamp(13px, 1.5vw, 15px);
+            font-weight: 600;
+            color: var(--primary);
+            transition: all 0.3s;
+        }
+
+        .badge:hover {
+            background: rgba(139, 92, 246, 0.2);
+            border-color: var(--primary);
+            box-shadow: 0 4px 16px var(--glow-primary);
+        }
+
+        /* Metrics */
+        .metric-card {
+            text-align: center;
+            padding: clamp(32px, 5vw, 48px);
+        }
+
+        .metric-number {
+            font-size: clamp(56px, 10vw, 96px);
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .metric-label {
+            font-size: clamp(14px, 2vw, 18px);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* List Styles */
+        .feature-list {
+            list-style: none;
+            margin-top: 24px;
+        }
+
+        .feature-list li {
+            font-size: clamp(15px, 2vw, 18px);
+            line-height: 1.8;
+            color: var(--text-secondary);
+            padding-left: 32px;
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .feature-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10px;
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--glow-accent);
+        }
+
+        /* Table Styles */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 32px;
+            font-size: clamp(13px, 1.8vw, 15px);
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .comparison-table th {
+            background: rgba(139, 92, 246, 0.2);
+            padding: clamp(14px, 2vw, 18px);
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .comparison-table td {
+            padding: clamp(12px, 2vw, 16px);
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .comparison-table strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Navigation */
+        .nav-dots {
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 12px 20px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(203, 213, 225, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot:hover {
+            background: rgba(203, 213, 225, 0.6);
+            transform: scale(1.2);
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            width: 32px;
+            border-radius: 4px;
+            box-shadow: 0 0 12px var(--glow-accent);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            z-index: 100;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .click-nav {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            width: 15%;
+            cursor: pointer;
+            z-index: 50;
+            transition: background 0.2s;
+        }
+
+        .click-nav:hover {
+            background: rgba(100, 116, 139, 0.02);
+        }
+
+        .click-nav.prev { left: 0; }
+        .click-nav.next { right: 0; }
+
+        /* Mermaid Architecture Diagram Styles */
+        #architecture-diagram {
+            width: 100%;
+            max-height: calc(100vh - 300px);
+            margin-top: 32px;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            overflow: auto;
+        }
+
+        #architecture-diagram .mermaid {
+            display: flex;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        /* Override Mermaid default styles */
+        #architecture-diagram .node rect,
+        #architecture-diagram .node circle,
+        #architecture-diagram .node polygon {
+            fill: rgba(30, 41, 59, 0.8) !important;
+            stroke: rgba(139, 92, 246, 0.5) !important;
+            stroke-width: 2px !important;
+        }
+
+        #architecture-diagram .node text {
+            fill: var(--text-primary) !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 500 !important;
+        }
+
+        #architecture-diagram .edgePath .path {
+            stroke: var(--accent) !important;
+            stroke-width: 2px !important;
+        }
+
+        #architecture-diagram .edgeLabel {
+            background: rgba(30, 41, 59, 0.9) !important;
+            color: var(--text-secondary) !important;
+        }
+
+        #architecture-diagram .cluster rect {
+            fill: rgba(139, 92, 246, 0.05) !important;
+            stroke: rgba(139, 92, 246, 0.3) !important;
+            stroke-width: 2px !important;
+            rx: 12px !important;
+        }
+
+        #architecture-diagram .cluster text {
+            fill: var(--accent) !important;
+            font-weight: 600 !important;
+            font-size: 14px !important;
+        }
+
+        @keyframes fadeInDiagram {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #architecture-diagram.loaded {
+            animation: fadeInDiagram 0.8s ease-out;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px 20px;
+            }
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+            #architecture-diagram {
+                height: 600px;
+            }
+        }
+
+        /* Title Slide Enhancements */
+        .title-slide {
+            text-align: center;
+        }
+
+        .title-slide .headline {
+            font-size: clamp(48px, 10vw, 120px);
+            margin-bottom: 16px;
+        }
+
+        .animated-gradient-text {
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientFlow 3s linear infinite;
+        }
+
+        @keyframes gradientFlow {
+            to {
+                background-position: 200% center;
+            }
+        }
+
+        /* Keyboard Hint */
+        .keyboard-hint {
+            position: fixed;
+            bottom: 32px;
+            left: 32px;
+            font-size: 12px;
+            color: var(--text-muted);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 4px 8px;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="slides">
+        <!-- Slide 1: Title -->
+        <div class="slide">
+            <div class="slide-content title-slide">
+                <div class="section-label">AI AGENT INFRASTRUCTURE</div>
+                <h1 class="headline animated-gradient-text">Ampbox</h1>
+                <p class="subhead">Secure, Isolated Execution Environments for AI Agents</p>
+            </div>
+        </div>
+
+        <!-- Slide 2: The Problem -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">THE CHALLENGE</div>
+                <h2 class="headline">AI Agents Need to Execute Code</h2>
+                <p class="subhead">But untrusted code is dangerous</p>
+                <div class="grid-3">
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Security Risk</h3>
+                            <p>AI-generated code can access sensitive data, make API calls, or compromise systems</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Resource Management</h3>
+                            <p>Agents need isolated environments with CPU/memory limits and automatic cleanup</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Performance</h3>
+                            <p>Sandboxes must start quickly and support streaming output for real-time feedback</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: What is Ampbox -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">SOLUTION</div>
+                <h2 class="headline">Kubernetes-Native Sandbox Platform</h2>
+                <p class="subhead">Run untrusted code from AI agents in isolated gVisor containers</p>
+                <div class="grid-3">
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>gVisor Isolation</h3>
+                            <p>Kernel-level syscall interception for maximum security</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Fast Startup</h3>
+                            <p>Warm pools enable sub-second sandbox allocation</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Multiple Runtimes</h3>
+                            <p>Python, Node.js, Shell, Browser - pick your stack</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Full SDKs</h3>
+                            <p>Python and TypeScript with async/await support</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Flexible Auth</h3>
+                            <p>API keys or Azure AD/Entra ID integration</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Auto-Cleanup</h3>
+                            <p>TTL-based expiration prevents resource leaks</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Architecture -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">ARCHITECTURE</div>
+                <h2 class="headline">How It Works</h2>
+                <p class="subhead">Enterprise-grade Kubernetes architecture</p>
+                <div id="architecture-diagram">
+                    <div class="mermaid">
+graph TB
+    subgraph client["Client Layer"]
+        agent1["Claude Code"]
+        agent2["Amplifier"]
+        agent3["Codex"]
+        agent4["Custom Agents"]
+    end
+
+    subgraph sdk["SDK Layer"]
+        pysdk["Python SDK<br/>(ampbox)"]
+        tssdk["TypeScript SDK<br/>(@ampbox/sdk)"]
+    end
+
+    subgraph gateway["API Gateway Layer"]
+        rest["REST API<br/>/api/v1/*"]
+        ws["WebSocket<br/>/ws/stream"]
+        auth["Authentication<br/>API Key + Azure AD"]
+    end
+
+    subgraph aks["Azure Kubernetes Service (AKS)"]
+        subgraph control["Control Plane"]
+            controller["Agent-Sandbox<br/>Controller"]
+            templates["Template<br/>Manager"]
+        end
+
+        subgraph pool["Sandbox Pool (gVisor)"]
+            py["Python 3.12<br/>Sandboxes"]
+            node["Node.js 22<br/>Sandboxes"]
+            shell["Shell<br/>Sandboxes"]
+            browser["Browser<br/>Sandboxes"]
+        end
+    end
+
+    subgraph infra["Infrastructure Layer"]
+        db[("PostgreSQL<br/>Database")]
+        storage[("Azure Blob<br/>Storage")]
+    end
+
+    agent1 --> pysdk
+    agent2 --> pysdk
+    agent3 --> tssdk
+    agent4 --> tssdk
+
+    pysdk --> rest
+    pysdk --> ws
+    tssdk --> rest
+    tssdk --> ws
+
+    rest --> auth
+    ws --> auth
+    auth --> controller
+
+    controller --> templates
+    controller --> py
+    controller --> node
+    controller --> shell
+    controller --> browser
+
+    controller --> db
+    controller --> storage
+    py --> storage
+    node --> storage
+    shell --> storage
+    browser --> storage
+
+    style client fill:#1e293b,stroke:#8b5cf6,stroke-width:2px
+    style sdk fill:#1e293b,stroke:#8b5cf6,stroke-width:2px
+    style gateway fill:#1e293b,stroke:#8b5cf6,stroke-width:2px
+    style aks fill:#0f172a,stroke:#06b6d4,stroke-width:3px
+    style control fill:#1e293b,stroke:#8b5cf6,stroke-width:2px
+    style pool fill:#1e293b,stroke:#06b6d4,stroke-width:2px
+    style infra fill:#1e293b,stroke:#64748b,stroke-width:2px
+
+    style agent1 fill:#334155,stroke:#8b5cf6
+    style agent2 fill:#334155,stroke:#8b5cf6
+    style agent3 fill:#334155,stroke:#8b5cf6
+    style agent4 fill:#334155,stroke:#8b5cf6
+    style pysdk fill:#334155,stroke:#8b5cf6
+    style tssdk fill:#334155,stroke:#8b5cf6
+    style rest fill:#334155,stroke:#06b6d4
+    style ws fill:#334155,stroke:#06b6d4
+    style auth fill:#334155,stroke:#8b5cf6
+    style controller fill:#334155,stroke:#06b6d4
+    style templates fill:#334155,stroke:#06b6d4
+    style py fill:#334155,stroke:#06b6d4
+    style node fill:#334155,stroke:#06b6d4
+    style shell fill:#334155,stroke:#06b6d4
+    style browser fill:#334155,stroke:#06b6d4
+    style db fill:#334155,stroke:#64748b
+    style storage fill:#334155,stroke:#64748b
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Sandbox Templates -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">SANDBOX TEMPLATES</div>
+                <h2 class="headline">Multiple Runtimes Available</h2>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Template</th>
+                            <th>Description</th>
+                            <th>Size</th>
+                            <th>Startup</th>
+                            <th>Use Case</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>coding-agent</strong></td>
+                            <td>Python 3.12 + Node.js 22 + AI tools</td>
+                            <td>~850MB</td>
+                            <td>5-8s</td>
+                            <td>Multi-language AI agents</td>
+                        </tr>
+                        <tr>
+                            <td><strong>python</strong></td>
+                            <td>Python 3.12 with pip</td>
+                            <td>~400MB</td>
+                            <td>2-3s</td>
+                            <td>Python code execution</td>
+                        </tr>
+                        <tr>
+                            <td><strong>nodejs</strong></td>
+                            <td>Node.js 22 with npm</td>
+                            <td>~250MB</td>
+                            <td>2-3s</td>
+                            <td>JavaScript/TypeScript</td>
+                        </tr>
+                        <tr>
+                            <td><strong>shell</strong></td>
+                            <td>Ubuntu 24.04 + tools</td>
+                            <td>~300MB</td>
+                            <td>2-3s</td>
+                            <td>Shell commands, git ops</td>
+                        </tr>
+                        <tr>
+                            <td><strong>browser</strong></td>
+                            <td>Playwright + Chromium</td>
+                            <td>~1.2GB</td>
+                            <td>8-10s</td>
+                            <td>Web scraping, automation</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Slide 6: Security Model -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">SECURITY</div>
+                <h2 class="headline">Defense in Depth</h2>
+                <div class="grid-3">
+                    <div class="glass-card">
+                        <div class="feature-icon" style="margin-bottom: 20px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                        </div>
+                        <h3 style="margin-bottom: 16px; color: var(--text-primary); font-size: clamp(18px, 2.5vw, 22px);">Container Security</h3>
+                        <ul class="feature-list">
+                            <li>gVisor syscall interception</li>
+                            <li>Non-root user (UID 1000)</li>
+                            <li>Read-only base filesystem</li>
+                            <li>All capabilities dropped</li>
+                        </ul>
+                    </div>
+                    <div class="glass-card">
+                        <div class="feature-icon" style="margin-bottom: 20px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                        </div>
+                        <h3 style="margin-bottom: 16px; color: var(--text-primary); font-size: clamp(18px, 2.5vw, 22px);">Network Security</h3>
+                        <ul class="feature-list">
+                            <li>Network policies enforce isolation</li>
+                            <li>Egress-only connections</li>
+                            <li>WebSocket origin validation</li>
+                            <li>TLS required for API calls</li>
+                        </ul>
+                    </div>
+                    <div class="glass-card">
+                        <div class="feature-icon" style="margin-bottom: 20px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                        </div>
+                        <h3 style="margin-bottom: 16px; color: var(--text-primary); font-size: clamp(18px, 2.5vw, 22px);">Resource Security</h3>
+                        <ul class="feature-list">
+                            <li>CPU/memory quotas per sandbox</li>
+                            <li>Ephemeral storage only</li>
+                            <li>Auto-cleanup after TTL</li>
+                            <li>No persistent data between sessions</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Quick Start Python -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">QUICK START</div>
+                <h2 class="headline">Python SDK</h2>
+                <p class="subhead">Install and start executing code in seconds</p>
+                <div class="code-container">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">Python</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <div class="code-content"><span class="code-comment"># Install the SDK</span>
+<span class="code-keyword">pip install</span> ampbox
+
+<span class="code-comment"># Import and create client</span>
+<span class="code-keyword">from</span> ampbox <span class="code-keyword">import</span> SandboxClient
+
+client = <span class="code-function">SandboxClient</span>(
+    endpoint=<span class="code-string">"https://sandbox.ampbox.io"</span>,
+    api_key=<span class="code-string">"your-api-key"</span>,
+)
+
+<span class="code-comment"># Create sandbox and execute code</span>
+<span class="code-keyword">async with</span> client.<span class="code-function">create_sandbox</span>(template=<span class="code-string">"python"</span>) <span class="code-keyword">as</span> sandbox:
+    result = <span class="code-keyword">await</span> sandbox.<span class="code-function">exec</span>(<span class="code-string">"python -c 'print(1+1)'"</span>)
+    <span class="code-function">print</span>(result.stdout)  <span class="code-comment"># "2"</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Quick Start TypeScript -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">QUICK START</div>
+                <h2 class="headline">TypeScript SDK</h2>
+                <p class="subhead">Modern async/await API for JavaScript developers</p>
+                <div class="code-container">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">TypeScript</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <div class="code-content"><span class="code-comment">// Install the SDK</span>
+<span class="code-keyword">npm install</span> @ampbox/sdk
+
+<span class="code-comment">// Import and create client</span>
+<span class="code-keyword">import</span> { SandboxClient } <span class="code-keyword">from</span> <span class="code-string">'@ampbox/sdk'</span>;
+
+<span class="code-keyword">const</span> client = <span class="code-keyword">new</span> <span class="code-function">SandboxClient</span>({
+  endpoint: <span class="code-string">'https://sandbox.ampbox.io'</span>,
+  apiKey: <span class="code-string">'your-api-key'</span>,
+});
+
+<span class="code-comment">// Create sandbox and execute code</span>
+<span class="code-keyword">await</span> client.<span class="code-function">withSandbox</span>({ template: <span class="code-string">'nodejs'</span> }, <span class="code-keyword">async</span> (sandbox) => {
+  <span class="code-keyword">const</span> result = <span class="code-keyword">await</span> sandbox.<span class="code-function">exec</span>(<span class="code-string">'node -e "console.log(1+1)"'</span>);
+  console.<span class="code-function">log</span>(result.stdout); <span class="code-comment">// "2"</span>
+});</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Use Cases -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">USE CASES</div>
+                <h2 class="headline">Built for AI Agents</h2>
+                <div class="grid-3">
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"></line><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"></line><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"></line><line x1="14.83" y1="9.17" x2="18.36" y2="5.64"></line><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"></line></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>AI Code Execution</h3>
+                            <p>Run code generated by Claude, GPT, or other LLMs in isolated environments</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Untrusted Code Testing</h3>
+                            <p>Safely execute user-submitted code for online judges or educational platforms</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Web Scraping</h3>
+                            <p>Browser template with Playwright for AI agents that interact with web pages</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6"></path><path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path><path d="m1 12h6m6 0h6"></path><path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"></path></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>CI/CD Pipelines</h3>
+                            <p>Ephemeral build environments with automatic cleanup and resource limits</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Data Processing</h3>
+                            <p>Multi-language support for Python data science and Node.js visualization</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Development Environments</h3>
+                            <p>On-demand dev environments with full toolchains for remote work</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Performance -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">PERFORMANCE</div>
+                <h2 class="headline">Fast & Efficient</h2>
+                <div class="grid-3">
+                    <div class="glass-card metric-card">
+                        <div class="metric-number" data-target="1">&lt;1</div>
+                        <div class="metric-label">Second Warm Pool Allocation</div>
+                    </div>
+                    <div class="glass-card metric-card">
+                        <div class="metric-number" data-target="15">15</div>
+                        <div class="metric-label">Times Faster Python Installs</div>
+                    </div>
+                    <div class="glass-card metric-card">
+                        <div class="metric-number" data-target="4">4</div>
+                        <div class="metric-label">GB Max Memory Per Sandbox</div>
+                    </div>
+                </div>
+                <div class="grid-2" style="margin-top: 40px;">
+                    <div class="glass-card">
+                        <h3 style="margin-bottom: 20px; color: var(--text-primary); font-size: clamp(20px, 3vw, 24px);">Startup Times</h3>
+                        <ul class="feature-list">
+                            <li>Cold start: 2-8s (depends on template)</li>
+                            <li>Warm start: 2-3s (cached image)</li>
+                            <li>Instant: &lt;1s (warm pool)</li>
+                        </ul>
+                    </div>
+                    <div class="glass-card">
+                        <h3 style="margin-bottom: 20px; color: var(--text-primary); font-size: clamp(20px, 3vw, 24px);">Resource Efficiency</h3>
+                        <ul class="feature-list">
+                            <li>Idle memory: ~200MB</li>
+                            <li>Active workload: 500MB-2GB</li>
+                            <li>Automatic cleanup after TTL</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: SDK Features -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">SDK FEATURES</div>
+                <h2 class="headline">Full-Featured SDKs</h2>
+                <div class="grid-3">
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Sandbox Lifecycle</h3>
+                            <p>Create, list, get status, destroy with automatic cleanup</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Command Execution</h3>
+                            <p>Execute commands with stdout/stderr capture and exit codes</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Streaming Output</h3>
+                            <p>Real-time output streaming for long-running commands</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>File Transfer</h3>
+                            <p>Upload and download files to/from sandboxes</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Interactive Terminal</h3>
+                            <p>WebSocket-based terminal for debugging and exploration</p>
+                        </div>
+                    </div>
+                    <div class="glass-card feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Azure AD Auth</h3>
+                            <p>Enterprise authentication with Entra ID integration</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Getting Started -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="section-label">GET STARTED</div>
+                <h2 class="headline">Quick Setup</h2>
+                <div class="grid-2">
+                    <div>
+                        <h3 style="color: var(--accent); font-size: clamp(20px, 3vw, 28px); margin-bottom: 20px; font-weight: 600;">Local Development</h3>
+                        <div class="code-container">
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span class="code-lang">Bash</span>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                                <div class="code-content"><span class="code-comment"># Clone the repo</span>
+git clone https://github.com/kenotron-ms/ampbox
+
+<span class="code-comment"># Start locally</span>
+./dev.sh
+
+<span class="code-comment"># API available at</span>
+http://localhost:8080</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--accent); font-size: clamp(20px, 3vw, 28px); margin-bottom: 20px; font-weight: 600;">Install SDKs</h3>
+                        <div class="code-container">
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span class="code-lang">Bash</span>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                                <div class="code-content"><span class="code-comment"># Python</span>
+pip install ampbox
+
+<span class="code-comment"># TypeScript</span>
+npm install @ampbox/sdk
+
+<span class="code-comment"># CLI</span>
+brew install ampbox-cli</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-card" style="margin-top: 32px;">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                        </div>
+                        <div class="feature-content">
+                            <h3>Complete Documentation</h3>
+                            <p>Visit <strong>docs/</strong> directory or run <strong>cd docs && npm run dev</strong> for interactive documentation site</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Call to Action -->
+        <div class="slide">
+            <div class="slide-content title-slide">
+                <div class="section-label">READY TO BUILD?</div>
+                <h2 class="headline">Start Securing Your AI Agents</h2>
+                <p class="subhead">Production-ready sandbox platform for AI code execution</p>
+                <div class="grid-2" style="margin-top: 60px;">
+                    <div class="glass-card">
+                        <div class="feature-icon" style="margin-bottom: 20px; box-shadow: 0 12px 32px var(--glow-primary);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+                        </div>
+                        <h3 style="margin-bottom: 12px; color: var(--text-primary); font-size: clamp(22px, 3vw, 28px);">Try It Now</h3>
+                        <p style="margin-bottom: 24px; color: var(--text-secondary);">Get started with local development in 5 minutes</p>
+                        <div class="code-container">
+                            <div class="code-block">
+                                <div class="code-content">git clone ampbox
+./dev.sh</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="feature-icon" style="margin-bottom: 20px; box-shadow: 0 12px 32px var(--glow-accent);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                        </div>
+                        <h3 style="margin-bottom: 12px; color: var(--text-primary); font-size: clamp(22px, 3vw, 28px);">Learn More</h3>
+                        <p style="margin-bottom: 24px; color: var(--text-secondary);">Explore complete documentation and examples</p>
+                        <ul class="feature-list">
+                            <li>Quick Start Guide</li>
+                            <li>API Reference</li>
+                            <li>Best Practices</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-dots"></div>
+    <div class="slide-counter"><span id="current">1</span> / <span id="total">13</span></div>
+    <div class="keyboard-hint">
+        <span class="key">←</span>
+        <span class="key">→</span>
+        Navigate
+    </div>
+    <div class="click-nav prev" onclick="prevSlide()"></div>
+    <div class="click-nav next" onclick="nextSlide()"></div>
+    <div class="tooltip"></div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        const navDots = document.querySelector('.nav-dots');
+
+        // Create nav dots
+        for (let i = 0; i < totalSlides; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot';
+            if (i === 0) dot.classList.add('active');
+            dot.onclick = () => goToSlide(i);
+            navDots.appendChild(dot);
+        }
+
+        function updateSlidePosition() {
+            const slidesContainer = document.querySelector('.slides');
+            slidesContainer.style.transform = `translateX(-${currentSlide * 100}vw)`;
+            
+            document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === currentSlide);
+            });
+            
+            document.getElementById('current').textContent = currentSlide + 1;
+
+            // Add loaded class to architecture diagram for animation
+            if (currentSlide === 3) {
+                setTimeout(() => {
+                    document.getElementById('architecture-diagram').classList.add('loaded');
+                }, 100);
+            }
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                currentSlide++;
+                updateSlidePosition();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlidePosition();
+            }
+        }
+
+        function goToSlide(index) {
+            currentSlide = index;
+            updateSlidePosition();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            }
+        });
+
+        // Touch support for mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) nextSlide();
+            if (touchEndX > touchStartX + 50) prevSlide();
+        }
+
+        document.getElementById('total').textContent = totalSlides;
+
+        // Copy code functionality
+        function copyCode(button) {
+            const codeBlock = button.closest('.code-block');
+            const codeContent = codeBlock.querySelector('.code-content');
+            const text = codeContent.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                }, 2000);
+            });
+        }
+
+
+
+        // Animate metric numbers
+        function animateMetrics() {
+            const metrics = document.querySelectorAll('.metric-number');
+            metrics.forEach(metric => {
+                const target = parseInt(metric.dataset.target);
+                const current = metric.textContent.replace(/[^0-9]/g, '');
+                if (current !== '' && parseInt(current) === target) return; // Already animated
+                
+                let count = 0;
+                const increment = target / 30;
+                const timer = setInterval(() => {
+                    count += increment;
+                    if (count >= target) {
+                        clearInterval(timer);
+                        count = target;
+                    }
+                    if (target === 1) {
+                        metric.innerHTML = '&lt;1';
+                    } else {
+                        metric.textContent = Math.floor(count);
+                    }
+                }, 50);
+            });
+        }
+
+        // Trigger metric animation when slide is visible
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.target.querySelector('.metric-number')) {
+                    animateMetrics();
+                }
+            });
+        }, { threshold: 0.5 });
+
+        slides.forEach(slide => observer.observe(slide));
+    </script>
+</body>
+</html>
