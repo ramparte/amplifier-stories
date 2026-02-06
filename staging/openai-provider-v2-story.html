@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenAI Provider v2 — Built for the Responses API</title>
+<style>
+:root {
+    --accent: #00D4FF;
+    --accent-dim: rgba(0, 212, 255, 0.15);
+    --accent-glow: rgba(0, 212, 255, 0.3);
+    --bg: #000;
+    --text: #fff;
+    --text-dim: rgba(255,255,255,0.5);
+    --text-mid: rgba(255,255,255,0.7);
+    --card-bg: rgba(255,255,255,0.05);
+    --card-border: rgba(255,255,255,0.1);
+    --green: #30D158;
+    --red: #FF453A;
+    --orange: #FF9F0A;
+    --yellow: #FFD60A;
+    --purple: #BF5AF2;
+    --pink: #FF375F;
+
+    --font-headline: clamp(32px, 7vw, 68px);
+    --font-medium-headline: clamp(24px, 5vw, 48px);
+    --font-subhead: clamp(16px, 3vw, 28px);
+    --font-body: clamp(14px, 2vw, 18px);
+    --font-small: clamp(12px, 1.5vw, 14px);
+    --font-big-number: clamp(48px, 16vw, 140px);
+    --font-code: clamp(11px, 1.5vw, 14px);
+
+    --padding-slide: clamp(24px, 5vw, 80px);
+    --gap-grid: clamp(16px, 2.5vw, 32px);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+}
+
+.deck { position: relative; width: 100vw; height: 100vh; height: 100dvh; }
+
+.slide {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    padding: var(--padding-slide);
+    padding-bottom: calc(var(--padding-slide) + 40px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.slide.active { opacity: 1; pointer-events: auto; }
+.slide > * { max-width: 1000px; width: 100%; }
+
+/* Left-align interior content of structured elements */
+.card, .tier, .emphasis-box, .bridge-side { text-align: left; }
+
+.section-label {
+    font-size: var(--font-small);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+
+.headline {
+    font-size: var(--font-headline);
+    font-weight: 700;
+    letter-spacing: -2px;
+    line-height: 1.08;
+    margin-bottom: 24px;
+}
+
+.medium-headline {
+    font-size: var(--font-medium-headline);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin-bottom: 20px;
+}
+
+.subhead {
+    font-size: var(--font-subhead);
+    font-weight: 400;
+    color: var(--text-mid);
+    line-height: 1.5;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.body-text {
+    font-size: var(--font-body);
+    color: var(--text-mid);
+    line-height: 1.7;
+    max-width: 780px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.big-number {
+    font-size: var(--font-big-number);
+    font-weight: 800;
+    letter-spacing: -4px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent), #00FFD4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Grids */
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+    gap: var(--gap-grid);
+    width: 100%;
+}
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    gap: var(--gap-grid);
+    width: 100%;
+}
+.grid-4 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: var(--gap-grid);
+    width: 100%;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: clamp(16px, 3vw, 28px);
+}
+.card-accent {
+    border-color: rgba(0, 212, 255, 0.25);
+    background: var(--accent-dim);
+}
+.card h3 {
+    font-size: clamp(16px, 2.5vw, 22px);
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--text);
+}
+.card p, .card li {
+    font-size: var(--font-body);
+    color: var(--text-mid);
+    line-height: 1.6;
+}
+
+/* Flow diagrams */
+.flow {
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 2vw, 20px);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.flow-box {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 14px 22px;
+    font-size: var(--font-body);
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+}
+.flow-box.accent {
+    background: var(--accent-dim);
+    border-color: rgba(0, 212, 255, 0.3);
+    color: var(--accent);
+}
+.flow-arrow {
+    color: var(--text-dim);
+    font-size: clamp(16px, 3vw, 28px);
+    flex-shrink: 0;
+}
+
+/* Comparison layout */
+.comparison {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: var(--gap-grid);
+    width: 100%;
+}
+.comparison .old {
+    border-color: rgba(255, 69, 58, 0.3);
+    background: rgba(255, 69, 58, 0.05);
+}
+.comparison .new {
+    border-color: rgba(0, 212, 255, 0.3);
+    background: var(--accent-dim);
+}
+.comparison .label {
+    font-size: var(--font-small);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+}
+.comparison .old .label { color: var(--red); }
+.comparison .new .label { color: var(--accent); }
+
+/* Mapping arrows */
+.mapping-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: var(--font-body);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.mapping-row:last-child { border-bottom: none; }
+.mapping-from {
+    background: rgba(255,255,255,0.08);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-family: 'SF Mono', monospace;
+    font-size: var(--font-code);
+    color: var(--text);
+    white-space: nowrap;
+}
+.mapping-arrow { color: var(--accent); font-weight: 600; flex-shrink: 0; }
+.mapping-to {
+    background: var(--accent-dim);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-family: 'SF Mono', monospace;
+    font-size: var(--font-code);
+    color: var(--accent);
+    white-space: nowrap;
+}
+.mapping-note {
+    font-size: clamp(11px, 1.3vw, 13px);
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+/* Badge / tag */
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: clamp(11px, 1.2vw, 13px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.badge-accent { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+.badge-green { background: rgba(48,209,88,0.15); color: var(--green); border: 1px solid rgba(48,209,88,0.3); }
+.badge-orange { background: rgba(255,159,10,0.15); color: var(--orange); border: 1px solid rgba(255,159,10,0.3); }
+.badge-red { background: rgba(255,69,58,0.15); color: var(--red); border: 1px solid rgba(255,69,58,0.3); }
+.badge-purple { background: rgba(191,90,242,0.15); color: var(--purple); border: 1px solid rgba(191,90,242,0.3); }
+
+/* Feature list with icons */
+.feature-list { list-style: none; }
+.feature-list li {
+    padding: 8px 0;
+    font-size: var(--font-body);
+    color: var(--text-mid);
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+.feature-list li::before {
+    content: "\2192";
+    color: var(--accent);
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* Spacers */
+.spacer-sm { height: 16px; }
+.spacer-md { height: 28px; }
+.spacer-lg { height: 40px; }
+
+/* Stats row */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+    gap: var(--gap-grid);
+    text-align: center;
+}
+.stat-value {
+    font-size: clamp(36px, 10vw, 72px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, var(--accent), #00FFD4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.stat-label {
+    font-size: var(--font-small);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
+}
+
+/* Emphasis box */
+.emphasis-box {
+    background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(0,255,212,0.04));
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 16px;
+    padding: clamp(20px, 4vw, 36px);
+}
+
+/* Navigation */
+.nav-dots {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+}
+.nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+}
+.nav-dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
+    transform: scale(1.3);
+}
+.nav-dot:hover { background: rgba(255,255,255,0.5); }
+
+.slide-counter {
+    position: fixed;
+    bottom: 20px;
+    right: 28px;
+    font-size: 13px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    z-index: 100;
+}
+
+/* Click zones */
+.click-left, .click-right {
+    position: fixed;
+    top: 0;
+    width: 25%;
+    height: 100%;
+    z-index: 50;
+    cursor: pointer;
+}
+.click-left { left: 0; }
+.click-right { right: 0; }
+
+/* Title slide specific */
+.title-meta {
+    font-size: var(--font-body);
+    color: var(--text-dim);
+    margin-top: 20px;
+}
+.title-meta span { color: var(--accent); }
+
+/* Responsive overrides */
+@media (max-width: 768px) {
+    .headline { letter-spacing: -1px; }
+    .slide { padding: 20px; padding-bottom: 60px; }
+    .flow { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+    .mapping-row { flex-direction: column; gap: 6px; }
+}
+
+/* Diagram-specific styles */
+.bridge-diagram {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    min-height: 280px;
+}
+.bridge-side {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px;
+}
+.bridge-center {
+    width: clamp(140px, 20vw, 200px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, rgba(0,212,255,0.05), rgba(0,212,255,0.15), rgba(0,212,255,0.05));
+    border-left: 1px solid rgba(0,212,255,0.2);
+    border-right: 1px solid rgba(0,212,255,0.2);
+    padding: 16px 10px;
+    position: relative;
+}
+.bridge-center-label {
+    font-size: var(--font-small);
+    color: var(--accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+}
+.bridge-item {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'SF Mono', monospace;
+    font-size: clamp(10px, 1.3vw, 13px);
+    color: var(--text-mid);
+}
+.bridge-item.amplifier {
+    border-color: rgba(191,90,242,0.3);
+    background: rgba(191,90,242,0.08);
+}
+.bridge-item.openai {
+    border-color: rgba(0,212,255,0.3);
+    background: rgba(0,212,255,0.08);
+}
+.bridge-label {
+    font-size: var(--font-small);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.bridge-label.amplifier-label { color: var(--purple); }
+.bridge-label.openai-label { color: var(--accent); }
+
+@media (max-width: 768px) {
+    .bridge-diagram { flex-direction: column; min-height: auto; }
+    .bridge-center {
+        width: 100%;
+        flex-direction: row;
+        writing-mode: horizontal-tb;
+        min-height: 48px;
+        border-left: none;
+        border-right: none;
+        border-top: 1px solid rgba(0,212,255,0.2);
+        border-bottom: 1px solid rgba(0,212,255,0.2);
+    }
+    .bridge-center-label {
+        writing-mode: horizontal-tb;
+        transform: none;
+    }
+}
+
+/* Tier system */
+.tier {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+.tier-badge {
+    font-size: clamp(11px, 1.2vw, 13px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    white-space: nowrap;
+    min-width: 70px;
+    text-align: center;
+}
+.tier-info { flex: 1; }
+.tier-info h4 {
+    font-size: var(--font-body);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.tier-info p {
+    font-size: clamp(12px, 1.5vw, 14px);
+    color: var(--text-dim);
+    line-height: 1.4;
+}
+
+/* Subtle animations */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.slide.active .animate-in {
+    animation: fadeInUp 0.6s ease forwards;
+}
+.slide.active .animate-in.d1 { animation-delay: 0.1s; opacity: 0; }
+.slide.active .animate-in.d2 { animation-delay: 0.2s; opacity: 0; }
+.slide.active .animate-in.d3 { animation-delay: 0.3s; opacity: 0; }
+.slide.active .animate-in.d4 { animation-delay: 0.4s; opacity: 0; }
+.slide.active .animate-in.d5 { animation-delay: 0.5s; opacity: 0; }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+<!-- ==================== SLIDE 1: Title ==================== -->
+<div class="slide active" data-slide="0">
+    <div class="section-label animate-in d1">Amplifier Module</div>
+    <h1 class="headline animate-in d2">
+        OpenAI Provider v2
+    </h1>
+    <div class="subhead animate-in d3">
+        A ground-up reimagining built exclusively on the Responses API.
+        Not an upgrade — a new foundation.
+    </div>
+    <div class="spacer-lg"></div>
+    <div class="title-meta animate-in d4">
+        <a href="https://github.com/DavidKoleczek/amplifier-module-provider-openai-v2" target="_blank" style="color: var(--accent); text-decoration: none;">amplifier-module-provider-openai-v2</a>&ensp;&middot;&ensp;v1.0.0&ensp;&middot;&ensp;February 2026
+    </div>
+</div>
+
+<!-- ==================== SLIDE 2: Architecture ==================== -->
+<div class="slide" data-slide="1">
+    <div class="section-label animate-in d1">Architecture</div>
+    <h2 class="medium-headline animate-in d2">Single file. Deliberate.</h2>
+    <div class="body-text animate-in d3" style="margin-bottom: 24px;">
+        937 lines + 19 lines of constants. Thin enough that splitting would add indirection without value.
+    </div>
+    <div class="grid-2 animate-in d4">
+        <div>
+            <div class="card" style="margin-bottom: var(--gap-grid);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">OpenAIProvider</h3>
+                    <span class="badge badge-accent">802 lines</span>
+                </div>
+                <p>Core implementation — API client, bidirectional conversion, hooks, model listing. The engine.</p>
+            </div>
+            <div class="card" style="margin-bottom: var(--gap-grid);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">OpenAIRequest</h3>
+                    <span class="badge badge-purple">Pydantic</span>
+                </div>
+                <p>Typed wrapper for Responses API parameters. Type safety + validation + clean serialization.</p>
+            </div>
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">UIChatResponse</h3>
+                    <span class="badge badge-green">Streaming</span>
+                </div>
+                <p>Extends ChatResponse with content_blocks and text for streaming UI compatibility.</p>
+            </div>
+        </div>
+        <div>
+            <div class="card" style="margin-bottom: var(--gap-grid);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">mount()</h3>
+                    <span class="badge badge-green">Entry Point</span>
+                </div>
+                <p>Standard Amplifier module contract. Receives coordinator + config, creates provider, registers it, returns async cleanup function.</p>
+            </div>
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">Dependencies</h3>
+                    <span class="badge badge-accent">Minimal</span>
+                </div>
+                <p>One runtime dependency: <strong style="color: var(--accent);">openai[aiohttp] &gt;=2.15, &lt;3.0</strong>. Provider modules should be light.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 3: The Bidirectional Bridge ==================== -->
+<div class="slide" data-slide="2">
+    <div class="section-label animate-in d1">Core Innovation</div>
+    <h2 class="medium-headline animate-in d2">The Bidirectional Bridge</h2>
+    <div class="body-text animate-in d3" style="margin-bottom: 28px;">
+        Amplifier Core speaks messages. The Responses API speaks items.
+        The bridge translates both directions without losing fidelity.
+    </div>
+    <div class="bridge-diagram animate-in d4">
+        <div class="bridge-side">
+            <div class="bridge-label amplifier-label">Amplifier Core</div>
+            <div class="bridge-item amplifier">Message(role="user", content="...")</div>
+            <div class="bridge-item amplifier">Message(role="assistant", content=[ThinkingBlock, TextBlock, ToolCallBlock])</div>
+            <div class="bridge-item amplifier">Message(role="tool", content=ToolResultBlock)</div>
+            <div class="bridge-item amplifier">ChatResponse(content_blocks=[...])</div>
+        </div>
+        <div class="bridge-center">
+            <div class="bridge-center-label">CONVERSION LAYER</div>
+        </div>
+        <div class="bridge-side">
+            <div class="bridge-label openai-label">Responses API</div>
+            <div class="bridge-item openai">EasyInputMessageParam(role="user")</div>
+            <div class="bridge-item openai">ResponseReasoningItemParam + EasyInputMessageParam + ResponseFunctionToolCallParam</div>
+            <div class="bridge-item openai">FunctionCallOutput(type="function_call_output")</div>
+            <div class="bridge-item openai">Response(output=[reasoning, message, function_call, web_search_call])</div>
+        </div>
+    </div>
+    <div class="spacer-sm"></div>
+    <div style="font-size: var(--font-small); color: var(--text-dim);" class="animate-in d5">
+        230 lines of precise type conversion — the heart of the provider.
+    </div>
+</div>
+
+<!-- ==================== SLIDE 4: Request Direction ==================== -->
+<div class="slide" data-slide="3">
+    <div class="section-label animate-in d1">Request Direction</div>
+    <h2 class="medium-headline animate-in d2">Amplifier → OpenAI</h2>
+    <div class="body-text animate-in d3" style="margin-bottom: 20px;">
+        Role-based dispatch via <code style="color: var(--accent);">match/case</code>. A single assistant message with mixed blocks
+        <strong style="color:#fff">expands</strong> into multiple flat items, then gets reordered.
+    </div>
+    <div class="animate-in d4" style="margin-bottom: 20px;">
+        <div class="mapping-row">
+            <span class="mapping-from">user + str</span>
+            <span class="mapping-arrow">→</span>
+            <span class="mapping-to">EasyInputMessageParam(role="user")</span>
+        </div>
+        <div class="mapping-row">
+            <span class="mapping-from">system / developer</span>
+            <span class="mapping-arrow">→</span>
+            <span class="mapping-to">EasyInputMessageParam(role=same)</span>
+        </div>
+        <div class="mapping-row">
+            <span class="mapping-from">assistant + ThinkingBlock</span>
+            <span class="mapping-arrow">→</span>
+            <span class="mapping-to">ResponseReasoningItemParam</span>
+            <span class="mapping-note">with encrypted_content + id</span>
+        </div>
+        <div class="mapping-row">
+            <span class="mapping-from">assistant + TextBlock</span>
+            <span class="mapping-arrow">→</span>
+            <span class="mapping-to">EasyInputMessageParam(role="assistant")</span>
+        </div>
+        <div class="mapping-row">
+            <span class="mapping-from">assistant + ToolCallBlock</span>
+            <span class="mapping-arrow">→</span>
+            <span class="mapping-to">ResponseFunctionToolCallParam</span>
+            <span class="mapping-note">type="function_call"</span>
+        </div>
+        <div class="mapping-row">
+            <span class="mapping-from">tool + ToolResultBlock</span>
+            <span class="mapping-arrow">→</span>
+            <span class="mapping-to">FunctionCallOutput</span>
+            <span class="mapping-note">type="function_call_output"</span>
+        </div>
+    </div>
+    <div class="emphasis-box animate-in d5" style="padding: 16px 24px;">
+        <div style="display: flex; align-items: center; gap: 12px; justify-content: center;">
+            <span style="color: var(--accent); font-weight: 700; font-size: 18px;">↕</span>
+            <div>
+                <strong style="color: #fff;">Post-processing: </strong>
+                <span style="color: var(--text-mid);">
+                    Automatic reordering enforces item order —
+                    reasoning first, text middle, tool calls last.
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 5: Web Search ==================== -->
+<div class="slide" data-slide="4">
+    <div class="section-label animate-in d1">Standout Feature</div>
+    <h2 class="medium-headline animate-in d2">Built-in Web Search<br>Preservation</h2>
+    <div class="spacer-sm"></div>
+    <div class="grid-2 animate-in d3">
+        <div>
+            <div class="body-text" style="max-width: none; margin-bottom: 20px; text-align: left;">
+                When <code style="color: var(--accent);">web_search: true</code>, the provider injects OpenAI's native
+                <code style="color: var(--green);">{"type": "web_search"}</code> tool.
+            </div>
+            <div class="card" style="margin-bottom: 16px;">
+                <h3 style="font-size: clamp(14px, 2vw, 17px);">Action Types Handled</h3>
+                <div style="margin-top: 12px;">
+                    <div style="display: flex; gap: 8px; align-items: center; padding: 6px 0;">
+                        <span class="badge badge-green" style="min-width: 100px;">Search</span>
+                        <span style="font-size: var(--font-small); color: var(--text-dim);">query + source URLs extracted</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; padding: 6px 0;">
+                        <span class="badge badge-accent" style="min-width: 100px;">Open Page</span>
+                        <span style="font-size: var(--font-small); color: var(--text-dim);">URL of the visited page</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; padding: 6px 0;">
+                        <span class="badge badge-orange" style="min-width: 100px;">Find</span>
+                        <span style="font-size: var(--font-small); color: var(--text-dim);">pattern + URL for in-page search</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="card" style="margin-bottom: 16px;">
+                <h3 style="font-size: clamp(14px, 2vw, 17px);">How It Works</h3>
+                <ul class="feature-list" style="margin-top: 10px;">
+                    <li>Injects native web search into the tools list on every request</li>
+                    <li>Response includes full search results and action sources</li>
+                    <li>Each search call converts to paired <strong style="color: #fff;">ToolCallBlock + synthetic ToolResultBlock</strong></li>
+                    <li>Search context preserved in conversation model for round-tripping</li>
+                </ul>
+            </div>
+            <div style="font-size: var(--font-small); color: var(--text-dim); padding: 12px 16px; background: rgba(255,255,255,0.03); border-radius: 10px; text-align: left;">
+                No function-call hacks. No custom tool definitions. Just native API integration with full fidelity.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 7: Encrypted Reasoning ==================== -->
+<div class="slide" data-slide="6">
+    <div class="section-label animate-in d1">Standout Feature</div>
+    <h2 class="medium-headline animate-in d2">Encrypted Reasoning<br>Round-Trip</h2>
+    <div class="spacer-sm"></div>
+    <div class="body-text animate-in d3" style="margin-bottom: 24px;">
+        OpenAI reasoning includes <code style="color: var(--accent);">encrypted_content</code> that must be sent back
+        <strong style="color:#fff">verbatim</strong> for multi-turn reasoning continuity. Lose it, and the model loses its chain of thought.
+    </div>
+    <div class="animate-in d4" style="margin-bottom: 28px;">
+        <div class="flow">
+            <div class="flow-box accent" style="font-size: var(--font-small);">OpenAI Response</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-box" style="font-size: var(--font-small); border-color: rgba(191,90,242,0.3);">
+                <span style="color: var(--purple);">ThinkingBlock</span><br>
+                <span style="font-size: 11px; color: var(--text-dim);">content=[encrypted_content, reasoning_id]</span><br>
+                <span style="font-size: 11px; color: var(--text-dim);">thinking=summary</span>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-box" style="font-size: var(--font-small);">Stored in History</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-box accent" style="font-size: var(--font-small);">
+                <span style="color: var(--accent);">ResponseReasoningItemParam</span><br>
+                <span style="font-size: 11px; color: var(--text-dim);">id + encrypted_content + summary</span>
+            </div>
+        </div>
+    </div>
+    <div class="grid-2 animate-in d5">
+        <div class="card" style="border-color: rgba(0,212,255,0.2); overflow: hidden;">
+            <h3 style="font-size: clamp(14px, 2vw, 17px); color: var(--accent);">Inbound (Response)</h3>
+            <p style="margin-top: 8px; font-size: var(--font-small); color: var(--text-mid); line-height: 1.6;">
+                Extracts encrypted_content and reasoning_id from the OpenAI response and stashes both into ThinkingBlock. Summary text is stored separately for display.
+            </p>
+        </div>
+        <div class="card" style="border-color: rgba(191,90,242,0.2); overflow: hidden;">
+            <h3 style="font-size: clamp(14px, 2vw, 17px); color: var(--purple);">Outbound (Request)</h3>
+            <p style="margin-top: 8px; font-size: var(--font-small); color: var(--text-mid); line-height: 1.6;">
+                Reconstructs ResponseReasoningItemParam with the original id and passes encrypted_content back verbatim. Silently skips blocks with missing or incomplete data.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 8: Background Mode ==================== -->
+<div class="slide" data-slide="7">
+    <div class="section-label animate-in d1">Standout Feature</div>
+    <h2 class="medium-headline animate-in d2">Background Mode</h2>
+    <div class="body-text animate-in d3" style="margin-bottom: 24px;">
+        For requests that would exceed HTTP timeout limits — send the request, then poll until it's done.
+    </div>
+    <div class="comparison animate-in d4">
+        <div class="card old">
+            <div class="label">Streaming (Default)</div>
+            <ul class="feature-list" style="margin-top: 12px;">
+                <li>Uses event-based streaming transport</li>
+                <li>Captures only the final <strong style="color:#fff;">ResponseCompletedEvent</strong></li>
+                <li>Streaming's resilience + completed response's consistency</li>
+                <li>No storage required (<code style="color: var(--text-dim);">store=false</code>)</li>
+            </ul>
+        </div>
+        <div class="card new">
+            <div class="label">Background Mode</div>
+            <ul class="feature-list" style="margin-top: 12px;">
+                <li>Fire request with <code style="color: var(--accent);">background=true</code></li>
+                <li>Poll every 2 seconds until status leaves "queued" / "in_progress"</li>
+                <li>Requires <code style="color: var(--accent);">store=true</code> for server-side persistence</li>
+                <li>Designed for requests exceeding HTTP timeout limits</li>
+            </ul>
+        </div>
+    </div>
+    <div class="spacer-md"></div>
+    <div class="emphasis-box animate-in d5" style="padding: 14px 22px; text-align: center;">
+        <span style="color: var(--text-dim); font-size: var(--font-body);">
+            Both paths wrapped in a configurable timeout. 20-minute ceiling by default.
+        </span>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 9: Strict Schemas + Orphan Cleanup ==================== -->
+<div class="slide" data-slide="8">
+    <div class="section-label animate-in d1">Robustness</div>
+    <h2 class="medium-headline animate-in d2">Strict Schemas &<br>Orphan Cleanup</h2>
+    <div class="spacer-sm"></div>
+    <div class="grid-2 animate-in d3">
+        <div class="card" style="overflow: hidden;">
+            <h3>Strict Schema Compliance</h3>
+            <p style="margin-top: 8px; font-size: var(--font-small); color: var(--text-mid); line-height: 1.6;">
+                OpenAI's strict mode requires additionalProperties: false and all properties marked required on every object. The provider recursively walks the entire schema tree — objects, arrays, unions, $defs — and transforms everything before it hits the API.
+            </p>
+        </div>
+        <div class="card" style="overflow: hidden;">
+            <h3>Orphaned Tool Call Removal</h3>
+            <p style="margin-top: 8px; font-size: var(--font-small); color: var(--text-mid); line-height: 1.6;">
+                Real sessions get interrupted. Tool calls can end up without matching results, and the API rejects those. Before each request, the provider scans for unmatched function_call items and strips them out so the conversation stays valid.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 10: Debug System ==================== -->
+<div class="slide" data-slide="9">
+    <div class="section-label animate-in d1">Observability</div>
+    <h2 class="medium-headline animate-in d2">Debug Hooks</h2>
+    <div class="body-text animate-in d3" style="margin-bottom: 28px;">
+        Three levels of visibility into what goes over the wire. Pick what you need — from summaries to full raw I/O.
+    </div>
+    <div class="animate-in d4">
+        <div class="tier">
+            <div class="tier-badge" style="background: rgba(48,209,88,0.15); color: var(--green);">INFO</div>
+            <div class="tier-info">
+                <h4 style="color: var(--green);">Always On</h4>
+                <p>Model, message/tool counts, reasoning effort, token usage, latency. Emitted on every call.</p>
+            </div>
+            <div style="font-family: 'SF Mono', monospace; font-size: var(--font-code); color: var(--text-dim); white-space: nowrap;">
+                llm:request &middot; llm:response
+            </div>
+        </div>
+        <div class="tier">
+            <div class="tier-badge" style="background: rgba(0,212,255,0.15); color: var(--accent);">DEBUG</div>
+            <div class="tier-info">
+                <h4 style="color: var(--accent);">Truncated Payloads</h4>
+                <p>Full request/response structure, but long strings clipped to 2000 chars so logs stay readable.</p>
+            </div>
+            <div style="font-family: 'SF Mono', monospace; font-size: var(--font-code); color: var(--text-dim); white-space: nowrap;">
+                llm:request:debug
+            </div>
+        </div>
+        <div class="tier">
+            <div class="tier-badge" style="background: rgba(255,159,10,0.15); color: var(--orange);">RAW</div>
+            <div class="tier-info">
+                <h4 style="color: var(--orange);">Full I/O</h4>
+                <p>Unmodified request params and response objects. You probably only want this when something is broken.</p>
+            </div>
+            <div style="font-family: 'SF Mono', monospace; font-size: var(--font-code); color: var(--text-dim); white-space: nowrap;">
+                llm:request:raw
+            </div>
+        </div>
+    </div>
+    <div class="spacer-md"></div>
+    <div class="emphasis-box animate-in d5" style="padding: 14px 22px; text-align: center;">
+        <span style="color: var(--text-dim); font-size: var(--font-body);">
+            <strong style="color:#fff">Truncation is recursive</strong> — 
+            it walks nested dicts and lists but only clips leaf strings, so you still see the full shape of the data.
+        </span>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 11: Model Management ==================== -->
+<div class="slide" data-slide="10">
+    <div class="section-label animate-in d1">Smart Defaults</div>
+    <h2 class="medium-headline animate-in d2">Model Management</h2>
+    <div class="body-text animate-in d3" style="margin-bottom: 24px;">
+        Live API queries with intelligent filtering and capability detection. 
+        Not a hardcoded list — adapts as OpenAI ships new models.
+    </div>
+    <div class="grid-3 animate-in d4">
+        <div class="card">
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">Live Discovery</h3>
+            <p style="margin-top: 8px;">
+                Queries the models API at runtime. 
+                Filters to GPT-5+ series only.
+            </p>
+        </div>
+        <div class="card">
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">Dated-Version Dedup</h3>
+            <p style="margin-top: 8px;">
+                Regex filters out dated snapshots like <code style="color: var(--text-dim);">gpt-5-2025-08-07</code>. 
+                Keeps only canonical model names.
+            </p>
+        </div>
+        <div class="card">
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">Capability Detection</h3>
+            <p style="margin-top: 8px;">
+                All models: tools, reasoning, streaming, json_mode. 
+                Mini/nano models get additional <span class="badge badge-green" style="font-size: 10px;">fast</span> capability.
+            </p>
+        </div>
+    </div>
+    <div class="spacer-md"></div>
+    <div class="grid-2 animate-in d5">
+        <div class="card card-accent" style="display: flex; flex-direction: column; justify-content: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: var(--font-body); font-weight: 600;">Default Model</span>
+                <code style="color: var(--accent); font-size: var(--font-code);">gpt-5.2-codex</code>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: var(--font-body); font-weight: 600;">Context Window</span>
+                <code style="color: var(--accent); font-size: var(--font-code);">400,000 tokens</code>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: var(--font-body); font-weight: 600;">Max Output</span>
+                <code style="color: var(--accent); font-size: var(--font-code);">64,000 tokens</code>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: var(--font-body); font-weight: 600;">Reasoning Effort</span>
+                <code style="color: var(--accent); font-size: var(--font-code);">high</code>
+            </div>
+        </div>
+        <div class="card">
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">Lazy Client Init</h3>
+            <p style="margin-top: 8px;">
+                Provider metadata, config schema, and model defaults are available without credentials.
+                The API client only initializes when the first completion is requested.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 12: Design Decisions ==================== -->
+<div class="slide" data-slide="11">
+    <div class="section-label animate-in d1">Philosophy</div>
+    <h2 class="medium-headline animate-in d2">Design Decisions<br>That Matter</h2>
+    <div class="spacer-sm"></div>
+    <div class="grid-2 animate-in d3">
+        <div class="card" style="margin-bottom: var(--gap-grid);">
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">
+                <span style="color: var(--accent);">01</span>&ensp;Streaming-to-Completed
+            </h3>
+            <p style="margin-top: 8px;">
+                Uses streaming transport for connection reliability, but captures only 
+                the final completed event. 
+                Best of both worlds — streaming's resilience, completed response's consistency.
+            </p>
+        </div>
+        <div class="card" style="margin-bottom: var(--gap-grid);">
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">
+                <span style="color: var(--accent);">02</span>&ensp;Pydantic Request Wrapper
+            </h3>
+            <p style="margin-top: 8px;">
+                Typed Pydantic model gives type safety + validation + 
+                clean serialization via model_dump. 
+                No manual dict building.
+            </p>
+        </div>
+        <div class="card" style="margin-bottom: var(--gap-grid);">
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">
+                <span style="color: var(--accent);">03</span>&ensp;Single-File Architecture
+            </h3>
+            <p style="margin-top: 8px;">
+                937 lines is intentional. The conversion logic, provider, and hooks form a cohesive unit. 
+                Splitting would add indirection and cross-file coordination without reducing complexity.
+            </p>
+        </div>
+        <div class="card" style="margin-bottom: var(--gap-grid);">
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">
+                <span style="color: var(--accent);">04</span>&ensp;Explicit Include Parameters
+            </h3>
+            <p style="margin-top: 8px;">
+                Always requests encrypted reasoning content, web search results, and action sources — 
+                opt-in fields that unlock the full Responses API capability surface.
+            </p>
+        </div>
+        <div class="card">
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">
+                <span style="color: var(--accent);">05</span>&ensp;Minimal Dependencies
+            </h3>
+            <p style="margin-top: 8px;">
+                One runtime dep: <code style="color: var(--accent);">openai[aiohttp] &gt;=2.15, &lt;3.0</code>. 
+                That's it. Provider modules should be light.
+            </p>
+        </div>
+        <div class="card">
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">
+                <span style="color: var(--accent);">06</span>&ensp;Defensive Conversion
+            </h3>
+            <p style="margin-top: 8px;">
+                ThinkingBlocks with missing or incomplete data are silently skipped. 
+                The bridge handles real-world data, not ideal data.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 13: By The Numbers ==================== -->
+<div class="slide" data-slide="12">
+    <div class="section-label animate-in d1">By The Numbers</div>
+    <div class="spacer-md"></div>
+    <div class="stats-row animate-in d2" style="margin-bottom: 48px;">
+        <div>
+            <div class="stat-value">956</div>
+            <div class="stat-label">Lines of Source</div>
+        </div>
+        <div>
+            <div class="stat-value">4</div>
+            <div class="stat-label">Classes</div>
+        </div>
+        <div>
+            <div class="stat-value">1</div>
+            <div class="stat-label">Runtime Dep</div>
+        </div>
+        <div>
+            <div class="stat-value">7</div>
+            <div class="stat-label">Integration Tests</div>
+        </div>
+    </div>
+    <div class="grid-3 animate-in d3">
+        <div class="card card-accent" style="text-align: center;">
+            <div style="font-size: clamp(28px, 6vw, 48px); font-weight: 800; color: var(--accent);">230</div>
+            <div style="font-size: var(--font-small); color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">
+                Lines in Conversion Layer
+            </div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: clamp(28px, 6vw, 48px); font-weight: 800; color: var(--green);">6</div>
+            <div style="font-size: var(--font-small); color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">
+                Hook Events per Request
+            </div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: clamp(28px, 6vw, 48px); font-weight: 800; color: var(--orange);">400K</div>
+            <div style="font-size: var(--font-small); color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">
+                Token Context Window
+            </div>
+        </div>
+    </div>
+    <div class="spacer-lg"></div>
+    <div style="font-size: var(--font-body); color: var(--text-dim);" class="animate-in d4">
+        <span style="color: var(--accent);">Python &gt;=3.11</span>&ensp;&middot;&ensp;
+        <span style="color: var(--text-mid);">Hatchling build</span>&ensp;&middot;&ensp;
+        <span style="color: var(--text-mid);">MIT License</span>&ensp;&middot;&ensp;
+        <span style="color: var(--text-mid);">Microsoft MADE:Explorations</span>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 14: What's Next ==================== -->
+<div class="slide" data-slide="13">
+    <div class="section-label animate-in d1">Roadmap</div>
+    <h2 class="medium-headline animate-in d2">What's Next</h2>
+    <div class="spacer-md"></div>
+    <div class="grid-3 animate-in d3">
+        <div class="card" style="border-color: rgba(0,212,255,0.2);">
+            <div class="badge badge-accent" style="margin-bottom: 14px;">Planned</div>
+            <h3 style="font-size: clamp(16px, 2.5vw, 20px);">Image Support</h3>
+            <p style="margin-top: 8px;">
+                ResponseInputImageParam is scaffolded.
+                Wire up ImageBlock conversion for multi-modal conversations.
+            </p>
+        </div>
+        <div class="card" style="border-color: rgba(48,209,88,0.2);">
+            <div class="badge badge-green" style="margin-bottom: 14px;">Planned</div>
+            <h3 style="font-size: clamp(16px, 2.5vw, 20px);">Incremental Streaming</h3>
+            <p style="margin-top: 8px;">
+                Currently captures completed responses.
+                Next step: yield content blocks incrementally as events arrive.
+            </p>
+        </div>
+        <div class="card" style="border-color: rgba(255,159,10,0.2);">
+            <div class="badge badge-orange" style="margin-bottom: 14px;">Planned</div>
+            <h3 style="font-size: clamp(16px, 2.5vw, 20px);">Test Coverage</h3>
+            <p style="margin-top: 8px;">
+                7 integration tests cover the happy paths.
+                Add unit tests for the conversion layer, schema compliance, and edge cases.
+            </p>
+        </div>
+    </div>
+    <div class="spacer-lg"></div>
+    <div class="emphasis-box animate-in d4" style="padding: 28px; text-align: center;">
+        <div style="font-size: var(--font-subhead); font-weight: 600; margin-bottom: 8px;">
+            The foundation is built.
+        </div>
+        <div style="font-size: var(--font-body); color: var(--text-dim);">
+            Every feature from here builds on a clean, typed, Responses API-native architecture.
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 15: CTA ==================== -->
+<div class="slide" data-slide="14">
+    <div class="section-label animate-in d1">Get Started</div>
+    <h2 class="headline animate-in d2">
+        Built for what's next.
+    </h2>
+    <div class="spacer-md"></div>
+    <div class="grid-3 animate-in d3" style="max-width: 800px; margin: 0 auto 32px auto;">
+        <div class="card card-accent" style="text-align: center;">
+            <div style="font-size: var(--font-body); font-weight: 600; color: var(--accent); margin-bottom: 6px;">Module</div>
+            <div style="font-size: var(--font-small); color: var(--text-mid);">provider-openai-v2</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: var(--font-body); font-weight: 600; color: var(--green); margin-bottom: 6px;">Default Model</div>
+            <div style="font-size: var(--font-small); color: var(--text-mid);">gpt-5.2-codex</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: var(--font-body); font-weight: 600; color: var(--purple); margin-bottom: 6px;">Key Config</div>
+            <div style="font-size: var(--font-small); color: var(--text-mid);">reasoning, web_search, background</div>
+        </div>
+    </div>
+    <div class="grid-3 animate-in d4" style="max-width: 800px; margin: 0 auto;">
+        <div>
+            <div style="font-size: var(--font-subhead); font-weight: 700; color: var(--accent); margin-bottom: 4px;">Explore</div>
+            <div style="font-size: var(--font-small); color: var(--text-dim);">Read the source — it's one file</div>
+        </div>
+        <div>
+            <div style="font-size: var(--font-subhead); font-weight: 700; color: var(--green); margin-bottom: 4px;">Integrate</div>
+            <div style="font-size: var(--font-small); color: var(--text-dim);">Drop in as your OpenAI provider</div>
+        </div>
+        <div>
+            <div style="font-size: var(--font-subhead); font-weight: 700; color: var(--purple); margin-bottom: 4px;">Contribute</div>
+            <div style="font-size: var(--font-small); color: var(--text-dim);">Image support & streaming await</div>
+        </div>
+    </div>
+    <div class="spacer-lg"></div>
+    <div class="animate-in d5" style="font-size: var(--font-small); color: var(--text-dim);">
+        <a href="https://github.com/DavidKoleczek/amplifier-module-provider-openai-v2" target="_blank" style="color: var(--accent); text-decoration: none;">amplifier-module-provider-openai-v2</a>&ensp;&middot;&ensp;MIT License&ensp;&middot;&ensp;Microsoft MADE:Explorations
+    </div>
+</div>
+
+</div><!-- end .deck -->
+
+<!-- Navigation -->
+<div class="nav-dots" id="navDots"></div>
+<div class="slide-counter" id="slideCounter"></div>
+<div class="click-left" id="clickLeft"></div>
+<div class="click-right" id="clickRight"></div>
+
+<script>
+(function() {
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let current = 0;
+
+    // Build nav dots
+    const dotsContainer = document.getElementById('navDots');
+    for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Slide ' + (i + 1));
+        dot.addEventListener('click', () => goTo(i));
+        dotsContainer.appendChild(dot);
+    }
+
+    function updateCounter() {
+        document.getElementById('slideCounter').textContent = (current + 1) + ' / ' + totalSlides;
+    }
+
+    function goTo(n) {
+        if (n < 0 || n >= totalSlides || n === current) return;
+        slides[current].classList.remove('active');
+        dotsContainer.children[current].classList.remove('active');
+        current = n;
+        slides[current].classList.add('active');
+        dotsContainer.children[current].classList.add('active');
+        updateCounter();
+    }
+
+    function next() { goTo(current + 1); }
+    function prev() { goTo(current - 1); }
+
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); next(); }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+        if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+        if (e.key === 'End') { e.preventDefault(); goTo(totalSlides - 1); }
+    });
+
+    // Click zones
+    document.getElementById('clickLeft').addEventListener('click', prev);
+    document.getElementById('clickRight').addEventListener('click', next);
+
+    // Touch swipe
+    let touchStartX = 0;
+    document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+        const diff = touchStartX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) { diff > 0 ? next() : prev(); }
+    }, { passive: true });
+
+    // Mouse wheel (with debounce)
+    let wheelTimeout = false;
+    document.addEventListener('wheel', (e) => {
+        if (wheelTimeout) return;
+        wheelTimeout = true;
+        setTimeout(() => { wheelTimeout = false; }, 400);
+        if (e.deltaY > 0 || e.deltaX > 0) next();
+        else if (e.deltaY < 0 || e.deltaX < 0) prev();
+    }, { passive: true });
+
+    updateCounter();
+})();
+</script>
+
+</body>
+</html>
