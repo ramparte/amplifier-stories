@@ -1,47 +1,45 @@
 ---
 bundle:
-  name: amplifier-module-stories
-  version: 2.0.0
-  description: Autonomous storytelling engine for the Amplifier ecosystem - automated content generation across formats and audiences
+  name: stories
+  version: 1.0.0
+  description: Autonomous storytelling engine with specialist agents
 
 includes:
+  - foundation
 
 agents:
-  # Legacy agent (maintained for backward compatibility)
   storyteller:
-    path: amplifier-module-stories:agents/storyteller.md
-  
-  # Specialist agents for autonomous storytelling
+    path: stories:agents/storyteller.md
   story-researcher:
-    path: amplifier-module-stories:agents/story-researcher.md
+    path: stories:agents/story-researcher.md
   content-strategist:
-    path: amplifier-module-stories:agents/content-strategist.md
+    path: stories:agents/content-strategist.md
   technical-writer:
-    path: amplifier-module-stories:agents/technical-writer.md
+    path: stories:agents/technical-writer.md
   marketing-writer:
-    path: amplifier-module-stories:agents/marketing-writer.md
+    path: stories:agents/marketing-writer.md
   executive-briefer:
-    path: amplifier-module-stories:agents/executive-briefer.md
+    path: stories:agents/executive-briefer.md
   release-manager:
-    path: amplifier-module-stories:agents/release-manager.md
+    path: stories:agents/release-manager.md
   case-study-writer:
-    path: amplifier-module-stories:agents/case-study-writer.md
+    path: stories:agents/case-study-writer.md
   data-analyst:
-    path: amplifier-module-stories:agents/data-analyst.md
+    path: stories:agents/data-analyst.md
   content-adapter:
-    path: amplifier-module-stories:agents/content-adapter.md
+    path: stories:agents/content-adapter.md
   community-manager:
-    path: amplifier-module-stories:agents/community-manager.md
+    path: stories:agents/community-manager.md
 
 recipes:
   session-to-case-study:
-    path: amplifier-module-stories:recipes/session-to-case-study.yaml
+    path: stories:recipes/session-to-case-study.yaml
   git-tag-to-changelog:
-    path: amplifier-module-stories:recipes/git-tag-to-changelog.yaml
+    path: stories:recipes/git-tag-to-changelog.yaml
   weekly-digest:
-    path: amplifier-module-stories:recipes/weekly-digest.yaml
+    path: stories:recipes/weekly-digest.yaml
   blog-post-generator:
-    path: amplifier-module-stories:recipes/blog-post-generator.yaml
+    path: stories:recipes/blog-post-generator.yaml
 ---
 
 # Amplifier Module: Stories
@@ -121,7 +119,7 @@ Then deploy with:
 
 ---
 
-@amplifier-module-stories:context/storyteller-instructions.md
+@stories:context/storyteller-instructions.md
 
 ---
 

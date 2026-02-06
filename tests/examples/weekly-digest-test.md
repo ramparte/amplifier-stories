@@ -113,7 +113,7 @@ Blog post opens in default markdown editor for review.
 ```bash
 # 1. Run the recipe
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/weekly-digest.yaml
+  recipe_path=stories:recipes/weekly-digest.yaml
 
 # 2. Check outputs
 ls -lh workspace/blog/

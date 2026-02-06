@@ -25,21 +25,21 @@ Run workflows that generate content automatically:
 ```bash
 # Weekly ecosystem digest (every Monday)
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/weekly-digest.yaml
+  recipe_path=stories:recipes/weekly-digest.yaml
 
 # Generate case study from session
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/session-to-case-study.yaml \
+  recipe_path=stories:recipes/session-to-case-study.yaml \
   context='{"session_file": "~/.amplifier/sessions/2026-01-17/events.jsonl"}'
 
 # Release documentation from git tag
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/git-tag-to-changelog.yaml \
+  recipe_path=stories:recipes/git-tag-to-changelog.yaml \
   context='{"tag_name": "v2.0.0"}'
 
 # Blog post from feature development
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/blog-post-generator.yaml \
+  recipe_path=stories:recipes/blog-post-generator.yaml \
   context='{"feature_name": "shadow environments"}'
 ```
 
@@ -229,7 +229,7 @@ amplifier tool invoke recipes operation=execute \
 **Example:**
 ```bash
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/session-to-case-study.yaml \
+  recipe_path=stories:recipes/session-to-case-study.yaml \
   context='{"session_file": "~/.amplifier/sessions/2026-01-17/events.jsonl"}'
 ```
 
@@ -259,7 +259,7 @@ amplifier tool invoke recipes operation=execute \
 **Example:**
 ```bash
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/git-tag-to-changelog.yaml \
+  recipe_path=stories:recipes/git-tag-to-changelog.yaml \
   context='{"tag_name": "v2.0.0"}'
 ```
 
@@ -289,11 +289,11 @@ amplifier tool invoke recipes operation=execute \
 ```bash
 # Standard weekly digest
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/weekly-digest.yaml
+  recipe_path=stories:recipes/weekly-digest.yaml
 
 # Last 2 weeks
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/weekly-digest.yaml \
+  recipe_path=stories:recipes/weekly-digest.yaml \
   context='{"date_range": "last 14 days"}'
 ```
 
@@ -330,12 +330,12 @@ amplifier tool invoke recipes operation=execute \
 ```bash
 # Community-focused blog post
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/blog-post-generator.yaml \
+  recipe_path=stories:recipes/blog-post-generator.yaml \
   context='{"feature_name": "shadow environments"}'
 
 # Technical deep-dive with appendix
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/blog-post-generator.yaml \
+  recipe_path=stories:recipes/blog-post-generator.yaml \
   context='{"feature_name": "recipe workflows", "include_technical_appendix": true, "target_audience": "technical"}'
 ```
 
@@ -584,7 +584,7 @@ Should create a single slide, auto-open in PowerPoint.
 ```bash
 # Test with a real session
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/session-to-case-study.yaml \
+  recipe_path=stories:recipes/session-to-case-study.yaml \
   context='{"session_file": "~/.amplifier/sessions/LATEST/events.jsonl"}'
 ```
 
