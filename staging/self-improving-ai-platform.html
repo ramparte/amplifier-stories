@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building a Self-Improving AI Platform</title>
+    <style>
+        :root {
+            --accent: #FF2D55;
+            --accent-dim: rgba(255, 45, 85, 0.15);
+            --accent-glow: rgba(255, 45, 85, 0.3);
+            --bg: #000;
+            --text: #fff;
+            --text-dim: rgba(255,255,255,0.5);
+            --text-mid: rgba(255,255,255,0.7);
+            --card-bg: rgba(255,255,255,0.05);
+            --card-border: rgba(255,255,255,0.1);
+            --font-headline: clamp(32px, 8vw, 72px);
+            --font-medium: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-small: clamp(12px, 1.5vw, 14px);
+            --font-big-number: clamp(48px, 15vw, 140px);
+            --padding-slide: clamp(24px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            transform: translateX(40px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            pointer-events: none;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        .slide.exit-left {
+            opacity: 0;
+            transform: translateX(-40px);
+        }
+
+        .section-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.05;
+            margin-bottom: 24px;
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium);
+            font-weight: 700;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            line-height: 1.5;
+            color: var(--text-mid);
+            max-width: 800px;
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            line-height: 1.7;
+            color: var(--text-mid);
+            max-width: 720px;
+        }
+
+        .accent { color: var(--accent); }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--gap-grid);
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+            gap: var(--gap-grid);
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap-grid);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card-accent {
+            background: var(--accent-dim);
+            border: 1px solid rgba(255, 45, 85, 0.25);
+            border-radius: 16px;
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card h3 {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+
+        .card p, .card-accent p {
+            font-size: clamp(13px, 1.8vw, 15px);
+            line-height: 1.6;
+            color: var(--text-dim);
+        }
+
+        .card .icon {
+            font-size: clamp(24px, 4vw, 36px);
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .code-block {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: clamp(11px, 1.6vw, 14px);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .code-green { color: #30D158; }
+        .code-blue { color: #64D2FF; }
+        .code-orange { color: #FF9F0A; }
+        .code-pink { color: #FF375F; }
+        .code-gray { color: rgba(255,255,255,0.35); }
+        .code-purple { color: #BF5AF2; }
+
+        .stat-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(24px, 5vw, 60px);
+            margin-top: 32px;
+        }
+
+        .stat { text-align: left; }
+
+        .stat .number {
+            font-size: clamp(36px, 8vw, 64px);
+            font-weight: 700;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--accent), #FF9F0A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+        }
+
+        .stat .label {
+            font-size: var(--font-small);
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        /* Architecture diagram */
+        .arch-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 24px;
+            max-width: 900px;
+        }
+
+        .arch-layer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .arch-box {
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .arch-box.active-svc {
+            background: var(--accent-dim);
+            border: 1.5px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .arch-box.planned-svc {
+            background: rgba(255,255,255,0.04);
+            border: 1.5px dashed rgba(255,255,255,0.2);
+            color: var(--text-dim);
+        }
+
+        .arch-box.infra {
+            background: rgba(48, 209, 88, 0.12);
+            border: 1.5px solid rgba(48, 209, 88, 0.4);
+            color: #30D158;
+        }
+
+        .arch-box.entry {
+            background: rgba(100, 210, 255, 0.12);
+            border: 1.5px solid rgba(100, 210, 255, 0.4);
+            color: #64D2FF;
+        }
+
+        .arch-connector {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 18px;
+            padding: 2px 0;
+        }
+
+        .arch-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            text-align: center;
+            padding: 4px 0 2px;
+        }
+
+        /* Flow steps */
+        .flow-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .flow-step {
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: clamp(12px, 1.8vw, 15px);
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .flow-arrow {
+            color: var(--text-dim);
+            font-size: 20px;
+        }
+
+        /* Timeline */
+        .timeline { margin-top: 24px; }
+
+        .timeline-item {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            align-items: flex-start;
+        }
+
+        .timeline-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        .timeline-dot.done { background: var(--accent); }
+        .timeline-dot.next { background: transparent; border: 2px solid var(--accent); }
+
+        .timeline-content h4 {
+            font-size: clamp(14px, 2vw, 17px);
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .timeline-content p {
+            font-size: clamp(12px, 1.6vw, 14px);
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        /* Quote */
+        .quote {
+            font-size: clamp(20px, 4vw, 36px);
+            font-weight: 600;
+            font-style: italic;
+            letter-spacing: -0.5px;
+            line-height: 1.3;
+            color: var(--text-mid);
+            border-left: 3px solid var(--accent);
+            padding-left: clamp(16px, 3vw, 28px);
+            max-width: 700px;
+            margin: 24px 0;
+        }
+
+        .quote .attr {
+            font-size: var(--font-small);
+            font-style: normal;
+            font-weight: 400;
+            color: var(--text-dim);
+            margin-top: 12px;
+            display: block;
+        }
+
+        /* Comparison table */
+        .compare-table {
+            width: 100%;
+            max-width: 800px;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .compare-table th {
+            font-size: var(--font-small);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            text-align: left;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .compare-table td {
+            font-size: clamp(13px, 1.8vw, 15px);
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-mid);
+        }
+
+        .compare-table td:first-child {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* Port table */
+        .port-table {
+            width: 100%;
+            max-width: 600px;
+            margin-top: 16px;
+        }
+
+        .port-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: clamp(12px, 1.6vw, 14px);
+        }
+
+        .port-num {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            color: var(--accent);
+            font-weight: 600;
+            min-width: 90px;
+        }
+
+        .port-svc { color: var(--text); font-weight: 500; }
+        .port-status { margin-left: auto; }
+
+        .badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge.live {
+            background: rgba(48, 209, 88, 0.15);
+            color: #30D158;
+        }
+
+        .badge.planned {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-dim);
+        }
+
+        /* Big vision text */
+        .vision-text {
+            font-size: clamp(22px, 4.5vw, 42px);
+            font-weight: 600;
+            letter-spacing: -1px;
+            line-height: 1.3;
+            max-width: 850px;
+        }
+
+        .vision-text .dim { color: var(--text-dim); }
+
+        /* Navigation */
+        .nav-dots {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            padding: 0;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 24px;
+            right: var(--padding-slide);
+            font-size: 12px;
+            color: var(--text-dim);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            z-index: 100;
+        }
+
+        /* Team badges */
+        .team-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .team-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 40px;
+            padding: 8px 18px 8px 8px;
+        }
+
+        .team-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .team-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .team-role {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        /* Gradient border card */
+        .glow-card {
+            position: relative;
+            background: var(--bg);
+            border-radius: 16px;
+            padding: clamp(20px, 4vw, 32px);
+            overflow: hidden;
+        }
+
+        .glow-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            padding: 1.5px;
+            background: linear-gradient(135deg, var(--accent), #FF9F0A, var(--accent));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+
+        /* Spacer */
+        .spacer { height: clamp(16px, 3vw, 32px); }
+        .spacer-sm { height: clamp(8px, 2vw, 16px); }
+
+        /* CTA slide special */
+        .cta-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .cta-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: clamp(13px, 1.8vw, 15px);
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .cta-link.primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .cta-link.secondary {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-mid);
+        }
+
+        /* Subtle background pattern for title slide */
+        .bg-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,45,85,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,45,85,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        .bg-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,45,85,0.08), transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        /* Print / landscape hint */
+        @media (max-aspect-ratio: 3/4) {
+            .slide { justify-content: flex-start; padding-top: clamp(40px, 8vh, 80px); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ========== SLIDE 1: TITLE ========== -->
+<div class="slide active" id="slide-1">
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+    <div style="position:relative; z-index:1;">
+        <div class="section-label">Microsoft &middot; Self-Improving Core Team</div>
+        <div class="spacer-sm"></div>
+        <h1 class="headline">Building a<br>Self-Improving<br><span class="accent">AI Platform</span></h1>
+        <div class="spacer"></div>
+        <p class="subhead" style="max-width:640px;">
+            A workspace where AI agents can execute, verify, and iterate on their own work &mdash; end to end.
+        </p>
+        <div class="spacer"></div>
+
+        <div class="spacer-sm"></div>
+        <p style="font-size:12px; color:var(--text-dim);">February 2026</p>
+    </div>
+</div>
+
+<!-- ========== SLIDE 2: THE VISION ========== -->
+<div class="slide" id="slide-2">
+    <div class="section-label">The Vision</div>
+    <div class="vision-text">
+        What if AI agents could <span class="accent">verify their own work</span>
+        <span class="dim">the same way a user would &mdash;</span>
+        clicking through UIs, calling real APIs, checking end-to-end results?
+    </div>
+    <div class="spacer"></div>
+    <div class="grid-3">
+        <div class="card">
+            <span class="icon">&#x1f310;</span>
+            <h3>Digital Twin Universe</h3>
+            <p>Mock services that perfectly mirror real API shapes &mdash; GitHub, GSuite, M365 &mdash; so AI can test in a world that looks identical to production.</p>
+        </div>
+        <div class="card">
+            <span class="icon">&#x1f501;</span>
+            <h3>Self-Improving Loop</h3>
+            <p>Agents don't just execute tasks. They verify the outcome, detect friction, and iterate on the system itself &mdash; including the infrastructure they run on.</p>
+        </div>
+        <div class="card">
+            <span class="icon">&#x1f680;</span>
+            <h3>End-to-End Verification</h3>
+            <p>No mocking at the unit test level. The AI walks the full path: API call &rarr; service logic &rarr; storage &rarr; UI &mdash; exactly as a human would.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ========== SLIDE 3: THE INSIGHT ========== -->
+<div class="slide" id="slide-3">
+    <div class="section-label">The Insight</div>
+    <h2 class="headline" style="max-width:800px;">Infrastructure must be designed <span class="accent">for</span> AI agents.</h2>
+    <div class="spacer-sm"></div>
+    <p class="subhead">
+        Most developer tools were built for humans. We're building from scratch with AI as the primary consumer &mdash; and humans as beneficiaries of the simplicity that requires.
+    </p>
+    <div class="spacer"></div>
+    <div class="grid-2">
+        <div>
+            <div class="quote">
+                "Run scrappy and lightweight, build minimal, iterate on biggest friction."
+                <span class="attr">&mdash; Design Philosophy</span>
+            </div>
+        </div>
+        <div>
+            <table class="compare-table">
+                <thead>
+                    <tr><th>Traditional</th><th>AI-Friendly</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Complex frameworks</td><td>Simple HTTP endpoints</td></tr>
+                    <tr><td>Databases (SQL, NoSQL)</td><td>File-tree storage</td></tr>
+                    <tr><td>GraphQL / gRPC</td><td>Plain REST + JSON</td></tr>
+                    <tr><td>Formal specs</td><td>Natural language specs</td></tr>
+                    <tr><td>Published packages</td><td>Clone &amp; run from source</td></tr>
+                    <tr><td>Network by default</td><td>Localhost-only by default</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ========== SLIDE 4: DESIGN PRINCIPLES ========== -->
+<div class="slide" id="slide-4">
+    <div class="section-label">Design Principles</div>
+    <h2 class="medium-headline">Four pillars of AI-friendly design</h2>
+    <div class="spacer-sm"></div>
+    <div class="grid-4">
+        <div class="card">
+            <span class="icon" style="color:#64D2FF;">&#x1f4e1;</span>
+            <h3>Simple HTTP</h3>
+            <p>Every service is a plain REST API on its own port. No frameworks, no middleware chains. AI agents can discover and call any endpoint with a simple HTTP request.</p>
+        </div>
+        <div class="card">
+            <span class="icon" style="color:#30D158;">&#x1f4c1;</span>
+            <h3>File-Tree Storage</h3>
+            <p>Data lives as JSON files on disk &mdash; human-inspectable, git-diffable, AI-parseable. No database servers, no ORMs, no migration scripts.</p>
+        </div>
+        <div class="card">
+            <span class="icon" style="color:#FF9F0A;">&#x1f4dc;</span>
+            <h3>NL Specifications</h3>
+            <p>The "Natural Language Spec" philosophy: write what you want in plain English, let AI help implement. Technology-agnostic design docs that anyone can read.</p>
+        </div>
+        <div class="card">
+            <span class="icon" style="color:#BF5AF2;">&#x1f4e6;</span>
+            <h3>JSON Contracts</h3>
+            <p>Services talk via JSON over HTTP. Minimal upfront interface design &mdash; just enough structure for AI to understand, flexible enough to evolve fast.</p>
+        </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="glow-card" style="max-width:680px;">
+        <p style="font-size:clamp(14px,2vw,16px); color:var(--text-mid); line-height:1.7;">
+            <strong style="color:var(--text);">The key realization:</strong> What makes services easy for AI to use also makes them easy for humans. Simple REST, file-based state, clear contracts &mdash; good design converges.
+        </p>
+    </div>
+</div>
+
+<!-- ========== SLIDE 5: THE WORKSPACE ========== -->
+<div class="slide" id="slide-5">
+    <div class="section-label">The Workspace</div>
+    <h2 class="medium-headline">One repo to compose them all</h2>
+    <div class="spacer-sm"></div>
+    <div class="grid-2">
+        <div>
+            <p class="body-text" style="margin-bottom:20px;">
+                A singular workspace repo (<code style="color:var(--accent);">self-improvement</code>) aggregates services as git submodules. Each service is its own repo for independent development &mdash; the workspace defines which services to compose together.
+            </p>
+            <div class="code-block"><span class="code-gray"># Workspace structure</span>
+<span class="code-pink">self-improvement/</span>
+<span class="code-green">  gh-issues-local/</span>      <span class="code-gray"># submodule &rarr; own repo</span>
+<span class="code-green">  storage-provider/</span>      <span class="code-gray"># submodule &rarr; own repo</span>
+  notes/                   <span class="code-gray"># gitignored &mdash; working context</span>
+  <span class="code-orange">Dockerfile</span>               <span class="code-gray"># container recipe</span>
+  AGENTS.md                <span class="code-gray"># AI context file</span></div>
+        </div>
+        <div></div>
+    </div>
+</div>
+
+<!-- ========== SLIDE 6: GIT AS INFRASTRUCTURE ========== -->
+<div class="slide" id="slide-6">
+    <div class="section-label">Git as Infrastructure</div>
+    <h2 class="medium-headline">The database you already know</h2>
+    <div class="spacer-sm"></div>
+    <div class="grid-2">
+        <div>
+            <p class="body-text" style="margin-bottom:20px;">
+                A storage abstraction library with swappable backends. The Git provider turns any repo into a versioned, syncable data store &mdash; every write is an atomic commit.
+            </p>
+            <div class="code-block"><span class="code-gray"># StorageProvider protocol</span>
+<span class="code-purple">interface</span>: read / write / delete / list / exists / sync
+<span class="code-purple">data</span>: bytes in, bytes out
+<span class="code-purple">paths</span>: forward-slash strings
+
+<span class="code-gray"># Git backend behavior</span>
+<span class="code-green">write()</span>  &rarr;  auto-commit per operation
+<span class="code-green">sync()</span>   &rarr;  pull --rebase, then push
+<span class="code-green">read()</span>   &rarr;  plain file read from working tree
+
+<span class="code-gray"># Data layout</span>
+repos/{owner}/{repo}/issues/{n}/<span class="code-orange">issue.json</span>
+repos/{owner}/{repo}/<span class="code-orange">counter.txt</span></div>
+        </div>
+        <div>
+            <h3 style="font-size:clamp(15px,2vw,18px); font-weight:600; margin-bottom:20px;">Why Git?</h3>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <div class="card" style="padding:14px 18px;">
+                    <h3 style="font-size:14px; margin-bottom:4px;">&#x23f3; Version History</h3>
+                    <p>Every state change is tracked. Revert any operation, inspect any point in time.</p>
+                </div>
+                <div class="card" style="padding:14px 18px;">
+                    <h3 style="font-size:14px; margin-bottom:4px;">&#x1f440; Human-Inspectable</h3>
+                    <p>JSON files in a directory tree. <code style="font-size:12px;">cat</code>, <code style="font-size:12px;">grep</code>, <code style="font-size:12px;">diff</code> &mdash; every Unix tool works.</p>
+                </div>
+                <div class="card" style="padding:14px 18px;">
+                    <h3 style="font-size:14px; margin-bottom:4px;">&#x1f4c8; Natural Scaling</h3>
+                    <p>Solo &rarr; cross-device &rarr; small team &rarr; larger team. Just share repo access.</p>
+                </div>
+                <div class="card" style="padding:14px 18px;">
+                    <h3 style="font-size:14px; margin-bottom:4px;">&#x26a1; Zero Infrastructure</h3>
+                    <p>No database server. No connection strings. No migrations. Git is already everywhere.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== SLIDE 7: WHAT'S BUILT ========== -->
+<div class="slide" id="slide-7">
+    <div class="section-label">What's Built Today</div>
+    <h2 class="medium-headline">Real code, shipping now</h2>
+    <div class="spacer-sm"></div>
+    <div class="grid-2">
+        <div class="card-accent">
+            <h3 style="color:var(--accent); font-size:clamp(16px,2.5vw,20px); margin-bottom:12px;">gh-issues-local</h3>
+            <p style="color:var(--text-mid); font-size:clamp(13px,1.7vw,15px); line-height:1.6; margin-bottom:16px;">
+                A local clone of the GitHub Issues API that mirrors real GitHub paths. Full React web UI for human interaction. CI builds frontend on push, publishes as GitHub Release.
+            </p>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                <span class="badge live">FastAPI</span>
+                <span class="badge live">React + Vite</span>
+                <span class="badge live">TypeScript</span>
+                <span class="badge live">Tailwind</span>
+                <span class="badge live">shadcn/ui</span>
+            </div>
+            <div class="code-block" style="font-size:clamp(10px,1.3vw,12px);"><span class="code-gray"># Mirrors real GitHub API paths</span>
+GET  <span class="code-green">/repos/{owner}/{repo}/issues</span>
+POST <span class="code-green">/repos/{owner}/{repo}/issues</span>
+GET  <span class="code-green">/repos/{owner}/{repo}/issues/{n}</span>
+<span class="code-gray"># + 30 more endpoints (comments, labels, assignees...)</span>
+
+<span class="code-gray"># Auth: off on localhost, on when network-bound</span>
+<span class="code-gray"># Storage: uses storage-provider library</span></div>
+        </div>
+        <div class="card-accent">
+            <h3 style="color:var(--accent); font-size:clamp(16px,2.5vw,20px); margin-bottom:12px;">storage-provider</h3>
+            <p style="color:var(--text-mid); font-size:clamp(13px,1.7vw,15px); line-height:1.6; margin-bottom:16px;">
+                Shared storage abstraction library with swappable backends. The foundation every service builds on &mdash; <code style="font-size:12px;">pip install</code> from Git, configure with YAML.
+            </p>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                <span class="badge live">Python Protocol</span>
+                <span class="badge live">Git Backend</span>
+                <span class="badge live">Local Backend</span>
+            </div>
+            <div class="code-block" style="font-size:clamp(10px,1.3vw,12px);"><span class="code-gray"># Config: .storage.yaml walks upward from cwd</span>
+<span class="code-purple">type</span>: git  <span class="code-gray"># or "local"</span>
+
+<span class="code-gray"># .git_storage.yaml</span>
+<span class="code-purple">repo_path</span>: /data/store
+<span class="code-purple">remote_url</span>: https://github.com/...
+<span class="code-purple">auto_sync</span>: true
+
+<span class="code-gray"># Pure Python, only dep: pyyaml</span>
+<span class="code-gray"># Atomic commits, pull-rebase sync</span></div>
+        </div>
+    </div>
+    <div class="stat-row">
+        <div class="stat">
+            <div class="number">1,573</div>
+            <div class="label">Lines of Python</div>
+        </div>
+        <div class="stat">
+            <div class="number">48</div>
+            <div class="label">Frontend Files</div>
+        </div>
+        <div class="stat">
+            <div class="number">33</div>
+            <div class="label">API Endpoints</div>
+        </div>
+        <div class="stat">
+            <div class="number">2</div>
+            <div class="label">Services Live</div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== SLIDE 8: CONTAINERIZATION ========== -->
+<div class="slide" id="slide-8">
+    <div class="section-label">Containerization</div>
+    <h2 class="medium-headline">Containers as composition units</h2>
+    <div class="spacer-sm"></div>
+    <div class="grid-2">
+        <div>
+            <p class="body-text" style="margin-bottom:20px;">
+                A container bundles a mix of services for a specific scenario. Today it's a single Dockerfile; tomorrow it's Docker Compose. Clone repos, run from source &mdash; no published packages or images needed.
+            </p>
+            <div class="code-block"><span class="code-pink">FROM</span> python:3.13-slim
+<span class="code-pink">COPY</span> --from=ghcr.io/astral-sh/uv <span class="code-green">/uv</span> /usr/local/bin/
+
+<span class="code-gray"># Clone repos and run directly from source</span>
+<span class="code-pink">COPY</span> gh-issues-local/ ./gh-issues-local/
+<span class="code-pink">RUN</span> uv sync --frozen --no-dev
+
+<span class="code-pink">ENV</span> GH_ISSUES_LOCAL_DATA_DIR=<span class="code-green">/data</span>
+<span class="code-pink">EXPOSE</span> <span class="code-orange">10100</span>
+<span class="code-pink">CMD</span> [<span class="code-green">"uv"</span>, <span class="code-green">"run"</span>, <span class="code-green">"gh-issues-local"</span>, <span class="code-green">"--production"</span>]</div>
+        </div>
+        <div>
+            <h3 style="font-size:clamp(15px,2vw,18px); font-weight:600; margin-bottom:16px;">Philosophy</h3>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <div class="card" style="padding:14px 18px;">
+                    <h3 style="font-size:14px; margin-bottom:4px;">&#x1f4e6; Source-First</h3>
+                    <p>Clone repos and run directly. No registry, no artifact store, no version pinning headaches.</p>
+                </div>
+                <div class="card" style="padding:14px 18px;">
+                    <h3 style="font-size:14px; margin-bottom:4px;">&#x26a1; Fast Builds</h3>
+                    <p>Python 3.13 + <code style="font-size:12px; color:#64D2FF;">uv</code> for reproducible, fast dependency resolution. Slim images, minimal layers.</p>
+                </div>
+                <div class="card" style="padding:14px 18px;">
+                    <h3 style="font-size:14px; margin-bottom:4px;">&#x1f510; Secure by Default</h3>
+                    <p>Services bind to localhost only. Network access is explicit opt-in. Token auth activates when bound externally.</p>
+                </div>
+                <div class="card" style="padding:14px 18px;">
+                    <h3 style="font-size:14px; margin-bottom:4px;">&#x1f4c0; Volume Mounts</h3>
+                    <p>Data dir mounted as a volume. Persistent state survives container restarts. Dotfiles repos for env customization.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== SLIDE 9: WHAT'S NEXT ========== -->
+<div class="slide" id="slide-9">
+    <div class="section-label">Architecture &amp; Roadmap</div>
+    <h2 class="medium-headline">The full pipeline &mdash; where we're headed</h2>
+    <div class="spacer-sm"></div>
+    <div class="grid-2">
+        <div>
+            <div class="arch-diagram">
+                <div class="arch-label">Entry Points</div>
+                <div class="arch-layer">
+                    <div class="arch-box entry">Amplifier CLI</div>
+                    <div class="arch-box entry">Web UI</div>
+                    <div class="arch-box entry">Slack</div>
+                </div>
+                <div class="arch-connector">&darr;</div>
+                <div class="arch-label">Services</div>
+                <div class="arch-layer">
+                    <div class="arch-box active-svc">GH Issues Mock</div>
+                    <div class="arch-box planned-svc">GSuite Mock</div>
+                    <div class="arch-box planned-svc">CXDB</div>
+                </div>
+                <div class="arch-layer">
+                    <div class="arch-box planned-svc">Issues-to-Task Builder</div>
+                    <div class="arch-box planned-svc">Task Builder + Amplifier</div>
+                </div>
+                <div class="arch-connector">&darr;</div>
+                <div class="arch-label">Infrastructure</div>
+                <div class="arch-layer">
+                    <div class="arch-box infra">Storage Abstraction</div>
+                    <div class="arch-box infra">Git Storage</div>
+                </div>
+            </div>
+            <p style="font-size:11px; color:var(--text-dim); margin-top:12px;">
+                <span style="color:var(--accent);">&#x25CF;</span> Live &nbsp;&nbsp;
+                <span style="color:var(--text-dim);">&#x25CB;</span> Planned &nbsp;&nbsp;
+                <span style="color:#30D158;">&#x25CF;</span> Infrastructure
+            </p>
+        </div>
+        <div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-dot done"></div>
+                    <div class="timeline-content">
+                        <h4>storage-provider</h4>
+                        <p>Shared storage abstraction with Git + Local backends. The foundation layer.</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot done"></div>
+                    <div class="timeline-content">
+                        <h4>gh-issues-local</h4>
+                        <p>GitHub Issues API mock + React UI. First digital twin service. CI pipeline shipping.</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot done"></div>
+                    <div class="timeline-content">
+                        <h4>Workspace + Container</h4>
+                        <p>Mono-repo pattern, git submodules, Dockerfile, AGENTS.md for AI context.</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot next"></div>
+                    <div class="timeline-content">
+                        <h4>Issues-to-Task Builder</h4>
+                        <p>Transform GitHub issues into structured tasks. Port 10110.</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot next"></div>
+                    <div class="timeline-content">
+                        <h4>Task Builder + Amplifier</h4>
+                        <p>AI-powered task execution with Amplifier integration. Port 10120.</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot next"></div>
+                    <div class="timeline-content">
+                        <h4>GSuite Mock &middot; CXDB &middot; Docker Compose</h4>
+                        <p>Expand the digital twin universe. Multi-service orchestration.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== SLIDE 10: THE BIGGER PICTURE ========== -->
+<div class="slide" id="slide-10">
+    <div class="bg-glow"></div>
+    <div style="position:relative; z-index:1;">
+        <div class="section-label">The Bigger Picture</div>
+        <h2 class="headline" style="max-width:750px;">The system that <span class="accent">improves itself.</span></h2>
+        <div class="spacer-sm"></div>
+        <div class="flow-row">
+            <div class="flow-step" style="background:var(--accent-dim); color:var(--accent); border:1px solid rgba(255,45,85,0.3);">
+                AI executes task
+            </div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step" style="background:rgba(100,210,255,0.12); color:#64D2FF; border:1px solid rgba(100,210,255,0.3);">
+                Verifies via mock APIs
+            </div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step" style="background:rgba(48,209,88,0.12); color:#30D158; border:1px solid rgba(48,209,88,0.3);">
+                Detects friction
+            </div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step" style="background:rgba(255,159,10,0.12); color:#FF9F0A; border:1px solid rgba(255,159,10,0.3);">
+                Improves the system
+            </div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step" style="background:rgba(191,90,242,0.12); color:#BF5AF2; border:1px solid rgba(191,90,242,0.3);">
+                Repeat
+            </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="grid-2" style="max-width:800px;">
+            <div class="glow-card">
+                <h3 style="font-size:clamp(15px,2vw,18px); font-weight:600; margin-bottom:8px;">What makes this different</h3>
+                <p style="font-size:clamp(13px,1.7vw,15px); color:var(--text-mid); line-height:1.7;">
+                    The infrastructure <em>itself</em> is designed to be improved by AI. File-based storage AI can read. REST APIs AI can call. JSON contracts AI can validate. NL specs AI can interpret. The whole stack is legible to the agents that run on it.
+                </p>
+            </div>
+            <div class="glow-card">
+                <h3 style="font-size:clamp(15px,2vw,18px); font-weight:600; margin-bottom:8px;">What's at stake</h3>
+                <p style="font-size:clamp(13px,1.7vw,15px); color:var(--text-mid); line-height:1.7;">
+                    If AI can reliably execute end-to-end workflows &mdash; from issue triage to code generation to deployment verification &mdash; in a self-contained environment, you unlock a fundamentally new development velocity.
+                </p>
+            </div>
+        </div>
+        <div class="spacer"></div>
+        <div style="max-width:500px;">
+            <p class="section-label" style="margin-bottom:8px;">Explore</p>
+            <div class="cta-links">
+                <a class="cta-link primary" href="#" target="_blank">
+                    gh-issues-local &nearr;
+                </a>
+                <a class="cta-link secondary" href="#" target="_blank">
+                    storage-provider &nearr;
+                </a>
+            </div>
+            <div class="spacer-sm"></div>
+            <p style="font-size:12px; color:var(--text-dim);">
+                self-improvement &middot; Microsoft &middot; February 2026
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation dots -->
+<div class="nav-dots" id="navDots"></div>
+<div class="slide-counter" id="slideCounter">1 / 10</div>
+
+<script>
+(function() {
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let current = 0;
+    let transitioning = false;
+
+    // Build nav dots
+    const dotsContainer = document.getElementById('navDots');
+    for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Slide ' + (i + 1));
+        dot.addEventListener('click', () => goTo(i));
+        dotsContainer.appendChild(dot);
+    }
+
+    function updateCounter() {
+        document.getElementById('slideCounter').textContent = (current + 1) + ' / ' + totalSlides;
+    }
+
+    function updateDots() {
+        dotsContainer.querySelectorAll('.nav-dot').forEach((d, i) => {
+            d.className = 'nav-dot' + (i === current ? ' active' : '');
+        });
+    }
+
+    function goTo(index) {
+        if (index === current || transitioning || index < 0 || index >= totalSlides) return;
+        transitioning = true;
+        const direction = index > current ? 1 : -1;
+
+        slides[current].classList.remove('active');
+        if (direction > 0) slides[current].classList.add('exit-left');
+        slides[current].style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+        slides[current].style.opacity = '0';
+
+        current = index;
+
+        slides[current].style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+        slides[current].style.opacity = '0';
+        slides[current].classList.remove('exit-left');
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                slides[current].classList.add('active');
+                slides[current].style.transform = '';
+                slides[current].style.opacity = '';
+                updateCounter();
+                updateDots();
+                setTimeout(() => { transitioning = false; }, 500);
+            });
+        });
+    }
+
+    function next() { goTo(current + 1); }
+    function prev() { goTo(current - 1); }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+        if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+        if (e.key === 'End') { e.preventDefault(); goTo(totalSlides - 1); }
+    });
+
+    // Click navigation (left third = prev, right two-thirds = next)
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.nav-dot, .cta-link, a, button, code')) return;
+        const x = e.clientX / window.innerWidth;
+        if (x < 0.33) prev(); else next();
+    });
+
+    // Touch/swipe
+    let touchStartX = 0;
+    let touchStartY = 0;
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0) next(); else prev();
+        }
+    }, { passive: true });
+
+    // Initialize
+    updateCounter();
+})();
+</script>
+</body>
+</html>
