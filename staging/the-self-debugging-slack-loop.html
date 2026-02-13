@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Self-Debugging Slack Loop</title>
+<style>
+:root {
+    --accent: #7B68EE;
+    --accent-green: #2EB67D;
+    --accent-red: #E01E5A;
+    --accent-yellow: #ECB22E;
+    --accent-blue: #36C5F0;
+    --slack-purple: #4A154B;
+    --font-headline: clamp(32px, 8vw, 72px);
+    --font-medium-headline: clamp(24px, 5vw, 48px);
+    --font-subhead: clamp(16px, 3vw, 28px);
+    --font-body: clamp(14px, 2vw, 20px);
+    --font-big-number: clamp(60px, 20vw, 180px);
+    --padding-slide: clamp(24px, 5vw, 80px);
+    --gap-grid: clamp(16px, 3vw, 40px);
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #000;
+    color: #fff;
+}
+
+body { font-family: var(--sans); }
+
+/* ── Slide Container ── */
+.deck { position: relative; width: 100%; height: 100%; }
+.slide {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: var(--padding-slide);
+    padding-bottom: calc(var(--padding-slide) + 40px);
+    opacity: 0;
+    transform: translateX(40px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    pointer-events: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.slide.active {
+    opacity: 1; transform: translateX(0);
+    pointer-events: auto;
+}
+.slide.exit-left {
+    opacity: 0; transform: translateX(-40px);
+}
+
+/* ── Typography ── */
+.section-label {
+    font-size: clamp(11px, 1.4vw, 14px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+.headline {
+    font-size: var(--font-headline);
+    font-weight: 700;
+    letter-spacing: -2px;
+    line-height: 1.05;
+    margin-bottom: 20px;
+}
+.medium-headline {
+    font-size: var(--font-medium-headline);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-bottom: 16px;
+}
+.subhead {
+    font-size: var(--font-subhead);
+    color: rgba(255,255,255,0.7);
+    line-height: 1.5;
+    max-width: 800px;
+}
+.body-text {
+    font-size: var(--font-body);
+    color: rgba(255,255,255,0.65);
+    line-height: 1.7;
+    max-width: 720px;
+}
+
+/* ── Accents ── */
+.accent { color: var(--accent); }
+.green { color: var(--accent-green); }
+.red { color: var(--accent-red); }
+.yellow { color: var(--accent-yellow); }
+.blue { color: var(--accent-blue); }
+.dim { color: rgba(255,255,255,0.4); }
+.bright { color: #fff; }
+
+/* ── Cards & Grids ── */
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: var(--gap-grid);
+    margin-top: 24px;
+}
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    gap: var(--gap-grid);
+    margin-top: 24px;
+}
+.card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: clamp(18px, 3vw, 28px);
+}
+.card-title {
+    font-size: clamp(15px, 2vw, 18px);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.card-desc {
+    font-size: clamp(13px, 1.5vw, 15px);
+    color: rgba(255,255,255,0.55);
+    line-height: 1.6;
+}
+
+/* ── Code Blocks ── */
+.code-block {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: clamp(14px, 3vw, 22px) clamp(18px, 4vw, 28px);
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.6vw, 15px);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    color: rgba(255,255,255,0.8);
+    margin-top: 20px;
+}
+.code-block .comment { color: rgba(255,255,255,0.3); }
+.code-block .keyword { color: var(--accent); }
+.code-block .string { color: var(--accent-green); }
+.code-block .fn { color: var(--accent-blue); }
+
+/* ── Diagram Boxes ── */
+.diagram {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 32px;
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.5vw, 15px);
+}
+.diagram-box {
+    padding: 14px 22px;
+    border-radius: 10px;
+    border: 1px solid;
+    text-align: center;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+.diagram-arrow {
+    font-size: clamp(16px, 2vw, 24px);
+    color: rgba(255,255,255,0.3);
+}
+
+/* ── Big Quote ── */
+.big-quote {
+    font-size: clamp(28px, 6vw, 56px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    max-width: 900px;
+}
+.quote-attr {
+    font-size: clamp(13px, 1.5vw, 16px);
+    color: rgba(255,255,255,0.35);
+    margin-top: 20px;
+    font-style: italic;
+}
+
+/* ── Loop Animation ── */
+.loop-step {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    font-size: clamp(14px, 1.8vw, 18px);
+    opacity: 0.45;
+    transition: opacity 0.4s ease;
+}
+.loop-step.highlight { opacity: 1; }
+.loop-step .step-num {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.loop-connector {
+    width: 2px; height: 16px;
+    margin-left: 15px;
+    background: rgba(255,255,255,0.1);
+}
+
+/* ── Chat Messages ── */
+.chat-msg {
+    display: flex;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: clamp(13px, 1.5vw, 15px);
+    line-height: 1.5;
+}
+.chat-msg.bot { background: rgba(123,104,238,0.08); }
+.chat-msg.self { background: rgba(46,182,125,0.08); }
+.chat-avatar {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+.chat-name {
+    font-weight: 600;
+    font-size: clamp(12px, 1.3vw, 14px);
+    margin-bottom: 2px;
+}
+.chat-text { color: rgba(255,255,255,0.75); }
+
+/* ── Flow Boxes ── */
+.flow-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 10px 0;
+}
+.flow-box {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: clamp(11px, 1.3vw, 14px);
+    border: 1px solid;
+    white-space: nowrap;
+}
+.flow-arrow {
+    color: rgba(255,255,255,0.25);
+    font-size: 18px;
+}
+
+/* ── Stats Row ── */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+    gap: var(--gap-grid);
+    margin-top: 28px;
+}
+.stat-item { text-align: center; }
+.stat-number {
+    font-size: clamp(36px, 8vw, 64px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.stat-label {
+    font-size: clamp(12px, 1.3vw, 14px);
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
+}
+
+/* ── Scanline Overlay (subtle) ── */
+.slide::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+}
+.slide > * { position: relative; z-index: 1; }
+
+/* ── Navigation ── */
+.nav-dots {
+    position: fixed; bottom: 18px;
+    left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px;
+    z-index: 100;
+}
+.nav-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+}
+.nav-dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(123,104,238,0.5);
+}
+.slide-counter {
+    position: fixed; bottom: 18px; right: 24px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: rgba(255,255,255,0.25);
+    z-index: 100;
+}
+.key-hint {
+    position: fixed; bottom: 18px; left: 24px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: rgba(255,255,255,0.15);
+    z-index: 100;
+}
+
+/* ── Title Glow ── */
+.glow-text {
+    text-shadow: 0 0 60px rgba(123,104,238,0.25), 0 0 120px rgba(123,104,238,0.1);
+}
+
+/* ── Pain Arrow ── */
+.pain-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: clamp(11px, 1.2vw, 13px);
+    padding: 16px;
+    background: rgba(224,30,90,0.05);
+    border: 1px solid rgba(224,30,90,0.15);
+    border-radius: 12px;
+    margin-top: 20px;
+}
+.pain-flow span { color: rgba(255,255,255,0.6); }
+.pain-flow .pain-arrow { color: var(--accent-red); }
+
+/* ── Centered layout ── */
+.center-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/* ── Blink cursor ── */
+.cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--accent);
+    margin-left: 4px;
+    animation: blink 1s step-end infinite;
+    vertical-align: text-bottom;
+}
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* ── Glitch effect for comedic slide ── */
+@keyframes glitch {
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(-2px, 1px); }
+    40% { transform: translate(2px, -1px); }
+    60% { transform: translate(-1px, -1px); }
+    80% { transform: translate(1px, 2px); }
+}
+.glitch-text {
+    animation: glitch 0.3s ease infinite;
+    animation-play-state: paused;
+}
+.slide.active .glitch-text {
+    animation-play-state: running;
+    animation-iteration-count: 3;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .diagram { flex-direction: column; }
+    .diagram-arrow { transform: rotate(90deg); }
+    .hide-mobile { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 1: TITLE
+     ───────────────────────────────────────────────────── -->
+<div class="slide active" data-slide="0">
+    <div class="center-content" style="flex:1; justify-content:center;">
+        <div class="section-label">Amplifier Stories</div>
+        <div class="headline glow-text" style="margin-top:8px;">
+            The Self-Debugging<br>Slack Loop<span class="cursor"></span>
+        </div>
+        <div class="subhead" style="text-align:center; margin-top:12px;">
+            When Amplifier learned to test its own UI<br>by talking to itself through Slack.
+        </div>
+        <div style="margin-top: 36px; display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap;">
+            <span style="font-family:var(--mono); font-size:12px; padding:6px 14px; border-radius:6px; background:rgba(123,104,238,0.12); border:1px solid rgba(123,104,238,0.25); color:var(--accent);">browser-tester</span>
+            <span style="font-family:var(--mono); font-size:12px; padding:6px 14px; border-radius:6px; background:rgba(46,182,125,0.12); border:1px solid rgba(46,182,125,0.25); color:var(--accent-green);">slack-bridge</span>
+            <span style="font-family:var(--mono); font-size:12px; padding:6px 14px; border-radius:6px; background:rgba(54,197,240,0.12); border:1px solid rgba(54,197,240,0.25); color:var(--accent-blue);">socket-mode</span>
+        </div>
+        <div style="margin-top:40px; font-family:var(--mono); font-size:12px; color:rgba(255,255,255,0.2);">February 2026</div>
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 2: THE SETUP
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="1">
+    <div class="section-label">The Setup</div>
+    <div class="medium-headline">Amplifier Distro meets Slack<br><span class="dim">via WebSocket socket mode</span></div>
+    <div class="body-text">
+        Amplifier Distro runs a Slack bridge using WebSocket socket mode. 
+        The local service connects <em>outbound</em> to Slack — no inbound ports needed, 
+        no public URLs, no ngrok tunnels. Just a clean, persistent WebSocket connection.
+    </div>
+    <div class="diagram" style="margin-top:36px;">
+        <div class="diagram-box" style="border-color: var(--accent); background: rgba(123,104,238,0.08);">
+            <div style="font-size:11px; color:var(--accent); margin-bottom:4px;">LOCAL</div>
+            Amplifier Service
+        </div>
+        <div class="diagram-arrow">→</div>
+        <div class="diagram-box" style="border-color: var(--accent-blue); background: rgba(54,197,240,0.08);">
+            <div style="font-size:11px; color:var(--accent-blue); margin-bottom:4px;">OUTBOUND</div>
+            WebSocket
+        </div>
+        <div class="diagram-arrow">→</div>
+        <div class="diagram-box" style="border-color: var(--accent-yellow); background: rgba(236,178,46,0.08);">
+            <div style="font-size:11px; color:var(--accent-yellow); margin-bottom:4px;">CLOUD</div>
+            Slack API
+        </div>
+        <div class="diagram-arrow">→</div>
+        <div class="diagram-box" style="border-color: var(--accent-green); background: rgba(46,182,125,0.08);">
+            <div style="font-size:11px; color:var(--accent-green); margin-bottom:4px;">DESTINATION</div>
+            Slack Workspace
+        </div>
+    </div>
+    <div class="code-block" style="margin-top: 28px; max-width: 640px;">
+<span class="comment"># No inbound ports. No public URLs.</span>
+<span class="comment"># Just outbound WebSocket → Slack.</span>
+
+<span class="keyword">mode:</span> <span class="string">socket</span>
+<span class="keyword">direction:</span> <span class="string">outbound-only</span>
+<span class="keyword">tunnels_needed:</span> <span class="string">none</span>  <span class="comment"># 🎉</span></div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 3: THE PROBLEM
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="2">
+    <div class="section-label" style="color: var(--accent-red);">The Problem</div>
+    <div class="medium-headline">The human is the bottleneck</div>
+    <div class="body-text">
+        Testing the Slack bridge means constantly switching contexts. 
+        The developer becomes a slow, error-prone relay between two interfaces.
+    </div>
+    <div class="pain-flow">
+        <span>Read Slack</span>
+        <span class="pain-arrow">→</span>
+        <span>Copy message</span>
+        <span class="pain-arrow">→</span>
+        <span>Paste in terminal</span>
+        <span class="pain-arrow">→</span>
+        <span>Read response</span>
+        <span class="pain-arrow">→</span>
+        <span>Copy response</span>
+        <span class="pain-arrow">→</span>
+        <span>Paste in Slack</span>
+        <span class="pain-arrow">→</span>
+        <span style="color:var(--accent-red);">∞ repeat</span>
+    </div>
+    <div class="grid-2" style="margin-top: 28px;">
+        <div class="card" style="border-color: rgba(224,30,90,0.2);">
+            <div class="card-title"><span class="red">Slow</span></div>
+            <div class="card-desc">Every debug cycle requires manual copy-paste between two windows. A 5-second test takes 30 seconds of human relay time.</div>
+        </div>
+        <div class="card" style="border-color: rgba(224,30,90,0.2);">
+            <div class="card-title"><span class="red">Error-prone</span></div>
+            <div class="card-desc">Miscopied messages, wrong channels, stale data. The human introduces noise into every iteration of the loop.</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 4: THE INSIGHT
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="3">
+    <div class="center-content" style="flex:1; justify-content:center;">
+        <div class="section-label">The Insight</div>
+        <div class="big-quote" style="margin-top:12px;">
+            "What if Amplifier could just…<br><span class="accent">talk to itself?</span>"
+        </div>
+        <div class="body-text" style="text-align:center; margin-top:28px; max-width:640px;">
+            The browser-tester bundle can open a hidden browser.<br>
+            Slack is a web app.<br><br>
+            <span class="bright">Put them together.</span>
+        </div>
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 5: THE SOLUTION
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="4">
+    <div class="section-label" style="color: var(--accent-green);">The Solution</div>
+    <div class="medium-headline">Amplifier on both sides<br><span class="dim">of the conversation</span></div>
+
+    <div class="grid-2" style="margin-top: 20px;">
+        <div>
+            <div style="margin-bottom:16px;">
+                <div class="card-title"><span class="green">1.</span> Launch headless Chromium</div>
+                <div class="card-desc">browser-tester spins up a hidden browser instance. No visible window — pure automation.</div>
+            </div>
+            <div style="margin-bottom:16px;">
+                <div class="card-title"><span class="green">2.</span> Navigate to Slack</div>
+                <div class="card-desc">Opens the Slack workspace URL, handles the full OAuth login flow automatically.</div>
+            </div>
+            <div style="margin-bottom:16px;">
+                <div class="card-title"><span class="green">3.</span> Find the bot channel</div>
+                <div class="card-desc">Locates the correct DM or channel where the Amplifier bot lives.</div>
+            </div>
+            <div>
+                <div class="card-title"><span class="green">4.</span> Start talking</div>
+                <div class="card-desc">Types messages into the Slack UI, reads responses, and feeds them back to the orchestrator.</div>
+            </div>
+        </div>
+        <div class="code-block" style="margin-top:0; align-self:center;">
+<span class="comment">// Amplifier is now on BOTH sides:</span>
+
+<span class="keyword">Side A:</span> <span class="string">Slack Bridge Service</span>
+  <span class="dim">└─ Responds to messages via API</span>
+  <span class="dim">└─ Runs the actual bot logic</span>
+
+<span class="keyword">Side B:</span> <span class="string">Browser-Tester Agent</span>
+  <span class="dim">└─ Sends messages through Slack UI</span>
+  <span class="dim">└─ Reads responses from the page</span>
+  <span class="dim">└─ Reports back to orchestrator</span></div>
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 6: THE SELF-DEBUGGING LOOP
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="5">
+    <div class="section-label" style="color: var(--accent-blue);">The Self-Debugging Loop</div>
+    <div class="medium-headline">
+        <span class="dim">"Can you figure it out?"</span><br>
+        <span class="bright">Yes.</span>
+    </div>
+
+    <div style="margin-top:24px; max-width:600px;">
+        <div class="loop-step highlight">
+            <div class="step-num" style="background:rgba(224,30,90,0.2); color:var(--accent-red);">1</div>
+            <span><span class="red">Detect</span> the error in Slack UI response</span>
+        </div>
+        <div class="loop-connector"></div>
+        <div class="loop-step highlight">
+            <div class="step-num" style="background:rgba(54,197,240,0.2); color:var(--accent-blue);">2</div>
+            <span><span class="blue">Inspect</span> the Slack UI state via browser</span>
+        </div>
+        <div class="loop-connector"></div>
+        <div class="loop-step highlight">
+            <div class="step-num" style="background:rgba(236,178,46,0.2); color:var(--accent-yellow);">3</div>
+            <span><span class="yellow">Cross-reference</span> with service logs</span>
+        </div>
+        <div class="loop-connector"></div>
+        <div class="loop-step highlight">
+            <div class="step-num" style="background:rgba(123,104,238,0.2); color:var(--accent);">4</div>
+            <span><span class="accent">Hypothesize</span> root cause from both signals</span>
+        </div>
+        <div class="loop-connector"></div>
+        <div class="loop-step highlight">
+            <div class="step-num" style="background:rgba(46,182,125,0.2); color:var(--accent-green);">5</div>
+            <span><span class="green">Fix</span> the code and re-test through browser</span>
+        </div>
+        <div class="loop-connector"></div>
+        <div class="loop-step highlight">
+            <div class="step-num" style="background:rgba(46,182,125,0.3); color:var(--accent-green);">6</div>
+            <span><span class="green">Verify</span> the fix shows correct response in Slack</span>
+        </div>
+    </div>
+    <div style="margin-top:20px; font-family:var(--mono); font-size:clamp(12px,1.3vw,14px); color:rgba(255,255,255,0.25);">
+        Zero human intervention. Closed-loop.
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 7: THE COMEDIC MOMENT
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="6">
+    <div class="center-content" style="flex:1; justify-content:center;">
+        <div class="section-label" style="color:var(--accent-yellow);">The Moment</div>
+
+        <div style="max-width:520px; width:100%; margin-top:20px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px; text-align:left;">
+            <div class="chat-msg self">
+                <div class="chat-avatar" style="background:rgba(46,182,125,0.2); color:var(--accent-green);">A</div>
+                <div>
+                    <div class="chat-name green">amplifier-bot</div>
+                    <div class="chat-text">Hi, what's up?</div>
+                </div>
+            </div>
+            <div class="chat-msg bot">
+                <div class="chat-avatar" style="background:rgba(123,104,238,0.2); color:var(--accent);">A</div>
+                <div>
+                    <div class="chat-name accent">amplifier-browser</div>
+                    <div class="chat-text">Hmm, that response doesn't seem right. Let me check the logs...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="big-quote glitch-text" style="margin-top:36px; font-size:clamp(24px,5.5vw,52px);">
+            "I don't talk like that."
+        </div>
+        <div class="quote-attr">
+            — Amplifier, recognizing its own output style
+        </div>
+        <div class="body-text" style="text-align:center; margin-top:24px; color:rgba(255,255,255,0.4); max-width:500px;">
+            It started responding to its own messages in Slack — then flagged the response as inconsistent with its expected behavior. A delightful moment of AI self-awareness in the debugging process.
+        </div>
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 8: THE REVEAL
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="7">
+    <div class="center-content" style="flex:1; justify-content:center;">
+        <div class="section-label">The Reveal</div>
+        <div class="big-quote" style="margin-top:8px;">
+            These messages you're seeing here —<br>
+            <span class="accent">they were all done by Amplifier.</span>
+        </div>
+        <div class="subhead" style="text-align:center; margin-top:28px; max-width:680px;">
+            The entire Slack conversation history. The debugging. The fixes. The verification.<br>
+            <span style="color:rgba(255,255,255,0.4);">All autonomous. The human just watched.</span>
+        </div>
+        <div class="stats-row" style="max-width:680px; margin-top:40px;">
+            <div class="stat-item">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Human messages</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" style="background: linear-gradient(135deg, var(--accent-green), var(--accent-blue)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">100%</div>
+                <div class="stat-label">Autonomous</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 9: ARCHITECTURE
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="8">
+    <div class="section-label">Architecture</div>
+    <div class="medium-headline">The full loop</div>
+
+    <div class="code-block" style="max-width:700px; font-size:clamp(11px, 1.4vw, 14px); line-height:1.8; margin-top:20px;">
+<span class="comment">┌──────────────────────────────────────────────────────────┐</span>
+<span class="comment">│</span>  <span class="keyword">Amplifier CLI Session</span>  <span class="dim">(orchestrator)</span>                     <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">│</span>                                                     <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">├──→</span> <span class="fn">browser-tester agent</span>                           <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">│</span>       <span class="dim">│</span>                                              <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">│</span>       <span class="dim">└──→</span> <span class="string">Headless Chromium</span>                        <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">│</span>               <span class="dim">│</span>                                      <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">│</span>               <span class="dim">└──→</span> <span class="accent">Slack Web UI</span>  <span class="dim">(sends messages)</span>   <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">│</span>                       <span class="dim">│</span>                              <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">│</span>                       <span class="dim">▼</span>                              <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">│</span>               <span class="yellow">Slack API</span>  <span class="dim">(WebSocket)</span>               <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">│</span>                       <span class="dim">│</span>                              <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">│</span>                       <span class="dim">▼</span>                              <span class="comment">│</span>
+<span class="comment">│</span>     <span class="dim">└──→</span> <span class="green">Amplifier Distro Service</span>  <span class="dim">(Slack bridge)</span>     <span class="comment">│</span>
+<span class="comment">│</span>              <span class="dim">│</span>                                             <span class="comment">│</span>
+<span class="comment">│</span>              <span class="dim">└──→ responds via API ──→ appears in UI ──┘</span>  <span class="comment">│</span>
+<span class="comment">│</span>                                                          <span class="comment">│</span>
+<span class="comment">│</span>  <span class="red">The arrows form a complete loop.</span>                        <span class="comment">│</span>
+<span class="comment">│</span>  <span class="dim">Amplifier talking to itself.</span>                             <span class="comment">│</span>
+<span class="comment">└──────────────────────────────────────────────────────────┘</span></div>
+
+    <div style="margin-top:24px; font-family:var(--mono); font-size:clamp(11px,1.2vw,13px); color:rgba(255,255,255,0.3);">
+        No inbound ports needed. Socket mode = outbound WebSocket only.
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 10: WHY THIS MATTERS
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="9">
+    <div class="section-label">Why This Matters</div>
+    <div class="medium-headline">Beyond a clever trick</div>
+
+    <div class="grid-3" style="margin-top: 20px;">
+        <div class="card">
+            <div class="card-title" style="font-size:24px; margin-bottom:12px;">🔁</div>
+            <div class="card-title">Multi-Surface Testing</div>
+            <div class="card-desc">Test web UIs, APIs, and service layers simultaneously without human context-switching. One orchestrator, many surfaces.</div>
+        </div>
+        <div class="card">
+            <div class="card-title" style="font-size:24px; margin-bottom:12px;">🔍</div>
+            <div class="card-title">Self-Debugging</div>
+            <div class="card-desc">Cross-reference UI state with service logs to form hypotheses. Fix code and verify through the same browser — closed loop.</div>
+        </div>
+        <div class="card">
+            <div class="card-title" style="font-size:24px; margin-bottom:12px;">🌐</div>
+            <div class="card-title">Universal Pattern</div>
+            <div class="card-desc">Works with any service that has a web UI. The browser-tester bundle becomes a universal UI testing surface for any integration.</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:var(--gap-grid); border-color:rgba(123,104,238,0.2);">
+        <div class="card-title accent">The Key Insight</div>
+        <div class="card-desc" style="color:rgba(255,255,255,0.7); font-size:clamp(14px, 1.8vw, 17px);">
+            Amplifier doesn't just <em>build</em> integrations — it can <em>test</em> them autonomously, 
+            using the same user-facing interfaces that humans use, with the ability to cross-reference 
+            multiple signal sources when something goes wrong.
+        </div>
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 11: WHAT'S NEXT
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="10">
+    <div class="section-label">What's Next</div>
+    <div class="medium-headline">The pattern generalizes</div>
+
+    <div class="grid-2" style="margin-top:20px;">
+        <div>
+            <div class="card" style="margin-bottom:var(--gap-grid);">
+                <div class="card-title"><span class="accent">More Surfaces</span></div>
+                <div class="card-desc">Microsoft Teams, Discord, custom web dashboards — any service with a web UI becomes testable with the same pattern.</div>
+            </div>
+            <div class="card" style="margin-bottom:var(--gap-grid);">
+                <div class="card-title"><span class="green">Regression Testing</span></div>
+                <div class="card-desc">Automated regression suites for Amplifier's own integrations. Push a change, let Amplifier verify its own Slack/Teams/Discord bots still work.</div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="blue">Multi-Agent Verification</span></div>
+                <div class="card-desc">Agents testing each other's outputs across different communication channels. Collaborative verification at scale.</div>
+            </div>
+        </div>
+        <div style="display:flex; flex-direction:column; justify-content:center;">
+            <div class="code-block" style="margin-top:0;">
+<span class="comment"># Tomorrow's test suite:</span>
+
+<span class="keyword">surfaces:</span>
+  - <span class="string">slack</span>      <span class="comment"># ✅ today</span>
+  - <span class="string">teams</span>      <span class="comment"># next</span>
+  - <span class="string">discord</span>    <span class="comment"># next</span>
+  - <span class="string">web-ui</span>     <span class="comment"># next</span>
+  - <span class="string">email</span>      <span class="comment"># future</span>
+
+<span class="keyword">pattern:</span>
+  <span class="fn">browser-tester</span> <span class="dim">+</span> <span class="fn">any-web-ui</span>
+  <span class="dim">=</span> <span class="string">autonomous testing</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────
+     SLIDE 12: CLOSING
+     ───────────────────────────────────────────────────── -->
+<div class="slide" data-slide="11">
+    <div class="center-content" style="flex:1; justify-content:center;">
+        <div class="big-quote glow-text" style="font-size:clamp(24px,5vw,48px);">
+            The best debugging loop<br>is the one where<br><span class="accent">nobody has to be there.</span>
+        </div>
+        <div style="margin-top:48px; display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+            <span style="font-family:var(--mono); font-size:13px; padding:8px 18px; border-radius:8px; background:rgba(123,104,238,0.1); border:1px solid rgba(123,104,238,0.25); color:var(--accent);">amplifier-distro</span>
+            <span style="font-family:var(--mono); font-size:13px; padding:8px 18px; border-radius:8px; background:rgba(46,182,125,0.1); border:1px solid rgba(46,182,125,0.25); color:var(--accent-green);">browser-tester</span>
+            <span style="font-family:var(--mono); font-size:13px; padding:8px 18px; border-radius:8px; background:rgba(54,197,240,0.1); border:1px solid rgba(54,197,240,0.25); color:var(--accent-blue);">slack-bridge</span>
+        </div>
+        <div style="margin-top:32px; font-family:var(--mono); font-size:12px; color:rgba(255,255,255,0.2);">
+            Amplifier Stories &middot; February 2026
+        </div>
+    </div>
+</div>
+
+</div><!-- end .deck -->
+
+<!-- ── Navigation ── -->
+<div class="nav-dots" id="navDots"></div>
+<div class="slide-counter" id="slideCounter"></div>
+<div class="key-hint">← → keys &middot; click edges</div>
+
+<script>
+(function() {
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let current = 0;
+    let isAnimating = false;
+
+    const dotsContainer = document.getElementById('navDots');
+    const counter = document.getElementById('slideCounter');
+
+    // Create nav dots
+    for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+        dot.addEventListener('click', () => goTo(i));
+        dotsContainer.appendChild(dot);
+    }
+
+    function updateCounter() {
+        counter.textContent = (current + 1) + ' / ' + totalSlides;
+    }
+
+    function updateDots() {
+        dotsContainer.querySelectorAll('.nav-dot').forEach((d, i) => {
+            d.classList.toggle('active', i === current);
+        });
+    }
+
+    function goTo(index) {
+        if (index === current || isAnimating || index < 0 || index >= totalSlides) return;
+        isAnimating = true;
+
+        const prev = slides[current];
+        const next = slides[index];
+        const goingForward = index > current;
+
+        // Remove active, add exit direction
+        prev.classList.remove('active');
+        if (goingForward) prev.classList.add('exit-left');
+        prev.style.transform = goingForward ? 'translateX(-40px)' : 'translateX(40px)';
+        prev.style.opacity = '0';
+
+        // Prepare next slide entry direction
+        next.style.transition = 'none';
+        next.style.transform = goingForward ? 'translateX(40px)' : 'translateX(-40px)';
+        next.style.opacity = '0';
+
+        // Force reflow
+        void next.offsetWidth;
+
+        // Animate in
+        next.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+        next.classList.add('active');
+        next.style.transform = 'translateX(0)';
+        next.style.opacity = '1';
+
+        current = index;
+        updateCounter();
+        updateDots();
+
+        setTimeout(() => {
+            prev.classList.remove('exit-left');
+            prev.style.transition = '';
+            prev.style.transform = '';
+            prev.style.opacity = '';
+            isAnimating = false;
+        }, 480);
+    }
+
+    function next() { goTo(current + 1); }
+    function prev() { goTo(current - 1); }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+            e.preventDefault(); next();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault(); prev();
+        }
+    });
+
+    // Click edges
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.nav-dot') || e.target.closest('a') || e.target.closest('button')) return;
+        const x = e.clientX / window.innerWidth;
+        if (x > 0.65) next();
+        else if (x < 0.35) prev();
+    });
+
+    // Touch swipe
+    let touchStartX = 0;
+    let touchStartY = 0;
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+            dx < 0 ? next() : prev();
+        }
+    }, { passive: true });
+
+    updateCounter();
+})();
+</script>
+
+</body>
+</html>
