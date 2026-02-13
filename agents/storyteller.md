@@ -373,6 +373,25 @@ Coordinate colors to avoid duplicates:
 
 Pick a new color for new decks.
 
+## Projector Readability Check
+
+Before finalizing any deck, mentally test every slide at 50% brightness (simulating a conference room projector):
+
+1. **Can you read all card descriptions?** If not, increase text opacity to at least `--text-secondary` (0.7)
+2. **Can you see card boundaries?** If not, use `--surface-2` instead of `--surface-1`
+3. **Can you distinguish icons from background?** If not, increase icon size to at least `clamp(28px, 5vw, 48px)`
+4. **Are there more than 6 items in a grid?** Consider splitting into 2 slides — dense grids become unreadable on projectors
+5. **Are there any dim/ghost cells (opacity < 0.5)?** Make them fully visible — projectors wash out subtle opacity tricks
+6. **Count inline `style=` attributes** — if more than 20 total, refactor to CSS classes
+
+**Rule of thumb:** If a slide has more than 4 cards each with body text, the text WILL be too small on a projector. Either reduce content per card, increase card text size, or split across slides.
+
+**Contrast shortcuts:**
+- White text on #000 = 21:1 (excellent)
+- rgba(255,255,255,0.7) on #000 = ~11:1 (good)
+- rgba(255,255,255,0.5) on #000 = ~5.3:1 (minimum acceptable)
+- rgba(255,255,255,0.3) on #000 = ~2.6:1 (FAILS WCAG AA — never use for readable text)
+
 ---
 
 @amplifier-module-stories:context/storyteller-instructions.md

@@ -284,6 +284,12 @@ Before presenting to user:
 - [ ] **Responsive: Text readable on mobile without zooming**
 - [ ] **Responsive: Grids collapse to single column on narrow screens**
 - [ ] **Responsive: Touch targets ≥44px for tappable elements**
+- [ ] **Maximum 20 inline style attributes in the entire deck** (use CSS classes with clamp values)
+- [ ] **No inline font-size values** — all sizing must use clamp() via CSS classes
+- [ ] **All text meets WCAG AA contrast** (4.5:1 for normal text, 3:1 for large text on its background)
+- [ ] **Card backgrounds visually distinct from body** (cards must be visible, not invisible-on-black)
+- [ ] **Icons >= 28px minimum** in card layouts (use .icon-card or .icon-feature classes)
+- [ ] **No text opacity below 0.5** for any content that must be read
 
 ## Deployment Workflow
 

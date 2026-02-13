@@ -254,3 +254,7 @@ open -a "Google Chrome" --args --auto-open-devtools-for-tabs
 | Inline `style="font-size: Npx"` | Use CSS classes with clamp values |
 | `@media (max-width: 600px)` for everything | Use intrinsic sizing where possible |
 | `.slide { justify-content: center }` on all slides | Only use `.slide.center` for title slides |
+| `color: rgba(255,255,255,0.3)` for readable text | `color: var(--text-tertiary)` (0.5 minimum) |
+| `opacity: 0.35` on content elements | Minimum `opacity: 0.5`, prefer full opacity with dim colors |
+| Emoji at `font-size: 20px` or `24px` | `font-size: clamp(28px, 5vw, 48px)` for card icons |
+| `background: rgba(255,255,255,0.04)` for cards | `background: var(--surface-1)` (0.06 minimum) |
