@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Multi-Provider Swarm Technique — Amplifier</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --accent: #FF2D55;
+    --accent-dim: rgba(255, 45, 85, 0.15);
+    --accent-glow: rgba(255, 45, 85, 0.4);
+    --bg: #000000;
+    --bg-card: #111113;
+    --bg-elevated: #1C1C1E;
+    --bg-code: #0D1117;
+    --text: #F5F5F7;
+    --text-secondary: #98989D;
+    --text-tertiary: #636366;
+    --border: rgba(255, 255, 255, 0.08);
+    --blue: #0A84FF;
+    --green: #30D158;
+    --purple: #BF5AF2;
+    --orange: #FF9F0A;
+    --teal: #64D2FF;
+    --yellow: #FFD60A;
+    --red: #FF453A;
+    --claude: #D4A574;
+    --gpt: #74AA9C;
+    --gemini: #4285F4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  .deck {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .slide {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    opacity: 0;
+    transform: translateX(40px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .slide.prev {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+
+  /* Typography */
+  .slide-label {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: 72px;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    max-width: 900px;
+    text-align: center;
+  }
+
+  h2 {
+    font-size: 52px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+    max-width: 850px;
+  }
+
+  h3 {
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+  }
+
+  .subtitle {
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-top: 16px;
+    max-width: 600px;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .big-number {
+    font-size: 96px;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), #FF6B8A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    letter-spacing: -4px;
+  }
+
+  /* Slide-specific layouts */
+  .slide-content {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .slide-content.centered {
+    align-items: center;
+    text-align: center;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    width: 100%;
+    max-width: 1100px;
+    align-items: start;
+  }
+
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    transition: border-color 0.3s ease;
+  }
+
+  .card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .card h4 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .card p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    font-size: 20px;
+  }
+
+  /* Code blocks */
+  .code-block {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre;
+    tab-size: 2;
+    width: 100%;
+  }
+
+  .code-block .kw { color: var(--accent); }
+  .code-block .fn { color: var(--blue); }
+  .code-block .str { color: var(--green); }
+  .code-block .param { color: var(--orange); }
+  .code-block .comment { color: var(--text-tertiary); font-style: italic; }
+  .code-block .val { color: var(--purple); }
+  .code-block .dim { color: var(--text-tertiary); }
+
+  /* Diagram elements */
+  .diagram {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .provider-node {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    font-weight: 500;
+    font-size: 15px;
+  }
+
+  .provider-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Metrics */
+  .metric-card {
+    text-align: center;
+    padding: 32px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+
+  .metric-value {
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    margin-bottom: 8px;
+  }
+
+  .metric-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  /* Flow arrows */
+  .flow-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .flow-arrow {
+    color: var(--text-tertiary);
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .flow-badge {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Bullet points */
+  .bullet-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .bullet-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+
+  .bullet-list li::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    margin-top: 10px;
+  }
+
+  .bullet-list li strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* Highlight text */
+  .highlight {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .text-blue { color: var(--blue); }
+  .text-green { color: var(--green); }
+  .text-purple { color: var(--purple); }
+  .text-orange { color: var(--orange); }
+  .text-teal { color: var(--teal); }
+
+  /* Navigation */
+  .nav-dots {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    opacity: 0.4;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+  }
+
+  .nav-dot.active {
+    background: var(--accent);
+    opacity: 1;
+    transform: scale(1.3);
+  }
+
+  .slide-counter {
+    position: fixed;
+    bottom: 32px;
+    right: 40px;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    z-index: 100;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Click zones */
+  .click-zone {
+    position: fixed;
+    top: 0;
+    width: 25%;
+    height: 100%;
+    z-index: 50;
+    cursor: pointer;
+  }
+
+  .click-zone.left { left: 0; }
+  .click-zone.right { right: 0; }
+
+  /* SVG diagrams */
+  .svg-diagram {
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .svg-diagram text {
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Blockquote */
+  .callout {
+    border-left: 3px solid var(--accent);
+    padding: 20px 24px;
+    background: var(--accent-dim);
+    border-radius: 0 12px 12px 0;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-width: 800px;
+  }
+
+  .callout strong {
+    color: var(--text);
+  }
+
+  /* Consensus diagram */
+  .consensus-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 24px;
+    align-items: center;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .consensus-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .consensus-badge {
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+
+  .consensus-arrow {
+    font-size: 32px;
+    color: var(--text-tertiary);
+  }
+
+  .consensus-result {
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 15px;
+    text-align: center;
+  }
+
+  /* Tag */
+  .tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  /* Fade-in animations */
+  .slide.active .fade-in-1 { animation: fadeUp 0.5s ease 0.1s both; }
+  .slide.active .fade-in-2 { animation: fadeUp 0.5s ease 0.25s both; }
+  .slide.active .fade-in-3 { animation: fadeUp 0.5s ease 0.4s both; }
+  .slide.active .fade-in-4 { animation: fadeUp 0.5s ease 0.55s both; }
+  .slide.active .fade-in-5 { animation: fadeUp 0.5s ease 0.7s both; }
+  .slide.active .fade-in-6 { animation: fadeUp 0.5s ease 0.85s both; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* Background accents */
+  .bg-glow {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.08;
+    pointer-events: none;
+  }
+
+  .bg-glow.accent { background: var(--accent); }
+  .bg-glow.blue { background: var(--blue); }
+  .bg-glow.purple { background: var(--purple); }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- ==================== SLIDE 1: Title ==================== -->
+  <div class="slide active" data-slide="0">
+    <div class="bg-glow accent" style="top: -200px; right: -150px;"></div>
+    <div class="bg-glow purple" style="bottom: -250px; left: -100px;"></div>
+    <div class="slide-content centered">
+      <div class="slide-label fade-in-1">Amplifier Technique</div>
+      <h1 class="fade-in-2" style="font-size: 68px;">The Multi-Provider<br><span class="highlight">Swarm</span> Technique</h1>
+      <p class="subtitle fade-in-3">Eliminate AI blind spots by dispatching parallel agents across providers — then let them cross-review until they converge.</p>
+      <div class="fade-in-4" style="margin-top: 32px; display: flex; gap: 16px; align-items: center;">
+        <div class="provider-node" style="padding: 10px 18px; font-size: 13px;">
+          <div class="provider-dot" style="background: var(--claude);"></div>
+          Claude
+        </div>
+        <span style="color: var(--text-tertiary); font-size: 20px;">×</span>
+        <div class="provider-node" style="padding: 10px 18px; font-size: 13px;">
+          <div class="provider-dot" style="background: var(--gpt);"></div>
+          GPT
+        </div>
+        <span style="color: var(--text-tertiary); font-size: 20px;">×</span>
+        <div class="provider-node" style="padding: 10px 18px; font-size: 13px;">
+          <div class="provider-dot" style="background: var(--gemini);"></div>
+          Gemini
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 2: The Problem ==================== -->
+  <div class="slide" data-slide="1">
+    <div class="bg-glow accent" style="top: -150px; left: -200px;"></div>
+    <div class="slide-content">
+      <div class="slide-label fade-in-1">The Problem</div>
+      <h2 class="fade-in-2">Every model has<br><span class="highlight">blind spots.</span></h2>
+      <div class="two-col" style="margin-top: 16px;">
+        <div class="fade-in-3">
+          <ul class="bullet-list">
+            <li><strong>Patterns it misses</strong> — each model's training creates systematic gaps in what it notices</li>
+            <li><strong>Assumptions it makes</strong> — confident but wrong on edge cases unique to its architecture</li>
+            <li><strong>Biases it inherits</strong> — training data shapes what it considers "normal" code</li>
+          </ul>
+        </div>
+        <div class="fade-in-4">
+          <div class="callout">
+            <strong>You wouldn't have one person review their own code.</strong><br><br>
+            Why have one model review its own reasoning?
+          </div>
+          <div style="margin-top: 24px; padding: 20px 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;">
+            <div style="font-size: 14px; color: var(--text-tertiary); margin-bottom: 8px; font-weight: 500;">Single-model pattern</div>
+            <div style="font-size: 15px; color: var(--text-secondary); line-height: 1.6;">
+              Model A finds issues → Model A reviews findings → <span style="color: var(--red);">Same blind spots persist</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 3: The Technique ==================== -->
+  <div class="slide" data-slide="2">
+    <div class="bg-glow blue" style="bottom: -200px; right: -150px;"></div>
+    <div class="slide-content">
+      <div class="slide-label fade-in-1">The Technique</div>
+      <h2 class="fade-in-2">Parallel dispatch with<br><span class="highlight">provider_preferences</span></h2>
+      <p class="fade-in-3" style="font-size: 18px; color: var(--text-secondary); max-width: 700px; line-height: 1.6;">
+        Fire 3–6 <code style="font-family: 'JetBrains Mono', monospace; color: var(--blue); font-size: 16px;">delegate()</code> calls in a single message, each targeting a different AI provider. They all work in parallel. Same task. Different minds.
+      </p>
+      <div class="fade-in-4" style="width: 100%; max-width: 1000px;">
+        <svg class="svg-diagram" viewBox="0 0 900 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Orchestrator -->
+          <rect x="340" y="10" width="220" height="52" rx="12" fill="#1C1C1E" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <text x="450" y="42" fill="#F5F5F7" font-size="15" font-weight="600" text-anchor="middle">Orchestrator Session</text>
+          
+          <!-- Arrows -->
+          <path d="M400 62 L200 130" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <path d="M450 62 L450 130" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <path d="M500 62 L700 130" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-dasharray="4 3"/>
+          
+          <!-- "delegate()" labels -->
+          <text x="285" y="95" fill="#636366" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">delegate()</text>
+          <text x="450" y="100" fill="#636366" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">delegate()</text>
+          <text x="615" y="95" fill="#636366" font-size="11" font-family="'JetBrains Mono', monospace" text-anchor="middle">delegate()</text>
+
+          <!-- Claude Agent -->
+          <rect x="100" y="130" width="200" height="110" rx="14" fill="#111113" stroke="rgba(212,165,116,0.4)" stroke-width="1.5"/>
+          <circle cx="135" cy="160" r="8" fill="#D4A574"/>
+          <text x="152" y="165" fill="#D4A574" font-size="14" font-weight="600">Claude</text>
+          <text x="200" y="192" fill="#98989D" font-size="12" text-anchor="middle">Anthropic / claude-*</text>
+          <text x="200" y="212" fill="#636366" font-size="11" text-anchor="middle" font-style="italic">Security analysis</text>
+          <text x="200" y="228" fill="#636366" font-size="11" text-anchor="middle" font-style="italic">focus: auth patterns</text>
+
+          <!-- GPT Agent -->
+          <rect x="350" y="130" width="200" height="110" rx="14" fill="#111113" stroke="rgba(116,170,156,0.4)" stroke-width="1.5"/>
+          <circle cx="385" cy="160" r="8" fill="#74AA9C"/>
+          <text x="402" y="165" fill="#74AA9C" font-size="14" font-weight="600">GPT</text>
+          <text x="450" y="192" fill="#98989D" font-size="12" text-anchor="middle">OpenAI / gpt-*</text>
+          <text x="450" y="212" fill="#636366" font-size="11" text-anchor="middle" font-style="italic">Security analysis</text>
+          <text x="450" y="228" fill="#636366" font-size="11" text-anchor="middle" font-style="italic">focus: injection risks</text>
+
+          <!-- Gemini Agent -->
+          <rect x="600" y="130" width="200" height="110" rx="14" fill="#111113" stroke="rgba(66,133,244,0.4)" stroke-width="1.5"/>
+          <circle cx="635" cy="160" r="8" fill="#4285F4"/>
+          <text x="652" y="165" fill="#4285F4" font-size="14" font-weight="600">Gemini</text>
+          <text x="700" y="192" fill="#98989D" font-size="12" text-anchor="middle">Google / gemini-*</text>
+          <text x="700" y="212" fill="#636366" font-size="11" text-anchor="middle" font-style="italic">Security analysis</text>
+          <text x="700" y="228" fill="#636366" font-size="11" text-anchor="middle" font-style="italic">focus: data leaks</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 4: Code Example ==================== -->
+  <div class="slide" data-slide="3">
+    <div class="slide-content">
+      <div class="slide-label fade-in-1">In Practice</div>
+      <h3 class="fade-in-2">Three calls. One message. Three providers.</h3>
+      <div class="fade-in-3 code-block" style="margin-top: 8px; font-size: 13.5px; line-height: 1.75;">
+<span class="comment">// All three fire simultaneously from a single orchestrator message</span>
+
+<span class="fn">delegate</span>(<span class="param">agent</span>=<span class="str">"foundation:explorer"</span>,
+        <span class="param">instruction</span>=<span class="str">"Analyze auth module for security issues"</span>,
+        <span class="param">provider_preferences</span>=[{<span class="str">"provider"</span>: <span class="str">"anthropic"</span>, <span class="str">"model"</span>: <span class="str">"claude-*"</span>}],
+        <span class="param">context_depth</span>=<span class="str">"none"</span>)
+
+<span class="fn">delegate</span>(<span class="param">agent</span>=<span class="str">"foundation:explorer"</span>,
+        <span class="param">instruction</span>=<span class="str">"Analyze auth module for security issues"</span>,
+        <span class="param">provider_preferences</span>=[{<span class="str">"provider"</span>: <span class="str">"openai"</span>, <span class="str">"model"</span>: <span class="str">"gpt-*"</span>}],
+        <span class="param">context_depth</span>=<span class="str">"none"</span>)
+
+<span class="fn">delegate</span>(<span class="param">agent</span>=<span class="str">"foundation:explorer"</span>,
+        <span class="param">instruction</span>=<span class="str">"Analyze auth module for security issues"</span>,
+        <span class="param">provider_preferences</span>=[{<span class="str">"provider"</span>: <span class="str">"google"</span>, <span class="str">"model"</span>: <span class="str">"gemini-*"</span>}],
+        <span class="param">context_depth</span>=<span class="str">"none"</span>)</div>
+      <div class="fade-in-4" style="display: flex; gap: 20px; margin-top: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-tertiary);">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--green);"></div>
+          Same agent type
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-tertiary);">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--blue);"></div>
+          Same task
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-tertiary);">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent);"></div>
+          Different minds
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 5: Cross-Review ==================== -->
+  <div class="slide" data-slide="4">
+    <div class="bg-glow purple" style="top: -200px; right: -100px;"></div>
+    <div class="slide-content">
+      <div class="slide-label fade-in-1">Cross-Review</div>
+      <h2 class="fade-in-2">Let them <span class="highlight">challenge</span><br>each other.</h2>
+      <p class="fade-in-3" style="font-size: 17px; color: var(--text-secondary); max-width: 700px; line-height: 1.6;">
+        After the initial sweep, route each provider's findings to a <em>different</em> provider for review. This catches false positives and surfaces overconfident mistakes.
+      </p>
+      <div class="fade-in-4" style="width: 100%; max-width: 850px; margin-top: 8px;">
+        <svg class="svg-diagram" viewBox="0 0 850 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Phase 1 nodes -->
+          <text x="140" y="24" fill="#636366" font-size="12" font-weight="600" text-anchor="middle" letter-spacing="1.5">PHASE 1: ANALYZE</text>
+          <rect x="40" y="40" width="200" height="52" rx="12" fill="#111113" stroke="rgba(212,165,116,0.35)" stroke-width="1.5"/>
+          <circle cx="68" cy="66" r="7" fill="#D4A574"/>
+          <text x="84" y="71" fill="#F5F5F7" font-size="13" font-weight="500">Claude finds 8 issues</text>
+
+          <rect x="40" y="108" width="200" height="52" rx="12" fill="#111113" stroke="rgba(116,170,156,0.35)" stroke-width="1.5"/>
+          <circle cx="68" cy="134" r="7" fill="#74AA9C"/>
+          <text x="84" y="139" fill="#F5F5F7" font-size="13" font-weight="500">GPT finds 6 issues</text>
+
+          <rect x="40" y="176" width="200" height="52" rx="12" fill="#111113" stroke="rgba(66,133,244,0.35)" stroke-width="1.5"/>
+          <circle cx="68" cy="202" r="7" fill="#4285F4"/>
+          <text x="84" y="207" fill="#F5F5F7" font-size="13" font-weight="500">Gemini finds 7 issues</text>
+
+          <!-- Cross arrows -->
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#636366"/>
+            </marker>
+          </defs>
+          
+          <!-- Claude → reviewed by Gemini -->
+          <path d="M240 66 C340 66, 360 202, 420 202" stroke="#4285F4" stroke-width="1.5" stroke-opacity="0.5" fill="none" marker-end="url(#arrowhead)"/>
+          <!-- GPT → reviewed by Claude -->
+          <path d="M240 134 C340 134, 360 66, 420 66" stroke="#D4A574" stroke-width="1.5" stroke-opacity="0.5" fill="none" marker-end="url(#arrowhead)"/>
+          <!-- Gemini → reviewed by GPT -->
+          <path d="M240 202 C340 202, 360 134, 420 134" stroke="#74AA9C" stroke-width="1.5" stroke-opacity="0.5" fill="none" marker-end="url(#arrowhead)"/>
+
+          <text x="340" y="270" fill="#636366" font-size="11" text-anchor="middle" font-style="italic">Each reviews a different</text>
+          <text x="340" y="286" fill="#636366" font-size="11" text-anchor="middle" font-style="italic">provider's findings</text>
+
+          <!-- Phase 2 nodes -->
+          <text x="550" y="24" fill="#636366" font-size="12" font-weight="600" text-anchor="middle" letter-spacing="1.5">PHASE 2: CROSS-REVIEW</text>
+          <rect x="420" y="40" width="260" height="52" rx="12" fill="#111113" stroke="rgba(212,165,116,0.35)" stroke-width="1.5"/>
+          <circle cx="448" cy="66" r="7" fill="#D4A574"/>
+          <text x="464" y="71" fill="#F5F5F7" font-size="13" font-weight="500">Claude reviews GPT's 6</text>
+
+          <rect x="420" y="108" width="260" height="52" rx="12" fill="#111113" stroke="rgba(116,170,156,0.35)" stroke-width="1.5"/>
+          <circle cx="448" cy="134" r="7" fill="#74AA9C"/>
+          <text x="464" y="139" fill="#F5F5F7" font-size="13" font-weight="500">GPT reviews Gemini's 7</text>
+
+          <rect x="420" y="176" width="260" height="52" rx="12" fill="#111113" stroke="rgba(66,133,244,0.35)" stroke-width="1.5"/>
+          <circle cx="448" cy="202" r="7" fill="#4285F4"/>
+          <text x="464" y="207" fill="#F5F5F7" font-size="13" font-weight="500">Gemini reviews Claude's 8</text>
+
+          <!-- Results -->
+          <path d="M680 66 L730 66" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path d="M680 134 L730 134" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path d="M680 202 L730 202" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+          <text x="775" y="62" fill="#30D158" font-size="12" font-weight="600" text-anchor="middle">5 confirmed</text>
+          <text x="775" y="76" fill="#FF453A" font-size="11" text-anchor="middle">1 false positive</text>
+
+          <text x="775" y="130" fill="#30D158" font-size="12" font-weight="600" text-anchor="middle">6 confirmed</text>
+          <text x="775" y="144" fill="#FF453A" font-size="11" text-anchor="middle">1 false positive</text>
+
+          <text x="775" y="198" fill="#30D158" font-size="12" font-weight="600" text-anchor="middle">7 confirmed</text>
+          <text x="775" y="212" fill="#FF453A" font-size="11" text-anchor="middle">1 false positive</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 6: Consensus Pattern ==================== -->
+  <div class="slide" data-slide="5">
+    <div class="bg-glow accent" style="bottom: -200px; left: -100px;"></div>
+    <div class="slide-content">
+      <div class="slide-label fade-in-1">The Consensus Pattern</div>
+      <h2 class="fade-in-2">Agreement = <span class="highlight">done.</span></h2>
+      <div class="three-col fade-in-3" style="margin-top: 16px;">
+        <div class="card" style="border-color: rgba(48, 209, 88, 0.3);">
+          <div class="card-icon" style="background: rgba(48, 209, 88, 0.15);">
+            <span style="color: var(--green);">✓</span>
+          </div>
+          <h4 style="color: var(--green);">Converge</h4>
+          <p>All providers agree on a finding? <strong style="color: var(--green);">High confidence.</strong> Ship it. No further review needed.</p>
+        </div>
+        <div class="card" style="border-color: rgba(255, 159, 10, 0.3);">
+          <div class="card-icon" style="background: rgba(255, 159, 10, 0.15);">
+            <span style="color: var(--orange);">⟳</span>
+          </div>
+          <h4 style="color: var(--orange);">Diverge</h4>
+          <p>Disagreement on a finding? Route it for <strong style="color: var(--orange);">another round</strong> of targeted cross-review.</p>
+        </div>
+        <div class="card" style="border-color: rgba(255, 69, 58, 0.3);">
+          <div class="card-icon" style="background: rgba(255, 69, 58, 0.15);">
+            <span style="color: var(--red);">✕</span>
+          </div>
+          <h4 style="color: var(--red);">Reject</h4>
+          <p>Multiple providers flag a false positive? <strong style="color: var(--red);">Drop it.</strong> Cross-review caught the error.</p>
+        </div>
+      </div>
+      <div class="fade-in-4 callout" style="margin-top: 24px;">
+        The orchestrator (your root session) <strong>synthesizes results</strong>, noting agreements and divergences. You're the final arbiter — the swarm gives you signal, not noise.
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 7: Full Lifecycle ==================== -->
+  <div class="slide" data-slide="6">
+    <div class="slide-content">
+      <div class="slide-label fade-in-1">Full Lifecycle</div>
+      <h3 class="fade-in-2">Dispatch → Cross-Review → Converge</h3>
+      <div class="fade-in-3" style="width: 100%; max-width: 950px; margin-top: 8px;">
+        <svg class="svg-diagram" viewBox="0 0 950 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Step 1 -->
+          <rect x="0" y="0" width="280" height="140" rx="16" fill="#111113" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <text x="20" y="30" fill="#FF2D55" font-size="12" font-weight="700" letter-spacing="1.5">STEP 1</text>
+          <text x="20" y="54" fill="#F5F5F7" font-size="16" font-weight="600">Parallel Dispatch</text>
+          <text x="20" y="78" fill="#98989D" font-size="12">3–6 agents, different providers</text>
+          <text x="20" y="96" fill="#98989D" font-size="12">Same task, clean context each</text>
+          <text x="20" y="120" fill="#636366" font-size="11" font-family="'JetBrains Mono', monospace">context_depth="none"</text>
+
+          <!-- Arrow 1 -->
+          <path d="M280 70 L335 70" stroke="#636366" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+          <!-- Step 2 -->
+          <rect x="335" y="0" width="280" height="140" rx="16" fill="#111113" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <text x="355" y="30" fill="#FF2D55" font-size="12" font-weight="700" letter-spacing="1.5">STEP 2</text>
+          <text x="355" y="54" fill="#F5F5F7" font-size="16" font-weight="600">Cross-Review</text>
+          <text x="355" y="78" fill="#98989D" font-size="12">Swap findings between providers</text>
+          <text x="355" y="96" fill="#98989D" font-size="12">Each validates another's work</text>
+          <text x="355" y="120" fill="#636366" font-size="11" font-family="'JetBrains Mono', monospace">context_scope="agents"</text>
+
+          <!-- Arrow 2 -->
+          <path d="M615 70 L670 70" stroke="#636366" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+          <!-- Step 3 -->
+          <rect x="670" y="0" width="280" height="140" rx="16" fill="#111113" stroke="rgba(255,45,85,0.15)" stroke-width="1.5"/>
+          <text x="690" y="30" fill="#FF2D55" font-size="12" font-weight="700" letter-spacing="1.5">STEP 3</text>
+          <text x="690" y="54" fill="#F5F5F7" font-size="16" font-weight="600">Synthesize</text>
+          <text x="690" y="78" fill="#98989D" font-size="12">Orchestrator merges results</text>
+          <text x="690" y="96" fill="#98989D" font-size="12">Agreements + divergences noted</text>
+          <text x="690" y="120" fill="#636366" font-size="11" font-family="'JetBrains Mono', monospace">You are the final arbiter</text>
+
+          <!-- Diverge loop -->
+          <path d="M810 140 L810 180 Q810 200 790 200 L495 200 Q475 200 475 220 L475 220" stroke="rgba(255,159,10,0.5)" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+          <text x="660" y="195" fill="#FF9F0A" font-size="11" font-weight="600">DIVERGE? Re-route for another round</text>
+
+          <!-- Re-review box -->
+          <rect x="335" y="220" width="280" height="100" rx="16" fill="#111113" stroke="rgba(255,159,10,0.2)" stroke-width="1"/>
+          <text x="355" y="252" fill="#FF9F0A" font-size="12" font-weight="700" letter-spacing="1.5">ITERATE</text>
+          <text x="355" y="276" fill="#F5F5F7" font-size="14" font-weight="500">Targeted re-review</text>
+          <text x="355" y="298" fill="#98989D" font-size="12">Only disputed findings, fresh eyes</text>
+
+          <!-- Return arrow -->
+          <path d="M615 270 L670 270 Q690 270 690 250 L690 180 Q690 160 710 160 L810 160" stroke="rgba(255,159,10,0.3)" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+
+          <!-- Converge arrow from Step 3 -->
+          <path d="M950 70 L950 70" stroke="none"/>
+          <rect x="720" y="152" width="180" height="32" rx="8" fill="rgba(48,209,88,0.12)" stroke="rgba(48,209,88,0.3)" stroke-width="1"/>
+          <text x="810" y="173" fill="#30D158" font-size="12" font-weight="600" text-anchor="middle">CONVERGE → Done ✓</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 8: Real Example ==================== -->
+  <div class="slide" data-slide="7">
+    <div class="bg-glow accent" style="top: -100px; right: -200px;"></div>
+    <div class="slide-content">
+      <div class="slide-label fade-in-1">Battle-Tested</div>
+      <h2 class="fade-in-2">Building <span class="highlight">Attractor</span></h2>
+      <p class="fade-in-3" style="font-size: 18px; color: var(--text-secondary); max-width: 700px; line-height: 1.6; margin-bottom: 8px;">
+        A real application built using multi-provider swarm validation — not a demo, not a toy.
+      </p>
+      <div class="three-col fade-in-4">
+        <div class="metric-card">
+          <div class="metric-value" style="background: linear-gradient(135deg, var(--accent), #FF6B8A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">200K+</div>
+          <div class="metric-label">Tokens in session</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" style="background: linear-gradient(135deg, var(--blue), var(--teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">3+</div>
+          <div class="metric-label">Providers cross-validating</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" style="background: linear-gradient(135deg, var(--green), #5BF0A5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">N</div>
+          <div class="metric-label">Rounds until convergence</div>
+        </div>
+      </div>
+      <div class="two-col fade-in-5" style="margin-top: 24px;">
+        <div class="card" style="padding: 24px;">
+          <h4 style="margin-bottom: 12px; font-size: 16px;">What happened</h4>
+          <ul class="bullet-list" style="gap: 10px;">
+            <li style="font-size: 15px;">Multiple models analyzed the same codebase</li>
+            <li style="font-size: 15px;">Each caught issues the others missed</li>
+            <li style="font-size: 15px;">Cross-review eliminated false positives</li>
+            <li style="font-size: 15px;">Iterated until the implementation was solid</li>
+          </ul>
+        </div>
+        <div class="card" style="padding: 24px;">
+          <h4 style="margin-bottom: 12px; font-size: 16px;">What it proved</h4>
+          <ul class="bullet-list" style="gap: 10px;">
+            <li style="font-size: 15px;">Technique scales to <strong>real applications</strong></li>
+            <li style="font-size: 15px;">Sustained quality over <strong>long sessions</strong></li>
+            <li style="font-size: 15px;">Provider diversity catches <strong>real bugs</strong></li>
+            <li style="font-size: 15px;">Convergence signals <strong>genuine confidence</strong></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 9: Why This Works ==================== -->
+  <div class="slide" data-slide="8">
+    <div class="bg-glow blue" style="bottom: -200px; left: -100px;"></div>
+    <div class="slide-content">
+      <div class="slide-label fade-in-1">No New Code Needed</div>
+      <h2 class="fade-in-2">It's just <span class="highlight">Amplifier.</span></h2>
+      <p class="fade-in-3" style="font-size: 18px; color: var(--text-secondary); max-width: 700px; line-height: 1.6;">
+        This isn't a special feature. It's a technique that emerges naturally from existing primitives.
+      </p>
+      <div class="fade-in-4" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 900px; margin-top: 8px;">
+        <div class="card" style="padding: 24px; display: flex; gap: 16px; align-items: flex-start;">
+          <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(10, 132, 255, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <span style="color: var(--blue); font-size: 16px;">⚡</span>
+          </div>
+          <div>
+            <h4 style="font-size: 15px; margin-bottom: 6px;"><code style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--blue);">delegate()</code> + provider_preferences</h4>
+            <p style="font-size: 13px;">Route any agent to any provider with a single parameter</p>
+          </div>
+        </div>
+        <div class="card" style="padding: 24px; display: flex; gap: 16px; align-items: flex-start;">
+          <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(191, 90, 242, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <span style="color: var(--purple); font-size: 16px;">∥</span>
+          </div>
+          <div>
+            <h4 style="font-size: 15px; margin-bottom: 6px;">Parallel agent dispatch</h4>
+            <p style="font-size: 13px;">Multiple delegate() calls in one message — they run concurrently</p>
+          </div>
+        </div>
+        <div class="card" style="padding: 24px; display: flex; gap: 16px; align-items: flex-start;">
+          <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(48, 209, 88, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <span style="color: var(--green); font-size: 16px;">↔</span>
+          </div>
+          <div>
+            <h4 style="font-size: 15px; margin-bottom: 6px;">Context sharing between agents</h4>
+            <p style="font-size: 13px;"><code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--green);">context_scope="agents"</code> passes prior agent results forward</p>
+          </div>
+        </div>
+        <div class="card" style="padding: 24px; display: flex; gap: 16px; align-items: flex-start;">
+          <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(255, 45, 85, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <span style="color: var(--accent); font-size: 16px;">◎</span>
+          </div>
+          <div>
+            <h4 style="font-size: 15px; margin-bottom: 6px;">Orchestrator pattern</h4>
+            <p style="font-size: 13px;">Root session synthesizes all agent results into final decision</p>
+          </div>
+        </div>
+      </div>
+      <div class="fade-in-5 callout" style="margin-top: 24px;">
+        <strong>Four existing primitives. Zero new code.</strong> Just a technique that leverages what Amplifier already gives you.
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 10: CTA ==================== -->
+  <div class="slide" data-slide="9">
+    <div class="bg-glow accent" style="top: -100px; left: 50%; transform: translateX(-50%);"></div>
+    <div class="slide-content centered">
+      <div class="slide-label fade-in-1">Try It</div>
+      <h1 class="fade-in-2" style="font-size: 60px;">Stop trusting<br>a single mind.</h1>
+      <p class="subtitle fade-in-3" style="max-width: 560px;">
+        Next time you're reviewing code, analyzing architecture, or validating an approach — dispatch the swarm. Let them argue. Ship the consensus.
+      </p>
+      <div class="fade-in-4" style="margin-top: 40px; display: flex; flex-direction: column; align-items: center; gap: 24px;">
+        <div class="code-block" style="font-size: 14px; padding: 20px 28px; max-width: 560px; text-align: left;">
+<span class="comment">// Your next session</span>
+<span class="fn">delegate</span>(..., <span class="param">provider_preferences</span>=[{<span class="str">"provider"</span>: <span class="str">"anthropic"</span>, ...}])
+<span class="fn">delegate</span>(..., <span class="param">provider_preferences</span>=[{<span class="str">"provider"</span>: <span class="str">"openai"</span>, ...}])
+<span class="fn">delegate</span>(..., <span class="param">provider_preferences</span>=[{<span class="str">"provider"</span>: <span class="str">"google"</span>, ...}])</div>
+        <div style="display: flex; gap: 12px; align-items: center; margin-top: 8px;">
+          <div style="font-size: 14px; color: var(--text-tertiary);">Amplifier</div>
+          <div style="width: 4px; height: 4px; border-radius: 50%; background: var(--text-tertiary);"></div>
+          <div style="font-size: 14px; color: var(--text-tertiary);">Multi-Provider Swarm Technique</div>
+          <div style="width: 4px; height: 4px; border-radius: 50%; background: var(--text-tertiary);"></div>
+          <div style="font-size: 14px; color: var(--text-tertiary);">February 2026</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Navigation dots -->
+<div class="nav-dots" id="navDots"></div>
+
+<!-- Slide counter -->
+<div class="slide-counter" id="slideCounter">1 / 10</div>
+
+<!-- Click zones -->
+<div class="click-zone left" id="clickLeft"></div>
+<div class="click-zone right" id="clickRight"></div>
+
+<script>
+(function() {
+  const slides = document.querySelectorAll('.slide');
+  const navDots = document.getElementById('navDots');
+  const counter = document.getElementById('slideCounter');
+  let current = 0;
+  const total = slides.length;
+
+  // Build nav dots
+  for (let i = 0; i < total; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.addEventListener('click', () => goTo(i));
+    navDots.appendChild(dot);
+  }
+
+  function goTo(n) {
+    if (n < 0 || n >= total || n === current) return;
+    const goingForward = n > current;
+    slides[current].classList.remove('active');
+    if (goingForward) {
+      slides[current].classList.add('prev');
+    } else {
+      slides[current].classList.remove('prev');
+    }
+    current = n;
+    slides[current].className = 'slide active';
+    
+    // Update dots
+    navDots.querySelectorAll('.nav-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+
+    counter.textContent = (current + 1) + ' / ' + total;
+  }
+
+  function next() { goTo(current + 1); }
+  function prev() { goTo(current - 1); }
+
+  // Keyboard nav
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+    if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+    if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+  });
+
+  // Click zones
+  document.getElementById('clickLeft').addEventListener('click', prev);
+  document.getElementById('clickRight').addEventListener('click', next);
+
+  // Touch support
+  let touchStart = 0;
+  document.addEventListener('touchstart', (e) => { touchStart = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const diff = touchStart - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) { diff > 0 ? next() : prev(); }
+  });
+})();
+</script>
+
+</body>
+</html>
