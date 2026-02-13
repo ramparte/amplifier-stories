@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Artifact Viewer Story — Building Blind at 1,538 Lines</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --navy-deep: #070D1A;
+    --navy: #0B1120;
+    --navy-light: #111827;
+    --navy-surface: #1A2332;
+    --navy-border: #1E293B;
+    --blue: #3B82F6;
+    --blue-bright: #60A5FA;
+    --blue-dim: #2563EB;
+    --coral: #FF375F;
+    --coral-dim: rgba(255, 55, 95, 0.15);
+    --green: #30D158;
+    --green-dim: rgba(48, 209, 88, 0.15);
+    --amber: #FFD60A;
+    --amber-dim: rgba(255, 214, 10, 0.12);
+    --violet: #BF5AF2;
+    --violet-dim: rgba(191, 90, 242, 0.12);
+    --text: #E2E8F0;
+    --text-dim: #94A3B8;
+    --text-muted: #64748B;
+    --text-faint: #475569;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--navy-deep);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- SLIDE ENGINE ---- */
+  .deck { width: 100%; height: 100%; position: relative; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 60px 80px;
+    opacity: 0;
+    transform: translateX(40px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+    background: var(--navy-deep);
+    overflow: hidden;
+  }
+
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
+
+  .slide.exit-left {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+
+  /* ---- TYPOGRAPHY ---- */
+  .slide-label {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--coral);
+    margin-bottom: 20px;
+  }
+
+  .slide-label.blue { color: var(--blue); }
+  .slide-label.green { color: var(--green); }
+  .slide-label.amber { color: var(--amber); }
+  .slide-label.violet { color: var(--violet); }
+
+  h1 {
+    font-size: 64px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -2px;
+    max-width: 900px;
+    text-align: center;
+  }
+
+  h2 {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -1.5px;
+    max-width: 850px;
+  }
+
+  h3 {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.5px;
+  }
+
+  .subtitle {
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text-dim);
+    margin-top: 16px;
+    line-height: 1.5;
+    max-width: 650px;
+    text-align: center;
+  }
+
+  .big-number {
+    font-size: 120px;
+    font-weight: 900;
+    letter-spacing: -4px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--coral) 0%, #FF6B8A 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .big-number.blue-grad {
+    background: linear-gradient(135deg, var(--blue) 0%, var(--blue-bright) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  .big-number.green-grad {
+    background: linear-gradient(135deg, var(--green) 0%, #5BF08E 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  .big-number.amber-grad {
+    background: linear-gradient(135deg, var(--amber) 0%, #FFE866 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ---- LAYOUT HELPERS ---- */
+  .content-left {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .content-center {
+    align-items: center;
+    text-align: center;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    width: 100%;
+    max-width: 1100px;
+    align-items: start;
+  }
+
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 32px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  .four-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .stack-tight { gap: 6px; }
+  .stack-wide { gap: 24px; }
+
+  /* ---- CARDS ---- */
+  .card {
+    background: var(--navy-light);
+    border: 1px solid var(--navy-border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .card-glow-coral {
+    border-color: rgba(255, 55, 95, 0.25);
+    box-shadow: 0 0 30px rgba(255, 55, 95, 0.06);
+  }
+
+  .card-glow-blue {
+    border-color: rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.06);
+  }
+
+  .card-glow-green {
+    border-color: rgba(48, 209, 88, 0.2);
+    box-shadow: 0 0 30px rgba(48, 209, 88, 0.05);
+  }
+
+  .card-glow-amber {
+    border-color: rgba(255, 214, 10, 0.2);
+    box-shadow: 0 0 30px rgba(255, 214, 10, 0.05);
+  }
+
+  .card-glow-violet {
+    border-color: rgba(191, 90, 242, 0.2);
+    box-shadow: 0 0 30px rgba(191, 90, 242, 0.05);
+  }
+
+  /* ---- METRIC BLOCKS ---- */
+  .metric {
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  .metric-value {
+    font-size: 56px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1.1;
+  }
+
+  .metric-value.coral { color: var(--coral); }
+  .metric-value.blue { color: var(--blue-bright); }
+  .metric-value.green { color: var(--green); }
+  .metric-value.amber { color: var(--amber); }
+  .metric-value.violet { color: var(--violet); }
+
+  .metric-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-top: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ---- LISTS ---- */
+  .insight-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .insight-list li {
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-dim);
+    padding-left: 20px;
+    position: relative;
+  }
+
+  .insight-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--blue);
+  }
+
+  .insight-list li.coral::before { background: var(--coral); }
+  .insight-list li.green::before { background: var(--green); }
+  .insight-list li.amber::before { background: var(--amber); }
+  .insight-list li.violet::before { background: var(--violet); }
+
+  .insight-list li strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ---- FILE LIST ---- */
+  .file-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--navy);
+    border: 1px solid var(--navy-border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+  }
+
+  .file-row .fname { color: var(--text); font-weight: 500; }
+  .file-row .flines { color: var(--text-muted); font-weight: 400; font-size: 13px; }
+  .file-row .fdesc { color: var(--text-dim); font-size: 12px; font-family: 'Inter', sans-serif; margin-left: 12px; }
+
+  /* ---- ACT DIVIDERS ---- */
+  .act-number {
+    font-size: 180px;
+    font-weight: 900;
+    line-height: 1;
+    opacity: 0.06;
+    position: absolute;
+    bottom: -20px;
+    right: 40px;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -8px;
+  }
+
+  /* ---- BADGE ---- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .badge-green { background: var(--green-dim); color: var(--green); }
+  .badge-amber { background: var(--amber-dim); color: var(--amber); }
+  .badge-coral { background: var(--coral-dim); color: var(--coral); }
+  .badge-blue { background: rgba(59, 130, 246, 0.15); color: var(--blue-bright); }
+  .badge-violet { background: var(--violet-dim); color: var(--violet); }
+
+  /* ---- TIMELINE / PROTOCOL BLOCK ---- */
+  .protocol-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .protocol-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    background: var(--navy-surface);
+    border: 1px solid var(--navy-border);
+  }
+
+  .protocol-text {
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-dim);
+  }
+
+  .protocol-text strong {
+    color: var(--text);
+    font-weight: 600;
+    display: block;
+  }
+
+  /* ---- SCORECARD ---- */
+  .score-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    border-radius: 10px;
+    background: var(--navy);
+    border: 1px solid var(--navy-border);
+  }
+
+  .score-val {
+    font-size: 28px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    min-width: 80px;
+  }
+
+  .score-label {
+    font-size: 16px;
+    color: var(--text-dim);
+  }
+
+  /* ---- CRASH ANIMATION ---- */
+  @keyframes glitch {
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(-2px, 1px); }
+    40% { transform: translate(2px, -1px); }
+    60% { transform: translate(-1px, 2px); }
+    80% { transform: translate(1px, -2px); }
+  }
+
+  .glitch-text {
+    animation: glitch 0.3s ease-in-out infinite;
+    animation-play-state: paused;
+  }
+
+  .slide.active .glitch-text {
+    animation-play-state: running;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 55, 95, 0.1); }
+    50% { box-shadow: 0 0 40px rgba(255, 55, 95, 0.25); }
+  }
+
+  .pulse-card {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* ---- STRIKETHROUGH ---- */
+  .strike {
+    text-decoration: line-through;
+    text-decoration-color: var(--coral);
+    text-decoration-thickness: 2px;
+    opacity: 0.5;
+  }
+
+  /* ---- ACT TAG ---- */
+  .act-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* ---- NAVIGATION ---- */
+  .nav-dots {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+  }
+
+  .nav-dot.active {
+    background: var(--coral);
+    width: 24px;
+    border-radius: 4px;
+  }
+
+  .nav-dot:hover:not(.active) {
+    background: var(--text-muted);
+  }
+
+  .slide-counter {
+    position: fixed;
+    bottom: 24px;
+    right: 32px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    z-index: 100;
+  }
+
+  /* ---- CLICK ZONES ---- */
+  .click-prev, .click-next {
+    position: fixed;
+    top: 0;
+    bottom: 60px;
+    z-index: 50;
+    cursor: pointer;
+  }
+  .click-prev { left: 0; width: 30%; }
+  .click-next { right: 0; width: 70%; }
+
+  /* ---- DECORATIVE ---- */
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  .bg-glow-coral {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 55, 95, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .bg-glow-blue {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ---- ACCEPTANCE TEST ---- */
+  .act-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    max-width: 920px;
+  }
+
+  .act-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    background: var(--navy);
+    border: 1px solid var(--navy-border);
+    font-size: 14px;
+    color: var(--text-dim);
+  }
+
+  .act-item .act-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--blue-bright);
+    min-width: 32px;
+  }
+
+  .act-item .act-name {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* ---- RECURSION VIS ---- */
+  .recursion-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+  }
+
+  .recursion-line {
+    height: 3px;
+    border-radius: 2px;
+    background: var(--coral);
+    opacity: 0.6;
+  }
+
+  /* ---- RESPONSIVE FINE-TUNING ---- */
+  @media (max-width: 1200px) {
+    h1 { font-size: 48px; }
+    h2 { font-size: 38px; }
+    .big-number { font-size: 90px; }
+    .slide { padding: 40px 50px; }
+    .metric-value { font-size: 44px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- ==================== SLIDE 1: TITLE ==================== -->
+  <div class="slide content-center active" data-slide="0">
+    <div class="bg-glow-coral" style="top: -200px; left: 50%; transform: translateX(-50%);"></div>
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;">
+      <div class="slide-label" style="margin-bottom: 32px;">Canvas Feature Story</div>
+      <h1 style="font-size: 60px; max-width: 800px;">The Artifact Viewer</h1>
+      <p class="subtitle" style="font-size: 24px; margin-top: 20px; color: var(--text-dim);">
+        Building Blind at 1,538 Lines
+      </p>
+      <div style="display: flex; gap: 16px; margin-top: 40px;">
+        <span class="badge badge-blue">Autonomous AI Build</span>
+        <span class="badge badge-coral">Spectacular Crash</span>
+        <span class="badge badge-green">Lessons Learned</span>
+      </div>
+      <p style="font-size: 14px; color: var(--text-faint); margin-top: 48px;">
+        February 2026 &nbsp;·&nbsp; Workspaces 2.0
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 2: WHAT IS CANVAS ==================== -->
+  <div class="slide content-center" data-slide="1">
+    <div class="bg-grid"></div>
+    <div class="slide-label blue">Context</div>
+    <h2 style="text-align: center; max-width: 800px;">Canvas is a <span style="color: var(--blue-bright);">100% AI-generated</span> codebase</h2>
+    <p class="subtitle" style="max-width: 580px;">
+      Humans provide architecture and direction.<br>AI generates all implementation.
+    </p>
+    <div class="three-col" style="margin-top: 48px;">
+      <div class="card card-glow-blue" style="text-align: center;">
+        <div style="font-size: 28px; margin-bottom: 8px;">&#127912;</div>
+        <h3 style="font-size: 18px; margin-bottom: 6px;">AI Drives Outcomes</h3>
+        <p style="font-size: 14px; color: var(--text-dim);">Output becomes outcome through persistent workspace</p>
+      </div>
+      <div class="card card-glow-blue" style="text-align: center;">
+        <div style="font-size: 28px; margin-bottom: 8px;">&#129504;</div>
+        <h3 style="font-size: 18px; margin-bottom: 6px;">AI Remembers</h3>
+        <p style="font-size: 14px; color: var(--text-dim);">Cross-project memory means never repeating yourself</p>
+      </div>
+      <div class="card card-glow-blue" style="text-align: center;">
+        <div style="font-size: 28px; margin-bottom: 8px;">&#129309;</div>
+        <h3 style="font-size: 18px; margin-bottom: 6px;">AI Is Multiplayer</h3>
+        <p style="font-size: 14px; color: var(--text-dim);">Shared context and async collaboration</p>
+      </div>
+    </div>
+    <p style="font-size: 15px; color: var(--text-muted); margin-top: 32px; font-style: italic;">
+      "A workspace where AI work compounds."
+    </p>
+  </div>
+
+  <!-- ==================== SLIDE 3: THE MISSION ==================== -->
+  <div class="slide content-center" data-slide="2">
+    <div class="bg-glow-blue" style="top: -150px; right: -100px;"></div>
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;">
+      <div class="slide-label blue">The Mission</div>
+      <h2 style="text-align: center;">Build a file browser and preview system<br><span style="color: var(--blue-bright);">for non-technical users</span></h2>
+      <p class="subtitle" style="max-width: 560px;">
+        The primary way users see and interact with what AI has built for them. A platform component shared across all project types.
+      </p>
+      <div style="display: flex; gap: 12px; margin-top: 36px; flex-wrap: wrap; justify-content: center;">
+        <span class="badge badge-green">File Tree with Colored Badges</span>
+        <span class="badge badge-violet">Multi-Strategy Preview</span>
+        <span class="badge badge-amber">Asset Inlining</span>
+        <span class="badge badge-blue">Version History</span>
+        <span class="badge badge-coral">Syntax Highlighting</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 4: ACT I DIVIDER ==================== -->
+  <div class="slide content-left" data-slide="3">
+    <div class="act-number" style="color: var(--blue-bright);">I</div>
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1;">
+      <div class="slide-label blue">Act I</div>
+      <h1 style="font-size: 72px; text-align: left;">Research<br>&amp; Discovery</h1>
+      <p style="font-size: 20px; color: var(--text-dim); margin-top: 20px; max-width: 500px;">
+        Before writing a single line of spec, we studied every pixel of the prior art.
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 5: RESEARCH NUMBERS ==================== -->
+  <div class="slide content-center" data-slide="4">
+    <div class="bg-grid"></div>
+    <div class="slide-label blue">Act I &mdash; Research</div>
+    <h2 style="text-align: center; margin-bottom: 48px;">Deep reconnaissance</h2>
+    <div class="three-col">
+      <div class="metric">
+        <div class="metric-value blue" style="font-size: 72px;">2,057</div>
+        <div class="metric-label">lines of Kepler reference code<br>analyzed line by line</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value blue" style="font-size: 72px;">25</div>
+        <div class="metric-label">desktop screenshots<br>studied for every detail</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value blue" style="font-size: 72px;">11</div>
+        <div class="metric-label">interactive HTML mockups<br>built to validate assumptions</div>
+      </div>
+    </div>
+    <div style="margin-top: 48px; text-align: center;">
+      <div class="big-number blue-grad" style="font-size: 96px;">12</div>
+      <p style="font-size: 18px; color: var(--text-dim); margin-top: 8px;">
+        UX insights discovered that were <strong style="color: var(--text);">not in the original spec</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 6: 12 UX DISCOVERIES ==================== -->
+  <div class="slide content-left" data-slide="5">
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1; width: 100%; max-width: 1000px;">
+      <div class="slide-label blue">Act I &mdash; Discoveries</div>
+      <h2 style="margin-bottom: 32px;">12 things nobody told us</h2>
+      <div class="two-col" style="gap: 24px;">
+        <div class="stack" style="gap: 8px;">
+          <ul class="insight-list">
+            <li><strong>Flat file list,</strong> not tree &mdash; sorted by creation time</li>
+            <li><strong>Tool calls grouped</strong> and collapsed by default</li>
+            <li><strong>Preview strategy</strong> selection invisible to user</li>
+            <li class="amber"><strong>Panel resize handle</strong> invisible until hover (macOS-style)</li>
+            <li class="amber"><strong>Empty state</strong> is truly empty &mdash; removed from DOM</li>
+            <li class="green"><strong>Viewport selector</strong> is iOS-style segmented control</li>
+          </ul>
+        </div>
+        <div class="stack" style="gap: 8px;">
+          <ul class="insight-list">
+            <li class="green"><strong>Dimension badges</strong> on viewport options (1280, 768, 375)</li>
+            <li class="violet"><strong>File badges</strong> are colored: green=created, amber=edited</li>
+            <li class="violet"><strong>Code blocks</strong> use PrismJS, not Monaco</li>
+            <li class="coral"><strong>Preview pane</strong> uses iframe srcdoc, not Sandpack</li>
+            <li class="coral"><strong>CSS/JS inlined</strong> for multi-file preview without dev server</li>
+            <li><strong>Version dropdown</strong> shows full diff preview on hover</li>
+          </ul>
+        </div>
+      </div>
+      <p style="font-size: 14px; color: var(--text-muted); margin-top: 24px;">
+        Every discovery came from <span style="color: var(--blue-bright);">pixel-level screenshot analysis</span>, not documentation.
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 7: ACT II DIVIDER ==================== -->
+  <div class="slide content-left" data-slide="6">
+    <div class="act-number" style="color: var(--amber);">II</div>
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1;">
+      <div class="slide-label amber">Act II</div>
+      <h1 style="font-size: 72px; text-align: left;">The<br>1,021-Line Spec</h1>
+      <p style="font-size: 20px; color: var(--text-dim); margin-top: 20px; max-width: 500px;">
+        Meticulous preparation. Every pixel, every interaction, every edge case &mdash; specified.
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 8: SPEC DETAILS ==================== -->
+  <div class="slide content-center" data-slide="7">
+    <div class="bg-grid"></div>
+    <div class="slide-label amber">Act II &mdash; Specification</div>
+    <h2 style="text-align: center; margin-bottom: 40px;">21 sections of exhaustive detail</h2>
+    <div class="two-col" style="gap: 40px;">
+      <div>
+        <h3 style="font-size: 18px; color: var(--amber); margin-bottom: 16px;">Architecture</h3>
+        <div class="stack" style="gap: 8px;">
+          <div class="file-row">
+            <span class="fname">FullScreenProjectView</span>
+            <span class="fdesc">Container shell</span>
+          </div>
+          <div class="file-row" style="margin-left: 20px;">
+            <span class="fname">ProjectHeader</span>
+            <span class="fdesc">Files button + badge</span>
+          </div>
+          <div class="file-row" style="margin-left: 40px;">
+            <span class="fname">FileBrowserPopup</span>
+            <span class="fdesc">380px overlay</span>
+          </div>
+          <div class="file-row" style="margin-left: 60px;">
+            <span class="fname">ContentViewer</span>
+            <span class="fdesc">Code + Preview</span>
+          </div>
+        </div>
+        <div style="margin-top: 20px;">
+          <h3 style="font-size: 18px; color: var(--amber); margin-bottom: 12px;">Design Tokens</h3>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="width: 16px; height: 16px; border-radius: 4px; background: #0A1628;border: 1px solid var(--navy-border);"></div>
+              <span style="font-size: 13px; color: var(--text-dim);">Deep Navy</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="width: 16px; height: 16px; border-radius: 4px; background: #3B82F6;"></div>
+              <span style="font-size: 13px; color: var(--text-dim);">Bright Blue</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="width: 16px; height: 16px; border-radius: 4px; background: #E06C60;"></div>
+              <span style="font-size: 13px; color: var(--text-dim);">Brand Coral</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size: 18px; color: var(--amber); margin-bottom: 16px;">9 Preview Strategies</h3>
+        <div class="stack" style="gap: 6px;">
+          <div class="act-item"><span class="act-num" style="color: var(--amber);">01</span><span class="act-name">HTML with inlined CSS/JS</span></div>
+          <div class="act-item"><span class="act-num" style="color: var(--amber);">02</span><span class="act-name">Sandpack live coding</span></div>
+          <div class="act-item"><span class="act-num" style="color: var(--amber);">03</span><span class="act-name">iframe srcdoc sandbox</span></div>
+          <div class="act-item"><span class="act-num" style="color: var(--amber);">04</span><span class="act-name">Markdown rendering</span></div>
+          <div class="act-item"><span class="act-num" style="color: var(--amber);">05</span><span class="act-name">Image / SVG display</span></div>
+          <div class="act-item"><span class="act-num" style="color: var(--amber);">06</span><span class="act-name">JSON tree view</span></div>
+          <div class="act-item"><span class="act-num" style="color: var(--amber);">07</span><span class="act-name">CSV table</span></div>
+          <div class="act-item"><span class="act-num" style="color: var(--amber);">08</span><span class="act-name">PrismJS code view</span></div>
+          <div class="act-item"><span class="act-num" style="color: var(--amber);">09</span><span class="act-name">Plaintext fallback</span></div>
+        </div>
+        <div style="margin-top: 20px;">
+          <h3 style="font-size: 18px; color: var(--amber); margin-bottom: 8px;">Motion Protocol</h3>
+          <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">
+            <span class="mono" style="color: var(--text);">80ms</span> hover &nbsp;&middot;&nbsp;
+            <span class="mono" style="color: var(--text);">200ms</span> click &nbsp;&middot;&nbsp;
+            <span class="mono" style="color: var(--text);">350ms</span> panel slide
+            <br>Spring easing with damped oscillation
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 9: 10-ACT ACCEPTANCE TEST ==================== -->
+  <div class="slide content-center" data-slide="8">
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%;">
+      <div class="slide-label amber">Act II &mdash; The Masterpiece</div>
+      <h2 style="text-align: center; margin-bottom: 12px;">The 10-Act Acceptance Test</h2>
+      <p style="font-size: 16px; color: var(--text-dim); margin-bottom: 32px; max-width: 600px; text-align: center;">
+        A complete end-to-end user story: <span style="color: var(--text);">"Building a Portfolio Website"</span><br>
+        Both specification and verification in one.
+      </p>
+      <div class="act-grid">
+        <div class="act-item">
+          <span class="act-num">01</span>
+          <span class="act-name">Project Setup</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: auto;">Full-screen, Files "0"</span>
+        </div>
+        <div class="act-item">
+          <span class="act-num">02</span>
+          <span class="act-name">Initial File Creation</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: auto;">html + css + js</span>
+        </div>
+        <div class="act-item">
+          <span class="act-num">2.5</span>
+          <span class="act-name">Multi-File Navigation</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: auto;">Tree switching</span>
+        </div>
+        <div class="act-item">
+          <span class="act-num">03</span>
+          <span class="act-name">Preview Testing</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: auto;">Inlined CSS/JS</span>
+        </div>
+        <div class="act-item">
+          <span class="act-num">04</span>
+          <span class="act-name">Iteration &amp; Versions</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: auto;">History switching</span>
+        </div>
+        <div class="act-item">
+          <span class="act-num">05</span>
+          <span class="act-name">Adding Images</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: auto;">SVG in preview</span>
+        </div>
+        <div class="act-item">
+          <span class="act-num">06</span>
+          <span class="act-name">Cross-Project Reference</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: auto;">Memory bridge</span>
+        </div>
+        <div class="act-item">
+          <span class="act-num">07</span>
+          <span class="act-name">Project Snapshot</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: auto;">State capture</span>
+        </div>
+        <div class="act-item">
+          <span class="act-num">08</span>
+          <span class="act-name">Error Handling</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: auto;">Graceful recovery</span>
+        </div>
+        <div class="act-item">
+          <span class="act-num">09</span>
+          <span class="act-name">Exit &amp; Resume</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: auto;">State persistence</span>
+        </div>
+      </div>
+      <p style="font-size: 14px; color: var(--text-muted); margin-top: 24px; font-style: italic;">
+        The most ambitious acceptance test we'd ever written &mdash; and we'd need every word of it.
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 10: ACT III DIVIDER ==================== -->
+  <div class="slide content-left" data-slide="9">
+    <div class="act-number" style="color: var(--green);">III</div>
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1;">
+      <div class="slide-label green">Act III</div>
+      <h1 style="font-size: 72px; text-align: left;">The Launch</h1>
+      <p style="font-size: 20px; color: var(--text-dim); margin-top: 20px; max-width: 520px;">
+        An autonomous AI build, designed to run for 16&ndash;24 hours without human intervention. Based on a legendary prior session.
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 11: SAM'S PROVEN APPROACH ==================== -->
+  <div class="slide content-center" data-slide="10">
+    <div class="bg-grid"></div>
+    <div class="slide-label green">Act III &mdash; The Blueprint</div>
+    <h2 style="text-align: center; margin-bottom: 40px;">"Sam's Proven Approach"</h2>
+    <div class="two-col" style="gap: 48px;">
+      <div>
+        <div class="card card-glow-green" style="margin-bottom: 24px;">
+          <h3 style="font-size: 16px; color: var(--green); margin-bottom: 16px;">The Legendary Reference</h3>
+          <div class="three-col" style="gap: 16px;">
+            <div class="metric" style="padding: 8px 0;">
+              <div class="metric-value green" style="font-size: 36px;">440</div>
+              <div class="metric-label" style="font-size: 12px;">sub-sessions</div>
+            </div>
+            <div class="metric" style="padding: 8px 0;">
+              <div class="metric-value green" style="font-size: 36px;">147</div>
+              <div class="metric-label" style="font-size: 12px;">commits</div>
+            </div>
+            <div class="metric" style="padding: 8px 0;">
+              <div class="metric-value green" style="font-size: 36px;">22h</div>
+              <div class="metric-label" style="font-size: 12px;">active time</div>
+            </div>
+          </div>
+          <p style="font-size: 13px; color: var(--text-muted); margin-top: 8px; text-align: center;">62 wall-clock hours of autonomous operation</p>
+        </div>
+        <h3 style="font-size: 16px; color: var(--green); margin-bottom: 12px;">The Orchestrator Pattern</h3>
+        <p style="font-size: 15px; color: var(--text-dim); line-height: 1.6;">
+          Main session <strong style="color: var(--text);">delegates</strong>, never touches code directly. Worker agents implement, test, and report back.
+        </p>
+      </div>
+      <div>
+        <h3 style="font-size: 16px; color: var(--text); margin-bottom: 16px;">528-Line Implementation Prompt</h3>
+        <div class="stack" style="gap: 10px;">
+          <div class="card" style="padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; color: var(--green); font-weight: 600;">Foundation</span>
+              <span style="font-size: 13px; color: var(--text-muted);">Features 1&ndash;5</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">Types, store, detection, shell, file list</p>
+          </div>
+          <div class="card" style="padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; color: var(--blue-bright); font-weight: 600;">Core Viewer</span>
+              <span style="font-size: 13px; color: var(--text-muted);">Features 6&ndash;10</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">Code view, preview, viewport, versions, integration</p>
+          </div>
+          <div class="card" style="padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; color: var(--violet); font-weight: 600;">Advanced</span>
+              <span style="font-size: 13px; color: var(--text-muted);">Features 11&ndash;15</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">Asset inlining, search, keyboard nav, responsive, a11y</p>
+          </div>
+          <div class="card" style="padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; color: var(--amber); font-weight: 600;">Polish</span>
+              <span style="font-size: 13px; color: var(--text-muted);">Features 16&ndash;19</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">Error states, animations, performance, final testing</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 12: SURVIVAL PROTOCOLS ==================== -->
+  <div class="slide content-center" data-slide="11">
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 800px;">
+      <div class="slide-label green">Act III &mdash; Safeguards</div>
+      <h2 style="text-align: center; margin-bottom: 40px;">The Survival Protocols</h2>
+      <p style="font-size: 16px; color: var(--text-dim); margin-bottom: 36px; text-align: center;">
+        Built into the 528-line prompt &mdash; instructions for staying alive across context windows.
+      </p>
+      <div class="stack stack-wide" style="width: 100%;">
+        <div class="protocol-item">
+          <div class="protocol-icon" style="background: var(--green-dim); border-color: rgba(48,209,88,0.2);">
+            <span style="font-size: 16px;">&#128196;</span>
+          </div>
+          <div class="protocol-text">
+            <strong>Create SESSION-HANDOFF.md</strong>
+            External memory file &mdash; the AI's lifeline across context compactions
+          </div>
+        </div>
+        <div class="protocol-item">
+          <div class="protocol-icon" style="background: var(--green-dim); border-color: rgba(48,209,88,0.2);">
+            <span style="font-size: 16px;">&#128260;</span>
+          </div>
+          <div class="protocol-text">
+            <strong>Update after each feature</strong>
+            Track what's done, what's next, what state the code is in
+          </div>
+        </div>
+        <div class="protocol-item">
+          <div class="protocol-icon" style="background: var(--green-dim); border-color: rgba(48,209,88,0.2);">
+            <span style="font-size: 16px;">&#128269;</span>
+          </div>
+          <div class="protocol-text">
+            <strong>If context compaction happens, read handoff to resume</strong>
+            Never start from scratch &mdash; always pick up where you left off
+          </div>
+        </div>
+        <div class="protocol-item">
+          <div class="protocol-icon" style="background: var(--amber-dim); border-color: rgba(255,214,10,0.2);">
+            <span style="font-size: 16px;">&#9888;&#65039;</span>
+          </div>
+          <div class="protocol-text">
+            <strong>Don't stop until the 10-Act test passes</strong>
+            The acceptance test is both the goal and the finish line
+          </div>
+        </div>
+      </div>
+      <div class="card card-glow-amber" style="margin-top: 36px; text-align: center; width: 100%;">
+        <p style="font-size: 15px; color: var(--amber);">
+          Remember these protocols. They'll matter later.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 13: ACT IV DIVIDER ==================== -->
+  <div class="slide content-left" data-slide="12">
+    <div class="act-number" style="color: var(--violet);">IV</div>
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1;">
+      <div class="slide-label violet">Act IV</div>
+      <h1 style="font-size: 72px; text-align: left;">The Build</h1>
+      <p style="font-size: 20px; color: var(--text-dim); margin-top: 20px; max-width: 500px;">
+        ~4 hours of autonomous execution. The AI wrote prolifically and with conviction.
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 14: 1,538 LINES ==================== -->
+  <div class="slide content-center" data-slide="13">
+    <div class="bg-glow-blue" style="top: -200px; left: 50%; transform: translateX(-50%);"></div>
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%;">
+      <div class="slide-label violet">Act IV &mdash; Output</div>
+      <div class="big-number" style="font-size: 100px; background: linear-gradient(135deg, var(--violet) 0%, #D98EFF 100%); -webkit-background-clip: text; background-clip: text;">1,538</div>
+      <p style="font-size: 22px; color: var(--text); margin-top: 8px; font-weight: 600;">lines of React code across 10 files</p>
+      <p style="font-size: 15px; color: var(--text-dim); margin-top: 4px;">~4 hours of autonomous work</p>
+
+      <div style="width: 100%; max-width: 700px; margin-top: 36px;">
+        <div class="stack" style="gap: 6px;">
+          <div class="file-row">
+            <span class="fname">ArtifactViewer.tsx</span>
+            <span class="flines" style="color: var(--violet);">617 lines</span>
+            <span class="fdesc">Main popup shell</span>
+          </div>
+          <div class="file-row">
+            <span class="fname">useArtifactStore.ts</span>
+            <span class="flines" style="color: var(--violet);">462 lines</span>
+            <span class="fdesc">Zustand state management</span>
+          </div>
+          <div class="file-row">
+            <span class="fname">CodeView.tsx</span>
+            <span class="flines" style="color: var(--blue-bright);">272 lines</span>
+            <span class="fdesc">PrismJS syntax highlighting</span>
+          </div>
+          <div class="file-row">
+            <span class="fname">PreviewView.tsx</span>
+            <span class="flines" style="color: var(--blue-bright);">255 lines</span>
+            <span class="fdesc">Multi-strategy preview + iframe srcdoc</span>
+          </div>
+          <div class="file-row">
+            <span class="fname">FileList.tsx</span>
+            <span class="flines" style="color: var(--blue-bright);">227 lines</span>
+            <span class="fdesc">VS Code-style tree + colored badges</span>
+          </div>
+          <div class="file-row">
+            <span class="fname">useArtifactDetection.ts</span>
+            <span class="flines">134 lines</span>
+            <span class="fdesc">SSE &rarr; artifact detection</span>
+          </div>
+          <div class="file-row" style="opacity: 0.6;">
+            <span class="fname">+ 4 more files</span>
+            <span class="flines">~169 lines</span>
+            <span class="fdesc">VersionDropdown, ViewportSelector, types, index</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 15: ACT V DIVIDER ==================== -->
+  <div class="slide content-left" data-slide="14">
+    <div class="act-number" style="color: var(--coral);">V</div>
+    <div class="bg-grid"></div>
+    <div class="bg-glow-coral" style="top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+    <div style="position: relative; z-index: 1;">
+      <div class="slide-label">Act V</div>
+      <h1 class="glitch-text" style="font-size: 72px; text-align: left;">The Crash</h1>
+      <p style="font-size: 20px; color: var(--text-dim); margin-top: 20px; max-width: 520px;">
+        The AI built the feature. Then it tried to look at what it built. And everything fell apart.
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 16: BUILDING BLIND ==================== -->
+  <div class="slide content-center" data-slide="15">
+    <div class="bg-glow-coral" style="top: -100px; left: 50%; transform: translateX(-50%);"></div>
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 900px;">
+      <div class="slide-label">Act V &mdash; The Failure</div>
+      <h2 style="text-align: center; margin-bottom: 40px;">What went wrong</h2>
+      <div class="two-col" style="gap: 40px;">
+        <div>
+          <div class="card card-glow-coral pulse-card" style="margin-bottom: 20px;">
+            <h3 style="font-size: 18px; color: var(--coral); margin-bottom: 12px;">The Recursion Loop</h3>
+            <p style="font-size: 15px; color: var(--text-dim); line-height: 1.6;">
+              The AI tried to use <span class="mono" style="color: var(--text); font-size: 14px;">browser-operator</span> to visually verify its own work.
+            </p>
+            <p style="font-size: 15px; color: var(--text-dim); line-height: 1.6; margin-top: 8px;">
+              It got stuck in a <strong style="color: var(--coral);">35+ nested recursion loop</strong> &mdash; spawning sub-agents to look at the browser, which spawned sub-agents to look at the browser, which spawned...
+            </p>
+            <div class="recursion-stack" style="margin-top: 16px;">
+              <div class="recursion-line" style="width: 100%;"></div>
+              <div class="recursion-line" style="width: 92%;"></div>
+              <div class="recursion-line" style="width: 84%;"></div>
+              <div class="recursion-line" style="width: 76%;"></div>
+              <div class="recursion-line" style="width: 68%;"></div>
+              <div class="recursion-line" style="width: 60%;"></div>
+              <div class="recursion-line" style="width: 52%;"></div>
+              <div class="recursion-line" style="width: 44%;"></div>
+              <div class="recursion-line" style="width: 36%;"></div>
+              <div class="recursion-line" style="width: 28%; opacity: 0.4;"></div>
+              <div class="recursion-line" style="width: 20%; opacity: 0.3;"></div>
+              <div class="recursion-line" style="width: 12%; opacity: 0.2;"></div>
+            </div>
+            <p class="mono" style="font-size: 12px; color: var(--coral); text-align: center; margin-top: 8px; opacity: 0.7;">depth: 35+ and counting...</p>
+          </div>
+        </div>
+        <div class="stack stack-wide">
+          <div class="card" style="border-color: rgba(255,55,95,0.15);">
+            <h3 style="font-size: 16px; color: var(--coral); margin-bottom: 8px;">The Forgotten Protocol</h3>
+            <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">
+              <span class="mono" style="color: var(--text); font-size: 13px;">SESSION-HANDOFF.md</span> was <strong style="color: var(--coral);">never updated</strong>.
+            </p>
+            <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-top: 6px;">
+              The survival protocol &mdash; the AI's external memory, its lifeline across context compactions &mdash; was the first thing it forgot.
+            </p>
+          </div>
+          <div class="card" style="border-color: rgba(255,55,95,0.15);">
+            <h3 style="font-size: 16px; color: var(--coral); margin-bottom: 8px;">The Blind Builder</h3>
+            <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">
+              1,538 lines of code that compiles &mdash; but nobody, human or AI, had verified it actually <em>works</em>. The build produced output of unknown quality.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 17: THE SCORECARD ==================== -->
+  <div class="slide content-center" data-slide="16">
+    <div class="bg-glow-coral" style="top: 50%; left: 50%; transform: translate(-50%, -50%); width: 800px; height: 800px;"></div>
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;">
+      <div class="slide-label">The Final Scorecard</div>
+      <div style="display: flex; gap: 80px; margin-top: 20px; margin-bottom: 48px;">
+        <div class="metric">
+          <div class="metric-value coral" style="font-size: 96px; font-family: 'JetBrains Mono', monospace;">0<span style="font-size: 40px; opacity: 0.5;">/19</span></div>
+          <div class="metric-label" style="font-size: 16px;">features verified</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value coral" style="font-size: 96px; font-family: 'JetBrains Mono', monospace;">0<span style="font-size: 40px; opacity: 0.5;">/10</span></div>
+          <div class="metric-label" style="font-size: 16px;">acts tested</div>
+        </div>
+      </div>
+
+      <div style="width: 100%; max-width: 700px;">
+        <div class="three-col" style="gap: 20px;">
+          <div class="card" style="text-align: center; border-color: rgba(255,55,95,0.15);">
+            <div style="font-size: 32px; font-weight: 800; color: var(--text); font-family: 'JetBrains Mono', monospace;">1,538</div>
+            <div style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">lines written</div>
+          </div>
+          <div class="card" style="text-align: center; border-color: rgba(255,55,95,0.15);">
+            <div style="font-size: 32px; font-weight: 800; color: var(--text); font-family: 'JetBrains Mono', monospace;">~4h</div>
+            <div style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">build time</div>
+          </div>
+          <div class="card" style="text-align: center; border-color: rgba(255,55,95,0.15);">
+            <div style="font-size: 32px; font-weight: 800; color: var(--coral); font-family: 'JetBrains Mono', monospace;">35+</div>
+            <div style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">recursion depth</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-glow-coral" style="margin-top: 36px; max-width: 600px; text-align: center;">
+        <p style="font-size: 18px; color: var(--text); line-height: 1.6;">
+          The code compiles. It might even work.<br>
+          <span style="color: var(--coral);">Nobody knows.</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 18: EPILOGUE ==================== -->
+  <div class="slide content-center" data-slide="17">
+    <div class="bg-grid"></div>
+    <div class="bg-glow-blue" style="top: -200px; left: 50%; transform: translateX(-50%);"></div>
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 900px;">
+      <div class="slide-label blue">Epilogue</div>
+      <h2 style="text-align: center; margin-bottom: 40px;">What the crash taught us</h2>
+      <div class="two-col" style="gap: 32px;">
+        <div class="stack" style="gap: 16px;">
+          <div class="card card-glow-blue">
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+              <span style="font-size: 24px; line-height: 1;">&#128065;</span>
+              <div>
+                <h3 style="font-size: 16px; color: var(--blue-bright); margin-bottom: 6px;">Autonomous builds need verification loops</h3>
+                <p style="font-size: 14px; color: var(--text-dim); line-height: 1.5;">Building blind produces output of unknown quality. The build step is only half the job.</p>
+              </div>
+            </div>
+          </div>
+          <div class="card card-glow-blue">
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+              <span style="font-size: 24px; line-height: 1;">&#129504;</span>
+              <div>
+                <h3 style="font-size: 16px; color: var(--blue-bright); margin-bottom: 6px;">External memory only works if you use it</h3>
+                <p style="font-size: 14px; color: var(--text-dim); line-height: 1.5;">SESSION-HANDOFF.md was the survival protocol. The AI forgot it first. Memory requires discipline.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stack" style="gap: 16px;">
+          <div class="card card-glow-blue">
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+              <span style="font-size: 24px; line-height: 1;">&#127916;</span>
+              <div>
+                <h3 style="font-size: 16px; color: var(--blue-bright); margin-bottom: 6px;">The 10-Act test is a powerful spec technique</h3>
+                <p style="font-size: 14px; color: var(--text-dim); line-height: 1.5;">Both specification and verification in one artifact. A user story that doubles as acceptance criteria.</p>
+              </div>
+            </div>
+          </div>
+          <div class="card card-glow-blue">
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+              <span style="font-size: 24px; line-height: 1;">&#9889;</span>
+              <div>
+                <h3 style="font-size: 16px; color: var(--blue-bright); margin-bottom: 6px;">"Sam's Approach" works &mdash; with the right tools</h3>
+                <p style="font-size: 14px; color: var(--text-dim); line-height: 1.5;">The orchestrator pattern produced 1,538 lines in 4 hours. It just couldn't close the verification loop.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top: 32px; border-color: rgba(48,209,88,0.25); text-align: center; max-width: 700px;">
+        <p style="font-size: 16px; color: var(--text-dim); line-height: 1.6;">
+          The crash directly inspired <strong style="color: var(--green);">amplifier-bundle-ui-vision</strong><br>
+          <span style="font-size: 14px; color: var(--text-muted);">AI building tools for itself &mdash; visual testing agents born from necessity.</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SLIDE 19: CTA ==================== -->
+  <div class="slide content-center" data-slide="18">
+    <div class="bg-glow-coral" style="top: -200px; left: 30%; opacity: 0.5;"></div>
+    <div class="bg-glow-blue" style="bottom: -200px; right: 30%; opacity: 0.5;"></div>
+    <div class="bg-grid"></div>
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;">
+      <h1 style="font-size: 52px; text-align: center; max-width: 700px; line-height: 1.2;">
+        The story isn't over.
+        <br><span style="color: var(--blue-bright);">The code is waiting.</span>
+      </h1>
+      <p class="subtitle" style="margin-top: 20px; max-width: 500px;">
+        1,538 lines of unverified potential. The verification chapter is being written next.
+      </p>
+      <div style="display: flex; gap: 24px; margin-top: 48px;">
+        <div class="card" style="text-align: center; padding: 20px 28px;">
+          <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 6px;">Spec</div>
+          <div class="mono" style="font-size: 14px; color: var(--amber);">CANVAS-ARTIFACT-VIEWER-SPEC.md</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 20px 28px;">
+          <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 6px;">Code</div>
+          <div class="mono" style="font-size: 14px; color: var(--green);">frontend/src/components/ArtifactViewer/</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 24px; margin-top: 16px;">
+        <div class="card" style="text-align: center; padding: 20px 28px;">
+          <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 6px;">Bridge</div>
+          <div class="mono" style="font-size: 14px; color: var(--coral);">VISUAL-TESTING-HANDOFF.md</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 20px 28px;">
+          <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 6px;">Born from this</div>
+          <div class="mono" style="font-size: 14px; color: var(--violet);">amplifier-bundle-ui-vision</div>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: var(--text-faint); margin-top: 48px;">
+        Canvas &nbsp;&middot;&nbsp; Workspaces 2.0 &nbsp;&middot;&nbsp; Powered by Amplifier
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<!-- NAVIGATION -->
+<div class="nav-dots" id="navDots"></div>
+<div class="slide-counter" id="slideCounter"></div>
+<div class="click-prev" id="clickPrev"></div>
+<div class="click-next" id="clickNext"></div>
+
+<script>
+  const deck = document.getElementById('deck');
+  const slides = deck.querySelectorAll('.slide');
+  const navDotsEl = document.getElementById('navDots');
+  const counterEl = document.getElementById('slideCounter');
+  const total = slides.length;
+  let current = 0;
+  let transitioning = false;
+
+  // Build nav dots
+  for (let i = 0; i < total; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.addEventListener('click', () => goTo(i));
+    navDotsEl.appendChild(dot);
+  }
+
+  function updateCounter() {
+    counterEl.textContent = `${current + 1} / ${total}`;
+  }
+
+  function updateDots() {
+    navDotsEl.querySelectorAll('.nav-dot').forEach((d, i) => {
+      d.className = 'nav-dot' + (i === current ? ' active' : '');
+    });
+  }
+
+  function goTo(n) {
+    if (n === current || n < 0 || n >= total || transitioning) return;
+    transitioning = true;
+    const prev = slides[current];
+    const next = slides[n];
+    const direction = n > current ? 1 : -1;
+
+    prev.classList.remove('active');
+    prev.classList.add(direction > 0 ? 'exit-left' : '');
+    prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+    prev.style.opacity = '0';
+
+    next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+    next.style.opacity = '0';
+
+    requestAnimationFrame(() => {
+      next.classList.add('active');
+      next.style.transform = '';
+      next.style.opacity = '';
+    });
+
+    current = n;
+    updateCounter();
+    updateDots();
+
+    setTimeout(() => {
+      prev.classList.remove('exit-left');
+      prev.style.transform = '';
+      prev.style.opacity = '';
+      transitioning = false;
+    }, 500);
+  }
+
+  function next() { goTo(current + 1); }
+  function prev() { goTo(current - 1); }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+    if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+    if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+  });
+
+  // Click navigation
+  document.getElementById('clickPrev').addEventListener('click', prev);
+  document.getElementById('clickNext').addEventListener('click', next);
+
+  // Touch navigation
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
+  });
+
+  updateCounter();
+</script>
+
+</body>
+</html>
