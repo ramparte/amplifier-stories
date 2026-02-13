@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Teaching AI to See | The ui-vision Story</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-dim: rgba(255, 55, 95, 0.15);
+            --accent-glow: rgba(255, 55, 95, 0.4);
+            --green: #30D158;
+            --red: #FF453A;
+            --yellow: #FFD60A;
+            --cyan: #64D2FF;
+            --orange: #FF9F0A;
+            --purple: #BF5AF2;
+            --surface: rgba(255,255,255,0.05);
+            --border: rgba(255,255,255,0.1);
+            --text-secondary: rgba(255,255,255,0.5);
+            --text-tertiary: rgba(255,255,255,0.35);
+
+            --fs-hero: clamp(36px, 10vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 32px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 18px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 1.6vw, 15px);
+            --fs-big-number: clamp(60px, 18vw, 160px);
+            --fs-label: clamp(11px, 1.4vw, 13px);
+
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .slide {
+            display: none;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active { display: flex; }
+
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+            .slide.active { opacity: 1; }
+        }
+
+        .section-label {
+            font-size: var(--fs-label);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.05;
+            margin-bottom: var(--space-md);
+        }
+
+        .headline-medium {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: var(--space-md);
+        }
+
+        .headline-small {
+            font-size: var(--fs-h2);
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+            margin-bottom: var(--space-sm);
+        }
+
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            max-width: min(700px, 90vw);
+        }
+
+        .body-text {
+            font-size: var(--fs-body);
+            color: rgba(255,255,255,0.7);
+            line-height: 1.7;
+            max-width: min(700px, 90vw);
+        }
+
+        .big-number {
+            font-size: var(--fs-big-number);
+            font-weight: 800;
+            letter-spacing: -4px;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent) 0%, #FF6B8A 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--space-lg);
+            width: 100%;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+            gap: var(--space-md);
+            width: 100%;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-sm);
+            width: 100%;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+
+        .card-accent {
+            background: var(--accent-dim);
+            border: 1px solid rgba(255, 55, 95, 0.25);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+
+        .card-title {
+            font-size: var(--fs-body);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .card-desc {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .code-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            text-align: left;
+            width: 100%;
+            max-width: min(800px, 90vw);
+        }
+
+        .code-green { color: var(--green); }
+        .code-red { color: var(--red); }
+        .code-yellow { color: var(--yellow); }
+        .code-cyan { color: var(--cyan); }
+        .code-accent { color: var(--accent); }
+        .code-dim { color: var(--text-tertiary); }
+        .code-purple { color: var(--purple); }
+        .code-orange { color: var(--orange); }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-md);
+            width: 100%;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: clamp(32px, 8vw, 56px);
+            font-weight: 800;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--accent) 0%, #FF6B8A 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-number.green {
+            background: linear-gradient(135deg, var(--green) 0%, #5AE676 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .stat-number.cyan {
+            background: linear-gradient(135deg, var(--cyan) 0%, #A0E4FF 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .stat-number.yellow {
+            background: linear-gradient(135deg, var(--yellow) 0%, #FFE066 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .stat-number.purple {
+            background: linear-gradient(135deg, var(--purple) 0%, #D68AFF 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: var(--fs-small);
+            font-weight: 600;
+        }
+
+        .badge-red { background: rgba(255, 69, 58, 0.15); color: var(--red); border: 1px solid rgba(255, 69, 58, 0.3); }
+        .badge-green { background: rgba(48, 209, 88, 0.15); color: var(--green); border: 1px solid rgba(48, 209, 88, 0.3); }
+        .badge-yellow { background: rgba(255, 214, 10, 0.15); color: var(--yellow); border: 1px solid rgba(255, 214, 10, 0.3); }
+        .badge-accent { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(255, 55, 95, 0.3); }
+
+        .timeline {
+            position: relative;
+            padding-left: clamp(24px, 4vw, 40px);
+            border-left: 2px solid var(--border);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: var(--space-lg);
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: calc(clamp(-25px, -4.1vw, -41px));
+            top: 6px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #000;
+        }
+
+        .timeline-item.green::before { background: var(--green); }
+        .timeline-item.red::before { background: var(--red); }
+        .timeline-item.yellow::before { background: var(--yellow); }
+
+        .timeline-time {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .timeline-title {
+            font-size: var(--fs-body);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .timeline-desc {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            max-width: min(800px, 90vw);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .mini-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--fs-small);
+        }
+
+        .mini-table th {
+            text-align: left;
+            padding: var(--space-xs) var(--space-sm);
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: var(--fs-label);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mini-table td {
+            padding: var(--space-xs) var(--space-sm);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.7);
+        }
+
+        .mini-table .file-name {
+            color: var(--cyan);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: var(--fs-code);
+        }
+
+        .mini-table .line-count {
+            color: var(--text-secondary);
+            text-align: right;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .flow-step {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: var(--space-sm) var(--space-md);
+            text-align: center;
+            font-size: var(--fs-small);
+            font-weight: 500;
+            min-width: min(120px, 40vw);
+        }
+
+        .flow-step.highlight {
+            background: var(--accent-dim);
+            border-color: rgba(255, 55, 95, 0.3);
+            color: var(--accent);
+        }
+
+        .flow-arrow {
+            color: var(--text-tertiary);
+            font-size: clamp(16px, 3vw, 24px);
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--space-lg);
+            width: 100%;
+        }
+
+        .comparison-col h3 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+        }
+
+        .comparison-col.before h3 { color: var(--red); }
+        .comparison-col.after h3 { color: var(--green); }
+
+        .comparison-item {
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: var(--fs-small);
+            color: rgba(255,255,255,0.7);
+            line-height: 1.5;
+        }
+
+        .crash-log {
+            background: rgba(255, 69, 58, 0.05);
+            border: 1px solid rgba(255, 69, 58, 0.2);
+            border-radius: var(--radius-sm);
+            padding: clamp(16px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            text-align: left;
+            max-width: min(800px, 90vw);
+            width: 100%;
+        }
+
+        .pending-table {
+            width: 100%;
+            max-width: min(700px, 90vw);
+        }
+
+        .pending-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: var(--fs-small);
+        }
+
+        .pending-row .label { color: rgba(255,255,255,0.5); }
+        .pending-row .status { 
+            color: var(--red); 
+            font-family: 'SF Mono', monospace;
+            font-weight: 600;
+            font-size: var(--fs-label);
+        }
+
+        .icon-eye {
+            display: inline-block;
+            width: clamp(48px, 10vw, 80px);
+            height: clamp(48px, 10vw, 80px);
+            margin-bottom: var(--space-md);
+        }
+
+        /* Navigation */
+        .nav-dots {
+            position: fixed;
+            bottom: clamp(16px, 3vw, 24px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            padding: 0;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+            transform: scale(1.3);
+        }
+
+        @media (hover: none) {
+            .nav-dot { min-width: 14px; min-height: 14px; }
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(16px, 3vw, 24px);
+            right: clamp(16px, 3vw, 24px);
+            font-size: var(--fs-label);
+            color: var(--text-tertiary);
+            font-family: 'SF Mono', monospace;
+            z-index: 100;
+        }
+
+        /* Animations */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 55, 95, 0.2); }
+            50% { box-shadow: 0 0 40px rgba(255, 55, 95, 0.5); }
+        }
+
+        @keyframes blink-cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .cursor-blink::after {
+            content: '|';
+            animation: blink-cursor 1s infinite;
+            color: var(--accent);
+        }
+
+        .glow-border {
+            animation: pulse-glow 3s infinite;
+        }
+
+        /* Utility */
+        .mt-sm { margin-top: var(--space-sm); }
+        .mt-md { margin-top: var(--space-md); }
+        .mt-lg { margin-top: var(--space-lg); }
+        .mt-xl { margin-top: var(--space-xl); }
+        .mb-sm { margin-bottom: var(--space-sm); }
+        .mb-md { margin-bottom: var(--space-md); }
+        .text-accent { color: var(--accent); }
+        .text-green { color: var(--green); }
+        .text-red { color: var(--red); }
+        .text-yellow { color: var(--yellow); }
+        .text-cyan { color: var(--cyan); }
+        .text-dim { color: var(--text-secondary); }
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .fw-600 { font-weight: 600; }
+        .w-full { width: 100%; }
+    </style>
+</head>
+<body>
+
+<!-- ============== SLIDE 1: TITLE ============== -->
+<div class="slide center active" id="slide-1">
+    <svg class="icon-eye" viewBox="0 0 80 80" fill="none">
+        <ellipse cx="40" cy="40" rx="36" ry="22" stroke="#FF375F" stroke-width="2.5" fill="none" opacity="0.6"/>
+        <circle cx="40" cy="40" r="12" stroke="#FF375F" stroke-width="2" fill="rgba(255,55,95,0.15)"/>
+        <circle cx="40" cy="40" r="5" fill="#FF375F"/>
+        <line x1="8" y1="20" x2="18" y2="28" stroke="#FF375F" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="72" y1="20" x2="62" y2="28" stroke="#FF375F" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="4" y1="40" x2="14" y2="40" stroke="#FF375F" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+        <line x1="66" y1="40" x2="76" y2="40" stroke="#FF375F" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+        <line x1="8" y1="60" x2="18" y2="52" stroke="#FF375F" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="72" y1="60" x2="62" y2="52" stroke="#FF375F" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+    </svg>
+    <div class="section-label">amplifier-bundle-ui-vision</div>
+    <h1 class="headline">Teaching AI<br>to See</h1>
+    <p class="subhead">When an AI agent built a feature but couldn't see<br>what it built, it created its own eyes.</p>
+    <p class="text-dim mt-md" style="font-size: var(--fs-small);">February 12-13, 2026</p>
+</div>
+
+<!-- ============== SLIDE 2: ACT 1 - THE VISION ============== -->
+<div class="slide" id="slide-2">
+    <div class="section-label">Act I</div>
+    <h2 class="headline-medium">The Vision</h2>
+    <p class="body-text mb-md">The Canvas team set out to build an Artifact Viewer - a full-featured file browser for AI-generated code. The spec was meticulous.</p>
+    
+    <div class="stat-grid mt-md" style="max-width: min(700px, 90vw);">
+        <div class="stat">
+            <div class="stat-number">1,021</div>
+            <div class="stat-label">Lines of Spec</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number cyan">25</div>
+            <div class="stat-label">Screenshots Studied</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number purple">17</div>
+            <div class="stat-label">HTML Mockups</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number yellow">21</div>
+            <div class="stat-label">Spec Sections</div>
+        </div>
+    </div>
+
+    <div class="card mt-lg" style="max-width: min(700px, 90vw);">
+        <div class="card-title text-cyan">CANVAS-ARTIFACT-VIEWER-SPEC.md</div>
+        <div class="card-desc">
+            25 Kepler desktop screenshots analyzed. 17 interactive HTML mockups prototyped. 
+            21 sections covering every detail from file tree styling to VS Code-inspired badges. 
+            A 10-Act acceptance test scripting the exact verification sequence.
+        </div>
+    </div>
+</div>
+
+<!-- ============== SLIDE 3: ACT 2 - THE BUILD ============== -->
+<div class="slide" id="slide-3">
+    <div class="section-label">Act II</div>
+    <h2 class="headline-medium">The Autonomous Build</h2>
+    <p class="body-text mb-md">A 528-line implementation prompt was handed to an Amplifier session. What followed was 4 hours of fully autonomous development.</p>
+
+    <div class="grid-2 mt-md">
+        <div>
+            <div class="table-wrapper">
+                <table class="mini-table">
+                    <thead>
+                        <tr><th>Component</th><th style="text-align:right">Lines</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="file-name">ArtifactViewer.tsx</td><td class="line-count">617</td></tr>
+                        <tr><td class="file-name">useArtifactStore.ts</td><td class="line-count">462</td></tr>
+                        <tr><td class="file-name">CodeView.tsx</td><td class="line-count">272</td></tr>
+                        <tr><td class="file-name">PreviewView.tsx</td><td class="line-count">255</td></tr>
+                        <tr><td class="file-name">FileList.tsx</td><td class="line-count">227</td></tr>
+                        <tr><td class="file-name" style="color: var(--text-secondary);">+ 5 more files</td><td class="line-count">273</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div>
+            <div class="stat" style="margin-bottom: var(--space-lg);">
+                <div class="stat-number green">2,106</div>
+                <div class="stat-label">Total Lines Written</div>
+            </div>
+            <div class="stat" style="margin-bottom: var(--space-lg);">
+                <div class="stat-number cyan">10</div>
+                <div class="stat-label">React Components</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number yellow">~4h</div>
+                <div class="stat-label">Autonomous Dev Time</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============== SLIDE 4: WHAT IT BUILT ============== -->
+<div class="slide" id="slide-4">
+    <div class="section-label">The Output</div>
+    <h2 class="headline-medium">A Complete Feature,<br>Built Without Human Touch</h2>
+    
+    <div class="grid-3 mt-lg">
+        <div class="card">
+            <div class="card-title text-cyan">ArtifactViewer.tsx</div>
+            <div class="card-desc">617-line main popup shell with full-screen mode, keyboard shortcuts, and responsive layout</div>
+        </div>
+        <div class="card">
+            <div class="card-title text-green">useArtifactStore.ts</div>
+            <div class="card-desc">462-line Zustand state management with file registry, version history, and selection logic</div>
+        </div>
+        <div class="card">
+            <div class="card-title text-yellow">CodeView.tsx</div>
+            <div class="card-desc">PrismJS syntax highlighting with line numbers and 15+ language support</div>
+        </div>
+        <div class="card">
+            <div class="card-title text-purple" style="color: var(--purple);">PreviewView.tsx</div>
+            <div class="card-desc">Multi-strategy HTML/image preview with iframe sandboxing and asset inlining</div>
+        </div>
+        <div class="card">
+            <div class="card-title text-accent">FileList.tsx</div>
+            <div class="card-desc">VS Code-style tree navigator with colored file-type badges and expand/collapse</div>
+        </div>
+        <div class="card">
+            <div class="card-title" style="color: var(--orange);">SSE Detection</div>
+            <div class="card-desc">Real-time artifact detection from streaming tool_call events via Server-Sent Events</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============== SLIDE 5: THE CRASH ============== -->
+<div class="slide center" id="slide-5">
+    <div class="section-label" style="color: var(--red);">Act III</div>
+    <h2 class="headline" style="color: var(--red);">The Crash</h2>
+    <p class="subhead" style="max-width: min(600px, 85vw);">The AI built the feature flawlessly.<br>Then it tried to <em>look at</em> what it built.</p>
+</div>
+
+<!-- ============== SLIDE 6: RECURSION LOOP ============== -->
+<div class="slide" id="slide-6">
+    <div class="section-label" style="color: var(--red);">The Failure</div>
+    <h2 class="headline-medium">35+ Nested Recursion Loop</h2>
+    <p class="body-text mb-md">The session launched a browser-operator to visually verify the UI. The operator couldn't process what it saw. It spawned another. Then another. Then another.</p>
+    
+    <div class="crash-log">
+<span class="code-dim">// What the session tried to do:</span>
+<span class="code-cyan">delegate</span> <span class="code-yellow">browser-operator</span> <span class="code-dim">"Check if the UI looks right"</span>
+  <span class="code-dim">-></span> <span class="code-cyan">delegate</span> <span class="code-yellow">browser-operator</span> <span class="code-dim">"Navigate and verify"</span>
+    <span class="code-dim">-></span> <span class="code-cyan">delegate</span> <span class="code-yellow">browser-operator</span> <span class="code-dim">"Take screenshot"</span>
+      <span class="code-dim">-></span> <span class="code-cyan">delegate</span> <span class="code-yellow">browser-operator</span> <span class="code-dim">"Analyze screenshot"</span>
+        <span class="code-dim">-></span> <span class="code-cyan">delegate</span> <span class="code-yellow">browser-operator</span> <span class="code-dim">"..."</span>
+          <span class="code-red">// 35+ levels deep</span>
+          <span class="code-red">// Session crashed</span>
+          <span class="code-red">// Context window exhausted</span>
+    </div>
+    
+    <p class="body-text mt-md" style="color: var(--red);">One simple question killed the session: <em>"Does this look right?"</em></p>
+</div>
+
+<!-- ============== SLIDE 7: SESSION HANDOFF EVIDENCE ============== -->
+<div class="slide" id="slide-7">
+    <div class="section-label" style="color: var(--red);">The Evidence</div>
+    <h2 class="headline-medium">SESSION-HANDOFF.md</h2>
+    <p class="body-text mb-md">The session died before updating its handoff document. Every feature: PENDING. Every acceptance test: NOT TESTED. Every checkpoint: NOT REACHED.</p>
+    
+    <div class="grid-2">
+        <div class="pending-table">
+            <div style="font-size: var(--fs-small); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: var(--space-sm);">Feature Progress</div>
+            <div class="pending-row"><span class="label">Zustand Artifact Registry</span><span class="status">PENDING</span></div>
+            <div class="pending-row"><span class="label">SSE Artifact Detection</span><span class="status">PENDING</span></div>
+            <div class="pending-row"><span class="label">ArtifactViewer Shell</span><span class="status">PENDING</span></div>
+            <div class="pending-row"><span class="label">File List UI</span><span class="status">PENDING</span></div>
+            <div class="pending-row"><span class="label">Code Tab</span><span class="status">PENDING</span></div>
+            <div class="pending-row"><span class="label">Preview Tab</span><span class="status">PENDING</span></div>
+            <div class="pending-row"><span class="label">Version History</span><span class="status">PENDING</span></div>
+            <div class="pending-row"><span class="label" style="color: var(--text-tertiary);">...11 more features</span><span class="status">PENDING</span></div>
+        </div>
+        <div class="pending-table">
+            <div style="font-size: var(--fs-small); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: var(--space-sm);">10-Act Acceptance Test</div>
+            <div class="pending-row"><span class="label">Act 1: Project Setup</span><span class="status">NOT TESTED</span></div>
+            <div class="pending-row"><span class="label">Act 2: File Creation</span><span class="status">NOT TESTED</span></div>
+            <div class="pending-row"><span class="label">Act 3: Preview Testing</span><span class="status">NOT TESTED</span></div>
+            <div class="pending-row"><span class="label">Act 4: Iteration</span><span class="status">NOT TESTED</span></div>
+            <div class="pending-row"><span class="label">Act 5: Adding Images</span><span class="status">NOT TESTED</span></div>
+            <div class="pending-row"><span class="label">Act 6: Cross-Project</span><span class="status">NOT TESTED</span></div>
+            <div class="pending-row"><span class="label">Act 7: Snapshot</span><span class="status">NOT TESTED</span></div>
+            <div class="pending-row"><span class="label">Act 8-9: Error & Resume</span><span class="status">NOT TESTED</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============== SLIDE 8: THE INSIGHT ============== -->
+<div class="slide center" id="slide-8">
+    <div class="section-label">The Insight</div>
+    <h2 class="headline">AI agents need<br><span class="text-accent">eyes</span>, not just code.</h2>
+    <p class="subhead mt-md" style="max-width: min(550px, 85vw);">Building UI without visual verification<br>is building blind.</p>
+</div>
+
+<!-- ============== SLIDE 9: ACT 4 - THE BIRTH ============== -->
+<div class="slide center" id="slide-9">
+    <div class="section-label" style="color: var(--green);">Act IV</div>
+    <h2 class="headline-medium">Pain Drives Innovation</h2>
+    <div class="big-number mt-md mb-md" style="background: linear-gradient(135deg, var(--green) 0%, #5AE676 100%); -webkit-background-clip: text; background-clip: text;">ui-vision</div>
+    <p class="subhead">A purpose-built Amplifier bundle born from a crash.<br>Built the next morning. Merged by lunch.</p>
+</div>
+
+<!-- ============== SLIDE 10: ARCHITECTURE ============== -->
+<div class="slide" id="slide-10">
+    <div class="section-label" style="color: var(--green);">The Solution</div>
+    <h2 class="headline-medium">Three Agents, Three Modes</h2>
+    <p class="body-text mb-lg">Each agent answers a different question about your UI.</p>
+    
+    <div class="grid-3">
+        <div class="card glow-border">
+            <div style="font-size: clamp(24px, 5vw, 36px); margin-bottom: var(--space-sm);">&#128065;</div>
+            <div class="card-title text-accent">Visual Auditor</div>
+            <div class="card-desc" style="margin-bottom: var(--space-sm);">"Does this look good?"</div>
+            <div class="badge badge-accent">Quality</div>
+        </div>
+        <div class="card">
+            <div style="font-size: clamp(24px, 5vw, 36px); margin-bottom: var(--space-sm);">&#128260;</div>
+            <div class="card-title text-cyan">Regression Checker</div>
+            <div class="card-desc" style="margin-bottom: var(--space-sm);">"Did my changes break anything?"</div>
+            <div class="badge" style="background: rgba(100, 210, 255, 0.15); color: var(--cyan); border: 1px solid rgba(100, 210, 255, 0.3);">Safety</div>
+        </div>
+        <div class="card">
+            <div style="font-size: clamp(24px, 5vw, 36px); margin-bottom: var(--space-sm);">&#9855;</div>
+            <div class="card-title text-green">Accessibility Scanner</div>
+            <div class="card-desc" style="margin-bottom: var(--space-sm);">"Can everyone use this?"</div>
+            <div class="badge badge-green">Inclusion</div>
+        </div>
+    </div>
+    
+    <p class="body-text mt-lg" style="font-size: var(--fs-small);">Plus 3 matching recipes for repeatable, automated testing workflows.</p>
+</div>
+
+<!-- ============== SLIDE 11: HOW IT WORKS ============== -->
+<div class="slide" id="slide-11">
+    <div class="section-label">How It Works</div>
+    <h2 class="headline-medium">Playwright MCP + Vision Mode</h2>
+    <p class="body-text mb-lg">The core innovation: screenshots returned as base64 images the model can literally see and analyze.</p>
+    
+    <div class="flow-diagram mb-lg">
+        <div class="flow-step">Navigate<br><span style="font-size: var(--fs-label); color: var(--text-tertiary);">browser_navigate</span></div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step highlight">Screenshot<br><span style="font-size: var(--fs-label); color: var(--accent);">base64 image</span></div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">Snapshot<br><span style="font-size: var(--fs-label); color: var(--text-tertiary);">a11y tree</span></div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">Analyze<br><span style="font-size: var(--fs-label); color: var(--text-tertiary);">structured report</span></div>
+    </div>
+    
+    <div class="code-block" style="max-width: min(720px, 90vw);">
+<span class="code-dim"># The magic flags</span>
+<span class="code-cyan">command:</span> npx
+<span class="code-cyan">args:</span>
+  - <span class="code-yellow">"@playwright/mcp@latest"</span>
+  - <span class="code-green">"--caps=vision"</span>           <span class="code-dim"># Enable vision mode</span>
+  - <span class="code-green">"--headless"</span>               <span class="code-dim"># No browser window</span>
+  - <span class="code-green">"--image-responses"</span>
+  - <span class="code-green">"allow"</span>                    <span class="code-dim"># Return base64 images</span></div>
+</div>
+
+<!-- ============== SLIDE 12: COMPOSABILITY ============== -->
+<div class="slide" id="slide-12">
+    <div class="section-label">Amplifier Composability</div>
+    <h2 class="headline-medium">Drop-In Vision for Any Bundle</h2>
+    <p class="body-text mb-lg">The entire capability is a composable behavior YAML. Add visual testing to any existing Amplifier bundle in two lines.</p>
+    
+    <div class="grid-2">
+        <div>
+            <div class="code-block">
+<span class="code-dim"># As a full bundle</span>
+<span class="code-cyan">includes:</span>
+  - <span class="code-cyan">bundle:</span> <span class="code-yellow">git+...amplifier-bundle-ui-vision@main</span>
+
+<span class="code-dim"># As a behavior (compose into existing)</span>
+<span class="code-cyan">includes:</span>
+  - <span class="code-cyan">bundle:</span> <span class="code-yellow">git+...ui-vision@main</span>
+         <span class="code-yellow">#subdirectory=behaviors/ui-vision.yaml</span></div>
+        </div>
+        <div>
+            <div class="card" style="margin-bottom: var(--space-md);">
+                <div class="card-title" style="color: var(--orange);">What You Get</div>
+                <div class="card-desc">
+                    <div style="margin-bottom: 8px;">&#9679; Playwright MCP with vision mode</div>
+                    <div style="margin-bottom: 8px;">&#9679; 3 specialist agents auto-registered</div>
+                    <div style="margin-bottom: 8px;">&#9679; 3 recipes ready to execute</div>
+                    <div>&#9679; Context docs for delegation routing</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title text-green">Bundle Size</div>
+                <div class="card-desc">
+                    <div style="margin-bottom: 4px;">1 behavior YAML (31 lines)</div>
+                    <div style="margin-bottom: 4px;">3 agent definitions</div>
+                    <div style="margin-bottom: 4px;">3 recipe definitions</div>
+                    <div>2 context documents</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============== SLIDE 13: FIRST SIGHT ============== -->
+<div class="slide center" id="slide-13">
+    <div class="section-label" style="color: var(--green);">Act V</div>
+    <h2 class="headline-medium">First Sight</h2>
+    <p class="subhead mb-lg" style="max-width: min(600px, 85vw);">February 13, 11:00 AM - The AI opens its eyes.</p>
+    
+    <div class="card-accent" style="max-width: min(600px, 90vw); text-align: left;">
+        <div style="font-family: 'SF Mono', monospace; font-size: var(--fs-code); line-height: 1.8;">
+            <span class="code-dim">// The very first visual verification</span><br>
+            <span class="code-cyan">browser_navigate</span>(<span class="code-yellow">"http://localhost:5173"</span>)<br>
+            <span class="code-cyan">browser_take_screenshot</span>()<br>
+            <span class="code-dim">// -> Returns base64 PNG</span><br>
+            <span class="code-dim">// -> Model SEES the rendered pixels</span><br>
+            <span class="code-dim">// -> Saved: </span><span class="code-green">vision-test-screenshot.png</span><br>
+            <br>
+            <span class="code-accent">// "I can see the dashboard layout with a sidebar</span><br>
+            <span class="code-accent">//  on the left, a header at the top, and the main</span><br>
+            <span class="code-accent">//  content area showing the artifact viewer..."</span>
+        </div>
+    </div>
+    
+    <div class="stat-grid mt-lg" style="max-width: min(500px, 90vw);">
+        <div class="stat">
+            <div class="stat-number green">30</div>
+            <div class="stat-label">Screenshots Captured</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">11:25</div>
+            <div class="stat-label">PR #31 Merged</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============== SLIDE 14: BEFORE / AFTER ============== -->
+<div class="slide" id="slide-14">
+    <div class="section-label">The Transformation</div>
+    <h2 class="headline-medium">Before & After</h2>
+    
+    <div class="comparison mt-lg">
+        <div class="comparison-col before">
+            <h3>&#10005; Before ui-vision</h3>
+            <div class="comparison-item">AI builds UI code blindly, hoping it works</div>
+            <div class="comparison-item">Visual verification requires a human in the loop</div>
+            <div class="comparison-item">Generic browser-operator with no visual context</div>
+            <div class="comparison-item">35+ recursion crash trying to self-verify</div>
+            <div class="comparison-item">SESSION-HANDOFF: every item PENDING</div>
+            <div class="comparison-item">No accessibility awareness during development</div>
+        </div>
+        <div class="comparison-col after">
+            <h3>&#10003; After ui-vision</h3>
+            <div class="comparison-item">AI sees base64 screenshots of rendered UI</div>
+            <div class="comparison-item">Autonomous visual verification with structured reports</div>
+            <div class="comparison-item">Purpose-built specialist agents for each concern</div>
+            <div class="comparison-item">Clean delegation, focused analysis, no recursion</div>
+            <div class="comparison-item">Visual evidence attached to every verification</div>
+            <div class="comparison-item">WCAG 2.1 AA scanning built into the workflow</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============== SLIDE 15: RECIPE PATTERN ============== -->
+<div class="slide" id="slide-15">
+    <div class="section-label">The Pattern</div>
+    <h2 class="headline-medium">2-Step Recipe Architecture</h2>
+    <p class="body-text mb-lg">Every recipe follows the same pattern: specialist analysis, then executive summary.</p>
+    
+    <div class="code-block" style="max-width: min(700px, 90vw);">
+<span class="code-dim"># visual-audit.yaml</span>
+<span class="code-cyan">name:</span> visual-audit
+<span class="code-cyan">steps:</span>
+  - <span class="code-cyan">id:</span> audit
+    <span class="code-cyan">agent:</span> <span class="code-green">ui-vision:visual-auditor</span>
+    <span class="code-cyan">instruction:</span> <span class="code-yellow">|</span>
+      <span class="code-dim">Navigate to {{ url }}</span>
+      <span class="code-dim">Screenshot each page in {{ pages }}</span>
+      <span class="code-dim">Analyze: layout, typography, color, spacing</span>
+      <span class="code-dim">Rate issues: Critical / Major / Minor / Nitpick</span>
+
+  - <span class="code-cyan">id:</span> summary
+    <span class="code-cyan">instruction:</span> <span class="code-yellow">|</span>
+      <span class="code-dim">From {{ steps.audit.result }}:</span>
+      <span class="code-dim">1. Overall quality score (1-10)</span>
+      <span class="code-dim">2. Top 3 issues to fix</span>
+      <span class="code-dim">3. Top 3 things done well</span>
+      <span class="code-dim">4. Next steps by effort vs impact</span></div>
+</div>
+
+<!-- ============== SLIDE 16: VELOCITY ============== -->
+<div class="slide" id="slide-16">
+    <div class="section-label">Velocity</div>
+    <h2 class="headline-medium">From Crash to Capability</h2>
+    
+    <div class="timeline mt-lg" style="max-width: min(600px, 90vw);">
+        <div class="timeline-item">
+            <div class="timeline-time">Feb 12, Morning</div>
+            <div class="timeline-title">The Vision</div>
+            <div class="timeline-desc">1,021-line UX spec completed with 17 mockups</div>
+        </div>
+        <div class="timeline-item green">
+            <div class="timeline-time">Feb 12, Afternoon (~4 hours)</div>
+            <div class="timeline-title">The Build</div>
+            <div class="timeline-desc">2,106 lines of React autonomously written across 10 components</div>
+        </div>
+        <div class="timeline-item red">
+            <div class="timeline-time">Feb 12, Evening</div>
+            <div class="timeline-title">The Crash</div>
+            <div class="timeline-desc">35+ recursion loop. Session dead. All features marked PENDING.</div>
+        </div>
+        <div class="timeline-item yellow">
+            <div class="timeline-time">Feb 13, Morning</div>
+            <div class="timeline-title">The Build (ui-vision)</div>
+            <div class="timeline-desc">3 agents, 3 recipes, 1 behavior YAML. Purpose-built from pain.</div>
+        </div>
+        <div class="timeline-item green">
+            <div class="timeline-time">Feb 13, 11:00 AM</div>
+            <div class="timeline-title">First Sight</div>
+            <div class="timeline-desc">30 screenshots captured. AI verifies its own UI. vision-test-screenshot.png saved.</div>
+        </div>
+        <div class="timeline-item green">
+            <div class="timeline-time">Feb 13, 11:25 AM</div>
+            <div class="timeline-title">PR #31 Merged</div>
+            <div class="timeline-desc">The AI can see. The loop is closed.</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============== SLIDE 17: KEY TAKEAWAYS ============== -->
+<div class="slide" id="slide-17">
+    <div class="section-label">Lessons</div>
+    <h2 class="headline-medium">What This Teaches Us</h2>
+    
+    <div class="grid-2 mt-lg">
+        <div class="card">
+            <div class="card-title text-accent" style="font-size: var(--fs-h3);">AI builds its own tools</div>
+            <div class="card-desc" style="font-size: var(--fs-body); line-height: 1.6;">
+                When an AI agent hits a wall, the response isn't a workaround - it's a new capability. The crash wasn't a failure. It was a requirements document.
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title text-green" style="font-size: var(--fs-h3);">Composability is leverage</div>
+            <div class="card-desc" style="font-size: var(--fs-body); line-height: 1.6;">
+                A 31-line behavior YAML gives any Amplifier bundle the power of visual testing. Agents, recipes, and MCP tools compose like LEGO bricks.
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title text-cyan" style="font-size: var(--fs-h3);">Pain drives purpose</div>
+            <div class="card-desc" style="font-size: var(--fs-body); line-height: 1.6;">
+                The most useful tools emerge from real failures. A 35-recursion crash at 10 PM led to an elegant solution by 11 AM the next day.
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title text-yellow" style="font-size: var(--fs-h3);">Specialist > generalist</div>
+            <div class="card-desc" style="font-size: var(--fs-body); line-height: 1.6;">
+                A generic browser-operator crashed. Three focused specialists - auditor, regression checker, accessibility scanner - each do one thing brilliantly.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============== SLIDE 18: CTA ============== -->
+<div class="slide center" id="slide-18">
+    <svg class="icon-eye" viewBox="0 0 80 80" fill="none" style="width: clamp(56px, 12vw, 96px); height: clamp(56px, 12vw, 96px);">
+        <ellipse cx="40" cy="40" rx="36" ry="22" stroke="#30D158" stroke-width="2.5" fill="none" opacity="0.6"/>
+        <circle cx="40" cy="40" r="12" stroke="#30D158" stroke-width="2" fill="rgba(48,209,88,0.15)"/>
+        <circle cx="40" cy="40" r="5" fill="#30D158"/>
+        <line x1="8" y1="20" x2="18" y2="28" stroke="#30D158" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="72" y1="20" x2="62" y2="28" stroke="#30D158" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="4" y1="40" x2="14" y2="40" stroke="#30D158" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+        <line x1="66" y1="40" x2="76" y2="40" stroke="#30D158" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+        <line x1="8" y1="60" x2="18" y2="52" stroke="#30D158" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="72" y1="60" x2="62" y2="52" stroke="#30D158" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+    </svg>
+    <div class="section-label" style="color: var(--green);">Try It</div>
+    <h2 class="headline">The AI Can See Now.</h2>
+    <p class="subhead mt-sm mb-lg" style="max-width: min(550px, 85vw);">Add visual testing to your Amplifier bundle today.</p>
+    
+    <div class="code-block text-left" style="max-width: min(550px, 85vw);">
+<span class="code-dim"># In your session:</span>
+<span class="code-yellow">"Check how localhost:5173 looks"</span>
+<span class="code-yellow">"Did my CSS changes break anything?"</span>
+<span class="code-yellow">"Run an accessibility scan on the signup form"</span></div>
+    
+    <p class="text-dim mt-lg" style="font-size: var(--fs-small);">
+        <span style="color: var(--accent);">amplifier-bundle-ui-vision</span> &nbsp;&middot;&nbsp; Built Feb 13, 2026 &nbsp;&middot;&nbsp; PR #31
+    </p>
+</div>
+
+<!-- ============== NAVIGATION ============== -->
+<div class="nav-dots" id="navDots"></div>
+<div class="slide-counter" id="slideCounter">1 / 18</div>
+
+<script>
+(function() {
+    const slides = document.querySelectorAll('.slide');
+    const navDots = document.getElementById('navDots');
+    const counter = document.getElementById('slideCounter');
+    let current = 0;
+    const total = slides.length;
+
+    // Create nav dots
+    for (let i = 0; i < total; i++) {
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+        dot.addEventListener('click', () => goTo(i));
+        navDots.appendChild(dot);
+    }
+
+    function goTo(n) {
+        if (n < 0 || n >= total) return;
+        slides[current].classList.remove('active');
+        navDots.children[current].classList.remove('active');
+        current = n;
+        slides[current].classList.add('active');
+        navDots.children[current].classList.add('active');
+        counter.textContent = (current + 1) + ' / ' + total;
+    }
+
+    function next() { goTo(current + 1); }
+    function prev() { goTo(current - 1); }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+            e.preventDefault();
+            next();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            prev();
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            goTo(0);
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            goTo(total - 1);
+        }
+    });
+
+    // Click navigation (left/right halves)
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.nav-dots') || e.target.closest('.code-block') || 
+            e.target.closest('.crash-log') || e.target.closest('a')) return;
+        if (e.clientX > window.innerWidth * 0.5) {
+            next();
+        } else {
+            prev();
+        }
+    });
+
+    // Touch/swipe support
+    let touchStartX = 0;
+    let touchStartY = 0;
+    document.addEventListener('touchstart', function(e) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function(e) {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+            if (dx < 0) next(); else prev();
+        }
+    }, { passive: true });
+})();
+</script>
+
+</body>
+</html>
