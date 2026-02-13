@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Provider Agent Swarms — Cross-Validating AI with AI</title>
+<style>
+:root {
+    --accent: #FF2D55;
+    --accent-dim: rgba(255, 45, 85, 0.15);
+    --accent-glow: rgba(255, 45, 85, 0.3);
+    --bg: #000;
+    --text: #fff;
+    --text-secondary: rgba(255,255,255,0.6);
+    --text-tertiary: rgba(255,255,255,0.4);
+    --card-bg: rgba(255,255,255,0.05);
+    --card-border: rgba(255,255,255,0.1);
+    --code-bg: rgba(255,255,255,0.05);
+    --green: #30D158;
+    --blue: #0A84FF;
+    --purple: #BF5AF2;
+    --orange: #FF9F0A;
+    --teal: #64D2FF;
+    --yellow: #FFD60A;
+
+    --font-headline: clamp(32px, 8vw, 72px);
+    --font-medium-headline: clamp(24px, 5vw, 48px);
+    --font-subhead: clamp(16px, 3vw, 32px);
+    --font-body: clamp(14px, 2vw, 20px);
+    --font-small: clamp(12px, 1.5vw, 16px);
+    --font-big-number: clamp(60px, 20vw, 180px);
+    --padding-slide: clamp(20px, 5vw, 80px);
+    --gap-grid: clamp(16px, 3vw, 40px);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+.slide {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    padding: var(--padding-slide);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+.slide.exit-left {
+    opacity: 0;
+    transform: translateX(-60px);
+}
+
+/* Typography */
+.section-label {
+    font-size: clamp(12px, 1.5vw, 14px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+
+.headline {
+    font-size: var(--font-headline);
+    font-weight: 700;
+    letter-spacing: -2px;
+    line-height: 1.05;
+    margin-bottom: 24px;
+}
+
+.medium-headline {
+    font-size: var(--font-medium-headline);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-bottom: 24px;
+}
+
+.subhead {
+    font-size: var(--font-subhead);
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    max-width: 800px;
+}
+
+.body-text {
+    font-size: var(--font-body);
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 700px;
+}
+
+/* Layouts */
+.split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+    gap: var(--gap-grid);
+    margin-top: 32px;
+}
+
+.thirds {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    gap: var(--gap-grid);
+    margin-top: 32px;
+}
+
+.fourths {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: var(--gap-grid);
+    margin-top: 32px;
+}
+
+/* Cards */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: clamp(16px, 4vw, 28px);
+}
+
+.card-accent {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+}
+
+.card h3 {
+    font-size: clamp(16px, 2.5vw, 22px);
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: -0.5px;
+}
+
+.card p {
+    font-size: var(--font-small);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Code */
+.code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: clamp(12px, 1.8vw, 15px);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 24px;
+}
+
+.code-block .keyword { color: var(--accent); }
+.code-block .string { color: var(--green); }
+.code-block .comment { color: var(--text-tertiary); }
+.code-block .type { color: var(--teal); }
+.code-block .value { color: var(--orange); }
+
+/* Big numbers */
+.big-number {
+    font-size: var(--font-big-number);
+    font-weight: 800;
+    letter-spacing: -4px;
+    line-height: 0.9;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: var(--gap-grid);
+    margin-top: 40px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: clamp(36px, 10vw, 80px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label {
+    font-size: var(--font-small);
+    color: var(--text-secondary);
+    margin-top: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Provider pills */
+.provider-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.provider-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 100px;
+    font-size: var(--font-small);
+    font-weight: 600;
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+}
+
+.provider-pill .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+/* Flow diagram */
+.flow-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 32px;
+}
+
+.flow-box {
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: var(--font-small);
+    font-weight: 600;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.flow-arrow {
+    font-size: 20px;
+    color: var(--text-tertiary);
+}
+
+/* Convergence diagram */
+.convergence-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 40px;
+    gap: 20px;
+}
+
+.provider-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+}
+
+.provider-input {
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: var(--font-small);
+    font-weight: 600;
+    text-align: center;
+    min-width: 140px;
+}
+
+.convergence-lines {
+    font-size: 28px;
+    color: var(--text-tertiary);
+    letter-spacing: 8px;
+}
+
+.convergence-result {
+    padding: 20px 40px;
+    border-radius: 16px;
+    background: var(--accent-dim);
+    border: 2px solid var(--accent);
+    font-size: clamp(18px, 3vw, 28px);
+    font-weight: 700;
+    text-align: center;
+}
+
+/* Timeline */
+.timeline {
+    margin-top: 32px;
+    position: relative;
+    padding-left: 32px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, var(--accent), var(--purple));
+}
+
+.timeline-item {
+    margin-bottom: 28px;
+    position: relative;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -30px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+}
+
+.timeline-date {
+    font-size: clamp(11px, 1.2vw, 13px);
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.timeline-title {
+    font-size: clamp(15px, 2vw, 19px);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.timeline-desc {
+    font-size: var(--font-small);
+    color: var(--text-secondary);
+}
+
+/* Navigation */
+.nav-dots {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+}
+
+.nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+}
+
+.nav-dot.active {
+    background: var(--accent);
+    transform: scale(1.3);
+}
+
+.slide-counter {
+    position: fixed;
+    bottom: 24px;
+    right: 32px;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    z-index: 100;
+}
+
+/* Click zones */
+.click-left, .click-right {
+    position: fixed;
+    top: 0;
+    width: 20%;
+    height: 100%;
+    z-index: 50;
+    cursor: pointer;
+}
+.click-left { left: 0; }
+.click-right { right: 0; }
+
+/* Subtle background texture */
+.bg-glow {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.08;
+    pointer-events: none;
+}
+
+/* Quote styling */
+.quote {
+    font-size: clamp(20px, 4vw, 36px);
+    font-weight: 500;
+    font-style: italic;
+    line-height: 1.4;
+    color: rgba(255,255,255,0.85);
+    max-width: 800px;
+    position: relative;
+    padding-left: 32px;
+    border-left: 3px solid var(--accent);
+    margin-top: 24px;
+}
+
+.quote-attr {
+    font-size: var(--font-small);
+    color: var(--text-tertiary);
+    font-style: normal;
+    font-weight: 400;
+    margin-top: 16px;
+}
+
+/* Highlight */
+.highlight { color: var(--accent); }
+.highlight-green { color: var(--green); }
+.highlight-blue { color: var(--blue); }
+.highlight-purple { color: var(--purple); }
+.highlight-orange { color: var(--orange); }
+.highlight-teal { color: var(--teal); }
+
+/* Use case tags */
+.use-case-list {
+    list-style: none;
+    margin-top: 24px;
+}
+
+.use-case-list li {
+    font-size: var(--font-body);
+    color: var(--text-secondary);
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.use-case-list li::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+}
+
+/* Animated pulse for "live" indicator */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+    margin-right: 8px;
+}
+
+/* Architecture diagram */
+.arch-container {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.arch-layer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.arch-box {
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: var(--font-small);
+    font-weight: 600;
+    text-align: center;
+}
+
+.arch-label {
+    font-size: clamp(11px, 1.2vw, 13px);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 100px;
+    flex-shrink: 0;
+}
+
+.arch-divider {
+    width: 100%;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 8px 0;
+}
+
+/* New badge */
+.badge-new {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 100px;
+    background: var(--accent);
+    color: white;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== SLIDE 1: TITLE ==================== -->
+<div class="slide active" id="slide-1">
+    <div class="bg-glow" style="background: var(--accent); top: -200px; right: -200px;"></div>
+    <div class="bg-glow" style="background: var(--purple); bottom: -200px; left: -100px;"></div>
+    <div class="section-label">Amplifier Ecosystem</div>
+    <div class="headline">Multi-Provider<br>Agent Swarms</div>
+    <div class="subhead" style="margin-top: 8px;">Cross-Validating AI with AI</div>
+    <div style="margin-top: 48px; display: flex; flex-wrap: wrap; gap: 12px;">
+        <div class="provider-pill"><div class="dot" style="background: var(--blue);"></div>Anthropic</div>
+        <div class="provider-pill"><div class="dot" style="background: var(--green);"></div>OpenAI</div>
+        <div class="provider-pill"><div class="dot" style="background: var(--orange);"></div>Gemini</div>
+        <div class="provider-pill"><div class="dot" style="background: var(--purple);"></div>GitHub Copilot</div>
+    </div>
+    <div style="margin-top: 48px; font-size: var(--font-small); color: var(--text-tertiary);">
+        MADE:Explorations &mdash; February 2026
+    </div>
+</div>
+
+<!-- ==================== SLIDE 2: THE QUESTION ==================== -->
+<div class="slide" id="slide-2">
+    <div class="bg-glow" style="background: var(--accent); top: 20%; left: -100px;"></div>
+    <div class="section-label">The Insight</div>
+    <div class="headline" style="max-width: 900px;">What if you could get a <span class="highlight">second opinion</span> on every code change?</div>
+    <div class="subhead" style="margin-top: 16px;">And a third. And a fourth.</div>
+    <div class="body-text" style="margin-top: 32px;">
+        Code review catches bugs. Pair programming catches design flaws. But what if you could run every architectural decision past four different AI models simultaneously&mdash;and only proceed when they converge on the same answer?
+    </div>
+</div>
+
+<!-- ==================== SLIDE 3: ORIGIN STORY ==================== -->
+<div class="slide" id="slide-3">
+    <div class="bg-glow" style="background: var(--purple); bottom: -100px; right: -200px;"></div>
+    <div class="section-label">Origin Story</div>
+    <div class="medium-headline">One engineer started an experiment.</div>
+    <div class="quote">
+        "What if I ran the same prompt through Anthropic, OpenAI, Gemini, and GitHub Copilot at the same time? If three out of four models agree on the architecture, I know I'm on the right track."
+        <div class="quote-attr">&mdash; Samuel Lee, MADE:Explorations</div>
+    </div>
+    <div class="body-text" style="margin-top: 32px;">
+        Samuel Lee pioneered running four providers simultaneously for cross-validation. What started as a personal workflow is now becoming standard practice across the MADE team.
+    </div>
+</div>
+
+<!-- ==================== SLIDE 4: THE ARCHITECTURE ==================== -->
+<div class="slide" id="slide-4">
+    <div class="section-label">Why This Works</div>
+    <div class="medium-headline">Kernel provides <span class="highlight">mechanism</span>.<br>Modules provide <span class="highlight-purple">policy</span>.</div>
+    <div class="body-text">
+        Amplifier's architecture was designed for flexibility&mdash;each provider is just a module you compose into your bundle. Nobody planned for cross-validation. The architecture made it inevitable.
+    </div>
+    <div class="arch-container">
+        <div class="arch-layer">
+            <span class="arch-label">Bundle</span>
+            <div class="arch-box" style="background: var(--accent-dim); border: 1px solid var(--accent);">Your Configuration</div>
+            <span style="color: var(--text-tertiary); font-size: 14px;">composes &rarr;</span>
+        </div>
+        <div class="arch-divider"></div>
+        <div class="arch-layer">
+            <span class="arch-label">Providers</span>
+            <div class="arch-box" style="background: rgba(10,132,255,0.15); border: 1px solid var(--blue);">provider-anthropic</div>
+            <div class="arch-box" style="background: rgba(48,209,88,0.15); border: 1px solid var(--green);">provider-openai</div>
+            <div class="arch-box" style="background: rgba(255,159,10,0.15); border: 1px solid var(--orange);">provider-gemini</div>
+            <div class="arch-box" style="background: rgba(191,90,242,0.15); border: 1px solid var(--purple);">provider-copilot</div>
+        </div>
+        <div class="arch-divider"></div>
+        <div class="arch-layer">
+            <span class="arch-label">Kernel</span>
+            <div class="arch-box" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);">Amplifier Core &mdash; Orchestration, Tools, Sessions</div>
+        </div>
+    </div>
+    <div style="margin-top: 24px; font-size: var(--font-small); color: var(--text-tertiary);">
+        Opinion #7 from amplifier-distro: <em>"Multi-provider is assumed."</em>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 5: THE BUNDLE ==================== -->
+<div class="slide" id="slide-5">
+    <div class="section-label">How It Works</div>
+    <div class="medium-headline">Composition, not configuration.</div>
+    <div class="body-text">Adding a provider is a three-line YAML change. Running four simultaneously is just adding four includes.</div>
+    <div class="code-block"><span class="comment"># Bundle YAML &mdash; compose your provider swarm</span>
+<span class="keyword">providers</span>:
+  - <span class="keyword">module</span>: <span class="string">provider-anthropic</span>
+    <span class="keyword">config</span>:
+      <span class="keyword">default_model</span>: <span class="string">claude-opus-4-6</span>
+      <span class="keyword">enable_1m_context</span>: <span class="value">true</span>
+
+  - <span class="keyword">module</span>: <span class="string">provider-openai</span>
+    <span class="keyword">config</span>:
+      <span class="keyword">default_model</span>: <span class="string">gpt-5</span>
+
+  - <span class="keyword">module</span>: <span class="string">provider-gemini</span>
+    <span class="keyword">config</span>:
+      <span class="keyword">default_model</span>: <span class="string">gemini-3-pro-preview</span>
+
+  - <span class="keyword">module</span>: <span class="string">provider-github-copilot</span>
+    <span class="keyword">config</span>:
+      <span class="keyword">default_model</span>: <span class="string">claude-sonnet-4</span>
+
+<span class="comment"># Route agents to different providers</span>
+<span class="keyword">provider_preferences</span>:
+  - <span class="keyword">provider</span>: <span class="string">anthropic</span>
+    <span class="keyword">model</span>: <span class="string">claude-opus-4-6</span>    <span class="comment"># Primary</span>
+  - <span class="keyword">provider</span>: <span class="string">openai</span>
+    <span class="keyword">model</span>: <span class="string">gpt-5*</span>            <span class="comment"># Fallback</span></div>
+</div>
+
+<!-- ==================== SLIDE 6: CONVERGENCE PATTERN ==================== -->
+<div class="slide" id="slide-6">
+    <div class="bg-glow" style="background: var(--green); top: -100px; left: 30%;"></div>
+    <div class="section-label">The Pattern</div>
+    <div class="medium-headline">Convergence = Confidence</div>
+    <div class="body-text">Run the same question through multiple models. When they converge, you know you're right. When they diverge, you know to dig deeper.</div>
+    <div class="convergence-container">
+        <div class="provider-inputs">
+            <div class="provider-input" style="background: rgba(10,132,255,0.15); border: 1px solid var(--blue);">
+                Claude Opus<br><span style="font-size: 12px; color: var(--text-secondary);">Approach A</span>
+            </div>
+            <div class="provider-input" style="background: rgba(48,209,88,0.15); border: 1px solid var(--green);">
+                GPT-5<br><span style="font-size: 12px; color: var(--text-secondary);">Approach A</span>
+            </div>
+            <div class="provider-input" style="background: rgba(255,159,10,0.15); border: 1px solid var(--orange);">
+                Gemini 3 Pro<br><span style="font-size: 12px; color: var(--text-secondary);">Approach A</span>
+            </div>
+            <div class="provider-input" style="background: rgba(191,90,242,0.15); border: 1px solid var(--purple);">
+                Copilot<br><span style="font-size: 12px; color: var(--text-secondary);">Approach B</span>
+            </div>
+        </div>
+        <div class="convergence-lines">&darr; &darr; &darr; &darr;</div>
+        <div class="convergence-result">
+            <span class="highlight-green">3 / 4 agree</span> &rarr; High Confidence &mdash; Ship It
+        </div>
+        <div style="margin-top: 16px; font-size: var(--font-small); color: var(--text-secondary); text-align: center; max-width: 600px;">
+            The dissenting model isn't wrong&mdash;it's a signal. It may have caught an edge case the others missed, or it may have a different but valid perspective worth examining.
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 7: NEW - GITHUB COPILOT PROVIDER ==================== -->
+<div class="slide" id="slide-7">
+    <div class="bg-glow" style="background: var(--purple); top: 10%; right: -200px;"></div>
+    <div class="section-label">New Provider <span class="badge-new">New</span></div>
+    <div class="medium-headline">GitHub Copilot<br>joins the swarm.</div>
+    <div class="body-text">A brand-new provider module brings every model in your Copilot subscription into Amplifier&mdash;no extra API keys required.</div>
+    <div class="split">
+        <div class="card">
+            <h3>Deny + Destroy Pattern</h3>
+            <p>Each API call creates an ephemeral Copilot session. Tool calls are captured, then the session is destroyed&mdash;keeping Amplifier in full control of orchestration.</p>
+        </div>
+        <div class="card">
+            <h3>Zero API Keys</h3>
+            <p>Authenticates through your existing GitHub Copilot subscription. Run <code style="color: var(--green);">copilot auth login</code> and you're done. Every model in your plan is available.</p>
+        </div>
+        <div class="card">
+            <h3>Full Model Catalog</h3>
+            <p>Claude Opus 4.5, Sonnet 4, GPT-5, GPT-5.1 Codex, Gemini 3 Pro&mdash;all accessible through a single provider module.</p>
+        </div>
+        <div class="card">
+            <h3>8 Commits, 1 Day</h3>
+            <p>Built by Marc Goodner in a single day. 10 source modules, comprehensive test suite, 80% coverage threshold enforced.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 8: 1M CONTEXT + ADAPTIVE THINKING ==================== -->
+<div class="slide" id="slide-8">
+    <div class="bg-glow" style="background: var(--blue); bottom: -100px; left: -100px;"></div>
+    <div class="section-label">Anthropic Provider</div>
+    <div class="headline"><span class="highlight">1M</span> tokens.</div>
+    <div class="subhead">The Anthropic provider now supports 1 million token context windows for Opus and Sonnet models.</div>
+    <div class="split" style="margin-top: 40px;">
+        <div>
+            <div class="card card-accent" style="margin-bottom: 20px;">
+                <h3>Model-Family-Aware Defaults</h3>
+                <p style="margin-top: 12px;">The provider now detects model families and adjusts automatically:</p>
+                <div style="margin-top: 16px; font-family: monospace; font-size: 13px; line-height: 2;">
+                    <div><span style="color: var(--text-secondary);">Opus:</span> <span style="color: var(--orange);">128K</span> output &middot; <span style="color: var(--orange);">64K</span> thinking</div>
+                    <div><span style="color: var(--text-secondary);">Sonnet:</span> <span style="color: var(--teal);">64K</span> output &middot; <span style="color: var(--teal);">32K</span> thinking</div>
+                    <div><span style="color: var(--text-secondary);">Haiku:</span> <span style="color: var(--text-tertiary);">64K</span> output &middot; <span style="color: var(--text-tertiary);">32K</span> thinking</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Adaptive Thinking <span class="badge-new">New</span></h3>
+                <p>Changed from <code style="color: var(--text-tertiary);">type: "enabled"</code> to <code style="color: var(--green);">type: "adaptive"</code>&mdash;the model now decides when to think, yielding better performance across all task types.</p>
+            </div>
+        </div>
+        <div>
+            <div class="card" style="margin-bottom: 20px;">
+                <h3>Pioneered by Samuel Lee</h3>
+                <p>Samuel's original commit added the beta headers infrastructure that made 1M context possible. Brian Krabach then extended it to Opus models with model-family-aware defaults.</p>
+            </div>
+            <div class="card">
+                <h3>Interleaved Thinking</h3>
+                <p>Claude can now think <em>between</em> tool calls, not just at the start. Critical for complex multi-step reasoning across huge context windows.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 9: EVOLUTION TIMELINE ==================== -->
+<div class="slide" id="slide-9">
+    <div class="section-label">Evolution</div>
+    <div class="medium-headline">From experiment to standard practice.</div>
+    <div class="timeline">
+        <div class="timeline-item">
+            <div class="timeline-date">Nov 2025</div>
+            <div class="timeline-title">Samuel Lee adds beta headers to Anthropic provider</div>
+            <div class="timeline-desc">The foundational commit that enables 1M context windows. Introduces the infrastructure for pushing provider capabilities forward.</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">Dec 2025</div>
+            <div class="timeline-title">1M context goes live for Sonnet models</div>
+            <div class="timeline-desc">Context window and max output token configuration added to provider info. Streaming enabled by default for large contexts.</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">Dec 2025</div>
+            <div class="timeline-title">Interleaved thinking + Claude 4.5 optimization</div>
+            <div class="timeline-desc">Thinking budget increased from 10K to 32K tokens. Models can think between tool calls for better multi-step reasoning.</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">Feb 5, 2026</div>
+            <div class="timeline-title">1M context extended to Opus &middot; Adaptive thinking ships</div>
+            <div class="timeline-desc">Model-family-aware defaults give Opus 128K output, 64K thinking. Thinking mode switches from "enabled" to "adaptive" for opus-4-6 compatibility.</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">Feb 10, 2026</div>
+            <div class="timeline-title">GitHub Copilot provider module launches</div>
+            <div class="timeline-desc">Marc Goodner builds the complete provider in a single day. 8 commits, 10 modules, full streaming + tool use support.</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-date">Feb 2026</div>
+            <div class="timeline-title"><span class="live-dot"></span>Multi-provider swarms become team practice</div>
+            <div class="timeline-desc">What Samuel started as an experiment is now standard workflow on the MADE team. Four providers running simultaneously for cross-validation.</div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 10: REAL-WORLD USAGE ==================== -->
+<div class="slide" id="slide-10">
+    <div class="bg-glow" style="background: var(--orange); top: -100px; right: -100px;"></div>
+    <div class="section-label">In Production</div>
+    <div class="medium-headline">Where swarms are shipping value.</div>
+    <div class="body-text">These aren't demos. They're daily workflows running on the MADE team right now.</div>
+    <div class="split" style="margin-top: 32px;">
+        <div>
+            <ul class="use-case-list">
+                <li>
+                    <div>
+                        <strong style="color: white;">MADE Support Bundle Docs Freshness</strong><br>
+                        <span style="font-size: 14px;">Multiple models validate documentation pipelines, catching staleness and inconsistencies that a single model misses.</span>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <strong style="color: white;">Slack Integration Debugging</strong><br>
+                        <span style="font-size: 14px;">The Slack bridge connects to Amplifier sessions using the configured provider swarm. Real-time debugging with cross-validated suggestions.</span>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <strong style="color: white;">NL Spec Creation</strong><br>
+                        <span style="font-size: 14px;">Natural language specifications validated across providers. When Claude, GPT, and Gemini all parse the spec the same way, it's unambiguous.</span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <div>
+            <div class="card" style="margin-bottom: 20px;">
+                <h3 style="color: var(--accent);">The Slack Connection</h3>
+                <p>The amplifier-distro Slack bridge is a 2,400-line integration connecting Slack workspaces to Amplifier sessions. Messages flow through whatever provider swarm is configured in the user's bundle.</p>
+                <div style="margin-top: 16px; font-family: monospace; font-size: 12px; color: var(--text-tertiary); line-height: 1.8;">
+                    Slack &rarr; SocketMode &rarr; EventHandler<br>
+                    &rarr; SessionManager &rarr; Bridge API<br>
+                    &rarr; Amplifier (your providers)
+                </div>
+            </div>
+            <div class="card">
+                <h3 style="color: var(--green);">6 Providers in Catalog</h3>
+                <p>Anthropic, OpenAI, Gemini, xAI, Ollama, and Azure OpenAI. Mix and match. The distro's bundle composer makes it trivial.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 11: SAMUEL LEE'S IMPACT ==================== -->
+<div class="slide" id="slide-11">
+    <div class="bg-glow" style="background: var(--accent); top: 50%; left: -200px;"></div>
+    <div class="section-label">The Pioneer</div>
+    <div class="medium-headline">Samuel Lee's footprint<br>across the ecosystem.</div>
+    <div class="body-text">Senior engineer, floater with high energy, and the person who proved multi-provider swarms work in practice.</div>
+    <div class="thirds" style="margin-top: 32px;">
+        <div class="card">
+            <h3 style="color: var(--blue);">amplifier-core</h3>
+            <p>1 commit. Contributing to the kernel itself.</p>
+        </div>
+        <div class="card">
+            <h3 style="color: var(--green);">amplifier-foundation</h3>
+            <p>8 commits. Building and refining the bundle system.</p>
+        </div>
+        <div class="card">
+            <h3 style="color: var(--accent);">provider-anthropic</h3>
+            <p>1 foundational commit. Beta headers that enabled 1M context for the entire team.</p>
+        </div>
+        <div class="card">
+            <h3 style="color: var(--orange);">amplifier-distro</h3>
+            <p>8 commits. Config validation, server fixes, Slack Socket Mode dedup window.</p>
+        </div>
+        <div class="card">
+            <h3 style="color: var(--purple);">amplifier-app-cli</h3>
+            <p>7 commits. Improving the command-line experience.</p>
+        </div>
+        <div class="card">
+            <h3 style="color: var(--teal);">made-support bundle</h3>
+            <p>2 commits. The support bundle where cross-validation first proved its value.</p>
+        </div>
+    </div>
+    <div style="margin-top: 24px; font-size: var(--font-small); color: var(--text-tertiary);">
+        8 repositories &middot; 46+ commits &middot; Owns bundle-structure
+    </div>
+</div>
+
+<!-- ==================== SLIDE 12: THE NUMBERS ==================== -->
+<div class="slide" id="slide-12">
+    <div class="section-label">By the Numbers</div>
+    <div class="stat-grid">
+        <div class="stat-item">
+            <div class="stat-number">4</div>
+            <div class="stat-label">Providers Running<br>Simultaneously</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">6</div>
+            <div class="stat-label">Providers in the<br>Distro Catalog</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">1M</div>
+            <div class="stat-label">Token Context<br>Window (Anthropic)</div>
+        </div>
+    </div>
+    <div class="stat-grid" style="margin-top: 32px;">
+        <div class="stat-item">
+            <div class="stat-number">128K</div>
+            <div class="stat-label">Opus Max<br>Output Tokens</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">8</div>
+            <div class="stat-label">Copilot Provider<br>Commits (1 Day)</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">3/4</div>
+            <div class="stat-label">Model Agreement<br>= Ship It</div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 13: EMERGENT BEHAVIOR ==================== -->
+<div class="slide" id="slide-13">
+    <div class="bg-glow" style="background: var(--accent); top: -200px; left: 40%;"></div>
+    <div class="section-label">The Takeaway</div>
+    <div class="headline" style="max-width: 900px;">The best features are the ones you <span class="highlight">didn't plan</span>.</div>
+    <div class="body-text" style="margin-top: 16px; max-width: 750px;">
+        Multi-provider was designed for flexibility and vendor independence. Cross-validation was an emergent behavior&mdash;discovered by a team member who asked "what if?" and had the architecture to try it immediately.
+    </div>
+    <div class="split" style="margin-top: 40px;">
+        <div class="card card-accent">
+            <h3>Designed For</h3>
+            <p style="font-size: 18px; margin-top: 8px;">Provider flexibility. No vendor lock-in. User chooses their models.</p>
+        </div>
+        <div class="card" style="border-color: var(--green); background: rgba(48,209,88,0.1);">
+            <h3>Discovered Use</h3>
+            <p style="font-size: 18px; margin-top: 8px;">AI cross-validation. Swarm intelligence. Convergence-based confidence.</p>
+        </div>
+    </div>
+    <div style="margin-top: 32px; font-size: var(--font-small); color: var(--text-tertiary); max-width: 600px;">
+        This is what happens when you build the right abstractions. The kernel provides mechanism. The modules provide policy. The team provides the creativity.
+    </div>
+</div>
+
+<!-- ==================== SLIDE 14: CTA ==================== -->
+<div class="slide" id="slide-14">
+    <div class="bg-glow" style="background: var(--accent); top: 30%; left: 30%; width: 800px; height: 800px; opacity: 0.05;"></div>
+    <div class="section-label">Get Started</div>
+    <div class="headline">Try it yourself.</div>
+    <div class="body-text" style="margin-top: 16px;">
+        Add a second provider to your bundle. Run the same task through both. See what happens when they agree&mdash;and pay close attention when they don't.
+    </div>
+    <div class="thirds" style="margin-top: 40px;">
+        <div class="card">
+            <h3 style="color: var(--purple);">GitHub Copilot Provider</h3>
+            <p style="margin-top: 8px;">
+                <code style="color: var(--green); font-size: 13px;">microsoft/amplifier-module-provider-github-copilot</code>
+            </p>
+            <p style="margin-top: 8px;">Zero API keys. Just your Copilot subscription.</p>
+        </div>
+        <div class="card">
+            <h3 style="color: var(--blue);">Anthropic Provider</h3>
+            <p style="margin-top: 8px;">
+                <code style="color: var(--green); font-size: 13px;">microsoft/amplifier-module-provider-anthropic</code>
+            </p>
+            <p style="margin-top: 8px;">1M context. Adaptive thinking. Model-family defaults.</p>
+        </div>
+        <div class="card">
+            <h3 style="color: var(--orange);">Amplifier Distro</h3>
+            <p style="margin-top: 8px;">
+                <code style="color: var(--green); font-size: 13px;">microsoft/amplifier-distro</code>
+            </p>
+            <p style="margin-top: 8px;">6 providers. Bundle composer. Multi-provider assumed.</p>
+        </div>
+    </div>
+    <div style="margin-top: 48px; font-size: var(--font-small); color: var(--text-tertiary);">
+        MADE:Explorations &middot; Amplifier Ecosystem &middot; February 2026
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav-dots" id="navDots"></div>
+<div class="slide-counter" id="slideCounter"></div>
+<div class="click-left" id="clickLeft"></div>
+<div class="click-right" id="clickRight"></div>
+
+<script>
+(function() {
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let currentSlide = 0;
+
+    // Build nav dots
+    const navDots = document.getElementById('navDots');
+    slides.forEach((_, i) => {
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+        dot.addEventListener('click', () => goToSlide(i));
+        navDots.appendChild(dot);
+    });
+
+    function updateCounter() {
+        document.getElementById('slideCounter').textContent =
+            (currentSlide + 1) + ' / ' + totalSlides;
+    }
+
+    function goToSlide(n) {
+        if (n < 0 || n >= totalSlides || n === currentSlide) return;
+        const direction = n > currentSlide ? 1 : -1;
+
+        slides[currentSlide].classList.remove('active');
+        slides[currentSlide].classList.add(direction > 0 ? 'exit-left' : '');
+        slides[currentSlide].style.transform = direction > 0 ? 'translateX(-60px)' : 'translateX(60px)';
+        slides[currentSlide].style.opacity = '0';
+
+        setTimeout(() => {
+            slides[currentSlide].classList.remove('exit-left');
+            slides[currentSlide].style.transform = '';
+
+            currentSlide = n;
+
+            slides[currentSlide].style.transform = direction > 0 ? 'translateX(60px)' : 'translateX(-60px)';
+            slides[currentSlide].style.opacity = '0';
+
+            requestAnimationFrame(() => {
+                slides[currentSlide].classList.add('active');
+                slides[currentSlide].style.transform = '';
+                slides[currentSlide].style.opacity = '';
+            });
+
+            document.querySelectorAll('.nav-dot').forEach((d, i) => {
+                d.classList.toggle('active', i === currentSlide);
+            });
+            updateCounter();
+        }, 100);
+    }
+
+    function next() { goToSlide(currentSlide + 1); }
+    function prev() { goToSlide(currentSlide - 1); }
+
+    // Keyboard
+    document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+        if (e.key === 'Home') { e.preventDefault(); goToSlide(0); }
+        if (e.key === 'End') { e.preventDefault(); goToSlide(totalSlides - 1); }
+    });
+
+    // Click zones
+    document.getElementById('clickLeft').addEventListener('click', prev);
+    document.getElementById('clickRight').addEventListener('click', next);
+
+    // Touch
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    document.addEventListener('touchend', e => {
+        const diff = touchStartX - e.changedTouches[0].screenX;
+        if (Math.abs(diff) > 50) { diff > 0 ? next() : prev(); }
+    }, { passive: true });
+
+    updateCounter();
+})();
+</script>
+</body>
+</html>

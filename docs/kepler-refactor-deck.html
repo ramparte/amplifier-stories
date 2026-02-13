@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>The Kepler Refactor — 606 Lines of Dead Code & 104 New Tests</title>
+    <style>
+        :root {
+            --accent: #E8915A;
+            --accent-dim: rgba(232, 145, 90, 0.15);
+            --accent-glow: rgba(232, 145, 90, 0.3);
+            --bg: #000;
+            --text: #fff;
+            --text-dim: rgba(255,255,255,0.5);
+            --card-bg: rgba(255,255,255,0.05);
+            --card-border: rgba(255,255,255,0.1);
+            --green: #30D158;
+            --red: #FF453A;
+            --blue: #0A84FF;
+            --purple: #BF5AF2;
+            --teal: #64D2FF;
+
+            --font-headline: clamp(32px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2.2vw, 18px);
+            --font-small: clamp(12px, 1.8vw, 14px);
+            --font-big-number: clamp(48px, 15vw, 140px);
+
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --padding-slide-top: clamp(60px, 10vw, 120px);
+            --padding-slide-bottom: clamp(80px, 12vw, 100px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide-top) var(--padding-slide) var(--padding-slide-bottom);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active { display: flex; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: clamp(12px, 2vw, 24px);
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.05;
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -1px;
+            line-height: 1.15;
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.4;
+            max-width: 700px;
+        }
+
+        .small-text {
+            font-size: var(--font-small);
+            color: var(--text-dim);
+            margin-top: clamp(16px, 3vw, 32px);
+        }
+
+        p, .body-text {
+            font-size: var(--font-body);
+            line-height: 1.6;
+            color: rgba(255,255,255,0.8);
+            max-width: 800px;
+        }
+
+        /* Grid Layouts */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(16px, 3vw, 32px);
+            width: 100%;
+        }
+
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(16px, 3vw, 32px);
+            width: 100%;
+        }
+
+        .five-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: clamp(12px, 2vw, 20px);
+            margin-top: clamp(16px, 3vw, 32px);
+            width: 100%;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card h3 {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .card p {
+            font-size: var(--font-small);
+            color: rgba(255,255,255,0.6);
+            line-height: 1.5;
+        }
+
+        .card .card-accent {
+            font-size: clamp(28px, 6vw, 42px);
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .card-highlight {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        /* Phase Cards */
+        .phase-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(20px, 4vw, 32px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phase-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--accent);
+        }
+
+        .phase-number {
+            font-size: clamp(11px, 1.4vw, 13px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 12px;
+        }
+
+        .phase-card h3 {
+            font-size: clamp(18px, 3vw, 24px);
+            font-weight: 700;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .phase-card p {
+            font-size: var(--font-small);
+            color: rgba(255,255,255,0.6);
+            line-height: 1.5;
+        }
+
+        .phase-stat {
+            display: inline-block;
+            background: rgba(255,255,255,0.08);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: clamp(11px, 1.4vw, 13px);
+            font-weight: 600;
+            color: rgba(255,255,255,0.7);
+            margin-top: 12px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        .phase-stat.green { color: var(--green); }
+        .phase-stat.red { color: var(--red); }
+
+        /* Code Blocks */
+        .code-block {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.8vw, 15px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: clamp(12px, 2vw, 24px);
+            width: 100%;
+        }
+
+        .code-block .comment { color: rgba(255,255,255,0.35); }
+        .code-block .keyword { color: #FF7EB3; }
+        .code-block .function { color: var(--green); }
+        .code-block .string { color: #FFD60A; }
+        .code-block .deleted { color: var(--red); text-decoration: line-through; opacity: 0.6; }
+        .code-block .added { color: var(--green); }
+        .code-block .accent { color: var(--accent); }
+        .code-block .dim { color: rgba(255,255,255,0.4); }
+
+        /* Velocity Stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(24px, 5vw, 48px);
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .velocity-stat {
+            text-align: center;
+            padding: clamp(16px, 3vw, 24px) 0;
+        }
+
+        .velocity-number {
+            font-size: clamp(40px, 10vw, 80px);
+            font-weight: 800;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--accent), #FFD060);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .velocity-label {
+            font-size: var(--font-small);
+            color: var(--text-dim);
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Timeline */
+        .timeline {
+            width: 100%;
+            margin-top: clamp(20px, 4vw, 40px);
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: clamp(12px, 3vw, 24px);
+            padding: clamp(12px, 2vw, 16px) 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            align-items: flex-start;
+        }
+
+        .timeline-item:last-child { border-bottom: none; }
+
+        .timeline-time {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            white-space: nowrap;
+            min-width: clamp(60px, 10vw, 90px);
+            padding-top: 2px;
+        }
+
+        .timeline-content h4 {
+            font-size: clamp(14px, 2vw, 17px);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .timeline-content p {
+            font-size: clamp(12px, 1.6vw, 14px);
+            color: rgba(255,255,255,0.5);
+            line-height: 1.4;
+        }
+
+        /* Comparison */
+        .comparison-table {
+            width: 100%;
+            margin-top: clamp(16px, 3vw, 32px);
+        }
+
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            margin-bottom: 2px;
+        }
+
+        .comparison-header {
+            padding: clamp(10px, 2vw, 16px) clamp(12px, 3vw, 20px);
+            font-weight: 700;
+            font-size: clamp(12px, 1.8vw, 15px);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .comparison-header.before {
+            background: rgba(255, 69, 58, 0.15);
+            color: var(--red);
+            border-radius: 12px 0 0 0;
+        }
+
+        .comparison-header.after {
+            background: rgba(48, 209, 88, 0.15);
+            color: var(--green);
+            border-radius: 0 12px 0 0;
+        }
+
+        .comparison-cell {
+            padding: clamp(10px, 2vw, 14px) clamp(12px, 3vw, 20px);
+            font-size: clamp(12px, 1.8vw, 15px);
+            color: rgba(255,255,255,0.7);
+            line-height: 1.4;
+        }
+
+        .comparison-cell.before { background: rgba(255,69,58,0.05); }
+        .comparison-cell.after { background: rgba(48,209,88,0.05); }
+
+        .comparison-row:last-child .comparison-cell.before { border-radius: 0 0 0 12px; }
+        .comparison-row:last-child .comparison-cell.after { border-radius: 0 0 12px 0; }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: var(--accent-dim);
+            border: 1px solid rgba(232, 145, 90, 0.3);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            margin-top: clamp(16px, 3vw, 24px);
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .highlight-box p {
+            color: rgba(255,255,255,0.85);
+        }
+
+        /* Quote */
+        .quote {
+            font-size: clamp(20px, 4vw, 36px);
+            font-weight: 500;
+            font-style: italic;
+            line-height: 1.4;
+            color: rgba(255,255,255,0.85);
+            max-width: 800px;
+            margin: clamp(16px, 4vw, 40px) 0;
+        }
+
+        .quote::before { content: '\201C'; color: var(--accent); }
+        .quote::after { content: '\201D'; color: var(--accent); }
+
+        .quote-attr {
+            font-size: var(--font-small);
+            color: var(--text-dim);
+            font-style: normal;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            max-width: 700px;
+            margin-top: clamp(16px, 3vw, 32px);
+        }
+
+        .progress-item {
+            display: flex;
+            align-items: center;
+            gap: clamp(12px, 2vw, 16px);
+            margin-bottom: clamp(10px, 2vw, 16px);
+        }
+
+        .progress-label {
+            font-size: clamp(12px, 1.6vw, 14px);
+            color: rgba(255,255,255,0.7);
+            min-width: clamp(80px, 12vw, 120px);
+        }
+
+        .progress-track {
+            flex: 1;
+            height: 8px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--accent), #FFD060);
+        }
+
+        .progress-value {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            min-width: 50px;
+            text-align: right;
+        }
+
+        /* Big statement */
+        .big-statement {
+            font-size: clamp(28px, 7vw, 56px);
+            font-weight: 700;
+            letter-spacing: -1px;
+            line-height: 1.15;
+            max-width: 900px;
+        }
+
+        .big-statement .accent { color: var(--accent); }
+
+        /* Test file grid */
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: clamp(10px, 2vw, 16px);
+            margin-top: clamp(16px, 3vw, 24px);
+            width: 100%;
+        }
+
+        .test-file {
+            background: rgba(48, 209, 88, 0.06);
+            border: 1px solid rgba(48, 209, 88, 0.15);
+            border-radius: 12px;
+            padding: clamp(14px, 3vw, 20px);
+        }
+
+        .test-file h4 {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--green);
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .test-file .count {
+            font-size: clamp(28px, 5vw, 36px);
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .test-file .label {
+            font-size: clamp(11px, 1.3vw, 12px);
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: clamp(16px, 3vw, 24px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .nav-dot:hover { background: rgba(255,255,255,0.4); }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(16px, 3vw, 24px);
+            right: clamp(16px, 3vw, 24px);
+            font-size: 12px;
+            color: var(--text-dim);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            z-index: 100;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: clamp(16px, 3vw, 24px);
+            left: clamp(16px, 3vw, 24px);
+            font-size: 12px;
+            color: var(--text-dim);
+            text-decoration: none;
+            z-index: 100;
+            transition: color 0.3s;
+        }
+
+        .more-stories:hover { color: var(--accent); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active center">
+        <div class="section-label">Amplifier &times; Kepler</div>
+        <h1 class="headline">The Kepler Refactor</h1>
+        <p class="subhead">606 lines of dead code removed. 104 new tests added.<br>A disciplined, AI-assisted 5-phase migration.</p>
+        <div class="small-text">February 2026</div>
+    </div>
+
+    <!-- SLIDE 2: What is Kepler -->
+    <div class="slide">
+        <div class="section-label">Context</div>
+        <h2 class="medium-headline">Kepler is Amplifier's desktop GUI</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 24px);">An Electron-based application that gives users a native desktop experience for Amplifier&mdash;session management, provider configuration, artifact editing, and more.</p>
+        <div class="thirds">
+            <div class="card">
+                <h3>Desktop Native</h3>
+                <p>Electron app with full OS integration&mdash;tray icon, native menus, file system access, local sidecar process.</p>
+            </div>
+            <div class="card">
+                <h3>Full-Featured</h3>
+                <p>Session creation, provider management, settings configuration, onboarding flows, artifact preview and editing.</p>
+            </div>
+            <div class="card">
+                <h3>Growing Fast</h3>
+                <p>65 commits, 3 contributors, rapid feature development. But rapid growth was creating architectural debt.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: The Problem -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Kepler was rebuilding<br>what Distro already had</h2>
+        <div class="thirds">
+            <div class="card">
+                <div class="card-accent" style="color: var(--red);">&#x2717;</div>
+                <h3>Duplicated Infrastructure</h3>
+                <p>Provider registry, session lifecycle, and config management were all rebuilt independently inside Kepler&mdash;logic that already existed in the distro platform.</p>
+            </div>
+            <div class="card">
+                <div class="card-accent" style="color: var(--red);">&#x2717;</div>
+                <h3>Missed Platform Features</h3>
+                <p>Sessions didn't get distro's handoff injection, preflight checks, or streaming hooks. Kepler users got a degraded experience.</p>
+            </div>
+            <div class="card">
+                <div class="card-accent" style="color: var(--red);">&#x2717;</div>
+                <h3>Divergence Risk</h3>
+                <p>Two codebases evolving the same concerns independently. Every distro improvement required a separate Kepler update&mdash;or was simply missed.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: The Vision -->
+    <div class="slide">
+        <div class="section-label">The Insight</div>
+        <h2 class="medium-headline">Kepler should be a surface,<br>not a second platform</h2>
+        <p class="body-text" style="margin-bottom: clamp(20px, 4vw, 36px);">Architecturally equivalent to distro's Slack bridge, Voice bridge, and Web Chat. Kepler should <strong style="color: var(--accent);">consume</strong> the platform, not <strong style="color: var(--red);">rebuild</strong> it.</p>
+        <div class="comparison-table">
+            <div class="comparison-row">
+                <div class="comparison-header before">Before: Direct Coupling</div>
+                <div class="comparison-header after">After: Platform Consumer</div>
+            </div>
+            <div class="comparison-row">
+                <div class="comparison-cell before">Kepler &rarr; amplifier-foundation directly</div>
+                <div class="comparison-cell after">Kepler &rarr; distro Bridge API</div>
+            </div>
+            <div class="comparison-row">
+                <div class="comparison-cell before">Own provider registry module</div>
+                <div class="comparison-cell after">distro catalog (shared with all surfaces)</div>
+            </div>
+            <div class="comparison-row">
+                <div class="comparison-cell before">Custom settings.yaml parser</div>
+                <div class="comparison-cell after">distro.yaml config (single source of truth)</div>
+            </div>
+            <div class="comparison-row">
+                <div class="comparison-cell before">Custom onboarding validation</div>
+                <div class="comparison-cell after">distro preflight checks</div>
+            </div>
+            <div class="comparison-row">
+                <div class="comparison-cell before">647-line amplifier_hooks.py</div>
+                <div class="comparison-cell after">41-line thin adapter</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: The Approach -->
+    <div class="slide center">
+        <div class="section-label">The Approach</div>
+        <h2 class="big-statement">Not speed.<br><span class="accent">Discipline.</span></h2>
+        <p class="subhead" style="margin-top: clamp(16px, 3vw, 24px);">A methodical 5-phase refactor. Each phase building on the last.<br>Design docs before code. Tests after every change. AI planning the migration.</p>
+    </div>
+
+    <!-- SLIDE 6: Phase Overview -->
+    <div class="slide">
+        <div class="section-label">Five Phases</div>
+        <h2 class="medium-headline">The refactor roadmap</h2>
+        <div class="five-grid">
+            <div class="phase-card">
+                <div class="phase-number">Phase 1</div>
+                <h3>Bridge API</h3>
+                <p>Replace direct session creation with distro LocalBridge</p>
+                <div class="phase-stat">+469 / -304</div>
+            </div>
+            <div class="phase-card">
+                <div class="phase-number">Phase 2</div>
+                <h3>Catalog</h3>
+                <p>Replace provider registry with distro catalog</p>
+                <div class="phase-stat">+47 / -44</div>
+            </div>
+            <div class="phase-card">
+                <div class="phase-number">Phase 3</div>
+                <h3>Settings</h3>
+                <p>Migrate settings to distro.yaml config</p>
+                <div class="phase-stat">+405 / -69</div>
+            </div>
+            <div class="phase-card">
+                <div class="phase-number">Phase 4</div>
+                <h3>Onboarding</h3>
+                <p>Integrate with distro preflight and identity</p>
+                <div class="phase-stat">+105 / -13</div>
+            </div>
+            <div class="phase-card">
+                <div class="phase-number">Phase 5</div>
+                <h3>Cleanup</h3>
+                <p>Remove dead code, delete deprecated files, restructure</p>
+                <div class="phase-stat red">-1,188 lines</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 7: Phase 1 Deep Dive -->
+    <div class="slide">
+        <div class="section-label">Phase 1 &mdash; Feb 11, 4:56 PM</div>
+        <h2 class="medium-headline">Replace session creation<br>with distro Bridge</h2>
+        <p class="body-text">The biggest single change. Session lifecycle now goes through <code style="color: var(--accent);">LocalBridge</code> instead of direct amplifier-foundation calls.</p>
+        <div class="code-block"><pre><code><span class="comment"># Before: Direct coupling to amplifier-foundation</span>
+<span class="deleted">from amplifier_foundation import Session</span>
+<span class="deleted">session = Session(config=compose_mount_plan(...))</span>
+<span class="deleted">inject_settings_into_mount_plan(session, FEATURE_MODULES)</span>
+
+<span class="comment"># After: Clean platform consumption</span>
+<span class="added">from amplifier_distro.bridge import LocalBridge</span>
+<span class="added">bridge = LocalBridge(distro_path)</span>
+<span class="added">session = bridge.create_session(project_path)</span></code></pre>
+        </div>
+        <div class="highlight-box">
+            <p><strong style="color: var(--accent);">Key deletion:</strong> <code>inject_settings_into_mount_plan</code>, <code>compose_mount_plan</code>, and the entire <code>FEATURE_MODULES</code> constant&mdash;all replaced by a single bridge call.</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: Phases 2-4 -->
+    <div class="slide">
+        <div class="section-label">Phases 2&ndash;4 &mdash; Feb 11, 5:45&ndash;6:12 PM</div>
+        <h2 class="medium-headline">Systematic replacement,<br>one concern at a time</h2>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-time">5:50 PM</div>
+                <div class="timeline-content">
+                    <h4>Phase 2: Provider Catalog</h4>
+                    <p>All provider lookups moved to <code style="color: var(--accent);">amplifier_distro.features.PROVIDERS</code>. Zero remaining provider_registry imports. Surgical: just 3 files, +47/-44 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">6:07 PM</div>
+                <div class="timeline-content">
+                    <h4>Phase 3: Settings Migration</h4>
+                    <p>New <code style="color: var(--accent);">distro_config.py</code> adapter bridges Settings interface to distro.yaml. Backward compatible&mdash;legacy settings.yaml fallback preserved.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">6:12 PM</div>
+                <div class="timeline-content">
+                    <h4>Phase 4: Onboarding Preflight</h4>
+                    <p>Onboarding routes now use distro's <code style="color: var(--accent);">run_preflight()</code> and <code style="color: var(--accent);">detect_github_identity()</code>. All distro calls non-blocking with graceful fallback.</p>
+                </div>
+            </div>
+        </div>
+        <div class="highlight-box">
+            <p><strong style="color: var(--accent);">Design principle:</strong> Each phase was independently deployable. No phase required the next one to work. Backward compatibility preserved at every step.</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: Phase 5 - The Cleanup -->
+    <div class="slide">
+        <div class="section-label">Phase 5 &mdash; The Cleanup</div>
+        <h2 class="headline" style="color: var(--red);">&#x2212;606 lines</h2>
+        <p class="body-text" style="margin-bottom: clamp(20px, 3vw, 32px);">With all four replacement phases complete, the dead code was surgically identified and removed in three passes.</p>
+        <div class="thirds">
+            <div class="card">
+                <h3 style="color: var(--accent);">Pass 1: Mark</h3>
+                <p>Deprecated <code>create_bridge</code>, <code>mount_bridge_hooks</code>, <code>create_forwarder</code>, entire <code>provider_registry.py</code> and <code>settings.py</code>.</p>
+                <div class="phase-stat">+224 / -101</div>
+            </div>
+            <div class="card">
+                <h3 style="color: var(--red);">Pass 2: Remove</h3>
+                <p><code>amplifier_hooks.py</code>: <strong>647 &rarr; 41 lines</strong>. Dead FEATURE_MODULES, dead composer routes, stale tests&mdash;all gone.</p>
+                <div class="phase-stat red">-689 lines</div>
+            </div>
+            <div class="card">
+                <h3 style="color: var(--green);">Pass 3: Eliminate</h3>
+                <p>Deleted 3 entire files: <code>provider_registry.py</code> (138 lines), <code>events.py</code> (68 lines), <code>settings.py</code> (222 lines).</p>
+                <div class="phase-stat red">-503 lines</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 10: The Restructure -->
+    <div class="slide">
+        <div class="section-label">Phase 5 Bonus</div>
+        <h2 class="medium-headline">Proper package structure</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 24px);">The final commit restructured <code>sidecar-shared</code> from a loose directory with <code>sys.path</code> hacks into a proper Python package.</p>
+        <div class="code-block"><pre><code><span class="comment"># Before: sys.path manipulation</span>
+<span class="deleted">sys.path.insert(0, os.path.join(HERE, '..', 'sidecar-shared'))</span>
+<span class="deleted">from amplifier_hooks import create_bridge</span>
+<span class="deleted">from provider_registry import get_providers</span>
+<span class="deleted">from settings import load_settings</span>
+
+<span class="comment"># After: Clean package imports</span>
+<span class="added">from sidecar.shared.distro_config import DistroConfig</span>
+<span class="added">from sidecar.shared.stream_events import StreamHandler</span>
+<span class="added">from sidecar.shared.session_lifecycle import SessionManager</span></code></pre>
+        </div>
+        <p class="body-text" style="margin-top: clamp(16px, 3vw, 24px);"><strong style="color: var(--accent);">13 files touched,</strong> eliminating all <code>sys.path</code> manipulation. Modules became discoverable, testable, importable.</p>
+    </div>
+
+    <!-- SLIDE 11: Tests -->
+    <div class="slide">
+        <div class="section-label">Proving It Works</div>
+        <h2 class="headline" style="color: var(--green);">+104 tests</h2>
+        <p class="body-text">Five new test files covering every refactored integration point. Total suite: 211 tests (104 new + 107 pre-existing).</p>
+        <div class="test-grid">
+            <div class="test-file">
+                <h4>test_distro_config.py</h4>
+                <div class="count">31</div>
+                <div class="label">tests</div>
+            </div>
+            <div class="test-file">
+                <h4>test_stream_events.py</h4>
+                <div class="count">33</div>
+                <div class="label">tests</div>
+            </div>
+            <div class="test-file">
+                <h4>test_session_lifecycle.py</h4>
+                <div class="count">13</div>
+                <div class="label">tests</div>
+            </div>
+            <div class="test-file">
+                <h4>test_tool_lookup.py</h4>
+                <div class="count">8</div>
+                <div class="label">tests</div>
+            </div>
+            <div class="test-file">
+                <h4>test_onboarding_preflight.py</h4>
+                <div class="count">19</div>
+                <div class="label">tests</div>
+            </div>
+        </div>
+        <div class="progress-bar" style="margin-top: clamp(24px, 4vw, 40px);">
+            <div class="progress-item">
+                <span class="progress-label">Config</span>
+                <div class="progress-track"><div class="progress-fill" style="width: 100%"></div></div>
+                <span class="progress-value">31 / 31</span>
+            </div>
+            <div class="progress-item">
+                <span class="progress-label">Streaming</span>
+                <div class="progress-track"><div class="progress-fill" style="width: 100%"></div></div>
+                <span class="progress-value">33 / 33</span>
+            </div>
+            <div class="progress-item">
+                <span class="progress-label">Sessions</span>
+                <div class="progress-track"><div class="progress-fill" style="width: 100%"></div></div>
+                <span class="progress-value">13 / 13</span>
+            </div>
+            <div class="progress-item">
+                <span class="progress-label">Tools</span>
+                <div class="progress-track"><div class="progress-fill" style="width: 100%"></div></div>
+                <span class="progress-value">8 / 8</span>
+            </div>
+            <div class="progress-item">
+                <span class="progress-label">Onboarding</span>
+                <div class="progress-track"><div class="progress-fill" style="width: 100%"></div></div>
+                <span class="progress-value">19 / 19</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 12: The Numbers -->
+    <div class="slide center">
+        <div class="section-label">By the Numbers</div>
+        <h2 class="medium-headline">Development velocity</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">5</div>
+                <div class="velocity-label">Phases</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">12</div>
+                <div class="velocity-label">Commits</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">17</div>
+                <div class="velocity-label">Hours</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">48</div>
+                <div class="velocity-label">AI Sessions</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 13: Architecture Impact -->
+    <div class="slide center">
+        <div class="section-label">Architecture Impact</div>
+        <div class="velocity-grid" style="max-width: 1100px;">
+            <div class="velocity-stat">
+                <div class="velocity-number" style="background: linear-gradient(135deg, var(--red), #FF9F0A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">606</div>
+                <div class="velocity-label">Dead Lines Removed</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number" style="background: linear-gradient(135deg, var(--green), var(--teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">104</div>
+                <div class="velocity-label">New Tests Added</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number" style="background: linear-gradient(135deg, var(--purple), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">3</div>
+                <div class="velocity-label">Files Deleted Entirely</div>
+            </div>
+        </div>
+        <p class="subhead" style="margin-top: clamp(24px, 4vw, 40px);"><code style="font-size: clamp(16px, 2.5vw, 22px); color: var(--accent);">amplifier_hooks.py</code><br>647 lines &rarr; 41 lines</p>
+    </div>
+
+    <!-- SLIDE 14: UX Fixes -->
+    <div class="slide">
+        <div class="section-label">While We Were At It</div>
+        <h2 class="medium-headline">UX improvements shipped alongside</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 24px);">The refactor wasn't just internal. Multiple user-facing fixes were included in the same development period.</p>
+        <div class="thirds">
+            <div class="card">
+                <h3>Artifacts Editor</h3>
+                <p>Unified code editor, restored folder open, hardened parsing and preview behavior.</p>
+            </div>
+            <div class="card">
+                <h3>Sidebar &amp; Composer</h3>
+                <p>Tightened sidebar controls, added folder actions, improved composer UX flow.</p>
+            </div>
+            <div class="card">
+                <h3>API Key Config</h3>
+                <p>Fixed missing API key fields and "Not configured" false positives after fresh database.</p>
+            </div>
+        </div>
+        <div class="highlight-box">
+            <p><strong style="color: var(--accent);">13 bugs fixed</strong> in a single commit alongside the refactor. Discipline doesn't mean ignoring UX&mdash;it means handling both.</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 15: AI-Assisted -->
+    <div class="slide">
+        <div class="section-label">AI-Assisted Engineering</div>
+        <h2 class="medium-headline">Amplifier didn't just write code.<br>It planned the migration.</h2>
+        <div class="halves">
+            <div class="card card-highlight">
+                <h3>Design Phase</h3>
+                <p style="font-size: var(--font-body); color: rgba(255,255,255,0.8);">3 design documents totaling <strong style="color: var(--accent);">1,064 lines</strong> were produced before a single line of code changed:</p>
+                <div style="margin-top: 12px;">
+                    <div style="padding: 6px 0; font-size: var(--font-small); color: rgba(255,255,255,0.6); border-bottom: 1px solid rgba(255,255,255,0.06);">DISTRO_INTEGRATION_DESIGN.md</div>
+                    <div style="padding: 6px 0; font-size: var(--font-small); color: rgba(255,255,255,0.6); border-bottom: 1px solid rgba(255,255,255,0.06);">IMPLEMENTATION_TASKS.md</div>
+                    <div style="padding: 6px 0; font-size: var(--font-small); color: rgba(255,255,255,0.6);">IMPLEMENTATION_HANDOFF.md</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Execution Phase</h3>
+                <p style="font-size: var(--font-body); color: rgba(255,255,255,0.8);">Every commit co-authored by Amplifier. 48 sessions orchestrated the work across all 5 phases.</p>
+                <div class="code-block" style="margin-top: 12px; font-size: clamp(10px, 1.4vw, 12px);">
+                    <pre><code><span class="dim">Co-Authored-By: Amplifier</span>
+<span class="dim">&#x1F916; Generated with Amplifier</span>
+
+<span class="comment"># The handoff doc explicitly described</span>
+<span class="comment"># orchestration by an AI session:</span>
+<span class="accent">IMPLEMENTATION_HANDOFF.md</span>
+<span class="string">"Handoff to implementation</span>
+<span class="string"> orchestrator session"</span></code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 16: The Discipline Story -->
+    <div class="slide center">
+        <div class="section-label">The Lesson</div>
+        <div class="quote">AI-assisted doesn't mean undisciplined. It means you can afford to do it right.</div>
+        <p class="body-text" style="text-align: center; max-width: 700px;">Design docs before code. One concern per phase. Backward compatibility at every step. Tests after every change. Dead code identified, marked, then removed. This is what disciplined AI-assisted engineering looks like.</p>
+    </div>
+
+    <!-- SLIDE 17: Timeline -->
+    <div class="slide">
+        <div class="section-label">Complete Timeline</div>
+        <h2 class="medium-headline">17 hours, start to finish</h2>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-time">4:56 PM</div>
+                <div class="timeline-content">
+                    <h4>Design docs committed</h4>
+                    <p>3 documents, 1,064 lines. Architecture, tasks, and AI handoff spec.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">5:41 PM</div>
+                <div class="timeline-content">
+                    <h4>Phase 1: Bridge API</h4>
+                    <p>Session lifecycle migrated to LocalBridge. +469/-304 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">5:50 PM</div>
+                <div class="timeline-content">
+                    <h4>Phase 2: Provider Catalog</h4>
+                    <p>All provider lookups moved to distro. +47/-44 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">6:07 PM</div>
+                <div class="timeline-content">
+                    <h4>Phase 3: Settings Migration</h4>
+                    <p>New distro_config.py adapter with backward compatibility. +405/-69 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">6:12 PM</div>
+                <div class="timeline-content">
+                    <h4>Phase 4: Onboarding Preflight</h4>
+                    <p>Non-blocking distro preflight with graceful fallback. +105/-13 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">6:17 PM</div>
+                <div class="timeline-content">
+                    <h4>Phase 5a: Mark deprecated</h4>
+                    <p>Deprecated functions and modules flagged. +224/-101 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">8:43 PM</div>
+                <div class="timeline-content">
+                    <h4 style="color: var(--red);">Phase 5b: Remove 606 lines</h4>
+                    <p>amplifier_hooks.py: 647 → 41. Dead routes, stale tests gone. +7/-689 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">+9:15 AM</div>
+                <div class="timeline-content">
+                    <h4>Phase 5c: Eliminate tech debt</h4>
+                    <p>3 files deleted entirely. Compat shims removed. +24/-503 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">+9:25 AM</div>
+                <div class="timeline-content">
+                    <h4>Restructure to proper package</h4>
+                    <p>sidecar-shared → sidecar/shared/ Python package. 13 files. +95/-112 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">+9:59 AM</div>
+                <div class="timeline-content">
+                    <h4 style="color: var(--green);">104 new tests committed</h4>
+                    <p>5 test files, 1,984 lines. Total suite: 211 tests, all passing.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 18: CTA -->
+    <div class="slide center">
+        <div class="section-label">Get Started</div>
+        <h2 class="big-statement">Less code.<br>More tests.<br><span class="accent">Better architecture.</span></h2>
+        <p class="subhead" style="margin-top: clamp(16px, 3vw, 24px);">The Kepler refactor is a template for disciplined AI-assisted migration.<br>Design first. Migrate phase by phase. Test everything. Delete fearlessly.</p>
+        <div class="small-text" style="margin-top: clamp(24px, 4vw, 40px);">
+            amplifier-distro-kepler &nbsp;&bull;&nbsp; 5 phases &nbsp;&bull;&nbsp; 12 commits &nbsp;&bull;&nbsp; 48 Amplifier sessions
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            slides[currentSlide].scrollTop = 0;
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.target.closest('.more-stories')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MADE Support Bundle</title>
+    <style>
+        :root {
+            --accent: #4FC3F7;
+            --accent-dim: rgba(79, 195, 247, 0.15);
+            --bg: #000;
+            --text: #fff;
+            --text-dim: rgba(255, 255, 255, 0.6);
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.1);
+            
+            /* Fluid typography */
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium: clamp(28px, 5vw, 48px);
+            --font-subhead: clamp(18px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-big-number: clamp(48px, 15vw, 120px);
+            
+            /* Fluid spacing */
+            --padding-slide: clamp(24px, 6vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Progress bar */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: var(--accent);
+            transition: width 0.3s ease;
+            z-index: 1000;
+        }
+
+        /* Slides container */
+        .slides-container {
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
+            padding-top: clamp(40px, 8vh, 80px);
+            padding-bottom: clamp(80px, 12vh, 120px);
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: clamp(11px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.1;
+            margin-bottom: 24px;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            color: var(--text-dim);
+            line-height: 1.5;
+            max-width: 800px;
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium);
+            font-weight: 600;
+            letter-spacing: -1px;
+            line-height: 1.2;
+            margin-bottom: 32px;
+        }
+
+        /* Layouts */
+        .centered {
+            text-align: center;
+            align-items: center;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+        }
+
+        .grid-5 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(20px, 4vw, 32px);
+        }
+
+        .card-icon {
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .card-desc {
+            font-size: var(--font-body);
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.8vw, 15px);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            margin-top: 24px;
+        }
+
+        .code-green { color: #4ADE80; }
+        .code-blue { color: var(--accent); }
+        .code-yellow { color: #FBBF24; }
+        .code-gray { color: #6B7280; }
+        .code-purple { color: #C084FC; }
+
+        /* Flow diagram */
+        .flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 48px;
+        }
+
+        .flow-step {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .flow-step-num {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+
+        .flow-step-text {
+            font-size: clamp(13px, 2vw, 15px);
+            font-weight: 500;
+        }
+
+        .flow-arrow {
+            color: var(--accent);
+            font-size: 24px;
+        }
+
+        /* Big numbers */
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #81D4FA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: var(--font-body);
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        /* Lists */
+        .feature-list {
+            list-style: none;
+            margin-top: 32px;
+        }
+
+        .feature-list li {
+            font-size: var(--font-body);
+            padding: 12px 0;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .check {
+            color: var(--accent);
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        /* Table */
+        .table-wrapper {
+            margin-top: 32px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--font-body);
+        }
+
+        th, td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        th {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: clamp(11px, 1.5vw, 13px);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        td {
+            color: var(--text-dim);
+        }
+
+        td:first-child {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* Comparison */
+        .comparison-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(24px, 4vw, 32px);
+        }
+
+        .comparison-title {
+            font-size: clamp(14px, 2vw, 16px);
+            font-weight: 600;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .comparison-content {
+            font-size: var(--font-body);
+            line-height: 1.7;
+        }
+
+        .before { border-left: 3px solid #EF4444; }
+        .after { border-left: 3px solid #4ADE80; }
+
+        /* Navigation */
+        .nav-dots {
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.2);
+        }
+
+        .nav-dot:hover {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            font-size: 14px;
+            color: var(--text-dim);
+            z-index: 100;
+        }
+
+        /* Click zones */
+        .click-zone {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            width: 20%;
+            z-index: 50;
+            cursor: pointer;
+        }
+
+        .click-zone.left { left: 0; }
+        .click-zone.right { right: 0; }
+
+        /* Title slide special */
+        .title-slide .headline {
+            font-size: clamp(42px, 10vw, 84px);
+            margin-bottom: 16px;
+        }
+
+        .title-meta {
+            font-size: var(--font-body);
+            color: var(--text-dim);
+            margin-top: 32px;
+        }
+
+        /* Highlight box */
+        .highlight-box {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 20px 28px;
+            margin-top: 24px;
+            display: inline-block;
+        }
+
+        .highlight-box code {
+            font-family: 'SF Mono', monospace;
+            color: var(--accent);
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            background: var(--accent);
+            color: #000;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        /* YAML preview */
+        .yaml-block {
+            background: rgba(79, 195, 247, 0.08);
+            border: 1px solid rgba(79, 195, 247, 0.3);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            font-family: 'SF Mono', monospace;
+            font-size: clamp(11px, 1.5vw, 13px);
+            line-height: 1.8;
+            white-space: pre-wrap;
+            margin-top: 24px;
+        }
+
+        /* End slide */
+        .end-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-top: 40px;
+            justify-content: center;
+        }
+
+        .end-link {
+            color: var(--accent);
+            font-size: var(--font-body);
+            text-decoration: none;
+            padding: 12px 24px;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .end-link:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        @media (max-width: 600px) {
+            .flow-arrow { display: none; }
+            .flow { flex-direction: column; }
+            .nav-dots { bottom: 16px; }
+            .slide-counter { bottom: 16px; right: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progress"></div>
+    
+    <div class="click-zone left" onclick="prevSlide()"></div>
+    <div class="click-zone right" onclick="nextSlide()"></div>
+
+    <div class="slides-container">
+        <!-- Slide 1: Title -->
+        <div class="slide title-slide centered active">
+            <div class="section-label">Amplifier Bundle</div>
+            <h1 class="headline">MADE Support Bundle</h1>
+            <p class="subhead">Team support intake and automatic status tracking.<br>One command to get help. Zero effort to stay visible.</p>
+            <div class="title-meta">Built by Salil Das | January 2026</div>
+        </div>
+
+        <!-- Slide 2: Problem -->
+        <div class="slide centered">
+            <div class="section-label">The Problem</div>
+            <h2 class="headline">Support requests get lost.<br>Status updates are tedious.</h2>
+            <p class="subhead">When something breaks, you context-switch to file an issue. Then you forget to update your team on what you're working on. Information silos form.</p>
+        </div>
+
+        <!-- Slide 3: Insight -->
+        <div class="slide centered">
+            <div class="section-label">The Insight</div>
+            <h2 class="headline">Your session already has<br>all the context.</h2>
+            <p class="subhead">Errors, steps taken, what was attempted. It's all there. Why re-type it into a GitHub issue? Why manually update a status doc?</p>
+        </div>
+
+        <!-- Slide 4: Solution -->
+        <div class="slide">
+            <div class="section-label">The Solution</div>
+            <h2 class="medium-headline">Three capabilities, one bundle</h2>
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-icon">&#129309;</div>
+                    <div class="card-title">Support Intake</div>
+                    <div class="card-desc">Say "I need help with..." and the bundle files a GitHub issue with full session context. Checks for duplicates first.</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">&#128202;</div>
+                    <div class="card-title">Team Status <span class="badge">New</span></div>
+                    <div class="card-desc">Automatically tracks what you're working on. Updates team-status.md with your recent progress. No manual updates needed.</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">&#127916;</div>
+                    <div class="card-title">Story Submission</div>
+                    <div class="card-desc">Say "make an amplifier story" to generate a presentation deck from your session and submit it as a PR.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Support Flow -->
+        <div class="slide">
+            <div class="section-label">Support Intake</div>
+            <h2 class="medium-headline">From frustration to issue in seconds</h2>
+            <div class="flow">
+                <div class="flow-step">
+                    <div class="flow-step-num">01</div>
+                    <div class="flow-step-text">"I need help"</div>
+                </div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-step">
+                    <div class="flow-step-num">02</div>
+                    <div class="flow-step-text">Analyze Session</div>
+                </div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-step">
+                    <div class="flow-step-num">03</div>
+                    <div class="flow-step-text">Check Duplicates</div>
+                </div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-step">
+                    <div class="flow-step-num">04</div>
+                    <div class="flow-step-text">File or Comment</div>
+                </div>
+            </div>
+            <div class="code-block"><span class="code-gray"># You say:</span>
+<span class="code-green">"I need help with recipe validation failing on nested loops"</span>
+
+<span class="code-gray"># Bundle extracts:</span>
+<span class="code-blue">- Error messages from session</span>
+<span class="code-blue">- Steps you already tried</span>
+<span class="code-blue">- Relevant code snippets</span>
+<span class="code-blue">- Environment context</span>
+
+<span class="code-gray"># Then:</span>
+<span class="code-yellow">&#10003; Searches for existing issues</span>
+<span class="code-yellow">&#10003; Files new issue OR comments on duplicate</span></div>
+        </div>
+
+        <!-- Slide 6: Team Status -->
+        <div class="slide">
+            <div class="section-label">Team Status Auto-Update</div>
+            <h2 class="medium-headline">Your work, automatically visible</h2>
+            <div class="grid-2">
+                <div class="comparison-card before">
+                    <div class="comparison-title">Before</div>
+                    <div class="comparison-content">
+                        Manually update status docs<br><br>
+                        Forget to post in standup<br><br>
+                        Team doesn't know your progress<br><br>
+                        "What are you working on?"
+                    </div>
+                </div>
+                <div class="comparison-card after">
+                    <div class="comparison-title">After</div>
+                    <div class="comparison-content">
+                        Hook fires on <code>turn:end</code><br><br>
+                        Throttled to every 5 minutes<br><br>
+                        Updates team-status.md automatically<br><br>
+                        "Recent Progress" column added
+                    </div>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <strong>Soft errors:</strong> If GitHub access fails, it logs and continues. <code>Never blocks your work.</code>
+            </div>
+        </div>
+
+        <!-- Slide 7: Privacy -->
+        <div class="slide">
+            <div class="section-label">Privacy Controls</div>
+            <h2 class="medium-headline">You control what's shared</h2>
+            <p class="subhead">Configure tracking behavior in <code>~/.amplifier/team-tracking.yaml</code></p>
+            <div class="yaml-block"><span class="code-purple">enabled:</span> <span class="code-green">true</span>
+<span class="code-purple">throttle_minutes:</span> <span class="code-yellow">5</span>
+<span class="code-purple">exclude_repos:</span>
+  <span class="code-blue">- personal-*</span>
+  <span class="code-blue">- experiments/*</span>
+<span class="code-purple">detail_level:</span> <span class="code-green">"summary"</span>  <span class="code-gray"># or "detailed"</span>
+<span class="code-purple">share_errors:</span> <span class="code-green">false</span>  <span class="code-gray"># don't include error context</span></div>
+            <ul class="feature-list" style="max-width: 600px; margin-top: 32px;">
+                <li><span class="check">&#10003;</span> Disable entirely with one flag</li>
+                <li><span class="check">&#10003;</span> Exclude specific repos by pattern</li>
+                <li><span class="check">&#10003;</span> Control detail level of updates</li>
+                <li><span class="check">&#10003;</span> Opt out of error context sharing</li>
+            </ul>
+        </div>
+
+        <!-- Slide 8: Stories -->
+        <div class="slide centered">
+            <div class="section-label">Story Submission</div>
+            <h2 class="headline">Ship your wins</h2>
+            <p class="subhead">Turn any session into a shareable presentation</p>
+            <div class="code-block" style="text-align: left; max-width: 600px; margin: 32px auto 0;"><span class="code-gray"># You say:</span>
+<span class="code-green">"make an amplifier story about this feature"</span>
+
+<span class="code-gray"># Bundle:</span>
+<span class="code-blue">1. Generates HTML presentation deck</span>
+<span class="code-blue">2. Opens for your review</span>
+<span class="code-blue">3. Submits PR to amplifier-stories repo</span></div>
+        </div>
+
+        <!-- Slide 9: Components -->
+        <div class="slide">
+            <div class="section-label">What's in the Bundle</div>
+            <h2 class="medium-headline">5 recipes, 1 hook, 2 behaviors</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Type</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>check-gh</td>
+                            <td>Recipe</td>
+                            <td>Verify GitHub CLI authentication</td>
+                        </tr>
+                        <tr>
+                            <td>extract-issue-full</td>
+                            <td>Recipe</td>
+                            <td>Extract issue context from session</td>
+                        </tr>
+                        <tr>
+                            <td>find-duplicates</td>
+                            <td>Recipe</td>
+                            <td>Search existing issues for matches</td>
+                        </tr>
+                        <tr>
+                            <td>file-issue</td>
+                            <td>Recipe</td>
+                            <td>Create GitHub issue with context</td>
+                        </tr>
+                        <tr>
+                            <td>update-team-status</td>
+                            <td>Recipe</td>
+                            <td>Update team-status.md file</td>
+                        </tr>
+                        <tr>
+                            <td>team-status</td>
+                            <td>Hook</td>
+                            <td>Fires on turn:end (throttled)</td>
+                        </tr>
+                        <tr>
+                            <td>support-intake</td>
+                            <td>Behavior</td>
+                            <td>Triggers on "I need help..."</td>
+                        </tr>
+                        <tr>
+                            <td>story-submit</td>
+                            <td>Behavior</td>
+                            <td>Triggers on "make a story..."</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Slide 10: Installation -->
+        <div class="slide centered">
+            <div class="section-label">Get Started</div>
+            <h2 class="headline">One command</h2>
+            <div class="code-block" style="text-align: left; max-width: 800px; margin: 32px auto 0;"><span class="code-green">amplifier bundle add</span> \
+  <span class="code-blue">git+https://github.com/microsoft-amplifier/amplifier-bundle-made-support@main</span> \
+  <span class="code-yellow">--app</span></div>
+            <div class="grid-3" style="max-width: 900px; margin: 48px auto 0;">
+                <div class="card" style="text-align: center;">
+                    <div class="big-number" style="font-size: clamp(36px, 10vw, 72px);">5</div>
+                    <div class="stat-label">Recipes</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div class="big-number" style="font-size: clamp(36px, 10vw, 72px);">1</div>
+                    <div class="stat-label">Hook</div>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div class="big-number" style="font-size: clamp(36px, 10vw, 72px);">2</div>
+                    <div class="stat-label">Behaviors</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: End -->
+        <div class="slide centered">
+            <div class="section-label">MADE Support Bundle</div>
+            <h2 class="headline">Get help faster.<br>Stay visible automatically.</h2>
+            <p class="subhead">Focus on building. Let the bundle handle the rest.</p>
+            <div class="end-links">
+                <a href="https://github.com/microsoft-amplifier/amplifier-bundle-made-support" class="end-link">View on GitHub</a>
+                <a href="https://amplifier.dev/docs/bundles" class="end-link">Bundle Docs</a>
+            </div>
+            <div class="title-meta" style="margin-top: 48px;">Built by Salil Das | January 2026</div>
+        </div>
+    </div>
+
+    <div class="nav-dots" id="navDots"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const progress = document.getElementById('progress');
+        const navDots = document.getElementById('navDots');
+        const counter = document.getElementById('counter');
+        let currentSlide = 0;
+
+        // Create nav dots
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+            dot.onclick = () => goToSlide(i);
+            navDots.appendChild(dot);
+        });
+
+        function updateSlide() {
+            slides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === currentSlide);
+            });
+            
+            document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === currentSlide);
+            });
+            
+            progress.style.width = ((currentSlide + 1) / slides.length * 100) + '%';
+            counter.textContent = (currentSlide + 1) + ' / ' + slides.length;
+        }
+
+        function nextSlide() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        function goToSlide(n) {
+            currentSlide = n;
+            updateSlide();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                goToSlide(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                goToSlide(slides.length - 1);
+            }
+        });
+
+        // Touch support
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) nextSlide();
+                else prevSlide();
+            }
+        }, { passive: true });
+
+        // Initialize
+        updateSlide();
+    </script>
+</body>
+</html>

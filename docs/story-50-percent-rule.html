@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The 50% Rule | Building AI Validators That Actually Work</title>
+    <style>
+        :root {
+            --accent: #FF2D55;
+            --accent-dim: rgba(255, 45, 85, 0.15);
+            --green: #30D158;
+            --red: #FF453A;
+            --yellow: #FFD60A;
+            --blue: #0A84FF;
+            --gray: rgba(255,255,255,0.6);
+            --gray-dim: rgba(255,255,255,0.3);
+            --card-bg: rgba(255,255,255,0.05);
+            --card-border: rgba(255,255,255,0.1);
+            
+            --font-headline: clamp(28px, 7vw, 64px);
+            --font-medium: clamp(22px, 4.5vw, 42px);
+            --font-subhead: clamp(16px, 2.5vw, 28px);
+            --font-body: clamp(14px, 1.8vw, 18px);
+            --font-small: clamp(12px, 1.5vw, 14px);
+            --font-big-number: clamp(72px, 20vw, 180px);
+            --font-stat: clamp(40px, 10vw, 100px);
+            
+            --padding-slide: clamp(24px, 5vw, 80px);
+            --gap-grid: clamp(16px, 2.5vw, 32px);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #fff;
+            overflow: hidden;
+            min-height: 100vh;
+        }
+        
+        .slide {
+            display: none;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
+            padding-bottom: 80px;
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+        }
+        
+        .slide.active { display: flex; }
+        
+        .section-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+        
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -1.5px;
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+        
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            color: var(--gray);
+            line-height: 1.5;
+            max-width: 800px;
+        }
+        
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 800;
+            letter-spacing: -6px;
+            line-height: 0.9;
+            background: linear-gradient(135deg, var(--accent) 0%, #FF6B8A 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-number {
+            font-size: var(--font-stat);
+            font-weight: 700;
+            letter-spacing: -2px;
+            color: var(--accent);
+        }
+        
+        .stat-label {
+            font-size: var(--font-body);
+            color: var(--gray);
+            margin-top: 4px;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 32px;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 32px;
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(16px, 3vw, 28px);
+        }
+        
+        .card-title {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .card-desc {
+            font-size: var(--font-body);
+            color: var(--gray);
+            line-height: 1.5;
+        }
+        
+        .card-icon {
+            font-size: clamp(28px, 5vw, 40px);
+            margin-bottom: 12px;
+        }
+        
+        table {
+            width: 100%;
+            margin-top: 24px;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: clamp(10px, 2vw, 16px);
+            text-align: left;
+            border-bottom: 1px solid var(--card-border);
+            font-size: var(--font-body);
+        }
+        
+        th {
+            color: var(--gray);
+            font-weight: 500;
+            font-size: var(--font-small);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .strike {
+            text-decoration: line-through;
+            color: var(--red);
+            opacity: 0.8;
+        }
+        
+        .correct { color: var(--green); }
+        .wrong { color: var(--red); }
+        .warn { color: var(--yellow); }
+        
+        .flow-diagram {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 40px;
+        }
+        
+        .flow-step {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: clamp(12px, 2vw, 20px) clamp(16px, 3vw, 32px);
+            text-align: center;
+            font-size: var(--font-body);
+            font-weight: 500;
+        }
+        
+        .flow-step.highlight {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+        
+        .flow-step.new {
+            background: rgba(48, 209, 88, 0.15);
+            border-color: var(--green);
+        }
+        
+        .flow-arrow {
+            font-size: 20px;
+            color: var(--gray-dim);
+        }
+        
+        .quote {
+            font-size: var(--font-subhead);
+            font-style: italic;
+            color: var(--gray);
+            border-left: 3px solid var(--accent);
+            padding-left: 20px;
+            margin: 28px 0;
+            max-width: 700px;
+        }
+        
+        .centered {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .pill {
+            display: inline-block;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent);
+            border-radius: 100px;
+            padding: 6px 16px;
+            font-size: var(--font-small);
+            font-weight: 500;
+            margin: 3px;
+        }
+        
+        .pill.green {
+            background: rgba(48, 209, 88, 0.15);
+            border-color: var(--green);
+        }
+        
+        .pill.red {
+            background: rgba(255, 69, 58, 0.15);
+            border-color: var(--red);
+        }
+        
+        .nav-dots {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 100;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 12px;
+            border-radius: 20px;
+        }
+        
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        
+        .slide-counter {
+            position: fixed;
+            bottom: 20px;
+            right: 24px;
+            font-size: 13px;
+            color: var(--gray-dim);
+            z-index: 100;
+        }
+        
+        .emoji-large {
+            font-size: clamp(40px, 8vw, 64px);
+            margin-bottom: 20px;
+        }
+        
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+        
+        .highlight-box {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+        
+        .timeline {
+            margin-top: 28px;
+        }
+        
+        .timeline-item {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            align-items: flex-start;
+        }
+        
+        .timeline-marker {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .timeline-content { flex: 1; }
+        
+        .timeline-title {
+            font-size: var(--font-body);
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        
+        .timeline-desc {
+            font-size: var(--font-small);
+            color: var(--gray);
+        }
+        
+        @media (max-width: 768px) {
+            .flow-diagram { flex-direction: column; }
+            .flow-arrow { transform: rotate(90deg); }
+            .two-col { grid-template-columns: 1fr; gap: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Slide 1: Title -->
+    <div class="slide active centered">
+        <div class="section-label">A Case Study in AI-Assisted Development</div>
+        <h1 class="headline">The 50% Rule</h1>
+        <p class="subhead">What we learned building validators with AI—<br>and why half of what we built was wrong</p>
+        <div style="margin-top: 40px; color: var(--gray-dim); font-size: var(--font-small);">
+            February 2026
+        </div>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide">
+        <div class="section-label">The Challenge</div>
+        <h2 class="headline">We needed automated quality checks</h2>
+        <p class="subhead">Our codebase had configuration files with complex rules. Manual review wasn't scaling. We decided to build validators with AI assistance.</p>
+        
+        <div class="grid-3" style="margin-top: 40px;">
+            <div class="card centered">
+                <div class="card-icon">📋</div>
+                <div class="card-title">Config Files</div>
+                <div class="card-desc">YAML configurations with structural rules, naming conventions, and best practices</div>
+            </div>
+            <div class="card centered">
+                <div class="card-icon">🤖</div>
+                <div class="card-title">AI Assistance</div>
+                <div class="card-desc">Use AI to codify expert knowledge into automated validation recipes</div>
+            </div>
+            <div class="card centered">
+                <div class="card-icon">✅</div>
+                <div class="card-title">Goal</div>
+                <div class="card-desc">Catch errors, enforce conventions, and guide users toward best practices</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: The Hook -->
+    <div class="slide centered">
+        <div class="section-label">The First Discovery</div>
+        <div class="big-number">50%</div>
+        <p class="subhead" style="margin-top: 20px;">
+            of our initial validator rules were <span class="wrong">wrong</span><br>
+            when we verified them against actual code behavior
+        </p>
+    </div>
+
+    <!-- Slide 4: What Went Wrong -->
+    <div class="slide">
+        <div class="section-label">Discovery #1</div>
+        <h2 class="headline">Our "expert knowledge" was outdated</h2>
+        <p class="subhead">We confidently encoded rules based on documentation and memory. Then we traced the actual code.</p>
+        
+        <table>
+            <tr>
+                <th style="width: 35%;">What We Assumed</th>
+                <th style="width: 35%;">What Code Revealed</th>
+                <th style="width: 30%;">Impact</th>
+            </tr>
+            <tr>
+                <td class="strike">"Pattern A is deprecated"</td>
+                <td class="correct">Both patterns fully supported</td>
+                <td>False errors on valid configs</td>
+            </tr>
+            <tr>
+                <td class="strike">"Must include dependency X"</td>
+                <td class="correct">Just needs capability Y (any source)</td>
+                <td>Misleading guidance</td>
+            </tr>
+            <tr>
+                <td class="strike">"These two features are equivalent"</td>
+                <td class="correct">Different semantics entirely</td>
+                <td>Wrong advice breaks things</td>
+            </tr>
+        </table>
+        
+        <div class="highlight-box">
+            <strong>Key Insight:</strong> Documentation, memory, and even AI "expert knowledge" can all be wrong. The code is the only source of truth.
+        </div>
+    </div>
+
+    <!-- Slide 5: The Fix -->
+    <div class="slide">
+        <div class="section-label">The Response</div>
+        <h2 class="headline">Code Verification Imperative</h2>
+        <p class="subhead">We developed a discipline: verify every rule against actual code behavior before shipping.</p>
+        
+        <div class="grid-2">
+            <div class="card" style="border-color: var(--red);">
+                <div class="card-title" style="color: var(--red);">❌ Don't Trust</div>
+                <div style="margin-top: 12px;">
+                    <div class="pill red">Documentation</div>
+                    <div class="pill red">Your memory</div>
+                    <div class="pill red">AI confidence</div>
+                    <div class="pill red">"Everyone knows..."</div>
+                </div>
+                <div class="card-desc" style="margin-top: 12px;">May be outdated, incomplete, or based on old assumptions</div>
+            </div>
+            <div class="card" style="border-color: var(--green);">
+                <div class="card-title" style="color: var(--green);">✅ Do Trust</div>
+                <div style="margin-top: 12px;">
+                    <div class="pill green">Code traces</div>
+                    <div class="pill green">Test results</div>
+                    <div class="pill green">Runtime behavior</div>
+                    <div class="pill green">Error messages</div>
+                </div>
+                <div class="card-desc" style="margin-top: 12px;">Trace through the code. See what actually happens.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: We Thought We Were Done -->
+    <div class="slide centered">
+        <div class="section-label">Plot Twist</div>
+        <div class="emoji-large">😌 → 😬</div>
+        <h2 class="headline">We fixed the rules.<br>But the validator was still broken.</h2>
+        <p class="subhead" style="margin-top: 16px;">A second, more subtle problem emerged.</p>
+    </div>
+
+    <!-- Slide 7: Discovery 2 -->
+    <div class="slide">
+        <div class="section-label">Discovery #2</div>
+        <h2 class="headline">The "Always Finds Something" Problem</h2>
+        <p class="subhead">Our validator would find issues in <em>every</em> config—even exemplary ones. It created distrust and "validator fatigue."</p>
+        
+        <div class="grid-2" style="margin-top: 32px;">
+            <div class="card">
+                <div class="card-title">The Symptom</div>
+                <div class="card-desc">
+                    Run validator on our best, most carefully crafted configs.<br><br>
+                    Result: <span class="warn">"3 warnings, 2 suggestions"</span><br><br>
+                    Users learned to ignore the validator entirely.
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">The Root Cause</div>
+                <div class="card-desc">
+                    We asked AI to "find issues and suggest improvements."<br><br>
+                    AI <em>always</em> finds something to improve.<br><br>
+                    No concept of "good enough" → endless nitpicking.
+                </div>
+            </div>
+        </div>
+        
+        <div class="quote">
+            "A validator that always finds issues is worse than no validator at all."
+        </div>
+    </div>
+
+    <!-- Slide 8: The Second Fix -->
+    <div class="slide">
+        <div class="section-label">The Solution</div>
+        <h2 class="headline">Explicit PASS Thresholds</h2>
+        <p class="subhead">Define what "good enough" means <em>before</em> AI analysis. Let code decide quality, not AI interpretation.</p>
+        
+        <table>
+            <tr>
+                <th>Quality Tier</th>
+                <th>Criteria (Deterministic)</th>
+                <th>AI Analysis?</th>
+            </tr>
+            <tr>
+                <td><span class="correct">✓ Good</span></td>
+                <td>Has required fields + meets length thresholds + has examples</td>
+                <td>Skip entirely</td>
+            </tr>
+            <tr>
+                <td><span class="warn">◐ Polish</span></td>
+                <td>Missing one optional element</td>
+                <td>Light review</td>
+            </tr>
+            <tr>
+                <td><span class="wrong">✗ Needs Work</span></td>
+                <td>Missing multiple elements or too short</td>
+                <td>Full analysis</td>
+            </tr>
+            <tr>
+                <td><span class="wrong">⚠ Critical</span></td>
+                <td>Structural errors (invalid syntax, missing required fields)</td>
+                <td>Error report</td>
+            </tr>
+        </table>
+        
+        <div class="highlight-box">
+            <strong>The Pattern:</strong> Classify quality with deterministic code FIRST. Only invoke expensive AI analysis when it's actually needed.
+        </div>
+    </div>
+
+    <!-- Slide 9: What NOT to Flag -->
+    <div class="slide">
+        <div class="section-label">The Secret Ingredient</div>
+        <h2 class="headline">Tell AI what NOT to flag</h2>
+        <p class="subhead">Explicit guidance about what's acceptable prevents nitpicking.</p>
+        
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-title" style="color: var(--red);">❌ Before</div>
+                <div class="card-desc" style="font-family: monospace; font-size: 14px; margin-top: 12px; line-height: 1.6;">
+                    "Analyze this configuration and identify any issues, improvements, or suggestions."
+                </div>
+                <div class="card-desc" style="margin-top: 12px;">
+                    <em>Result: 47 suggestions for a perfectly good config</em>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title" style="color: var(--green);">✅ After</div>
+                <div class="card-desc" style="font-family: monospace; font-size: 14px; margin-top: 12px; line-height: 1.6;">
+                    "This config passed quality thresholds.<br><br>
+                    Do NOT flag: style preferences, minor wording, optional fields that are legitimately optional.<br><br>
+                    Only flag: actual errors or significant gaps."
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 10: The Complete Loop -->
+    <div class="slide centered">
+        <div class="section-label">The Methodology</div>
+        <h2 class="headline">The Validation Loop</h2>
+        
+        <div class="flow-diagram">
+            <div class="flow-step">Create</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Test</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step highlight">Verify</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Fix</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Re-test</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step new">Threshold Check</div>
+        </div>
+        
+        <p class="subhead" style="margin-top: 40px;">
+            <span style="color: var(--accent);">Verify</span> = Does the rule match code behavior?<br>
+            <span style="color: var(--green);">Threshold Check</span> = Does the validator have a clean PASS path?
+        </p>
+    </div>
+
+    <!-- Slide 11: The Pattern -->
+    <div class="slide">
+        <div class="section-label">The Architecture</div>
+        <h2 class="headline">Deterministic First, AI Second</h2>
+        
+        <div style="margin-top: 32px; font-family: monospace; font-size: var(--font-body); line-height: 2; color: var(--gray);">
+            <div><span style="color: var(--blue);">1.</span> Parse config <span style="color: var(--gray-dim);"># Structural validation (code)</span></div>
+            <div><span style="color: var(--blue);">2.</span> Check required fields <span style="color: var(--gray-dim);"># ERROR if missing (code)</span></div>
+            <div><span style="color: var(--blue);">3.</span> Measure quality metrics <span style="color: var(--gray-dim);"># Length, completeness (code)</span></div>
+            <div><span style="color: var(--blue);">4.</span> Classify into tier <span style="color: var(--gray-dim);"># Good/Polish/NeedsWork (code)</span></div>
+            <div><span style="color: var(--blue);">5.</span> <span style="color: var(--green);">If tier == "Good": PASS</span> <span style="color: var(--gray-dim);"># Skip AI entirely</span></div>
+            <div><span style="color: var(--blue);">6.</span> <span style="color: var(--accent);">Else: AI analysis</span> <span style="color: var(--gray-dim);"># With "what NOT to flag" guidance</span></div>
+        </div>
+        
+        <div class="highlight-box" style="margin-top: 32px;">
+            <strong>Why this works:</strong> Code-based classification is consistent and fast. AI is reserved for nuanced judgment where it adds value—not for gatekeeping good work.
+        </div>
+    </div>
+
+    <!-- Slide 12: Results -->
+    <div class="slide">
+        <div class="section-label">The Outcome</div>
+        <h2 class="headline">What we built</h2>
+        <p class="subhead">Reusable artifacts with all learnings baked in</p>
+        
+        <div class="grid-2" style="margin-top: 32px;">
+            <div class="card">
+                <div class="card-icon">📋</div>
+                <div class="card-title">Two Production Validators</div>
+                <div class="card-desc">
+                    Working recipes that embody all the patterns: code verification, PASS thresholds, deterministic classification, "what NOT to flag" guidance.
+                </div>
+                <div style="margin-top: 16px;">
+                    <div class="pill">validate-bundle.yaml</div>
+                    <div class="pill">validate-agents.yaml</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">📖</div>
+                <div class="card-title">Domain Validator Guide</div>
+                <div class="card-desc">
+                    A methodology document capturing the complete process—so the next validator doesn't repeat our mistakes.
+                </div>
+                <div style="margin-top: 16px;">
+                    <div class="pill green">5-phase architecture</div>
+                    <div class="pill green">Severity framework</div>
+                    <div class="pill green">Anti-patterns</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="highlight-box" style="margin-top: 32px;">
+            <strong>The real value:</strong> Learnings from the first validator were backported when the second validator revealed new problems. Both recipes now share the same battle-tested patterns.
+        </div>
+    </div>
+
+    <!-- Slide 13: Human-AI -->
+    <div class="slide centered">
+        <div class="section-label">The Collaboration</div>
+        <h2 class="headline">Human Direction.<br>AI Execution.<br>Human Verification.</h2>
+        <p class="subhead" style="margin-top: 24px;">
+            Not autonomous. Not manual.<br>
+            <span style="color: var(--accent);">Collaborative.</span>
+        </p>
+        <div style="margin-top: 40px; font-size: var(--font-body); color: var(--gray);">
+            Each user interaction drove meaningful decisions.<br>
+            AI handled the heavy lifting. Humans caught the errors.
+        </div>
+    </div>
+
+    <!-- Slide 14: The Rules -->
+    <div class="slide">
+        <div class="section-label">The Takeaways</div>
+        <h2 class="headline">The 50% Rule (and friends)</h2>
+        
+        <div class="grid-2" style="margin-top: 24px;">
+            <div class="card">
+                <div class="card-title" style="color: var(--accent);">🔍 The 50% Rule</div>
+                <div class="card-desc">Assume half of AI-generated rules need verification against actual code. Build verification into your process, not as an afterthought.</div>
+            </div>
+            <div class="card">
+                <div class="card-title" style="color: var(--green);">✓ The PASS Path Rule</div>
+                <div class="card-desc">Every validator needs an explicit "good enough" threshold. If it always finds issues, users will ignore it entirely.</div>
+            </div>
+            <div class="card">
+                <div class="card-title" style="color: var(--blue);">📋 The Deterministic First Rule</div>
+                <div class="card-desc">Use code for classification and thresholds. Reserve AI for nuanced judgment where it actually adds value.</div>
+            </div>
+            <div class="card">
+                <div class="card-title" style="color: var(--yellow);">📝 The Source Fix Rule</div>
+                <div class="card-desc">Wrong documentation creates wrong AI. When you find errors, fix both the validator AND the docs it learned from.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 15: Final -->
+    <div class="slide centered">
+        <div class="section-label">The Bottom Line</div>
+        <h2 class="headline">Build fast. Verify ruthlessly.<br>Define "good enough."</h2>
+        <p class="subhead" style="margin-top: 24px;">
+            AI accelerates development, but human judgment catches the errors that matter.
+        </p>
+        <div style="margin-top: 48px; color: var(--gray-dim); font-size: var(--font-small);">
+            Methodology documented in DOMAIN_VALIDATOR_GUIDE.md
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-dots" id="navDots"></div>
+    <div class="slide-counter" id="slideCounter"></div>
+
+    <script>
+        let currentSlide = 0;
+        const totalSlides = document.querySelectorAll('.slide').length;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            currentSlide = ((n % totalSlides) + totalSlides) % totalSlides;
+            
+            for (let i = 0; i < slides.length; i++) {
+                slides[i].style.display = 'none';
+                slides[i].classList.remove('active');
+            }
+            
+            slides[currentSlide].style.display = 'flex';
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const dots = document.querySelectorAll('.nav-dot');
+            for (let i = 0; i < dots.length; i++) {
+                dots[i].classList.toggle('active', i === currentSlide);
+            }
+            document.getElementById('slideCounter').textContent = (currentSlide + 1) + ' / ' + totalSlides;
+        }
+
+        // Create nav dots
+        (function() {
+            const navDots = document.getElementById('navDots');
+            for (let i = 0; i < totalSlides; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                dot.setAttribute('data-slide', i);
+                dot.onclick = function() { showSlide(parseInt(this.getAttribute('data-slide'))); };
+                navDots.appendChild(dot);
+            }
+        })();
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.nav-dot, .card, a, button')) return;
+            if (e.clientX / window.innerWidth > 0.5) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        let touchStartX = 0;
+        document.addEventListener('touchstart', function(e) { touchStartX = e.touches[0].clientX; });
+        document.addEventListener('touchend', function(e) {
+            const diff = touchStartX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 50) showSlide(diff > 0 ? currentSlide + 1 : currentSlide - 1);
+        });
+
+        showSlide(0);
+    </script>
+</body>
+</html>

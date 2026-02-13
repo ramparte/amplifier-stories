@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amplifier Ecosystem Architecture</title>
+    <style>
+        :root {
+            --accent: #8B5CF6;
+            --accent-dim: rgba(139, 92, 246, 0.15);
+            --accent-glow: rgba(139, 92, 246, 0.3);
+            --bg: #000;
+            --text: #fff;
+            --text-dim: rgba(255,255,255,0.6);
+            --card-bg: rgba(255,255,255,0.05);
+            --card-border: rgba(255,255,255,0.1);
+            --code-green: #4ADE80;
+            --code-blue: #60A5FA;
+            --code-yellow: #FBBF24;
+            --code-gray: rgba(255,255,255,0.4);
+            
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(18px, 3vw, 32px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-small: clamp(12px, 1.5vw, 14px);
+            --font-big-number: clamp(48px, 15vw, 120px);
+            
+            --padding-slide: clamp(24px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .deck {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
+            padding-bottom: calc(var(--padding-slide) + 60px);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active { display: flex; }
+
+        .section-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1.1;
+            margin-bottom: 24px;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            color: var(--text-dim);
+            line-height: 1.4;
+            max-width: 900px;
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium);
+            font-weight: 600;
+            letter-spacing: -1px;
+            line-height: 1.2;
+            margin-bottom: 32px;
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            line-height: 1.6;
+            color: var(--text-dim);
+        }
+
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #C4B5FD);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .grid { display: grid; gap: var(--gap-grid); }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
+        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); }
+        .grid-5 { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card-title {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        .card-desc {
+            font-size: var(--font-body);
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .code-block {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(11px, 1.5vw, 14px);
+            line-height: 1.6;
+            white-space: pre;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .code-block .comment { color: var(--code-gray); }
+        .code-block .keyword { color: var(--accent); }
+        .code-block .string { color: var(--code-green); }
+        .code-block .type { color: var(--code-blue); }
+        .code-block .func { color: var(--code-yellow); }
+
+        .architecture-diagram {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(10px, 1.2vw, 13px);
+            line-height: 1.4;
+            white-space: pre;
+            color: var(--text-dim);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 32px);
+            overflow-x: auto;
+        }
+
+        .architecture-diagram .layer-kernel { color: var(--accent); }
+        .architecture-diagram .layer-modules { color: var(--code-green); }
+        .architecture-diagram .layer-foundation { color: var(--code-blue); }
+        .architecture-diagram .layer-apps { color: var(--code-yellow); }
+
+        .highlight { color: var(--accent); }
+
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--font-body);
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        th {
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: var(--font-small);
+            letter-spacing: 1px;
+        }
+
+        td { color: var(--text-dim); }
+        td:first-child { color: var(--text); font-weight: 500; }
+
+        .comparison-table {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            background: var(--card-border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .comparison-table > div {
+            background: var(--bg);
+            padding: clamp(12px, 2vw, 20px);
+        }
+
+        .comparison-table .header {
+            background: var(--accent-dim);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: var(--font-small);
+            letter-spacing: 1px;
+        }
+
+        .comparison-table .left { color: var(--accent); }
+        .comparison-table .right { color: var(--code-green); }
+
+        .pill {
+            display: inline-block;
+            background: var(--accent-dim);
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: var(--font-small);
+            font-weight: 600;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 32px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: clamp(36px, 8vw, 64px);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #C4B5FD);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: var(--font-body);
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        .flow-diagram {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin: 32px 0;
+        }
+
+        .flow-step {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .flow-step-title {
+            font-weight: 600;
+            color: var(--accent);
+            font-size: var(--font-small);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .flow-step-desc {
+            font-size: var(--font-body);
+            color: var(--text);
+            margin-top: 4px;
+        }
+
+        .flow-arrow {
+            color: var(--accent);
+            font-size: 24px;
+        }
+
+        .principles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+        }
+
+        .principle {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .principle-num {
+            font-size: clamp(24px, 4vw, 32px);
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 40px;
+        }
+
+        .principle-text {
+            font-size: var(--font-body);
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .principle-text strong {
+            color: var(--text);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Navigation */
+        .nav-dots {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .nav-dot:hover { background: rgba(255,255,255,0.6); }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 20px;
+            right: 24px;
+            font-size: 14px;
+            color: var(--text-dim);
+            font-family: 'SF Mono', monospace;
+            z-index: 100;
+        }
+
+        .nav-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 24px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+            z-index: 100;
+        }
+
+        /* Title slide special styling */
+        .title-slide {
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title-slide .headline {
+            font-size: clamp(40px, 10vw, 84px);
+        }
+
+        .title-slide .subhead {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .title-meta {
+            margin-top: 48px;
+            color: var(--text-dim);
+            font-size: var(--font-body);
+        }
+
+        /* Module type cards */
+        .module-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(16px, 3vw, 24px);
+            border-top: 3px solid var(--accent);
+        }
+
+        .module-card .module-name {
+            font-size: clamp(16px, 2vw, 18px);
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .module-card .module-contract {
+            font-family: 'SF Mono', monospace;
+            font-size: clamp(11px, 1.3vw, 13px);
+            color: var(--code-green);
+            margin-bottom: 12px;
+        }
+
+        .module-card .module-purpose {
+            font-size: var(--font-body);
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .flow-diagram { flex-direction: column; }
+            .flow-arrow { transform: rotate(90deg); }
+            .comparison-table { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="deck">
+        <!-- Slide 1: Title -->
+        <section class="slide title-slide active" data-slide="1">
+            <div class="section-label">Onboarding Guide</div>
+            <h1 class="headline">Amplifier<br>Ecosystem Architecture</h1>
+            <p class="subhead">A Linux kernel-inspired, modular AI agent framework</p>
+            <div class="title-meta">
+                New Contributor Guide | February 2026
+            </div>
+        </section>
+
+        <!-- Slide 2: The Problem -->
+        <section class="slide" data-slide="2">
+            <div class="section-label">The Challenge</div>
+            <h2 class="headline">Monolithic agent frameworks<br>don't scale</h2>
+            <p class="subhead">When everything is hardcoded, teams fight over the same codebase. Every change risks breaking everything else. Different teams need different behaviors but share the same code.</p>
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-value">1</div>
+                    <div class="stat-label">Codebase to rule them all</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">N</div>
+                    <div class="stat-label">Teams with different needs</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Good outcomes</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 3: The Solution - Linux Metaphor -->
+        <section class="slide" data-slide="3">
+            <div class="section-label">The Insight</div>
+            <h2 class="headline">Linux solved this<br>40 years ago</h2>
+            <p class="subhead" style="margin-bottom: 40px;">A <span class="highlight">minimal, stable kernel</span> provides mechanisms. <span class="highlight">Replaceable modules</span> implement all policies. Different distributions serve different needs from the same foundation.</p>
+            <div class="comparison-table">
+                <div class="header left">Kernel (Mechanism)</div>
+                <div class="header right">Modules (Policy)</div>
+                <div class="left">Module loading</div>
+                <div class="right">Which modules to load</div>
+                <div class="left">Event emission</div>
+                <div class="right">What to log, where</div>
+                <div class="left">Session lifecycle</div>
+                <div class="right">Orchestration strategy</div>
+                <div class="left">Hook registration</div>
+                <div class="right">Security policies</div>
+            </div>
+        </section>
+
+        <!-- Slide 4: Three-Layer Architecture -->
+        <section class="slide" data-slide="4">
+            <div class="section-label">Architecture</div>
+            <h2 class="medium-headline">Three Layers, Clear Boundaries</h2>
+            <div class="architecture-diagram"><span class="layer-apps">APPLICATIONS</span>  amplifier-app-cli, custom apps
+    <span class="layer-apps">User experience, config merging, interfaces</span>
+                           |
+                           | uses
+                           v
+<span class="layer-foundation">FOUNDATION</span>     amplifier-foundation
+    <span class="layer-foundation">Bundles, @mentions, agents, module resolution</span>
+                           |
+                           | builds on
+                           v
+<span class="layer-kernel">KERNEL</span>         amplifier-core  (~7,800 lines)
+    <span class="layer-kernel">Module loading, sessions, events, protocols</span>
+                           |
+                           | defines contracts for
+                           v
+<span class="layer-modules">MODULES</span>        provider-*, tool-*, hooks-*, etc.
+    <span class="layer-modules">LLM backends, capabilities, observability</span></div>
+        </section>
+
+        <!-- Slide 5: The Kernel -->
+        <section class="slide" data-slide="5">
+            <div class="section-label">The Kernel</div>
+            <h2 class="headline">amplifier-core</h2>
+            <p class="subhead" style="margin-bottom: 32px;">Ultra-thin, stable, boring. Changes rarely, backward-compatible always.</p>
+            <div class="grid grid-2">
+                <div>
+                    <div class="stat">
+                        <div class="stat-value">~7,800</div>
+                        <div class="stat-label">Lines of code</div>
+                    </div>
+                    <div style="margin-top: 24px;">
+                        <span class="pill">pydantic</span>
+                        <span class="pill">tomli</span>
+                        <span class="pill">pyyaml</span>
+                        <span class="pill">typing-extensions</span>
+                    </div>
+                    <p class="body-text" style="margin-top: 16px;">Minimal dependencies. No LLM SDKs. No business logic.</p>
+                </div>
+                <div class="card">
+                    <div class="card-title">Key Components</div>
+                    <div class="card-desc">
+                        <strong style="color: var(--accent);">AmplifierSession</strong> - Main entry point<br><br>
+                        <strong style="color: var(--accent);">ModuleCoordinator</strong> - Infrastructure context<br><br>
+                        <strong style="color: var(--accent);">ModuleLoader</strong> - Discovery & loading<br><br>
+                        <strong style="color: var(--accent);">HookRegistry</strong> - Event system<br><br>
+                        <strong style="color: var(--accent);">Protocols</strong> - Module contracts
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 6: The 5 Module Types -->
+        <section class="slide" data-slide="6">
+            <div class="section-label">Module Types</div>
+            <h2 class="medium-headline">Five Module Types, Five Contracts</h2>
+            <div class="grid grid-5">
+                <div class="module-card">
+                    <div class="module-name">Provider</div>
+                    <div class="module-contract">ChatRequest → ChatResponse</div>
+                    <div class="module-purpose">LLM backends: Anthropic, OpenAI, Azure, Ollama</div>
+                </div>
+                <div class="module-card">
+                    <div class="module-name">Tool</div>
+                    <div class="module-contract">execute(input) → ToolResult</div>
+                    <div class="module-purpose">Capabilities: filesystem, bash, web, search</div>
+                </div>
+                <div class="module-card">
+                    <div class="module-name">Orchestrator</div>
+                    <div class="module-contract">execute(prompt, ...) → str</div>
+                    <div class="module-purpose">Execution strategy: loops, streaming, events</div>
+                </div>
+                <div class="module-card">
+                    <div class="module-name">ContextManager</div>
+                    <div class="module-contract">add/get/compact messages</div>
+                    <div class="module-purpose">Memory: simple context, persistent, compacted</div>
+                </div>
+                <div class="module-card">
+                    <div class="module-name">Hook</div>
+                    <div class="module-contract">(event, data) → HookResult</div>
+                    <div class="module-purpose">Observability: logging, redaction, approval</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 7: Module Protocols (Code) -->
+        <section class="slide" data-slide="7">
+            <div class="section-label">Contracts</div>
+            <h2 class="medium-headline">Protocol Definitions</h2>
+            <div class="grid grid-2">
+                <div class="code-block"><span class="comment"># Provider Protocol</span>
+<span class="keyword">class</span> <span class="type">Provider</span>(<span class="type">Protocol</span>):
+    <span class="keyword">@property</span>
+    <span class="keyword">def</span> <span class="func">name</span>(self) -> <span class="type">str</span>: ...
+    
+    <span class="keyword">def</span> <span class="func">get_info</span>(self) -> <span class="type">ProviderInfo</span>: ...
+    
+    <span class="keyword">async def</span> <span class="func">complete</span>(
+        self, 
+        request: <span class="type">ChatRequest</span>
+    ) -> <span class="type">ChatResponse</span>: ...</div>
+                <div class="code-block"><span class="comment"># Tool Protocol</span>
+<span class="keyword">class</span> <span class="type">Tool</span>(<span class="type">Protocol</span>):
+    <span class="keyword">@property</span>
+    <span class="keyword">def</span> <span class="func">name</span>(self) -> <span class="type">str</span>: ...
+    
+    <span class="keyword">@property</span>
+    <span class="keyword">def</span> <span class="func">description</span>(self) -> <span class="type">str</span>: ...
+    
+    <span class="keyword">async def</span> <span class="func">execute</span>(
+        self, 
+        input: <span class="type">dict</span>
+    ) -> <span class="type">ToolResult</span>: ...</div>
+            </div>
+            <p class="body-text" style="margin-top: 24px; text-align: center;">Implement the protocol. Register with the coordinator. Done.</p>
+        </section>
+
+        <!-- Slide 8: Foundation Layer -->
+        <section class="slide" data-slide="8">
+            <div class="section-label">Foundation</div>
+            <h2 class="headline">amplifier-foundation</h2>
+            <p class="subhead" style="margin-bottom: 32px;">The library layer that makes composition possible.</p>
+            <div class="grid grid-3">
+                <div class="card">
+                    <div class="card-title">Bundle System</div>
+                    <div class="card-desc">Composable configurations in Markdown + YAML. Include other bundles. Merge intelligently.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">@Mention Resolution</div>
+                    <div class="card-desc">Reference context files with @bundle:path syntax. Loaded on demand. Namespaced cleanly.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Agent Definitions</div>
+                    <div class="card-desc">Agents are bundles with descriptions. Spawned as child sessions with focused context.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Module Sources</div>
+                    <div class="card-desc">Resolve modules from git URLs, local paths, or installed packages.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">PreparedBundle</div>
+                    <div class="card-desc">Downloads modules, activates them, creates ready-to-run sessions.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">spawn()</div>
+                    <div class="card-desc">Create child sessions for agent delegation with context control.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 9: Bundle Composition -->
+        <section class="slide" data-slide="9">
+            <div class="section-label">Composition</div>
+            <h2 class="medium-headline">Bundles: Composable Configuration</h2>
+            <div class="grid grid-2">
+                <div class="code-block"><span class="comment"># bundle.md - Thin bundle pattern</span>
+---
+<span class="keyword">bundle</span>:
+  <span class="type">name</span>: <span class="string">my-capability</span>
+  <span class="type">version</span>: <span class="string">1.0.0</span>
+
+<span class="keyword">includes</span>:
+  - <span class="type">bundle</span>: <span class="string">foundation</span>
+  - <span class="type">bundle</span>: <span class="string">my-cap:behaviors/core</span>
+
+<span class="keyword">tools</span>:
+  - <span class="type">module</span>: <span class="string">tool-special</span>
+    <span class="type">source</span>: <span class="string">./modules/tool-special</span>
+
+<span class="keyword">agents</span>:
+  <span class="type">include</span>:
+    - <span class="string">my-cap:agents/expert</span>
+---
+
+<span class="comment"># System Instructions</span>
+You are an AI assistant with...
+
+<span class="string">@my-cap:context/guidelines.md</span></div>
+                <div>
+                    <h3 style="font-size: var(--font-subhead); margin-bottom: 20px;">Merge Rules</h3>
+                    <div class="table-wrapper">
+                        <table>
+                            <tr><th>Section</th><th>Rule</th></tr>
+                            <tr><td>session</td><td>Deep merge</td></tr>
+                            <tr><td>providers, tools, hooks</td><td>Merge by module ID</td></tr>
+                            <tr><td>agents</td><td>Replace by name</td></tr>
+                            <tr><td>context</td><td>Accumulate with namespace</td></tr>
+                            <tr><td>instruction (body)</td><td>Replace (later wins)</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 10: Mount Plan -->
+        <section class="slide" data-slide="10">
+            <div class="section-label">Configuration</div>
+            <h2 class="medium-headline">Mount Plan: The Session Contract</h2>
+            <div class="code-block"><span class="comment"># The mount plan consumed by AmplifierSession</span>
+{
+    <span class="string">"session"</span>: {
+        <span class="string">"orchestrator"</span>: <span class="string">"loop-streaming"</span>,      <span class="comment"># Required</span>
+        <span class="string">"context"</span>: <span class="string">"context-simple"</span>            <span class="comment"># Required</span>
+    },
+    <span class="string">"providers"</span>: [
+        {<span class="string">"module"</span>: <span class="string">"provider-anthropic"</span>, <span class="string">"config"</span>: {<span class="string">"model"</span>: <span class="string">"claude-sonnet-4-20250514"</span>}}
+    ],
+    <span class="string">"tools"</span>: [
+        {<span class="string">"module"</span>: <span class="string">"tool-filesystem"</span>},
+        {<span class="string">"module"</span>: <span class="string">"tool-bash"</span>}
+    ],
+    <span class="string">"hooks"</span>: [
+        {<span class="string">"module"</span>: <span class="string">"hooks-logging"</span>, <span class="string">"config"</span>: {<span class="string">"level"</span>: <span class="string">"info"</span>}}
+    ],
+    <span class="string">"agents"</span>: { ... }  <span class="comment"># Pass-through data for applications</span>
+}</div>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <div class="flow-step-title">Bundle</div>
+                    <div class="flow-step-desc">bundle.md</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <div class="flow-step-title">Mount Plan</div>
+                    <div class="flow-step-desc">to_mount_plan()</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <div class="flow-step-title">Session</div>
+                    <div class="flow-step-desc">AmplifierSession</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 11: Mechanism vs Policy -->
+        <section class="slide" data-slide="11">
+            <div class="section-label">Philosophy</div>
+            <h2 class="headline">The Litmus Test</h2>
+            <p class="subhead" style="margin-bottom: 40px; font-size: var(--font-subhead);">"Could two teams want different behavior?"<br><span class="highlight">If yes → Module, not kernel</span></p>
+            <div class="grid grid-2">
+                <div class="card" style="border-top: 3px solid var(--accent);">
+                    <div class="card-title" style="color: var(--accent);">Kernel DOES</div>
+                    <div class="card-desc">
+                        • Load modules<br>
+                        • Emit events<br>
+                        • Manage session lifecycle<br>
+                        • Register hooks<br>
+                        • Validate mount plans
+                    </div>
+                </div>
+                <div class="card" style="border-top: 3px solid var(--code-green);">
+                    <div class="card-title" style="color: var(--code-green);">Kernel NEVER</div>
+                    <div class="card-desc">
+                        • Selects providers or models<br>
+                        • Decides orchestration strategy<br>
+                        • Chooses tool behavior<br>
+                        • Formats output<br>
+                        • Picks logging destination
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 12: Repository Ecosystem -->
+        <section class="slide" data-slide="12">
+            <div class="section-label">Ecosystem</div>
+            <h2 class="medium-headline">Repository Landscape</h2>
+            <div class="table-wrapper">
+                <table>
+                    <tr>
+                        <th>Repository</th>
+                        <th>Role</th>
+                        <th>When to Contribute</th>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--accent);">amplifier</td>
+                        <td>Main entry point</td>
+                        <td>Documentation, installation guides</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--accent);">amplifier-core</td>
+                        <td>The kernel</td>
+                        <td>New protocols, core bug fixes (rare)</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--accent);">amplifier-foundation</td>
+                        <td>Library layer</td>
+                        <td>Bundle system, @mentions, agents</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--accent);">amplifier-app-cli</td>
+                        <td>Reference CLI</td>
+                        <td>User experience, config features</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--accent);">amplifier-module-*</td>
+                        <td>Runtime modules</td>
+                        <td>New providers, tools, hooks (most common)</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--accent);">amplifier-bundle-*</td>
+                        <td>Bundles</td>
+                        <td>New capabilities, agent behaviors</td>
+                    </tr>
+                </table>
+            </div>
+        </section>
+
+        <!-- Slide 13: Architecture Patterns -->
+        <section class="slide" data-slide="13">
+            <div class="section-label">Patterns</div>
+            <h2 class="medium-headline">Key Architecture Patterns</h2>
+            <div class="grid grid-3">
+                <div class="card">
+                    <div class="card-title">Thin Bundle Pattern</div>
+                    <div class="card-desc">
+                        Inherit from foundation, add only unique capabilities. Never duplicate tools/session/hooks that foundation provides.
+                    </div>
+                    <div class="code-block" style="margin-top: 16px; font-size: 11px;"><span class="keyword">includes</span>:
+  - <span class="type">bundle</span>: <span class="string">foundation</span>
+  - <span class="type">bundle</span>: <span class="string">mine:behaviors/x</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Context Sink Pattern</div>
+                    <div class="card-desc">
+                        Heavy docs live in agent files (loaded only when spawned). Behaviors stay thin with awareness pointers.
+                    </div>
+                    <div class="code-block" style="margin-top: 16px; font-size: 11px;"><span class="comment"># Behavior: 30 lines awareness</span>
+<span class="comment"># Agent: @bundle:docs/GUIDE.md</span>
+<span class="comment"># Loads only when spawned!</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Agent Delegation</div>
+                    <div class="card-desc">
+                        Spawn child sessions for focused tasks. Control context depth and scope. Parent awaits result.
+                    </div>
+                    <div class="code-block" style="margin-top: 16px; font-size: 11px;"><span class="keyword">await</span> bundle.<span class="func">spawn</span>(
+    child_bundle,
+    instruction=<span class="string">"..."</span>
+)</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 14: Core Philosophy -->
+        <section class="slide" data-slide="14">
+            <div class="section-label">Philosophy</div>
+            <h2 class="medium-headline">Seven Principles</h2>
+            <div class="principles-grid">
+                <div class="principle">
+                    <div class="principle-num">1</div>
+                    <div class="principle-text">
+                        <strong>Mechanism, Not Policy</strong>
+                        Kernel provides capabilities; modules decide behavior
+                    </div>
+                </div>
+                <div class="principle">
+                    <div class="principle-num">2</div>
+                    <div class="principle-text">
+                        <strong>Ruthless Simplicity</strong>
+                        As simple as possible, but no simpler
+                    </div>
+                </div>
+                <div class="principle">
+                    <div class="principle-num">3</div>
+                    <div class="principle-text">
+                        <strong>Small, Stable, Boring Kernel</strong>
+                        Changes rarely, backward-compatible always
+                    </div>
+                </div>
+                <div class="principle">
+                    <div class="principle-num">4</div>
+                    <div class="principle-text">
+                        <strong>Bricks & Studs</strong>
+                        Self-contained modules with clear interfaces
+                    </div>
+                </div>
+                <div class="principle">
+                    <div class="principle-num">5</div>
+                    <div class="principle-text">
+                        <strong>Event-First Observability</strong>
+                        If it's important, emit an event
+                    </div>
+                </div>
+                <div class="principle">
+                    <div class="principle-num">6</div>
+                    <div class="principle-text">
+                        <strong>Text-First</strong>
+                        Human-readable, diffable configurations
+                    </div>
+                </div>
+                <div class="principle">
+                    <div class="principle-num">7</div>
+                    <div class="principle-text">
+                        <strong>Two-Implementation Rule</strong>
+                        Prove at edges before promoting to kernel
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 15: Getting Started -->
+        <section class="slide title-slide" data-slide="15">
+            <div class="section-label">Next Steps</div>
+            <h2 class="headline">Start Contributing</h2>
+            <div class="grid grid-3" style="margin-top: 40px; text-align: left;">
+                <div class="card">
+                    <div class="card-title">New to Amplifier?</div>
+                    <div class="card-desc">
+                        Clone <span class="highlight">amplifier</span> repo<br>
+                        Run the CLI<br>
+                        Read DESIGN_PHILOSOPHY.md
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Building a Module?</div>
+                    <div class="card-desc">
+                        Check <span class="highlight">amplifier-core/docs/contracts/</span><br>
+                        Study existing modules<br>
+                        Implement the protocol
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Creating a Bundle?</div>
+                    <div class="card-desc">
+                        Start with <span class="highlight">amplifier-foundation</span><br>
+                        Use the thin bundle pattern<br>
+                        Compose, don't duplicate
+                    </div>
+                </div>
+            </div>
+            <div class="title-meta" style="margin-top: 48px;">
+                <span class="highlight">Questions?</span> Ask in #amplifier-dev
+            </div>
+        </section>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-dots"></div>
+    <div class="slide-counter">1 / 15</div>
+    <div class="nav-hint">← → or click to navigate</div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const navDots = document.querySelector('.nav-dots');
+        const counter = document.querySelector('.slide-counter');
+        let currentSlide = 0;
+
+        // Create nav dots
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+            dot.onclick = () => goToSlide(i);
+            navDots.appendChild(dot);
+        });
+
+        function goToSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            navDots.children[currentSlide].classList.remove('active');
+            
+            currentSlide = (n + slides.length) % slides.length;
+            
+            slides[currentSlide].classList.add('active');
+            navDots.children[currentSlide].classList.add('active');
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                goToSlide(currentSlide + 1);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                goToSlide(currentSlide - 1);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                goToSlide(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                goToSlide(slides.length - 1);
+            }
+        });
+
+        // Click navigation (left/right halves)
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav-dots')) return;
+            const x = e.clientX / window.innerWidth;
+            if (x < 0.3) {
+                goToSlide(currentSlide - 1);
+            } else if (x > 0.7) {
+                goToSlide(currentSlide + 1);
+            }
+        });
+
+        // Touch/swipe support
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) {
+                    goToSlide(currentSlide + 1);
+                } else {
+                    goToSlide(currentSlide - 1);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

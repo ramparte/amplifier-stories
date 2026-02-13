@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Taming the Internet Archive</title>
+    <style>
+        :root {
+            --accent-color: #5AC8FA;
+            --font-headline: clamp(32px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 32px);
+            --font-big-number: clamp(60px, 20vw, 180px);
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide-container {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            margin-bottom: clamp(12px, 2vh, 20px);
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: clamp(-1px, -0.03em, -2px);
+            line-height: 1.1;
+            margin-bottom: clamp(16px, 3vh, 30px);
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -1px;
+            line-height: 1.2;
+            margin-bottom: clamp(12px, 2vh, 20px);
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            line-height: 1.4;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: clamp(20px, 4vh, 40px);
+        }
+
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 700;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent-color), #007AFF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: clamp(8px, 1.5vh, 16px);
+        }
+
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(20px, 4vh, 40px);
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(20px, 4vh, 40px);
+            align-items: start;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card h3 {
+            font-size: clamp(18px, 3vw, 24px);
+            font-weight: 700;
+            margin-bottom: clamp(8px, 1.5vh, 12px);
+            color: var(--accent-color);
+        }
+
+        .card p, .card ul {
+            font-size: clamp(14px, 2.5vw, 18px);
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .card ul {
+            margin-top: clamp(8px, 1.5vh, 12px);
+            padding-left: 20px;
+        }
+
+        .card li {
+            margin-bottom: clamp(4px, 1vh, 8px);
+        }
+
+        .code-block {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 2vw, 15px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: clamp(16px, 3vh, 24px);
+        }
+
+        .code-green {
+            color: #30D158;
+        }
+
+        .code-comment {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .quote {
+            font-size: clamp(20px, 4vw, 36px);
+            font-style: italic;
+            font-weight: 600;
+            color: #FF6B6B;
+            margin: clamp(20px, 4vh, 40px) 0;
+            padding-left: clamp(16px, 3vw, 24px);
+            border-left: 4px solid #FF6B6B;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(20px, 4vh, 40px);
+        }
+
+        .before, .after {
+            padding: clamp(16px, 4vw, 28px);
+            border-radius: clamp(12px, 2vw, 16px);
+            border: 2px solid;
+        }
+
+        .before {
+            background: rgba(255, 107, 107, 0.1);
+            border-color: #FF6B6B;
+        }
+
+        .after {
+            background: rgba(48, 209, 88, 0.1);
+            border-color: #30D158;
+        }
+
+        .before h3 {
+            color: #FF6B6B;
+            font-size: clamp(16px, 3vw, 20px);
+            margin-bottom: clamp(8px, 1.5vh, 12px);
+        }
+
+        .after h3 {
+            color: #30D158;
+            font-size: clamp(16px, 3vw, 20px);
+            margin-bottom: clamp(8px, 1.5vh, 12px);
+        }
+
+        .before p, .after p {
+            font-size: clamp(14px, 2.5vw, 18px);
+            line-height: 1.6;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        .nav-dots {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 1000;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: var(--accent-color);
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            z-index: 1000;
+        }
+
+        .click-area {
+            position: fixed;
+            top: 0;
+            width: 30%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 999;
+        }
+
+        .click-area.left {
+            left: 0;
+        }
+
+        .click-area.right {
+            right: 0;
+        }
+
+        .emoji {
+            font-size: clamp(40px, 10vw, 80px);
+            margin-bottom: clamp(16px, 3vh, 24px);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(20px, 4vh, 40px);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: clamp(36px, 8vw, 64px);
+            font-weight: 700;
+            color: var(--accent-color);
+            margin-bottom: clamp(8px, 1.5vh, 12px);
+        }
+
+        .stat-label {
+            font-size: clamp(14px, 2.5vw, 18px);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        a {
+            color: var(--accent-color);
+            text-decoration: none;
+            border-bottom: 1px solid var(--accent-color);
+            transition: all 0.2s ease;
+        }
+
+        a:hover {
+            color: #fff;
+            border-bottom-color: #fff;
+        }
+
+        .bullet-list {
+            font-size: clamp(16px, 3vw, 24px);
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: clamp(16px, 3vh, 24px);
+        }
+
+        .bullet-list li {
+            margin-bottom: clamp(12px, 2vh, 20px);
+        }
+
+        .bullet-list strong {
+            color: var(--accent-color);
+        }
+
+        @media (max-width: 768px) {
+            .click-area {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <!-- Slide 1: Title -->
+        <div class="slide active" data-slide="1">
+            <div class="center">
+                <div class="section-label">HUMAN-AI COLLABORATION • REAL-WORLD ENGINEERING</div>
+                <h1 class="headline">Taming the Internet Archive</h1>
+                <p class="subhead">How robotdad & Amplifier built production-scale download infrastructure<br>for 2.3 million historical documents</p>
+                <p style="margin-top: 40px; font-size: clamp(14px, 2.5vw, 18px); color: rgba(255,255,255,0.6);">
+                    A story about API wrestling, rate limit nightmares,<br>and what's possible with conversational development
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 2: The Vision -->
+        <div class="slide" data-slide="2">
+            <div class="section-label">THE VISION</div>
+            <h2 class="headline">Building a Timecapsule LLM</h2>
+            <p class="subhead">What if you trained an AI that doesn't know about computers, smartphones, or the internet?</p>
+            <div class="card">
+                <h3>The Challenge</h3>
+                <p>Train a language model exclusively on pre-World War I data (before 1914). An AI with the language, knowledge, and perspective of the 19th and early 20th centuries.</p>
+            </div>
+            <div class="card" style="margin-top: clamp(16px, 3vh, 24px);">
+                <h3>What This Requires</h3>
+                <p>A massive corpus of historical documents. Newspapers, books, periodicals—millions of them. All from before 1914. All digitized, downloadable, processable.</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: Inspiration -->
+        <div class="slide" data-slide="3">
+            <div class="section-label">STANDING ON SHOULDERS</div>
+            <h2 class="headline">Inspired by Hayk Grigorian's TimeCapsuleLLM</h2>
+            <p class="subhead">Proof-of-concept that showed training LLMs on historical data only</p>
+            <div class="card">
+                <h3>The Original TimeCapsuleLLM</h3>
+                <p><strong>Hayk Grigorian</strong> pioneered this concept with his TimeCapsuleLLM project:</p>
+                <ul style="margin-top: 12px;">
+                    <li><strong>Scope:</strong> London, 1800-1875</li>
+                    <li><strong>Dataset:</strong> 136,344 documents (90GB)</li>
+                    <li><strong>Key insight:</strong> Train from scratch on historical data only</li>
+                    <li><strong>Repository:</strong> <a href="https://github.com/haykgrigo3/TimeCapsuleLLM" target="_blank">github.com/haykgrigo3/TimeCapsuleLLM</a></li>
+                </ul>
+            </div>
+            <div class="comparison" style="margin-top: clamp(20px, 4vh, 40px);">
+                <div class="before" style="background: rgba(90, 200, 250, 0.1); border-color: var(--accent-color);">
+                    <h3 style="color: var(--accent-color);">Hayk's Proof-of-Concept</h3>
+                    <div class="big-number" style="font-size: clamp(36px, 8vw, 64px); background: linear-gradient(135deg, var(--accent-color), #007AFF); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">136K</div>
+                    <p>Documents, London-focused<br>Single city, 75-year span</p>
+                </div>
+                <div class="after">
+                    <h3>Our Production Scale</h3>
+                    <div class="big-number" style="font-size: clamp(36px, 8vw, 64px);">2.3M</div>
+                    <p><strong>~15× larger dataset</strong><br>Global pre-WWI scope<br>Multiple countries, 114-year span</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: The Scale -->
+        <div class="slide" data-slide="4">
+            <div class="section-label">THE CHALLENGE</div>
+            <h2 class="headline">The Scale</h2>
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">2.3M</div>
+                    <div class="stat-label">Items to download<br>from Internet Archive</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">83K+</div>
+                    <div class="stat-label">Historical newspapers<br>to catalog</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">~200K</div>
+                    <div class="stat-label">Books across<br>various collections</div>
+                </div>
+            </div>
+            <p class="subhead center" style="margin-top: clamp(30px, 6vh, 60px);">
+                And Internet Archive has completely undocumented rate limits.
+            </p>
+        </div>
+
+        <!-- Slide 5: Crisis 1 - HTTP 429 -->
+        <div class="slide" data-slide="5">
+            <div class="center">
+                <div class="section-label">CRISIS #1</div>
+                <div class="emoji">🚨</div>
+                <div class="big-number">HTTP 429</div>
+                <h2 class="medium-headline">You are being rate limited.</h2>
+                <p class="subhead">The official Internet Archive library provides zero assistance with rate limiting.</p>
+            </div>
+            <div class="code-block" style="margin-top: clamp(20px, 4vh, 40px);">
+<span class="code-comment"># What happened</span>
+<span class="code-green">12 workers → banned immediately
+2 workers → still banned
+Added delays → STILL banned
+Made delays longer → STILL BANNED</span>
+
+<span class="code-comment"># Found in the docs:</span>
+"The internetarchive library does not provide
+assistance with complying with rate limiting."
+
+<span class="code-comment"># 😤</span></div>
+        </div>
+
+        <!-- Slide 6: Solution 1 - Custom Rate Limiter -->
+        <div class="slide" data-slide="6">
+            <div class="section-label">THE NUCLEAR OPTION</div>
+            <h2 class="headline">Delete the Official Library</h2>
+            <p class="subhead">robotdad's decision: <strong>784 lines gone.</strong> Amplifier rebuilt it from scratch.</p>
+            <div class="split">
+                <div>
+                    <h3 style="color: var(--accent-color); font-size: clamp(18px, 3vw, 24px); margin-bottom: clamp(12px, 2vh, 20px);">Custom Rate Limiter</h3>
+                    <ul class="bullet-list">
+                        <li><strong>Base delay:</strong> 3.0 seconds</li>
+                        <li><strong>Max delay:</strong> 120 seconds</li>
+                        <li><strong>On error:</strong> delay × 2.5</li>
+                        <li><strong>On HTTP 429:</strong> delay × 4.0</li>
+                        <li><strong>Ban detection:</strong> Exit after 5 consecutive 429s</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="card">
+                        <h3>The Result</h3>
+                        <p><strong>Stable downloads.</strong> No more bans. The pipeline ran for hours without incident.</p>
+                        <p style="margin-top: 16px; font-style: italic; color: rgba(255,255,255,0.6);">Sometimes you need to go lower-level than the official library.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Crisis 2 - Pagination Wall -->
+        <div class="slide" data-slide="7">
+            <div class="section-label">CRISIS #2</div>
+            <h2 class="headline">The Pagination Wall</h2>
+            <p class="subhead">The API says there are 2.3M results. But we can only get 250 items.</p>
+            <div class="comparison">
+                <div class="before">
+                    <h3>What the API Reports</h3>
+                    <div class="big-number" style="font-size: clamp(48px, 12vw, 96px);">2.3M</div>
+                    <p>numFound: 2,346,892<br>Total results available</p>
+                </div>
+                <div class="after" style="background: rgba(255, 107, 107, 0.1); border-color: #FF6B6B;">
+                    <h3 style="color: #FF6B6B;">What We Can Actually Get</h3>
+                    <div class="big-number" style="font-size: clamp(48px, 12vw, 96px); background: linear-gradient(135deg, #FF6B6B, #FF3B3B); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">250</div>
+                    <p>Page 1-5: 50 items each<br>Page 6: 0 items ← Hard wall</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Debugging Marathon -->
+        <div class="slide" data-slide="8">
+            <div class="section-label">THE DEBUGGING MARATHON</div>
+            <h2 class="headline">Hours of Trying Everything</h2>
+            <ul class="bullet-list">
+                <li>Tried <code>AND NOT</code> operators → same wall at 250</li>
+                <li>Simplified queries → same wall at 250</li>
+                <li>Changed collection parameters → same wall at 250</li>
+                <li>Adjusted pagination offsets → same wall at 250</li>
+                <li>Read the API docs five times → same wall at 250</li>
+            </ul>
+            <div class="quote">"I'm very angry right now."</div>
+            <div class="quote">"Are we overcomplicating the search? What is going on here?"</div>
+            <div class="quote">"This worked at some point. Cool cool cool."</div>
+            <p class="subhead" style="margin-top: clamp(20px, 4vh, 40px);">— robotdad, during the debugging session</p>
+        </div>
+
+        <!-- Slide 9: The Breakthrough -->
+        <div class="slide" data-slide="9">
+            <div class="section-label">THE BREAKTHROUGH</div>
+            <h2 class="headline">Discovery: A Different API</h2>
+            <p class="subhead">Internet Archive has TWO completely separate systems.</p>
+            <div class="comparison">
+                <div class="before">
+                    <h3>Search API</h3>
+                    <p><strong>Nice web interface</strong><br>Great for browsing<br>Hard 10K pagination limit<br>We hit wall at 250</p>
+                    <p style="margin-top: 16px; font-size: 14px; font-style: italic;">❌ Not for bulk access</p>
+                </div>
+                <div class="after">
+                    <h3>Bulk Export API</h3>
+                    <p><strong>Direct item access</strong><br>No pagination theatrics<br>Reliable metadata fetch<br>Works every time</p>
+                    <p style="margin-top: 16px; font-size: 14px; font-style: italic;">✅ Built for scale</p>
+                </div>
+            </div>
+            <div class="code-block">
+<span class="code-comment"># The bulk export endpoint</span>
+<span class="code-green">https://archive.org/metadata/{identifier}</span>
+
+<span class="code-comment"># Just give it an ID, get full metadata back. Every time.</span></div>
+        </div>
+
+        <!-- Slide 10: The New Architecture -->
+        <div class="slide" data-slide="10">
+            <div class="section-label">THE SOLUTION</div>
+            <h2 class="headline">Pattern Enumeration</h2>
+            <p class="subhead">Don't rely on search pagination. Enumerate systematically.</p>
+            <div class="thirds">
+                <div class="card">
+                    <h3>1. Discovery</h3>
+                    <p>Use search API to find initial identifiers and collection patterns</p>
+                </div>
+                <div class="card">
+                    <h3>2. Enumeration</h3>
+                    <p>Generate identifiers systematically: date-based scanning, sequential patterns</p>
+                </div>
+                <div class="card">
+                    <h3>3. Bulk Fetch</h3>
+                    <p>Use bulk export API to get metadata for each identifier (with custom rate limiter)</p>
+                </div>
+            </div>
+            <div class="code-block">
+<span class="code-comment"># Example: Newspaper identifier patterns</span>
+<span class="code-green">sim_american-journal-of-science_1800-01-01_1_1
+sim_american-journal-of-science_1800-02-01_1_2
+sim_american-journal-of-science_1800-03-01_1_3</span>
+
+<span class="code-comment"># Collection prefix + date + volume + issue
+# Beautiful. Predictable. Enumeratable.</span></div>
+        </div>
+
+        <!-- Slide 11: Victory -->
+        <div class="slide" data-slide="11">
+            <div class="center">
+                <div class="section-label">VICTORY</div>
+                <h2 class="headline">Production Pipeline: Catalog → Filter → Download</h2>
+                <p class="subhead">Selectivity and discipline, not just downloading everything</p>
+            </div>
+            <div class="thirds">
+                <div class="card">
+                    <h3>1. Discovery & Catalog</h3>
+                    <div class="stat-number" style="margin-top: 16px;">2.3M</div>
+                    <p style="margin-top: 8px;">Items cataloged from Internet Archive</p>
+                </div>
+                <div class="card">
+                    <h3>2. Quality Filtering</h3>
+                    <div class="emoji" style="font-size: clamp(30px, 6vw, 48px); margin-top: 16px;">🔍</div>
+                    <p style="margin-top: 8px;">Applied quality criteria: completeness, OCR quality, metadata</p>
+                </div>
+                <div class="card">
+                    <h3>3. Final Download</h3>
+                    <div class="stat-number" style="margin-top: 16px;">~1.4M</div>
+                    <p style="margin-top: 8px;">High-quality documents selected for processing</p>
+                </div>
+            </div>
+            <div class="stat-grid" style="margin-top: clamp(30px, 6vh, 60px);">
+                <div class="stat">
+                    <div class="emoji" style="font-size: clamp(30px, 6vw, 48px);">✅</div>
+                    <div class="stat-label">Multi-day stable downloads</div>
+                </div>
+                <div class="stat">
+                    <div class="emoji" style="font-size: clamp(30px, 6vw, 48px);">✅</div>
+                    <div class="stat-label">Zero HTTP 429 errors</div>
+                </div>
+                <div class="stat">
+                    <div class="emoji" style="font-size: clamp(30px, 6vw, 48px);">✅</div>
+                    <div class="stat-label">No human intervention needed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: The Collaboration -->
+        <div class="slide" data-slide="12">
+            <div class="section-label">HOW WE WORKED TOGETHER</div>
+            <h2 class="headline">Human-AI Partnership on Real Engineering</h2>
+            <div class="split">
+                <div class="card">
+                    <h3>robotdad's Role</h3>
+                    <ul>
+                        <li><strong>Strategic decisions:</strong> "Delete the official library"</li>
+                        <li><strong>Direction:</strong> "Try pattern enumeration instead"</li>
+                        <li><strong>Debugging intuition:</strong> Knowing what to question next</li>
+                        <li><strong>Frustration that drove breakthroughs:</strong> Questioning assumptions when stuck</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>Amplifier's Role</h3>
+                    <ul>
+                        <li><strong>Implementation:</strong> Writing the custom rate limiter code</li>
+                        <li><strong>Discovery:</strong> Finding bulk export API documentation</li>
+                        <li><strong>Testing:</strong> Rapidly trying different approaches</li>
+                        <li><strong>Execution:</strong> Building the production pipeline</li>
+                    </ul>
+                </div>
+            </div>
+            <p class="subhead center" style="margin-top: clamp(30px, 6vh, 60px);">
+                Neither alone would have solved this as efficiently.<br>The collaboration was the breakthrough.
+            </p>
+        </div>
+
+        <!-- Slide 13: What This Demonstrates -->
+        <div class="slide" data-slide="13">
+            <div class="section-label">WHAT AMPLIFIER CAN DO</div>
+            <h2 class="headline">Real Production Engineering Through Conversation</h2>
+            <div class="thirds">
+                <div class="card">
+                    <h3>🔧 Build Custom Infrastructure</h3>
+                    <p>When libraries don't cut it, build from scratch. Custom rate limiters, adaptive backoff, production error handling.</p>
+                </div>
+                <div class="card">
+                    <h3>🔍 Research & Discover</h3>
+                    <p>Find obscure API documentation, dig through GitHub issues, surface technical solutions you didn't know existed.</p>
+                </div>
+                <div class="card">
+                    <h3>⚡ Rapid Iteration</h3>
+                    <p>Try dozens of approaches in hours. Test theories immediately. Get from "it doesn't work" to "production-stable" fast.</p>
+                </div>
+                <div class="card">
+                    <h3>🏗️ Architectural Pivots</h3>
+                    <p>When the approach isn't working, redesign. Pattern enumeration, bulk APIs, hybrid strategies—whatever it takes.</p>
+                </div>
+                <div class="card">
+                    <h3>📊 Production Scale</h3>
+                    <p>Not toy projects. 2.3M items. Multi-day pipelines. Real error handling. Actual production systems.</p>
+                </div>
+                <div class="card">
+                    <h3>🤝 True Collaboration</h3>
+                    <p>You make the calls, Amplifier executes. Debugging marathons together. Your intuition + AI implementation.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: What's Next -->
+        <div class="slide" data-slide="14">
+            <div class="section-label">WHAT'S NEXT</div>
+            <h2 class="headline">The Story Continues</h2>
+            <div class="split">
+                <div class="card">
+                    <h3>📄 Part 2: OCR at Scale</h3>
+                    <p><strong>Next story coming soon:</strong></p>
+                    <ul style="margin-top: 12px;">
+                        <li>Rust layer for 46× speedup</li>
+                        <li>143 million text corrections</li>
+                        <li>Processing 2.3M historical documents</li>
+                        <li>Another human-AI engineering collaboration</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🧠 Part 3: Training the Timecapsule LLM</h3>
+                    <p><strong>The ultimate goal:</strong></p>
+                    <ul style="margin-top: 12px;">
+                        <li>Training on pre-WWI data only</li>
+                        <li>An AI that doesn't know about modern tech</li>
+                        <li>19th century language and perspective</li>
+                        <li>Full training story when complete</li>
+                    </ul>
+                </div>
+            </div>
+            <p class="subhead center" style="margin-top: clamp(30px, 6vh, 60px);">
+                This download infrastructure was just the beginning.
+            </p>
+        </div>
+
+        <!-- Slide 15: Call to Action -->
+        <div class="slide" data-slide="15">
+            <div class="center">
+                <div class="section-label">EXPLORE & TRY</div>
+                <h2 class="headline">See the Code</h2>
+                <p class="subhead">The entire project is open source</p>
+                <div class="card" style="max-width: 600px; margin: clamp(30px, 6vh, 60px) auto 0;">
+                    <h3>timecapsule-data repository</h3>
+                    <p style="margin: 16px 0;">
+                        <a href="https://github.com/robotdad/timecapsule-data" target="_blank" style="font-size: clamp(16px, 3vw, 20px);">github.com/robotdad/timecapsule-data</a>
+                    </p>
+                    <p style="font-size: clamp(14px, 2.5vw, 16px); color: rgba(255,255,255,0.7);">
+                        ✅ Custom rate limiter with adaptive backoff<br>
+                        ✅ Bulk export API integration<br>
+                        ✅ Pattern enumeration strategies<br>
+                        ✅ Production-tested error handling
+                    </p>
+                </div>
+                <p class="subhead" style="margin-top: clamp(30px, 6vh, 60px); font-size: clamp(14px, 2.5vw, 18px);">
+                    Curious what you can build with Amplifier?<br>
+                    This was built through conversational development sessions.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-dots"></div>
+    <div class="slide-counter"></div>
+    <div class="click-area left"></div>
+    <div class="click-area right"></div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        const navDots = document.querySelector('.nav-dots');
+        const slideCounter = document.querySelector('.slide-counter');
+
+        // Create nav dots
+        for (let i = 0; i < totalSlides; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            if (i === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => goToSlide(i));
+            navDots.appendChild(dot);
+        }
+
+        function updateSlide() {
+            slides.forEach((slide, index) => {
+                slide.classList.toggle('active', index === currentSlide);
+            });
+            
+            const dots = document.querySelectorAll('.dot');
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentSlide);
+            });
+            
+            slideCounter.textContent = `${currentSlide + 1} / ${totalSlides}`;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        function goToSlide(index) {
+            currentSlide = index;
+            updateSlide();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                prevSlide();
+            }
+        });
+
+        // Click navigation
+        document.querySelector('.click-area.left').addEventListener('click', prevSlide);
+        document.querySelector('.click-area.right').addEventListener('click', nextSlide);
+
+        // Touch swipe navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) nextSlide();
+            if (touchEndX > touchStartX + 50) prevSlide();
+        }
+
+        // Initialize
+        updateSlide();
+    </script>
+</body>
+</html>

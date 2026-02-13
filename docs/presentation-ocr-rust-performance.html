@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>590 Million Corrections in 7 Hours: OCR Cleanup at Scale with Rust</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .slide-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            overflow-x: hidden;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .slide {
+            min-width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 80px;
+            scroll-snap-align: start;
+            position: relative;
+        }
+
+        /* Accent color - Rust Orange */
+        :root {
+            --accent: #FF6B35;
+            --accent-dim: rgba(255, 107, 53, 0.2);
+        }
+
+        /* Title Slide */
+        .slide.title {
+            background: linear-gradient(135deg, #000 0%, #1a0a00 100%);
+        }
+
+        .slide.title h1 {
+            font-size: 72px;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 1200px;
+        }
+
+        .slide.title .highlight {
+            color: var(--accent);
+        }
+
+        .slide.title .subtitle {
+            font-size: 32px;
+            color: #888;
+            margin-bottom: 60px;
+            text-align: center;
+        }
+
+        .slide.title .authors {
+            font-size: 24px;
+            color: #666;
+            margin-top: 40px;
+        }
+
+        /* Content slides */
+        h2 {
+            font-size: 64px;
+            font-weight: 700;
+            margin-bottom: 60px;
+            color: var(--accent);
+        }
+
+        h3 {
+            font-size: 48px;
+            font-weight: 600;
+            margin-bottom: 40px;
+            color: #fff;
+        }
+
+        .content {
+            font-size: 32px;
+            line-height: 1.6;
+            max-width: 1400px;
+        }
+
+        .content ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .content li {
+            margin-bottom: 24px;
+            padding-left: 50px;
+            position: relative;
+        }
+
+        .content li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-size: 36px;
+        }
+
+        /* Big stat slides */
+        .big-stat {
+            text-align: center;
+        }
+
+        .big-stat .number {
+            font-size: 160px;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+            margin-bottom: 30px;
+        }
+
+        .big-stat .label {
+            font-size: 48px;
+            color: #888;
+            margin-bottom: 60px;
+        }
+
+        .big-stat .context {
+            font-size: 32px;
+            color: #666;
+            line-height: 1.5;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Code block style */
+        .code-block {
+            background: #1a1a1a;
+            border-left: 4px solid var(--accent);
+            padding: 40px;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+            font-size: 24px;
+            line-height: 1.6;
+            color: #a0a0a0;
+            max-width: 1200px;
+            margin: 40px auto;
+        }
+
+        .code-block .error {
+            color: #ff4444;
+        }
+
+        .code-block .success {
+            color: #44ff44;
+        }
+
+        /* Comparison layout */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        .comparison .side {
+            padding: 40px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .comparison .side.bad {
+            border: 3px solid #ff4444;
+        }
+
+        .comparison .side.good {
+            border: 3px solid var(--accent);
+        }
+
+        .comparison h3 {
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+
+        .comparison .metric {
+            font-size: 28px;
+            line-height: 1.8;
+            color: #ccc;
+        }
+
+        /* Timeline/ladder style */
+        .ladder {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            max-width: 1200px;
+        }
+
+        .ladder-step {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 40px;
+            border-radius: 20px;
+            border-left: 6px solid var(--accent);
+        }
+
+        .ladder-step .step-number {
+            font-size: 24px;
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .ladder-step .step-title {
+            font-size: 36px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .ladder-step .step-details {
+            font-size: 24px;
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        /* Navigation */
+        .nav-dots {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            font-size: 18px;
+            color: #666;
+            z-index: 100;
+        }
+
+        /* Grid layouts for multiple items */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .card .card-number {
+            font-size: 72px;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+
+        .card .card-label {
+            font-size: 24px;
+            color: #aaa;
+        }
+
+        /* Quote style */
+        .quote {
+            font-size: 48px;
+            font-style: italic;
+            color: #aaa;
+            text-align: center;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 60px;
+            border-left: 6px solid var(--accent);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .quote-author {
+            font-size: 28px;
+            color: #666;
+            margin-top: 30px;
+            font-style: normal;
+        }
+
+        /* Emphasis text */
+        .emphasis {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        /* CTA Slide */
+        .cta-button {
+            display: inline-block;
+            padding: 24px 60px;
+            background: var(--accent);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 32px;
+            font-weight: 600;
+            margin-top: 40px;
+            transition: transform 0.2s ease;
+        }
+
+        .cta-button:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container" id="slideContainer">
+        
+        <!-- Slide 1: Title -->
+        <div class="slide title">
+            <h1>590 Million Corrections<br>in <span class="highlight">7 Hours</span></h1>
+            <div class="subtitle">OCR Cleanup at Scale with Rust</div>
+            <div class="authors">robotdad & Amplifier</div>
+        </div>
+
+        <!-- Slide 2: The Corpus Challenge -->
+        <div class="slide">
+            <h2>The Corpus from Story 1</h2>
+            <div class="content">
+                <div class="grid-3">
+                    <div class="card">
+                        <div class="card-number">1.4M</div>
+                        <div class="card-label">Documents Downloaded</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-number">99.78%</div>
+                        <div class="card-label">Need OCR Cleanup</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-number">pre-1800 to 1914</div>
+                        <div class="card-label">Historical Scans</div>
+                    </div>
+                </div>
+                <div style="margin-top: 60px; text-align: center; font-size: 36px; color: #888;">
+                    Old printing + Decades-old OCR = <span class="emphasis">Artifacts Everywhere</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: What's Wrong with the Text? -->
+        <div class="slide">
+            <h2>The OCR Artifacts</h2>
+            <div class="content">
+                <div class="code-block">
+"Congre<span class="error">ſ</span>s <span class="error">ſ</span>hall make no law"<br>
+"bu<span class="error">ſ</span>ine<span class="error">ſ</span>s di<span class="error">ſ</span>cu<span class="error">ſ</span>sion"<br>
+"pub<span class="error">h</span>sh the report"<br>
+"TI<span class="error">1</span>E committee met"<br>
+"Chapter Five<span class="error"> — Downloaded from Google Books</span>"
+                </div>
+                <ul style="margin-top: 40px;">
+                    <li>Long-ſ (looks like f) from 19th-century typography</li>
+                    <li>OCR confusion: li→h, ll→U, I→1</li>
+                    <li>Watermarks embedded in text</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 4: The Python Nightmare -->
+        <div class="slide">
+            <div class="big-stat">
+                <div class="number">33.75</div>
+                <div class="label">DAYS</div>
+                <div class="context">
+                    Python baseline: 0.4 files/second<br>
+                    1.17M files × 2.5 seconds each<br><br>
+                    <span class="emphasis" style="font-size: 42px;">"We can't wait a month for this."</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: The Pattern Library -->
+        <div class="slide">
+            <h2>Building the Pattern Library</h2>
+            <div class="content">
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-number">150+</div>
+                        <div class="card-label">Long-s Patterns</div>
+                        <div style="margin-top: 20px; font-size: 20px; color: #666;">ſ → s, eſs → ess, aſh → ash</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-number">200+</div>
+                        <div class="card-label">OCR Corrections</div>
+                        <div style="margin-top: 20px; font-size: 20px; color: #666;">hstory → history, TIIE → THE</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-number">50+</div>
+                        <div class="card-label">Watermark Removal</div>
+                        <div style="margin-top: 20px; font-size: 20px; color: #666;">Google Books, Archive.org stamps</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-number">50+</div>
+                        <div class="card-label">Other Fixes</div>
+                        <div style="margin-top: 20px; font-size: 20px; color: #666;">Whitespace, hyphenation, etc.</div>
+                    </div>
+                </div>
+                <div style="margin-top: 60px; text-align: center; font-size: 36px;">
+                    <span class="emphasis">~450 regex patterns</span> compiled and ready
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: The Rust Decision -->
+        <div class="slide">
+            <h2>The Solution: Rust + PyO3</h2>
+            <div class="content">
+                <ul>
+                    <li><span class="emphasis">Python orchestration:</span> File discovery, pattern management, reporting</li>
+                    <li><span class="emphasis">Rust processing:</span> CPU-intensive regex on text</li>
+                    <li><span class="emphasis">PyO3 bridge:</span> Call Rust from Python seamlessly</li>
+                    <li><span class="emphasis">Pre-compiled patterns:</span> Zero overhead on 450+ regexes</li>
+                    <li><span class="emphasis">Rayon parallelization:</span> All 16 cores working</li>
+                </ul>
+                <div style="margin-top: 60px; text-align: center; font-size: 32px; color: #888;">
+                    Best tool for each part of the job
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: The Testing Ladder -->
+        <div class="slide">
+            <h2>The Testing Ladder</h2>
+            <div class="ladder">
+                <div class="ladder-step">
+                    <div class="step-number">TEST 1: 100 FILES</div>
+                    <div class="step-title">The Smoke Test</div>
+                    <div class="step-details">
+                        10 seconds • 20,099 substitutions • Does it run without crashing?
+                    </div>
+                </div>
+                <div class="ladder-step">
+                    <div class="step-number">TEST 2: 1,000 FILES</div>
+                    <div class="step-title">Pattern Validation</div>
+                    <div class="step-details">
+                        28 seconds • 157,146 substitutions • Vocabulary extraction finds pattern sync bug
+                    </div>
+                </div>
+                <div class="ladder-step">
+                    <div class="step-number">TEST 3: 100,000 FILES</div>
+                    <div class="step-title">Precision Test</div>
+                    <div class="step-details">
+                        21 minutes • 43.3M substitutions • The "enough is enough" moment
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: The Bug Discovery -->
+        <div class="slide">
+            <h2>Bug Caught During Testing</h2>
+            <div class="content">
+                <div class="quote">
+                    "Wait, those are perfectly valid words. What's happening?"
+                    <div class="quote-author">— robotdad, reviewing vocabulary analysis</div>
+                </div>
+                <div style="margin-top: 60px; text-align: center;">
+                    <div style="font-size: 36px; color: #888; margin-bottom: 30px;">Pattern sync issue between Python and Rust</div>
+                    <div style="font-size: 48px;">
+                        <span class="emphasis">1.2M false positives</span> caught before production
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: The Precision Moment -->
+        <div class="slide">
+            <div class="big-stat">
+                <div class="number">99.98%</div>
+                <div class="label">PRECISION</div>
+                <div class="context">
+                    100,000 files tested • 1,014,036 suspicious words flagged<br>
+                    Only 225 were false positives<br><br>
+                    <span class="emphasis" style="font-size: 36px;">
+                        "Only 225 cleared by dictionary lookup.<br>That seems really good to me."
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: When to Stop -->
+        <div class="slide">
+            <h2>The "Enough is Enough" Moment</h2>
+            <div class="content">
+                <div style="font-size: 36px; margin-bottom: 50px; text-align: center;">
+                    The remaining 225 errors weren't fixable with regex patterns
+                </div>
+                <ul>
+                    <li>Random capitalization (fundamental OCR failure)</li>
+                    <li>Garbage text from completely failed scans</li>
+                    <li>Mixed-language encoding errors</li>
+                    <li>Unusual proper nouns</li>
+                </ul>
+                <div style="margin-top: 60px; text-align: center; font-size: 40px;">
+                    <span class="emphasis">Data-driven decision:</span> Stop adding patterns,<br>pivot to statistical noise filtering
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Production Victory -->
+        <div class="slide">
+            <h2>Production Run</h2>
+            <div class="content">
+                <div class="grid-3">
+                    <div class="card">
+                        <div class="card-number">1.17M</div>
+                        <div class="card-label">Files Processed</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-number">590M</div>
+                        <div class="card-label">Corrections Made</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-number">7h 14m</div>
+                        <div class="card-label">Total Runtime</div>
+                    </div>
+                </div>
+                <div style="margin-top: 60px; text-align: center;">
+                    <div style="font-size: 72px; font-weight: 800; color: var(--accent); margin-bottom: 20px;">
+                        111.9×
+                    </div>
+                    <div style="font-size: 36px; color: #888;">
+                        faster than Python baseline
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Performance Breakdown -->
+        <div class="slide">
+            <h2>Where the Speedup Came From</h2>
+            <div class="content">
+                <div class="comparison">
+                    <div class="side bad">
+                        <h3>Python Baseline</h3>
+                        <div class="metric">
+                            • Interpreted bytecode<br>
+                            • Regex compiled per file<br>
+                            • Single-threaded (GIL)<br>
+                            • String copying overhead<br><br>
+                            <span style="font-size: 48px; color: #ff4444;">0.4 files/sec</span>
+                        </div>
+                    </div>
+                    <div class="side good">
+                        <h3>Rust + PyO3</h3>
+                        <div class="metric">
+                            • Compiled native code (10×)<br>
+                            • Pre-compiled regex (5×)<br>
+                            • 16-core parallelism (2.3×)<br>
+                            • Zero-copy strings (1.5×)<br><br>
+                            <span style="font-size: 48px; color: var(--accent);">44.75 files/sec</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: The Collaboration -->
+        <div class="slide">
+            <h2>Human-AI Collaboration</h2>
+            <div class="content">
+                <div class="comparison">
+                    <div class="side good">
+                        <h3>robotdad</h3>
+                        <div class="metric">
+                            • Identified performance bottleneck<br>
+                            • Made architectural decision (Rust)<br>
+                            • Defined pattern categories<br>
+                            • Directed testing & validation<br>
+                            • Decided when to stop iterating
+                        </div>
+                    </div>
+                    <div class="side good">
+                        <h3>Amplifier</h3>
+                        <div class="metric">
+                            • Implemented Rust core + PyO3<br>
+                            • Built 450+ pattern library<br>
+                            • Benchmarked approaches<br>
+                            • Integrated Rayon parallelization<br>
+                            • Generated validation reports
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 60px; text-align: center; font-size: 36px; color: #888;">
+                    Domain knowledge + rapid implementation = production-scale results
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: What Amplifier Enables -->
+        <div class="slide">
+            <h2>What This Demonstrates</h2>
+            <div class="content">
+                <ul>
+                    <li><span class="emphasis">Conversational performance engineering</span> — "This will take 33 days" → Rust solution</li>
+                    <li><span class="emphasis">Polyglot development</span> — Python + Rust hybrid in one session</li>
+                    <li><span class="emphasis">Iterative validation</span> — Test ladder caught critical bug</li>
+                    <li><span class="emphasis">Data-driven decisions</span> — Amplifier guided "when is enough enough?"</li>
+                    <li><span class="emphasis">Production-scale execution</span> — 1.17M files, 590M corrections, reliable</li>
+                </ul>
+                <div style="margin-top: 60px; text-align: center; font-size: 40px;">
+                    From bottleneck to breakthrough in <span class="emphasis">days, not weeks</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: The Clean Corpus -->
+        <div class="slide">
+            <h2>Ready for Training</h2>
+            <div class="content">
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-number">1.17M</div>
+                        <div class="card-label">Clean Documents</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-number">pre-1800 to 1914</div>
+                        <div class="card-label">Pre-WWI Era</div>
+                    </div>
+                </div>
+                <div style="margin-top: 60px; font-size: 36px; line-height: 1.8;">
+                    • Long-ſ normalized across the corpus<br>
+                    • OCR errors corrected<br>
+                    • Watermarks stripped<br>
+                    • Ready for tokenization & LLM training<br><br>
+                    <span class="emphasis">Next story:</span> Training a timecapsule LLM that doesn't know about WWI
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 16: Call to Action -->
+        <div class="slide title">
+            <h2 style="font-size: 56px; margin-bottom: 40px;">Try It Yourself</h2>
+            <div class="content" style="text-align: center;">
+                <div style="font-size: 32px; color: #888; margin-bottom: 40px;">
+                    The timecapsule-data project is open source
+                </div>
+                <a href="https://github.com/robotdad/timecapsule-data" class="cta-button">
+                    View on GitHub
+                </a>
+                <div style="font-size: 28px; color: #666; margin-top: 60px; line-height: 1.8;">
+                    • 450+ OCR pattern library<br>
+                    • Rust processing core with PyO3<br>
+                    • Hybrid Python/Rust architecture<br>
+                    • Production-tested on 1.17M files
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Navigation dots -->
+    <div class="nav-dots" id="navDots"></div>
+
+    <!-- Slide counter -->
+    <div class="slide-counter" id="slideCounter">1 / 16</div>
+
+    <script>
+        const container = document.getElementById('slideContainer');
+        const slides = document.querySelectorAll('.slide');
+        const navDots = document.getElementById('navDots');
+        const slideCounter = document.getElementById('slideCounter');
+        let currentSlide = 0;
+
+        // Create navigation dots
+        slides.forEach((_, index) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot';
+            if (index === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => goToSlide(index));
+            navDots.appendChild(dot);
+        });
+
+        function updateNavigation() {
+            // Update dots
+            document.querySelectorAll('.nav-dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentSlide);
+            });
+            
+            // Update counter
+            slideCounter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        function goToSlide(index) {
+            if (index >= 0 && index < slides.length) {
+                currentSlide = index;
+                container.scrollTo({
+                    left: slides[index].offsetLeft,
+                    behavior: 'smooth'
+                });
+                updateNavigation();
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                goToSlide(currentSlide + 1);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                goToSlide(currentSlide - 1);
+            }
+        });
+
+        // Click navigation (left/right halves of screen)
+        container.addEventListener('click', (e) => {
+            const rect = container.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            if (clickX < rect.width / 2) {
+                goToSlide(currentSlide - 1);
+            } else {
+                goToSlide(currentSlide + 1);
+            }
+        });
+
+        // Track scroll position for manual scrolling
+        let scrollTimeout;
+        container.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                const scrollLeft = container.scrollLeft;
+                const slideWidth = slides[0].offsetWidth;
+                const newSlide = Math.round(scrollLeft / slideWidth);
+                if (newSlide !== currentSlide) {
+                    currentSlide = newSlide;
+                    updateNavigation();
+                }
+            }, 100);
+        });
+
+        // Initialize
+        updateNavigation();
+    </script>
+</body>
+</html>

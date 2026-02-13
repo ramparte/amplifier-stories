@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Self-Improving Amplifier — An AI That Builds What It Needs</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-dim: rgba(255, 55, 95, 0.15);
+            --accent-glow: rgba(255, 55, 95, 0.3);
+            --font-headline: clamp(32px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2.2vw, 18px);
+            --font-small: clamp(12px, 1.8vw, 14px);
+            --font-big-number: clamp(48px, 15vw, 140px);
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active { display: flex; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin-bottom: 24px;
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: 20px;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            color: rgba(255,255,255,0.6);
+            line-height: 1.5;
+            max-width: 700px;
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.7);
+            line-height: 1.7;
+            max-width: 680px;
+        }
+
+        .small-text {
+            font-size: var(--font-small);
+            color: rgba(255,255,255,0.4);
+            margin-top: 16px;
+        }
+
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 32px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 32px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .fourths {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 32px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card-accent {
+            background: var(--accent-dim);
+            border: 1px solid rgba(255, 55, 95, 0.25);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card h3 {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .card p, .card-accent p {
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.6);
+            line-height: 1.6;
+        }
+
+        .card .card-icon {
+            font-size: clamp(28px, 5vw, 40px);
+            margin-bottom: 12px;
+        }
+
+        .card-accent h3 {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+
+        /* Maslow Pyramid */
+        .pyramid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            margin-top: 32px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .pyramid-level {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: clamp(10px, 2vw, 16px) clamp(16px, 3vw, 32px);
+            border-radius: 8px;
+            font-size: clamp(12px, 1.8vw, 15px);
+            font-weight: 500;
+            line-height: 1.4;
+            transition: all 0.3s ease;
+        }
+
+        .pyramid-level:hover {
+            transform: scale(1.02);
+        }
+
+        .p-l5 {
+            width: 45%;
+            background: linear-gradient(135deg, rgba(255,55,95,0.35), rgba(255,55,95,0.15));
+            border: 1px solid rgba(255,55,95,0.5);
+            color: #fff;
+        }
+        .p-l4 {
+            width: 55%;
+            background: linear-gradient(135deg, rgba(255,100,130,0.25), rgba(255,100,130,0.1));
+            border: 1px solid rgba(255,100,130,0.35);
+            color: rgba(255,255,255,0.9);
+        }
+        .p-l3 {
+            width: 65%;
+            background: linear-gradient(135deg, rgba(255,140,160,0.2), rgba(255,140,160,0.08));
+            border: 1px solid rgba(255,140,160,0.25);
+            color: rgba(255,255,255,0.85);
+        }
+        .p-l2 {
+            width: 78%;
+            background: linear-gradient(135deg, rgba(255,170,185,0.15), rgba(255,170,185,0.06));
+            border: 1px solid rgba(255,170,185,0.2);
+            color: rgba(255,255,255,0.8);
+        }
+        .p-l1 {
+            width: 92%;
+            background: linear-gradient(135deg, rgba(255,200,210,0.12), rgba(255,200,210,0.04));
+            border: 1px solid rgba(255,200,210,0.15);
+            color: rgba(255,255,255,0.75);
+        }
+
+        .pyramid-label {
+            font-weight: 700;
+            color: var(--accent);
+            margin-right: 8px;
+        }
+
+        .pyramid-question {
+            display: block;
+            font-size: clamp(10px, 1.4vw, 12px);
+            color: rgba(255,255,255,0.45);
+            font-style: italic;
+            margin-top: 2px;
+        }
+
+        /* Process topology */
+        .topology {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-top: 28px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .topo-box {
+            padding: clamp(12px, 2vw, 18px) clamp(20px, 4vw, 32px);
+            border-radius: 10px;
+            text-align: center;
+            font-size: clamp(13px, 2vw, 16px);
+            font-weight: 500;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .topo-watchdog {
+            background: rgba(255,55,95,0.12);
+            border: 1px solid rgba(255,55,95,0.3);
+            color: var(--accent);
+        }
+
+        .topo-orchestrator {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+        }
+
+        .topo-arrow {
+            font-size: 20px;
+            color: rgba(255,255,255,0.3);
+        }
+
+        .topo-agents {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+            gap: 8px;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .topo-agent {
+            padding: clamp(10px, 1.5vw, 14px);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            text-align: center;
+            font-size: clamp(11px, 1.6vw, 13px);
+            color: rgba(255,255,255,0.6);
+        }
+
+        .topo-note {
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: rgba(255,255,255,0.35);
+            font-style: italic;
+            text-align: center;
+        }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-top: 28px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .timeline-item {
+            display: grid;
+            grid-template-columns: clamp(60px, 12vw, 100px) 20px 1fr;
+            gap: clamp(8px, 2vw, 16px);
+            align-items: start;
+            padding: clamp(10px, 2vw, 16px) 0;
+        }
+
+        .timeline-time {
+            font-size: clamp(12px, 1.8vw, 14px);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timeline-dot-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            min-height: 100%;
+        }
+
+        .timeline-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+            margin-top: 4px;
+        }
+
+        .timeline-line {
+            width: 2px;
+            flex-grow: 1;
+            background: rgba(255,55,95,0.2);
+            min-height: 20px;
+        }
+
+        .timeline-content h4 {
+            font-size: clamp(14px, 2.2vw, 17px);
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .timeline-content p {
+            font-size: clamp(12px, 1.8vw, 14px);
+            color: rgba(255,255,255,0.5);
+            line-height: 1.5;
+        }
+
+        /* Code block */
+        .code-block {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: clamp(11px, 1.6vw, 14px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .code-block .comment { color: rgba(255,255,255,0.35); }
+        .code-block .keyword { color: var(--accent); }
+        .code-block .string { color: #30D158; }
+        .code-block .type { color: #64D2FF; }
+
+        /* Velocity grid */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .velocity-stat {
+            text-align: center;
+            padding: clamp(16px, 3vw, 24px);
+        }
+
+        .velocity-number {
+            font-size: clamp(40px, 10vw, 80px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, #FF375F, #FF6B8A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .velocity-label {
+            font-size: clamp(12px, 1.8vw, 15px);
+            color: rgba(255,255,255,0.5);
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        /* Big quote */
+        .big-quote {
+            font-size: clamp(22px, 5vw, 42px);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1.3;
+            color: #fff;
+            max-width: 800px;
+            margin-bottom: 20px;
+        }
+
+        .big-quote .accent { color: var(--accent); }
+
+        .quote-attr {
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.4);
+            font-weight: 400;
+        }
+
+        /* Feature list */
+        .feature-list {
+            list-style: none;
+            margin-top: 24px;
+        }
+
+        .feature-list li {
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.7);
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            line-height: 1.5;
+        }
+
+        .feature-list li::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+            margin-top: 8px;
+        }
+
+        /* Highlight box */
+        .highlight-box {
+            background: var(--accent-dim);
+            border: 1px solid rgba(255,55,95,0.3);
+            border-radius: 12px;
+            padding: clamp(20px, 4vw, 32px);
+            margin-top: 28px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .highlight-box p {
+            font-size: var(--font-body);
+            color: rgba(255,255,255,0.8);
+            line-height: 1.7;
+        }
+
+        .highlight-box .hl { color: var(--accent); font-weight: 600; }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 20px;
+            right: 24px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+            font-variant-numeric: tabular-nums;
+            z-index: 100;
+        }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px var(--padding-slide) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+                padding-top: 40px;
+            }
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Subtle gradient background for title */
+        .title-bg {
+            position: relative;
+        }
+        .title-bg::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 50% 80%, rgba(255,55,95,0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        /* Phase badge */
+        .phase-badge {
+            display: inline-block;
+            font-size: clamp(10px, 1.4vw, 12px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent);
+            background: var(--accent-dim);
+            padding: 4px 12px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        /* Component tag */
+        .component-tag {
+            display: inline-block;
+            font-size: clamp(10px, 1.3vw, 11px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.05);
+            padding: 3px 8px;
+            border-radius: 3px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active center title-bg">
+        <div class="section-label">The Frontier</div>
+        <h1 class="headline">Self-Improving<br>Amplifier</h1>
+        <p class="subhead">An AI That Builds What It Needs</p>
+        <div class="small-text">Brian Krabach &amp; Sam Schillace &bull; February 2026</div>
+    </div>
+
+    <!-- SLIDE 2: The Question -->
+    <div class="slide center">
+        <div class="section-label">The Question</div>
+        <p class="big-quote">What happens when you give an AI agent <span class="accent">the ability to build its own tools?</span></p>
+        <p class="body-text" style="text-align: center;">Not a new model. Not a fine-tune. Just an AI that can monitor its own work, identify capability gaps, and build what's missing.</p>
+    </div>
+
+    <!-- SLIDE 3: The Experiment -->
+    <div class="slide">
+        <div class="section-label">The Experiment</div>
+        <h2 class="medium-headline">Brian Krabach asked a simple question</h2>
+        <p class="body-text">What if Amplifier's agent framework &mdash; bundles, modules, recipes &mdash; was powerful enough that an AI could use it to extend <em>itself?</em></p>
+
+        <div class="highlight-box">
+            <p>&ldquo;We build tools that build tools. A lot of Amplifier's scenarios are literally <span class="hl">tools that improve Amplifier.</span>&rdquo;</p>
+            <p style="margin-top: 12px; color: rgba(255,255,255,0.4); font-size: clamp(12px, 1.6vw, 14px);">&mdash; Brian Krabach, Office of the CTO, Microsoft</p>
+        </div>
+
+        <p class="body-text" style="margin-top: 24px;">The hypothesis: build an orchestrator that operates on <em>Maslow's hierarchy of needs</em> &mdash; first ensuring its own survival, then pursuing higher-order goals. Originally codenamed <strong style="color: var(--accent);">Albert</strong>, later renamed to <strong>Self-Driving</strong>.</p>
+    </div>
+
+    <!-- SLIDE 4: Maslow's Hierarchy -->
+    <div class="slide center">
+        <div class="section-label">The Architecture</div>
+        <h2 class="medium-headline">Maslow's Hierarchy of AI Needs</h2>
+        <p class="subhead" style="margin-bottom: 8px;">Lower layers must be satisfied before higher layers activate</p>
+
+        <div class="pyramid">
+            <div class="pyramid-level p-l5">
+                <div>
+                    <span class="pyramid-label">L5</span> Self-Actualization &amp; Growth
+                    <span class="pyramid-question">&ldquo;Am I becoming better?&rdquo;</span>
+                </div>
+            </div>
+            <div class="pyramid-level p-l4">
+                <div>
+                    <span class="pyramid-label">L4</span> Quality &amp; Effectiveness
+                    <span class="pyramid-question">&ldquo;Am I doing well?&rdquo;</span>
+                </div>
+            </div>
+            <div class="pyramid-level p-l3">
+                <div>
+                    <span class="pyramid-label">L3</span> Coordination &amp; Context
+                    <span class="pyramid-question">&ldquo;Where am I?&rdquo;</span>
+                </div>
+            </div>
+            <div class="pyramid-level p-l2">
+                <div>
+                    <span class="pyramid-label">L2</span> Safety &amp; Recovery
+                    <span class="pyramid-question">&ldquo;Am I stuck?&rdquo;</span>
+                </div>
+            </div>
+            <div class="pyramid-level p-l1">
+                <div>
+                    <span class="pyramid-label">L1</span> Survival &amp; Self-Awareness
+                    <span class="pyramid-question">&ldquo;Am I still alive?&rdquo;</span>
+                </div>
+            </div>
+        </div>
+
+        <p class="small-text" style="margin-top: 20px;">The orchestrator checks every level before every task &mdash; survival first, growth last.</p>
+    </div>
+
+    <!-- SLIDE 5: How It Works -->
+    <div class="slide center">
+        <div class="section-label">Process Topology</div>
+        <h2 class="medium-headline">How It Works</h2>
+
+        <div class="topology">
+            <div class="topo-box topo-watchdog">
+                <strong>Bash Watchdog</strong><br>
+                <span style="font-size: clamp(11px, 1.4vw, 13px); opacity: 0.7;">Ultra-thin &bull; Monitors PID &bull; Restarts on death &bull; Max 3 retries</span>
+            </div>
+            <div class="topo-arrow">&#8595;</div>
+            <div class="topo-box topo-orchestrator">
+                <strong>Orchestrator Session</strong><br>
+                <span style="font-size: clamp(11px, 1.4vw, 13px); opacity: 0.6;">Long-lived context &bull; Never reads/writes code directly &bull; Delegates everything</span>
+            </div>
+            <div class="topo-arrow">&#8595;</div>
+            <div class="topo-agents">
+                <div class="topo-agent"><strong>Worker</strong><br>Implements tasks</div>
+                <div class="topo-agent"><strong>Reviewer</strong><br>Adversarial validation</div>
+                <div class="topo-agent"><strong>Task Decomposer</strong><br>Goal &rarr; subtasks</div>
+                <div class="topo-agent"><strong>State Analyst</strong><br>Health diagnosis</div>
+            </div>
+            <div class="topo-note">Each sub-agent is fresh &amp; disposable &mdash; zero inherited context</div>
+        </div>
+    </div>
+
+    <!-- SLIDE 6: The 4-Phase Build -->
+    <div class="slide">
+        <div class="section-label">The Build</div>
+        <h2 class="medium-headline">4 Phases. 1 Day. February 10, 2026.</h2>
+
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-time">8:48 AM</div>
+                <div class="timeline-dot-col"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+                <div class="timeline-content">
+                    <h4>Design &amp; Architecture</h4>
+                    <p>855-line design doc. Build plan. 3 "brain" context files totaling 1,030 lines. Maslow hierarchy. Orchestration doctrine. Validation framework.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">10:07 AM</div>
+                <div class="timeline-dot-col"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+                <div class="timeline-content">
+                    <h4>Phase 1: Bundle Skeleton</h4>
+                    <p>Bundle definition, behavior YAML, 4 specialist agent definitions. The orchestrator's brain comes to life. 552 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">10:11 AM</div>
+                <div class="timeline-dot-col"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+                <div class="timeline-content">
+                    <h4>Phase 2: L1 Survival Layer</h4>
+                    <p>3 custom Python modules &mdash; session state, heartbeat hooks, token tracker. The system learns to feel its own pulse. 801 lines.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">10:14 AM</div>
+                <div class="timeline-dot-col"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+                <div class="timeline-content">
+                    <h4>Phase 3: Crash Recovery</h4>
+                    <p>220-line bash watchdog. Monitors heartbeat, detects stale processes, auto-restarts with context. The system survives its own failures.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">10:34 AM</div>
+                <div class="timeline-dot-col"><div class="timeline-dot"></div></div>
+                <div class="timeline-content">
+                    <h4>Phase 4: Integration Testing</h4>
+                    <p>Fixed module paths, validated end-to-end. 8/8 integration tests pass. The system runs.</p>
+                </div>
+            </div>
+        </div>
+
+        <p class="small-text" style="margin-top: 20px;">Design to working system: <strong style="color: var(--accent);">1 hour 46 minutes.</strong> Phases 1&ndash;4 built in 27 minutes.</p>
+    </div>
+
+    <!-- SLIDE 7: Phase 1 & 2 Detail -->
+    <div class="slide">
+        <div class="section-label">Phases 1 &amp; 2</div>
+        <h2 class="medium-headline">Skeleton &amp; Survival Layer</h2>
+
+        <div class="halves">
+            <div>
+                <div class="phase-badge">Phase 1 &mdash; The Brain</div>
+                <h3 style="font-size: clamp(16px, 2.5vw, 20px); font-weight: 600; margin-bottom: 12px;">4 Specialist Agents</h3>
+                <ul class="feature-list">
+                    <li><strong>Worker</strong> &mdash; General-purpose implementer. Gets zero inherited context. Follows strict output contracts.</li>
+                    <li><strong>Reviewer</strong> &mdash; Adversarial evaluator. Never sees worker reasoning. Read-only. Produces PASS / NEEDS_WORK / FAIL verdicts.</li>
+                    <li><strong>Task Decomposer</strong> &mdash; Breaks goals into typed tasks with validation criteria and dependency ordering.</li>
+                    <li><strong>State Analyst</strong> &mdash; Reads state files. Diagnoses system health via Maslow L1&ndash;L5 assessment.</li>
+                </ul>
+            </div>
+            <div>
+                <div class="phase-badge">Phase 2 &mdash; The Pulse</div>
+                <h3 style="font-size: clamp(16px, 2.5vw, 20px); font-weight: 600; margin-bottom: 12px;">3 Custom Modules</h3>
+                <ul class="feature-list">
+                    <li><strong>Session State Tool</strong> &mdash; 5 tools for persistent state: read, write, append-log, list-tasks, read-task. Path traversal protection built in.</li>
+                    <li><strong>Heartbeat Hooks</strong> &mdash; Fires on every tool call and content block. Updates orchestrator.json. Never blocks the agent loop.</li>
+                    <li><strong>Token Tracker</strong> &mdash; Accumulates token usage, injects into LLM context. Triggers self-spawn at 60% context, hard-spawn at 80%.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: Phase 3 & 4 Detail -->
+    <div class="slide">
+        <div class="section-label">Phases 3 &amp; 4</div>
+        <h2 class="medium-headline">Recovery &amp; Validation</h2>
+
+        <div class="halves">
+            <div>
+                <div class="phase-badge">Phase 3 &mdash; The Safety Net</div>
+                <h3 style="font-size: clamp(16px, 2.5vw, 20px); font-weight: 600; margin-bottom: 12px;">watchdog.sh</h3>
+                <div class="code-block"><pre><code><span class="comment"># 220-line crash-recovery script</span>
+<span class="keyword">MAX_RESTARTS</span>=3
+<span class="keyword">CHECK_INTERVAL</span>=30s
+<span class="keyword">HEARTBEAT_STALE</span>=600s
+
+<span class="comment"># The loop</span>
+<span class="type">while</span> true; <span class="type">do</span>
+  check_status_file
+  check_pid_alive
+  check_heartbeat_freshness
+  sleep $CHECK_INTERVAL
+<span class="type">done</span>
+
+<span class="comment"># On death: restart with context</span>
+amplifier run --bundle ./bundle.md \
+  <span class="string">"Resume from crash..."</span></code></pre>
+                </div>
+                <p class="body-text" style="margin-top: 12px;">jq-first JSON parsing with grep fallback. ISO-timestamped logging. SIGTERM handling. PID tracking.</p>
+            </div>
+            <div>
+                <div class="phase-badge">Phase 4 &mdash; Proof</div>
+                <h3 style="font-size: clamp(16px, 2.5vw, 20px); font-weight: 600; margin-bottom: 12px;">Integration Testing</h3>
+                <div class="card" style="margin-top: 8px;">
+                    <div class="component-tag">Test 1</div>
+                    <h3>Simple Code Task</h3>
+                    <p>End-to-end: goal &rarr; decompose &rarr; implement &rarr; review &rarr; pass</p>
+                </div>
+                <div class="card" style="margin-top: 12px;">
+                    <div class="component-tag">Test 2</div>
+                    <h3>Multi-Task with Failure</h3>
+                    <p>Deliberate failure injection. Verify retry and recovery loops work.</p>
+                </div>
+                <div class="card" style="margin-top: 12px;">
+                    <div class="component-tag">Test 3</div>
+                    <h3>Crash Recovery</h3>
+                    <p>Kill process mid-task. Watchdog restarts. State analyst resumes.</p>
+                </div>
+                <div class="card" style="margin-top: 12px;">
+                    <div class="component-tag">Test 4</div>
+                    <h3>Context Pressure</h3>
+                    <p>Fill context to 80%. Token tracker triggers hard self-spawn.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: What It Built -->
+    <div class="slide">
+        <div class="section-label">The Inventory</div>
+        <h2 class="medium-headline">What the Self-Driving Bundle Contains</h2>
+
+        <div class="fourths">
+            <div class="card">
+                <div class="card-icon">&#128065;</div>
+                <h3>4 Agents</h3>
+                <p>Worker, Reviewer, Task Decomposer, State Analyst. Fresh context every spawn.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">&#9881;</div>
+                <h3>3 Modules</h3>
+                <p>Session state, heartbeat hooks, token tracker. The L1 survival layer.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">&#128737;</div>
+                <h3>3 Brain Files</h3>
+                <p>Boot sequence, orchestration doctrine, validation framework. 1,030 lines of cognition.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">&#128296;</div>
+                <h3>1 Watchdog</h3>
+                <p>220-line bash script. Crash detection and recovery. Max 3 restarts.</p>
+            </div>
+        </div>
+
+        <div class="highlight-box" style="margin-top: 28px;">
+            <p>All state is <span class="hl">file-based</span>. No databases. Fully inspectable, greppable, git-trackable. The state files <em>are</em> the recovery mechanism.</p>
+        </div>
+
+        <p class="body-text" style="margin-top: 16px;">Plus: an 855-line design document, a 395-line build plan, a wisdom store for cross-run learning, and a self-spawn protocol that lets the orchestrator replace itself when context fills up.</p>
+    </div>
+
+    <!-- SLIDE 10: The Revelation -->
+    <div class="slide center">
+        <div class="section-label">The Revelation</div>
+        <p class="big-quote">Zero custom framework.<br><span class="accent">Standard Amplifier infrastructure.</span></p>
+        <p class="subhead" style="text-align: center;">Bundles. Agents. Modules. Hooks. The same building blocks every Amplifier user already has.</p>
+
+        <div class="thirds" style="margin-top: 40px; max-width: 900px;">
+            <div class="card-accent">
+                <h3>Not a New Model</h3>
+                <p>Uses existing LLMs as-is. All intelligence comes from external structure &mdash; state files, review loops, goal registries.</p>
+            </div>
+            <div class="card-accent">
+                <h3>Not a New Framework</h3>
+                <p>Every component is a standard Amplifier module. No special APIs. No custom runtime. No fork.</p>
+            </div>
+            <div class="card-accent">
+                <h3>Metacognition from the Outside</h3>
+                <p>Self-awareness through external structures, not model introspection. The heartbeat, not the neuron.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 11: By The Numbers -->
+    <div class="slide center">
+        <div class="section-label">Velocity</div>
+        <h2 class="medium-headline">By the Numbers</h2>
+
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">8</div>
+                <div class="velocity-label">Commits</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">27</div>
+                <div class="velocity-label">Minutes to Build<br>(Phases 1&ndash;4)</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">3,700+</div>
+                <div class="velocity-label">Lines of Code<br>&amp; Design</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">38</div>
+                <div class="velocity-label">Test Sessions</div>
+            </div>
+        </div>
+
+        <div class="thirds" style="margin-top: 40px; max-width: 900px;">
+            <div class="card">
+                <h3 style="color: var(--accent);">1 Day</h3>
+                <p>From first commit to working self-improving system. Feb 10, 2026.</p>
+            </div>
+            <div class="card">
+                <h3 style="color: var(--accent);">4 Phases</h3>
+                <p>Incremental build: skeleton &rarr; survival &rarr; recovery &rarr; integration.</p>
+            </div>
+            <div class="card">
+                <h3 style="color: var(--accent);">0 Special Frameworks</h3>
+                <p>Built entirely on standard Amplifier bundle infrastructure.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 12: The Frontier -->
+    <div class="slide center">
+        <div class="section-label">What This Means</div>
+        <h1 class="headline">The Frontier</h1>
+        <p class="subhead" style="text-align: center; max-width: 750px;">This isn't a demo. It's a <strong style="color: #fff;">working system</strong> that monitors its own health, recovers from crashes, manages its own context, and learns across runs.</p>
+
+        <div class="halves" style="margin-top: 40px; max-width: 900px;">
+            <div class="card">
+                <h3>What It Proves</h3>
+                <ul class="feature-list">
+                    <li>AI agents can build their own capabilities using standard tooling</li>
+                    <li>Self-improvement doesn't require new models or fine-tuning</li>
+                    <li>Ambitious ideas can be built incrementally in hours, not months</li>
+                    <li>The modular architecture enables emergent complexity</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>What It Opens</h3>
+                <ul class="feature-list">
+                    <li>Agents that identify their own capability gaps</li>
+                    <li>Autonomous overnight builds with crash recovery</li>
+                    <li>Cross-run learning via wisdom stores</li>
+                    <li>A new relationship between humans and their tools</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 13: CTA -->
+    <div class="slide center title-bg">
+        <div class="section-label">Next Steps</div>
+        <h2 class="medium-headline">Scheduled for Bill Gates Review</h2>
+        <p class="subhead" style="text-align: center;">February 26, 2026</p>
+
+        <div class="thirds" style="margin-top: 40px; max-width: 800px;">
+            <div class="card" style="text-align: center;">
+                <h3>Explore</h3>
+                <p style="font-family: 'SF Mono', monospace; font-size: clamp(11px, 1.4vw, 13px); color: var(--accent); word-break: break-all;">github.com/ramparte/<br>amplifier-bundle-self-driving</p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3>Try It</h3>
+                <p style="font-family: 'SF Mono', monospace; font-size: clamp(11px, 1.4vw, 13px); color: var(--accent);">amplifier run<br>--bundle self-driving</p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3>Build Your Own</h3>
+                <p style="font-family: 'SF Mono', monospace; font-size: clamp(11px, 1.4vw, 13px); color: var(--accent);">The same tools that<br>built this are yours.</p>
+            </div>
+        </div>
+
+        <p class="small-text" style="margin-top: 32px; text-align: center; max-width: 600px; color: rgba(255,255,255,0.35);">Built on Amplifier &mdash; Microsoft Office of the CTO<br>An experiment that started as &ldquo;what if&rdquo; and became a working self-improving system.</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            slides[currentSlide].scrollTop = 0;
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>
