@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero-Touch Releases: From Broken Builds to Automated Desktop Distribution</title>
+    <style>
+        :root {
+            --accent-color: #FF9F0A;
+            --accent-dim: rgba(255, 159, 10, 0.2);
+            --font-headline: clamp(32px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 32px);
+            --font-big-number: clamp(60px, 20vw, 180px);
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: absolute;
+            width: 100%;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+            position: relative;
+        }
+
+        .slide.prev {
+            transform: translateX(-100%);
+        }
+
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            margin-bottom: clamp(12px, 2vh, 20px);
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: clamp(-1px, -0.03em, -2px);
+            line-height: 1.1;
+            margin-bottom: clamp(16px, 3vh, 32px);
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: clamp(20px, 4vh, 40px);
+        }
+
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-color), #FFD60A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: clamp(8px, 2vh, 16px);
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+            margin-bottom: clamp(12px, 2vh, 20px);
+        }
+
+        .card-title {
+            font-size: clamp(18px, 3vw, 24px);
+            font-weight: 600;
+            margin-bottom: clamp(8px, 1.5vh, 12px);
+            color: var(--accent-color);
+        }
+
+        .card-desc {
+            font-size: clamp(14px, 2vw, 18px);
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .code-block {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 2vw, 15px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: clamp(12px, 2vh, 20px);
+        }
+
+        .code-green { color: #30D158; }
+        .code-yellow { color: #FFD60A; }
+        .code-gray { color: rgba(255, 255, 255, 0.5); }
+        .code-red { color: #FF453A; }
+        .code-blue { color: #64D2FF; }
+
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-bottom: clamp(20px, 4vh, 40px);
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-bottom: clamp(20px, 4vh, 40px);
+        }
+
+        .metric-card {
+            text-align: center;
+            padding: clamp(20px, 4vw, 40px);
+        }
+
+        .metric-value {
+            font-size: var(--font-big-number);
+            font-weight: 700;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent-color), #FFD60A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .metric-label {
+            font-size: clamp(14px, 2vw, 18px);
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: clamp(8px, 2vh, 12px);
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: clamp(20px, 4vw, 40px);
+            margin-bottom: clamp(20px, 4vh, 40px);
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--accent-color), var(--accent-dim));
+        }
+
+        .timeline-item {
+            margin-bottom: clamp(20px, 4vh, 32px);
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: clamp(-28px, -5vw, -48px);
+            top: 8px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            border: 3px solid #000;
+        }
+
+        .timeline-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent-color);
+            margin-bottom: 8px;
+        }
+
+        .timeline-title {
+            font-size: clamp(18px, 3vw, 28px);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .timeline-desc {
+            font-size: clamp(14px, 2vw, 16px);
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.5;
+        }
+
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: clamp(16px, 3vw, 24px);
+            margin-bottom: clamp(20px, 4vh, 40px);
+        }
+
+        .platform-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--accent-color);
+            border-radius: 16px;
+            padding: clamp(20px, 4vw, 32px);
+            text-align: center;
+        }
+
+        .platform-icon {
+            font-size: clamp(40px, 8vw, 64px);
+            margin-bottom: clamp(12px, 2vh, 16px);
+        }
+
+        .platform-name {
+            font-size: clamp(18px, 3vw, 24px);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .platform-arch {
+            font-size: clamp(14px, 2vw, 16px);
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: clamp(20px, 4vh, 40px);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: clamp(12px, 2vw, 16px);
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comparison-table th {
+            font-size: clamp(14px, 2vw, 16px);
+            font-weight: 600;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .comparison-table td {
+            font-size: clamp(14px, 2vw, 18px);
+        }
+
+        .comparison-table .before {
+            color: #FF453A;
+        }
+
+        .comparison-table .after {
+            color: #30D158;
+        }
+
+        .comparison-table .improvement {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            font-size: clamp(14px, 2vw, 20px);
+            line-height: 1.6;
+            margin-bottom: clamp(12px, 2vh, 16px);
+            padding-left: clamp(24px, 4vw, 32px);
+            position: relative;
+        }
+
+        li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        .checkmark::before {
+            content: '✓';
+            color: #30D158;
+        }
+
+        .cross::before {
+            content: '✗';
+            color: #FF453A;
+        }
+
+        .nav-dots {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 40px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: var(--accent-color);
+            transform: scale(1.3);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 40px);
+            right: clamp(20px, 4vw, 40px);
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: rgba(255, 255, 255, 0.5);
+            z-index: 100;
+        }
+
+        .click-left,
+        .click-right {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            width: 25%;
+            cursor: pointer;
+            z-index: 50;
+        }
+
+        .click-left {
+            left: 0;
+        }
+
+        .click-right {
+            right: 0;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-table {
+                font-size: 12px;
+            }
+            
+            .comparison-table th,
+            .comparison-table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Slide 1: Title -->
+<div class="slide active">
+    <div class="section-label">Case Study • February 2026 • 48 Hours</div>
+    <h1 class="headline">Zero-Touch Releases</h1>
+    <p class="subhead">From three critical bugs to automated desktop distribution in 48 hours</p>
+    <div class="card">
+        <div class="card-desc">
+            <strong>Challenge:</strong> Electron app won't launch, code intelligence broken, PATH resolution failed<br>
+            <strong>Result:</strong> Automated cross-platform releases (macOS arm64/x64, Windows x64) in 15 minutes
+        </div>
+    </div>
+</div>
+
+<!-- Slide 2: The Challenge -->
+<div class="slide">
+    <div class="section-label">The Challenge</div>
+    <h2 class="headline">Three Critical Launch Failures</h2>
+    <div class="thirds">
+        <div class="card">
+            <div class="card-title">🚫 App Won't Launch</div>
+            <div class="card-desc">Immediate crashes on startup. PTY spawn failures blocked terminal emulator—a core feature.</div>
+        </div>
+        <div class="card">
+            <div class="card-title">🔍 Missing Dev Tools</div>
+            <div class="card-desc">Code intelligence features failed silently. Ripgrep binary missing from build output.</div>
+        </div>
+        <div class="card">
+            <div class="card-title">🛤️ PATH Resolution</div>
+            <div class="card-desc">macOS Finder launch breaks PATH. Tools installed via fnm, nvm, Homebrew invisible.</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title">The Manual Release Trap</div>
+        <div class="card-desc">4-6 hours per release • Manual builds on multiple machines • Hand-copying artifacts • No beta/stable differentiation</div>
+    </div>
+</div>
+
+<!-- Slide 3: Problem #1 - PTY Spawn -->
+<div class="slide">
+    <div class="section-label">Problem #1</div>
+    <h2 class="headline">The App Won't Launch</h2>
+    <p class="subhead">Users hit immediate crashes with cryptic error messages</p>
+    <div class="code-block"><span class="code-red">Error: pty_posix_spawn failed with error: 2 (No such file or directory)</span></div>
+    <div class="card">
+        <div class="card-title">The Root Cause</div>
+        <div class="card-desc">
+            <strong>node-pty</strong> requires TWO files:<br>
+            • <code>pty.node</code> (native addon) ✓ Present<br>
+            • <code>spawn-helper</code> (companion binary) ✗ Missing<br><br>
+            Build system only copied <code>*.node</code> files—leaving the helper behind.
+        </div>
+    </div>
+</div>
+
+<!-- Slide 4: Problem #2 - Ripgrep -->
+<div class="slide">
+    <div class="section-label">Problem #2</div>
+    <h2 class="headline">Missing Development Tools</h2>
+    <p class="subhead">Code intelligence features failed silently</p>
+    <div class="code-block"><span class="code-gray">// Expected structure:</span>
+<span class="code-green">vendor/ripgrep/darwin-arm64/rg</span>
+<span class="code-green">vendor/ripgrep/win32-x64/rg.exe</span>
+
+<span class="code-gray">// Actual runtime had:</span>
+<span class="code-yellow">sdk-cli.js</span>  <span class="code-gray">// Only the entry point!</span>
+<span class="code-red">vendor/</span>      <span class="code-gray">// Missing entirely</span></div>
+    <div class="card">
+        <div class="card-title">The Issue</div>
+        <div class="card-desc">
+            The electron runtime package only copied the CLI entry point—leaving the entire vendor directory with platform-specific binaries behind.
+        </div>
+    </div>
+</div>
+
+<!-- Slide 5: Problem #3 - PATH -->
+<div class="slide">
+    <div class="section-label">Problem #3</div>
+    <h2 class="headline">PATH Resolution Nightmare</h2>
+    <p class="subhead">macOS apps launched from Finder inherit minimal PATH</p>
+    <div class="card">
+        <div class="card-title">The Problem</div>
+        <div class="card-desc">
+            <strong>Default PATH:</strong> <code>/usr/bin:/bin:/usr/sbin:/sbin</code><br><br>
+            Apps don't source <code>~/.zshrc</code> or <code>~/.bashrc</code>. Tools installed via version managers completely invisible:
+        </div>
+    </div>
+    <ul>
+        <li>fnm (Fast Node Manager) - not found</li>
+        <li>nvm (Node Version Manager) - not found</li>
+        <li>Homebrew (especially Apple Silicon) - not found</li>
+    </ul>
+    <div class="card">
+        <div class="card-desc"><strong>Impact:</strong> Developers using version managers found their Node.js installations missing</div>
+    </div>
+</div>
+
+<!-- Slide 6: The Approach -->
+<div class="slide">
+    <div class="section-label">The Approach</div>
+    <h2 class="headline">AI-Driven Systematic Debugging</h2>
+    <p class="subhead">Human intuition + AI investigation = 48-hour turnaround</p>
+    <div class="split">
+        <div class="card">
+            <div class="card-title">The Method</div>
+            <ul>
+                <li>Trace error messages to source code</li>
+                <li>Inspect actual vs. expected file structures</li>
+                <li>Test hypotheses incrementally</li>
+                <li>Document findings for future reference</li>
+            </ul>
+        </div>
+        <div class="card">
+            <div class="card-title">Human-AI Collaboration</div>
+            <ul>
+                <li><strong>Human:</strong> "The app won't launch"</li>
+                <li><strong>AI:</strong> Traced spawn failure to missing spawn-helper</li>
+                <li><strong>Human:</strong> Choose electron-forge over fighting electron-builder</li>
+                <li><strong>AI:</strong> Performed migration, testing, automation</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 7: 48-Hour Timeline -->
+<div class="slide">
+    <div class="section-label">Timeline</div>
+    <h2 class="headline">48 Hours: From Broken to Production</h2>
+    <div class="timeline">
+        <div class="timeline-item">
+            <div class="timeline-label">Hours 0-12</div>
+            <div class="timeline-title">Phase 1: Systematic Investigation</div>
+            <div class="timeline-desc">AI traced PTY spawn mystery, discovered ripgrep missing, analyzed PATH resolution issues</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-label">Hours 12-18</div>
+            <div class="timeline-title">Phase 2: Build System Pivot</div>
+            <div class="timeline-desc">electron-builder couldn't find Electron in pnpm. Strategic decision: migrate to electron-forge</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-label">Hours 18-36</div>
+            <div class="timeline-title">Phase 3: Fixing the Runtime</div>
+            <div class="timeline-desc">Added spawn-helper copy, fixed vendor directory, implemented PATH resolution with fallbacks</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-label">Hours 36-48</div>
+            <div class="timeline-title">Phase 4: GitHub Actions CI/CD</div>
+            <div class="timeline-desc">Smart version detection, cross-platform matrix, automated beta/stable releases</div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 8: Investigation -->
+<div class="slide">
+    <div class="section-label">Phase 1</div>
+    <h2 class="headline">The Investigation</h2>
+    <p class="subhead">Tracing the PTY spawn mystery</p>
+    <div class="code-block"><span class="code-gray"># The error pointed to spawn failure, but why?</span>
+<span class="code-red">Error: pty_posix_spawn failed with error: 2</span>
+
+<span class="code-gray"># AI traced through node-pty's internals:</span>
+<span class="code-blue">$ grep -r "pty_posix_spawn" node_modules/node-pty</span>
+<span class="code-gray"># Found: node-pty calls a binary called spawn-helper</span>
+<span class="code-gray"># Found: The binary must be in same dir as pty.node</span>
+
+<span class="code-gray"># The smoking gun:</span>
+<span class="code-blue">$ ls backend/dist/electron-runtime/node_modules/node-pty/build/Release/</span>
+<span class="code-yellow">pty.node</span>  <span class="code-gray"># &lt;-- Only one file! spawn-helper is missing!</span></div>
+</div>
+
+<!-- Slide 9: The Pivot -->
+<div class="slide">
+    <div class="section-label">Phase 2</div>
+    <h2 class="headline">The Build System Pivot</h2>
+    <p class="subhead">electron-builder vs. electron-forge</p>
+    <div class="split">
+        <div class="card">
+            <div class="card-title">The Problem</div>
+            <div class="card-desc">
+                <code>electron-builder</code> couldn't find Electron binary in pnpm's virtual store. Cryptic errors about missing node modules.
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">The Decision</div>
+            <div class="card-desc">
+                Migrate to <code>electron-forge</code> (designed for monorepos)<br>
+                • 2-3 hours investment<br>
+                • Keeps all bundling work<br>
+                • Actually produces working DMG/EXE<br>
+                • No more pnpm fights
+            </div>
+        </div>
+    </div>
+    <div class="code-block"><span class="code-gray">// forge.config.js - Clean configuration</span>
+<span class="code-blue">module.exports</span> = {
+  <span class="code-yellow">packagerConfig</span>: {
+    <span class="code-yellow">asar</span>: { <span class="code-yellow">unpack</span>: <span class="code-green">'**/dist-frontend/**'</span> }
+  },
+  <span class="code-yellow">makers</span>: [
+    { <span class="code-yellow">name</span>: <span class="code-green">'@electron-forge/maker-squirrel'</span> }, <span class="code-gray">// Windows</span>
+    { <span class="code-yellow">name</span>: <span class="code-green">'@electron-forge/maker-dmg'</span> }        <span class="code-gray">// macOS</span>
+  ]
+};</div>
+</div>
+
+<!-- Slide 10: The Fixes -->
+<div class="slide">
+    <div class="section-label">Phase 3</div>
+    <h2 class="headline">Fixing the Runtime</h2>
+    <div class="card">
+        <div class="card-title">1. Spawn-helper Fix</div>
+        <div class="code-block"><span class="code-gray">// prepare-electron-runtime.js - Updated copy logic</span>
+<span class="code-blue">const</span> nativeBinaries = [
+  <span class="code-green">'pty.node'</span>,
+  <span class="code-green">'spawn-helper'</span>,  <span class="code-gray">// &lt;-- Added!</span>
+  <span class="code-green">'better_sqlite3.node'</span>
+];
+
+<span class="code-blue">for</span> (<span class="code-blue">const</span> bin <span class="code-blue">of</span> nativeBinaries) {
+  fs.<span class="code-yellow">copyFileSync</span>(srcPath, targetPath);
+}</div>
+    </div>
+    <div class="split">
+        <div class="card">
+            <div class="card-title">2. Ripgrep Vendor</div>
+            <div class="code-block"><span class="code-gray">// Copy entire vendor directory</span>
+fs.<span class="code-yellow">cpSync</span>(vendorDir, targetVendorDir, 
+  { <span class="code-yellow">recursive</span>: <span class="code-blue">true</span> });</div>
+        </div>
+        <div class="card">
+            <div class="card-title">3. PATH Resolution</div>
+            <div class="code-block"><span class="code-gray">// Execute login shell</span>
+<span class="code-blue">const</span> { stdout } = <span class="code-blue">await</span> <span class="code-yellow">execAsync</span>(
+  <span class="code-green">`${shell} -l -c 'echo $PATH'`</span>
+);
+<span class="code-gray">// Fallback to common paths</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 11: Automation -->
+<div class="slide">
+    <div class="section-label">Phase 4</div>
+    <h2 class="headline">GitHub Actions CI/CD</h2>
+    <p class="subhead">Smart version detection and cross-platform builds</p>
+    <div class="card">
+        <div class="card-title">Smart Version Detection</div>
+        <div class="code-block"><span class="code-gray">- name: Detect release type</span>
+  <span class="code-yellow">run</span>: |
+    <span class="code-blue">if</span> echo <span class="code-green">"$TAG"</span> | grep -qE <span class="code-green">'\-beta\.'</span>; <span class="code-blue">then</span>
+      echo <span class="code-green">"is_prerelease=true"</span> >> <span class="code-green">"$GITHUB_OUTPUT"</span>
+      echo <span class="code-green">"Beta release detected: $TAG"</span>
+    <span class="code-blue">else</span>
+      echo <span class="code-green">"is_prerelease=false"</span> >> <span class="code-green">"$GITHUB_OUTPUT"</span>
+      echo <span class="code-green">"Stable release detected: $TAG (draft)"</span>
+    <span class="code-blue">fi</span></div>
+    </div>
+    <div class="card">
+        <div class="card-title">Release Automation</div>
+        <ul>
+            <li><strong>Beta releases</strong> (desktop-v0.2.0-beta.1): Auto-publish as GitHub prerelease</li>
+            <li><strong>Stable releases</strong> (desktop-v0.2.0): Create draft for manual review</li>
+            <li><strong>One command:</strong> <code>git tag desktop-v0.2.0 && git push --tags</code></li>
+        </ul>
+    </div>
+</div>
+
+<!-- Slide 12: Results Dashboard -->
+<div class="slide">
+    <div class="section-label">Results</div>
+    <h2 class="headline">Before vs. After</h2>
+    <div class="thirds">
+        <div class="card metric-card">
+            <div class="metric-value">96%</div>
+            <div class="metric-label">Time Reduction</div>
+            <div class="card-desc" style="margin-top: 16px;">4-6 hours → 15 minutes</div>
+        </div>
+        <div class="card metric-card">
+            <div class="metric-value">92%</div>
+            <div class="metric-label">Fewer Manual Steps</div>
+            <div class="card-desc" style="margin-top: 16px;">12+ steps → 1 command</div>
+        </div>
+        <div class="card metric-card">
+            <div class="metric-value">3x</div>
+            <div class="metric-label">Platform Coverage</div>
+            <div class="card-desc" style="margin-top: 16px;">1 manual → 3 parallel</div>
+        </div>
+    </div>
+    <table class="comparison-table">
+        <tr>
+            <th>Metric</th>
+            <th>Before</th>
+            <th>After</th>
+            <th>Improvement</th>
+        </tr>
+        <tr>
+            <td>Time to release</td>
+            <td class="before">4-6 hours</td>
+            <td class="after">15 minutes</td>
+            <td class="improvement">96% reduction</td>
+        </tr>
+        <tr>
+            <td>Manual steps</td>
+            <td class="before">12+</td>
+            <td class="after">1</td>
+            <td class="improvement">92% reduction</td>
+        </tr>
+        <tr>
+            <td>Platforms built</td>
+            <td class="before">1 (manual)</td>
+            <td class="after">3 (parallel)</td>
+            <td class="improvement">3x coverage</td>
+        </tr>
+        <tr>
+            <td>Beta testing cycle</td>
+            <td class="before">N/A</td>
+            <td class="after">Automated</td>
+            <td class="improvement">New capability</td>
+        </tr>
+    </table>
+</div>
+
+<!-- Slide 13: Platform Coverage -->
+<div class="slide">
+    <div class="section-label">Platform Coverage</div>
+    <h2 class="headline">Automated Cross-Platform Builds</h2>
+    <p class="subhead">One command builds for all platforms in parallel</p>
+    <div class="platform-grid">
+        <div class="platform-card">
+            <div class="platform-icon">🍎</div>
+            <div class="platform-name">macOS</div>
+            <div class="platform-arch">Apple Silicon (arm64)</div>
+        </div>
+        <div class="platform-card">
+            <div class="platform-icon">🍎</div>
+            <div class="platform-name">macOS</div>
+            <div class="platform-arch">Intel (x64)</div>
+        </div>
+        <div class="platform-card">
+            <div class="platform-icon">🪟</div>
+            <div class="platform-name">Windows</div>
+            <div class="platform-arch">x64</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title">Code Changes</div>
+        <div class="split">
+            <div class="card-desc">
+                <strong>3 PRs merged</strong> in 48 hours<br>
+                <strong>5,542 lines added</strong><br>
+                <strong>2,009 lines removed</strong>
+            </div>
+            <div class="card-desc">
+                <strong>60 files touched</strong><br>
+                Desktop app, backend, CI<br>
+                Build system, fixes, automation
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 14: Key Takeaways -->
+<div class="slide">
+    <div class="section-label">Lessons Learned</div>
+    <h2 class="headline">Key Takeaways</h2>
+    <div class="card">
+        <div class="card-title">1. Native Modules Have Hidden Dependencies</div>
+        <div class="card-desc">Don't just copy <code>*.node</code> files. Many require companion binaries, data files, or directory structures.</div>
+    </div>
+    <div class="card">
+        <div class="card-title">2. Monorepo Build Tools Matter</div>
+        <div class="card-desc"><code>electron-builder</code> struggles with pnpm workspaces. Use <code>electron-forge</code> for monorepos.</div>
+    </div>
+    <div class="card">
+        <div class="card-title">3. macOS PATH Resolution is Special</div>
+        <div class="card-desc">Apps launched from Finder don't inherit shell PATHs. Always resolve PATH at app startup.</div>
+    </div>
+</div>
+
+<!-- Slide 15: More Takeaways -->
+<div class="slide">
+    <div class="section-label">Lessons Learned</div>
+    <h2 class="headline">More Key Takeaways</h2>
+    <div class="card">
+        <div class="card-title">4. AI Agents Excel at Systematic Debugging</div>
+        <div class="card-desc">Methodical approach: trace errors to source → inspect file structures → test incrementally → document findings</div>
+    </div>
+    <div class="card">
+        <div class="card-title">5. Automate Early, Not Late</div>
+        <div class="card-desc">CI/CD took only 12 hours (25% of total effort). Treat release automation as a Day 1 requirement.</div>
+    </div>
+    <div class="card">
+        <div class="card-title">6. Draft Releases for Stable, Auto-Publish for Beta</div>
+        <div class="card-desc">Smart versioning prevents accidental stable releases. Beta tags auto-publish; stable tags create drafts for review.</div>
+    </div>
+</div>
+
+<!-- Slide 16: The Bigger Picture -->
+<div class="slide">
+    <div class="section-label">Human-AI Collaboration</div>
+    <h2 class="headline">The Bigger Picture</h2>
+    <p class="subhead">AI as a systematic debugging partner</p>
+    <div class="split">
+        <div class="card">
+            <div class="card-title">What Human Brought</div>
+            <ul>
+                <li>Identified "the app won't launch"</li>
+                <li>Strategic decision: electron-forge over electron-builder</li>
+                <li>Validated releases across platforms</li>
+                <li>Product intuition and priorities</li>
+            </ul>
+        </div>
+        <div class="card">
+            <div class="card-title">What AI Brought</div>
+            <ul>
+                <li>Traced spawn failure to spawn-helper binary</li>
+                <li>Discovered ripgrep vendor directory issue</li>
+                <li>Performed migration, testing, automation</li>
+                <li>Systematic investigation methodology</li>
+            </ul>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title">Ken's Reflection</div>
+        <div class="card-desc">
+            "I knew the app was broken, but I didn't know why. Claude traced the PTY spawn failure to a missing binary I'd never heard of (spawn-helper), discovered the ripgrep vendor directory issue, and then migrated the entire build system to electron-forge. What would have taken me a week of Stack Overflow searches happened in two days of pair programming with an AI agent."
+        </div>
+    </div>
+</div>
+
+<!-- Slide 17: Try It Yourself -->
+<div class="slide">
+    <div class="section-label">Get Started</div>
+    <h2 class="headline">Try It Yourself</h2>
+    <p class="subhead">Replicate this approach in your Electron app</p>
+    <div class="card">
+        <div class="card-title">1. Choose electron-forge for Packaging</div>
+        <div class="code-block"><span class="code-blue">npm install</span> --save-dev @electron-forge/cli @electron-forge/maker-dmg
+<span class="code-blue">npx electron-forge import</span>  <span class="code-gray"># Migrates from electron-builder</span></div>
+    </div>
+    <div class="card">
+        <div class="card-title">2. Copy All Native Module Dependencies</div>
+        <div class="code-block"><span class="code-gray">// Check for hidden binaries and vendor directories</span>
+<span class="code-blue">const</span> nativeModulesToPackage = [
+  <span class="code-green">'node-pty'</span>,        <span class="code-gray">// Check build/Release/ for spawn-helper</span>
+  <span class="code-green">'better-sqlite3'</span>,  <span class="code-gray">// Check build/Release/ for .node</span>
+  <span class="code-green">'@your/sdk'</span>        <span class="code-gray">// Check for vendor/ directories</span>
+];</div>
+    </div>
+    <div class="card">
+        <div class="card-title">3. Resolve PATH at Startup (macOS)</div>
+        <div class="code-block"><span class="code-blue">if</span> (process.platform === <span class="code-green">'darwin'</span>) {
+  <span class="code-blue">const</span> { stdout } = <span class="code-blue">await</span> <span class="code-yellow">execAsync</span>(<span class="code-green">`${shell} -l -c 'echo $PATH'`</span>);
+  process.env.PATH = stdout.<span class="code-yellow">trim</span>();
+}</div>
+    </div>
+</div>
+
+<!-- Slide 18: CTA -->
+<div class="slide">
+    <div class="section-label">Conclusion</div>
+    <h2 class="headline">From Broken Builds to Production in 48 Hours</h2>
+    <p class="subhead">Systematic debugging + strategic pivots + automation-first thinking</p>
+    <div class="thirds">
+        <div class="card">
+            <div class="card-title">✓ App Launches</div>
+            <div class="card-desc">All features functional on macOS and Windows</div>
+        </div>
+        <div class="card">
+            <div class="card-title">✓ Automated Releases</div>
+            <div class="card-desc">15 minutes from tag to downloadable binaries</div>
+        </div>
+        <div class="card">
+            <div class="card-title">✓ Smart Versioning</div>
+            <div class="card-desc">Beta auto-publish, stable draft review</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title">The Lesson</div>
+        <div class="card-desc" style="font-size: clamp(16px, 2.5vw, 22px);">
+            When your desktop app won't launch, don't guess. <strong>Trace, inspect, test, and automate.</strong> And consider bringing an AI agent along for the investigation.
+        </div>
+    </div>
+    <div style="margin-top: clamp(20px, 4vh, 40px); text-align: center;">
+        <div class="card-desc">
+            <strong>Artifacts:</strong> 3 PRs merged • GitHub Workspaces2 repository<br>
+            <strong>Tools:</strong> Claude Code • electron-forge • GitHub Actions • esbuild
+        </div>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav-dots"></div>
+<div class="slide-counter"><span id="current">1</span> / <span id="total">18</span></div>
+<div class="click-left"></div>
+<div class="click-right"></div>
+
+<script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const navDots = document.querySelector('.nav-dots');
+    const currentCounter = document.getElementById('current');
+    const totalCounter = document.getElementById('total');
+
+    // Create navigation dots
+    slides.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.className = 'nav-dot';
+        if (index === 0) dot.classList.add('active');
+        dot.addEventListener('click', () => goToSlide(index));
+        navDots.appendChild(dot);
+    });
+
+    totalCounter.textContent = slides.length;
+
+    function updateSlide() {
+        slides.forEach((slide, index) => {
+            slide.classList.remove('active', 'prev');
+            if (index === currentSlide) {
+                slide.classList.add('active');
+            } else if (index < currentSlide) {
+                slide.classList.add('prev');
+            }
+        });
+
+        document.querySelectorAll('.nav-dot').forEach((dot, index) => {
+            dot.classList.toggle('active', index === currentSlide);
+        });
+
+        currentCounter.textContent = currentSlide + 1;
+    }
+
+    function goToSlide(index) {
+        if (index >= 0 && index < slides.length) {
+            currentSlide = index;
+            updateSlide();
+        }
+    }
+
+    function nextSlide() {
+        goToSlide(currentSlide + 1);
+    }
+
+    function prevSlide() {
+        goToSlide(currentSlide - 1);
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+            e.preventDefault();
+            nextSlide();
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            prevSlide();
+        }
+    });
+
+    // Click navigation
+    document.querySelector('.click-left').addEventListener('click', prevSlide);
+    document.querySelector('.click-right').addEventListener('click', nextSlide);
+
+    // Touch/swipe support
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    });
+
+    function handleSwipe() {
+        if (touchStartX - touchEndX > 50) {
+            nextSlide();
+        } else if (touchEndX - touchStartX > 50) {
+            prevSlide();
+        }
+    }
+</script>
+
+</body>
+</html>
