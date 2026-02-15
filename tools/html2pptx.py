@@ -440,14 +440,16 @@ def add_card(
     )
 
     # Card text (rich or plain)
+    text_top = top + 0.15 + 0.4 + 0.05  # title_top + title_height + gap
+    text_height = height - (0.15 + 0.4 + 0.05 + 0.05)  # pad + title + gap + bottom_pad
     if rich_runs:
         add_rich_text_box(
             slide,
             rich_runs,
             left=left + 0.15,
-            top=top + 0.5,
+            top=text_top,
             width=width - 0.3,
-            height=height - 0.6,
+            height=max(text_height, 0.2),
             font_size=12,
             default_color=GRAY_70,
         )
@@ -456,9 +458,9 @@ def add_card(
             slide,
             text,
             left=left + 0.15,
-            top=top + 0.5,
+            top=text_top,
             width=width - 0.3,
-            height=height - 0.6,
+            height=max(text_height, 0.2),
             font_size=12,
             color=GRAY_70,
         )
@@ -698,7 +700,8 @@ class HTMLToPPTXConverter:
             add_headline(
                 slide, text, top=current_top, size=size, center=is_centered, color=color
             )
-            current_top += 1.2 if size > 45 else 0.9
+            # Advance must match box_height in add_headline (1.5/0.8/0.6) + gap
+            current_top += 1.6 if size > 45 else 0.9
             handled_elements.add(id(headline))
 
         # ── Medium headline ──────────────────────────────────────────────────
@@ -719,7 +722,8 @@ class HTMLToPPTXConverter:
         if subhead:
             text = get_text(subhead)
             add_subhead(slide, text, top=current_top, center=is_centered)
-            current_top += 0.8
+            # Advance must match height=1.0 in add_subhead + gap
+            current_top += 1.1
             handled_elements.add(id(subhead))
 
         # ── Architecture diagram (preformatted text art) ─────────────────────
@@ -874,6 +878,7 @@ class HTMLToPPTXConverter:
 
         # ── Small text (footer) ──────────────────────────────────────────────
         small_texts = slide_div.find_all(class_="small-text")
+        small_text_top = max(current_top, 4.8)
         for st in small_texts:
             if id(st) in handled_elements:
                 continue
@@ -881,13 +886,15 @@ class HTMLToPPTXConverter:
                 slide,
                 get_text(st),
                 left=CONTENT_LEFT,
-                top=4.8,
+                top=small_text_top,
                 width=CONTENT_WIDTH,
                 height=0.4,
                 font_size=14,
                 color=GRAY_50,
                 align=PP_ALIGN.CENTER if is_centered else PP_ALIGN.LEFT,
             )
+            small_text_top += 0.4
+        current_top = small_text_top
 
         # ── Overflow warning ─────────────────────────────────────────────────
         if current_top > SLIDE_HEIGHT + 0.5:
