@@ -122,13 +122,18 @@ def _replace_br_tags(element: Tag):
 
 
 def get_text(element: Optional[Tag]) -> str:
-    """Extract text content from an element, handling None and <br> tags."""
+    """Extract text content from an element, handling None and <br> tags.
+
+    Uses a space separator so inline elements (<code>, <span>, etc.)
+    don't get their text fused with surrounding words.
+    """
     if element is None:
         return ""
     # Work on a copy so we don't mutate the original soup
     el_copy = deepcopy(element)
     _replace_br_tags(el_copy)
-    text = el_copy.get_text()
+    # Use " " separator to prevent word-joining across inline tags
+    text = el_copy.get_text(" ")
     # Collapse runs of spaces (but keep newlines)
     lines = text.split("\n")
     lines = [" ".join(line.split()) for line in lines]
@@ -358,16 +363,29 @@ def _estimate_text_height(
 ) -> float:
     """Estimate rendered text height based on character count and box width.
 
-    Uses a rough heuristic for proportional fonts to determine how many lines
-    the text will wrap to, then computes the total height including padding.
+    Uses a calibrated heuristic for proportional fonts.  Large fonts (headlines,
+    subheads) pack fewer characters per inch but the old factor of 1.8 was too
+    conservative, causing single-line text to be estimated as 2+ lines and
+    cascading layout overflow.  The scaling factor increases with font size to
+    reflect that wider glyphs at large sizes still fit more chars/inch than the
+    linear ratio suggests (kerning, proportional widths).
     """
-    chars_per_inch = 72 / font_size_pt * 1.8  # rough heuristic
+    # Calibrated against proportional fonts (Calibri/Segoe UI) rendered in
+    # PowerPoint text boxes.  Larger fonts need higher scale because headline
+    # text typically uses shorter words with more whitespace between glyphs.
+    # At 12pt → ~2.3; at 24pt → ~2.6; at 36pt → ~2.9; at 48pt → ~3.2
+    scale = 2.0 + min(font_size_pt, 60) / 40
+    chars_per_inch = 72 / font_size_pt * scale
     chars_per_line = int(box_width_inches * chars_per_inch)
     if chars_per_line < 1:
         chars_per_line = 1
-    num_lines = max(1, -(-len(text) // chars_per_line))  # ceil division
+    # Account for explicit line breaks in text
+    paragraphs = text.split("\n")
+    num_lines = 0
+    for para in paragraphs:
+        num_lines += max(1, -(-len(para) // chars_per_line))  # ceil division
     line_height = font_size_pt / 72 * line_spacing
-    return num_lines * line_height + 0.1  # 0.1" padding
+    return num_lines * line_height + 0.08  # 0.08" padding
 
 
 def add_section_label(slide, text: str, top: float = 0.6, color: RGBColor = MS_BLUE):
@@ -519,21 +537,25 @@ def add_tenet(
         slide, left, top, width, height, fill_color=bg_color, border_color=None
     )
 
-    # Left accent bar
+    # Left accent bar (0.15" wide for visibility in PowerPoint)
     bar = slide.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE, Inches(left), Inches(top), Inches(0.05), Inches(height)
+        MSO_SHAPE.RECTANGLE, Inches(left), Inches(top), Inches(0.15), Inches(height)
     )
     bar.fill.solid()
     bar.fill.fore_color.rgb = accent_color
     bar.line.fill.background()
+    # Remove text frame to keep it a pure colored rectangle
+    bar.text_frame.word_wrap = False
 
-    # Title
+    # Title (offset right to clear the 0.15" accent bar)
+    text_left = left + 0.25
+    text_width = width - 0.35
     add_text_box(
         slide,
         title,
-        left=left + 0.15,
+        left=text_left,
         top=top + 0.1,
-        width=width - 0.3,
+        width=text_width,
         height=0.3,
         font_size=14,
         bold=True,
@@ -544,9 +566,9 @@ def add_tenet(
     add_text_box(
         slide,
         text,
-        left=left + 0.15,
+        left=text_left,
         top=top + 0.4,
-        width=width - 0.3,
+        width=text_width,
         height=height - 0.5,
         font_size=11,
         color=GRAY_70,
@@ -658,9 +680,9 @@ class HTMLToPPTXConverter:
         return self.soup.find_all(["div", "section"], class_="slide")
 
     def is_centered(self, slide_div: Tag) -> bool:
-        """Check if slide has center class."""
+        """Check if slide has center or title-slide class."""
         classes = slide_div.get("class", [])
-        return "center" in classes
+        return "center" in classes or "title-slide" in classes
 
     # ── Main slide processor ─────────────────────────────────────────────────
 
@@ -734,9 +756,9 @@ class HTMLToPPTXConverter:
             headline_height = _estimate_text_height(text, size, CONTENT_WIDTH)
             min_h = size / 72 * 1.2 + 0.1
             headline_height = max(min_h, min(headline_height, 2.0))
-            # Extra gap on centered title slides to prevent visual overlap
-            # with subtitle (large fonts + text padding need more breathing room)
-            gap_after = GAP_SECTION * 2.5 if is_centered else GAP_SECTION
+            # Fixed 0.50" gap on centered/title slides for clean title-to-subtitle
+            # spacing; regular slides use standard section gap.
+            gap_after = 0.50 if is_centered else GAP_SECTION
             current_top += headline_height + gap_after
             handled_elements.add(id(headline))
 
@@ -774,11 +796,18 @@ class HTMLToPPTXConverter:
             current_top += 3.0
             handled_elements.add(id(arch_diagram))
 
-        # ── Comparison table (grid layout) ───────────────────────────────────
+        # ── Comparison table (grid layout or HTML table) ──────────────────────
         comp_table = slide_div.find(class_="comparison-table")
         if comp_table:
-            self._add_comparison_table(slide, comp_table, current_top)
-            current_top += 2.2
+            if comp_table.name == "table":
+                # It's a real HTML <table> with class comparison-table —
+                # route to the table handler instead of the CSS-grid handler.
+                self._add_table(slide, comp_table, current_top)
+                rows = comp_table.find_all("tr")
+                current_top += len(rows) * 0.32 + 0.3
+            else:
+                self._add_comparison_table(slide, comp_table, current_top)
+                current_top += 2.2
             handled_elements.add(id(comp_table))
 
         # ── Cards in grid containers ─────────────────────────────────────────
@@ -794,7 +823,9 @@ class HTMLToPPTXConverter:
             "tools-grid",
         ]
         card_containers = slide_div.find_all(
-            class_=lambda c: c and any(gc in c for gc in grid_classes)
+            class_=lambda c: c
+            and any(gc in c for gc in grid_classes)
+            and "principles-grid" not in c  # handled by principle handler
         )
         for container in card_containers:
             if id(container) in handled_elements:
@@ -808,17 +839,112 @@ class HTMLToPPTXConverter:
                 # Try deeper (some decks nest differently)
                 cards = container.find_all(class_=["card", "module-card", "tool-card"])
 
+            # Check for code-blocks inside grid (e.g. protocol definitions)
+            inner_code_blocks = container.find_all(class_="code-block")
+
             if cards:
                 cards_height = self._add_cards(slide, cards, current_top, container)
                 current_top += cards_height + GAP_SECTION
-                handled_elements.add(id(container))
                 for c in cards:
                     handled_elements.add(id(c))
+
+                # Also process non-card siblings in the grid that have content
+                direct_children = [
+                    ch
+                    for ch in container.children
+                    if isinstance(ch, Tag) and id(ch) not in handled_elements
+                ]
+                for child in direct_children:
+                    child_classes = child.get("class", [])
+                    # Skip if it's a card (already handled)
+                    if any(
+                        cc in child_classes
+                        for cc in ["card", "module-card", "tool-card"]
+                    ):
+                        continue
+                    # Render non-card grid children as generic content
+                    child_text = get_text(child)
+                    if child_text and len(child_text) > 5:
+                        child_h = min(1.0, len(child_text) / 60 * 0.3 + 0.3)
+                        add_text_box(
+                            slide,
+                            child_text,
+                            left=CONTENT_LEFT,
+                            top=current_top,
+                            width=CONTENT_WIDTH,
+                            height=child_h,
+                            font_size=12,
+                            color=GRAY_70,
+                        )
+                        current_top += child_h + GAP_NORMAL
+                        handled_elements.add(id(child))
+
+                handled_elements.add(id(container))
+
+            elif inner_code_blocks:
+                # Grid contains code blocks — render side-by-side if grid-2
+                container_cls = " ".join(container.get("class", []))
+                num_cb = len(inner_code_blocks)
+                if "grid-2" in container_cls and num_cb == 2:
+                    # Side-by-side code blocks
+                    cb_gap = 0.15
+                    cb_width = (CONTENT_WIDTH - cb_gap) / 2
+                    max_lines = 0
+                    for col_idx, cb in enumerate(inner_code_blocks):
+                        cb_left = CONTENT_LEFT + col_idx * (cb_width + cb_gap)
+                        self._add_code_block_sized(
+                            slide, cb, current_top, cb_left, cb_width
+                        )
+                        lines = get_text(cb).count("\n") + 1
+                        max_lines = max(max_lines, lines)
+                        handled_elements.add(id(cb))
+                    current_top += max(1.2, min(max_lines * 0.18 + 0.4, 3.5))
+                else:
+                    # Stacked code blocks (default)
+                    for cb in inner_code_blocks:
+                        self._add_code_block(slide, cb, current_top)
+                        lines = get_text(cb).count("\n") + 1
+                        current_top += max(1.2, min(lines * 0.18 + 0.4, 3.5))
+                        handled_elements.add(id(cb))
+                handled_elements.add(id(container))
+
+            elif container.find(class_="principle"):
+                # Grid contains principles — let the principle handler below
+                # pick them up; do NOT mark container as handled.
+                pass
+
+            else:
+                # Grid with unrecognized content — render children as text
+                direct_children = [
+                    ch
+                    for ch in container.children
+                    if isinstance(ch, Tag)
+                    and ch.get_text(strip=True)
+                    and id(ch) not in handled_elements
+                ]
+                if direct_children:
+                    for child in direct_children:
+                        child_text = get_text(child)
+                        if child_text and len(child_text) > 5:
+                            child_h = min(1.2, len(child_text) / 60 * 0.3 + 0.3)
+                            add_text_box(
+                                slide,
+                                child_text,
+                                left=CONTENT_LEFT,
+                                top=current_top,
+                                width=CONTENT_WIDTH,
+                                height=child_h,
+                                font_size=12,
+                                color=GRAY_70,
+                            )
+                            current_top += child_h + GAP_NORMAL
+                            handled_elements.add(id(child))
+                    handled_elements.add(id(container))
 
         # ── Standalone cards not in containers ───────────────────────────────
         standalone_cards = [
             c
-            for c in slide_div.find_all(class_=["card", "module-card"])
+            for c in slide_div.find_all(class_=["card", "module-card", "tool-card"])
             if id(c) not in handled_elements
             and not c.find_parent(
                 class_=lambda x: x and any(gc in x for gc in grid_classes)
@@ -844,6 +970,10 @@ class HTMLToPPTXConverter:
             current_top += num_rows * (row_height + row_gap)
             for p in principles:
                 handled_elements.add(id(p))
+            # Also mark the principles-grid container as handled
+            pg = slide_div.find(class_="principles-grid")
+            if pg:
+                handled_elements.add(id(pg))
 
         # ── Code blocks ──────────────────────────────────────────────────────
         code_blocks = slide_div.find_all(class_="code-block")
@@ -857,7 +987,7 @@ class HTMLToPPTXConverter:
             handled_elements.add(id(cb))
 
         # ── Flow diagrams ────────────────────────────────────────────────────
-        flow_diagrams = slide_div.find_all(class_=["flow-diagram", "workflow"])
+        flow_diagrams = slide_div.find_all(class_=["flow-diagram", "workflow", "flow"])
         for fd in flow_diagrams:
             if id(fd) in handled_elements:
                 continue
@@ -906,14 +1036,452 @@ class HTMLToPPTXConverter:
             current_top += 2.5
             handled_elements.add(id(notif_stack))
 
-        # ── Stats grid / stat row ────────────────────────────────────────────
-        stat_container = slide_div.find(class_="stat-grid") or slide_div.find(
-            class_="stat-row"
+        # ── Stats grid / stat row / velocity-grid ─────────────────────────────
+        stat_container = (
+            slide_div.find(class_="stat-grid")
+            or slide_div.find(class_="stat-row")
+            or slide_div.find(class_="velocity-grid")
         )
         if stat_container and id(stat_container) not in handled_elements:
+            # velocity-grid uses velocity-stat/velocity-number/velocity-label
+            # which map to stat/stat-number/stat-label
             self._add_stats(slide, stat_container, current_top)
             current_top += 1.2
             handled_elements.add(id(stat_container))
+
+        # ── Big stats (large number + unit, e.g. "90% savings") ──────────────
+        big_stats = [
+            bs
+            for bs in slide_div.find_all(class_="big-stat")
+            if id(bs) not in handled_elements
+        ]
+        if big_stats:
+            width_per = CONTENT_WIDTH / len(big_stats)
+            for i, bs in enumerate(big_stats):
+                num_el = bs.find(class_="big-stat-number")
+                unit_el = bs.find(class_="big-stat-unit")
+                number = get_text(num_el) if num_el else ""
+                unit = get_text(unit_el) if unit_el else ""
+                left = CONTENT_LEFT + i * width_per
+                add_text_box(
+                    slide,
+                    number,
+                    left=left,
+                    top=current_top,
+                    width=width_per,
+                    height=0.8,
+                    font_size=56,
+                    bold=True,
+                    color=MS_CYAN,
+                    align=PP_ALIGN.CENTER,
+                )
+                add_text_box(
+                    slide,
+                    unit,
+                    left=left,
+                    top=current_top + 0.8,
+                    width=width_per,
+                    height=0.4,
+                    font_size=18,
+                    color=GRAY_70,
+                    align=PP_ALIGN.CENTER,
+                )
+                handled_elements.add(id(bs))
+            current_top += 1.3 + GAP_SECTION
+
+        # ── Tier stack (tiered info layout) ──────────────────────────────────
+        tier_stack = slide_div.find(class_="tier-stack")
+        if tier_stack and id(tier_stack) not in handled_elements:
+            tiers = tier_stack.find_all(class_="tier")
+            # Adaptive tier height: fit within remaining slide space
+            num_tiers = len(tiers)
+            available = SLIDE_HEIGHT - current_top - 0.4  # bottom margin
+            tier_h = min(0.85, (available - 0.08 * (num_tiers - 1)) / max(num_tiers, 1))
+            tier_h = max(tier_h, 0.55)  # minimum readable size
+            tier_gap = 0.08
+
+            for i, tier in enumerate(tiers):
+                tier_top = current_top + i * (tier_h + tier_gap)
+                label_el = tier.find(class_="tier-label")
+                title_el = tier.find(class_="tier-title")
+                desc_el = tier.find(class_="tier-desc")
+                tokens_el = tier.find(class_="tier-tokens")
+
+                label = get_text(label_el) if label_el else ""
+                title = get_text(title_el) if title_el else ""
+                desc = get_text(desc_el) if desc_el else ""
+                tokens = get_text(tokens_el) if tokens_el else ""
+
+                # Background card
+                add_filled_box(
+                    slide, CONTENT_LEFT, tier_top, CONTENT_WIDTH, tier_h
+                )
+                # Label (e.g. "TIER 1: Discovery")
+                add_text_box(
+                    slide,
+                    label.upper(),
+                    left=CONTENT_LEFT + 0.15,
+                    top=tier_top + 0.05,
+                    width=CONTENT_WIDTH - 0.3,
+                    height=0.20,
+                    font_size=10,
+                    bold=True,
+                    color=self.accent_color,
+                )
+                # Title
+                add_text_box(
+                    slide,
+                    title,
+                    left=CONTENT_LEFT + 0.15,
+                    top=tier_top + 0.23,
+                    width=CONTENT_WIDTH - 0.3,
+                    height=0.20,
+                    font_size=12,
+                    bold=True,
+                    color=WHITE,
+                )
+                # Description + tokens
+                combined = desc
+                if tokens:
+                    combined = f"{desc}  |  {tokens}" if desc else tokens
+                desc_top = tier_top + 0.42
+                desc_h = tier_h - 0.47
+                if combined and desc_h > 0.08:
+                    add_text_box(
+                        slide,
+                        combined,
+                        left=CONTENT_LEFT + 0.15,
+                        top=desc_top,
+                        width=CONTENT_WIDTH - 0.3,
+                        height=desc_h,
+                        font_size=9,
+                        color=GRAY_70,
+                    )
+                handled_elements.add(id(tier))
+            current_top += num_tiers * (tier_h + tier_gap) + GAP_SECTION
+            handled_elements.add(id(tier_stack))
+
+        # ── Tier rows (cost-optimization style: name, uses, cost) ────────────
+        tier_rows = [
+            tr
+            for tr in slide_div.find_all(class_="tier-row")
+            if id(tr) not in handled_elements
+        ]
+        if tier_rows:
+            # Header row
+            cols_w = [1.8, 4.0, 2.6]
+            for i, tr in enumerate(tier_rows):
+                name_el = tr.find(class_="tier-name")
+                uses_el = tr.find(class_="tier-uses")
+                cost_el = tr.find(class_="tier-cost")
+                row_top = current_top + i * 0.40
+                vals = [
+                    get_text(name_el) if name_el else "",
+                    get_text(uses_el) if uses_el else "",
+                    get_text(cost_el) if cost_el else "",
+                ]
+                left = CONTENT_LEFT
+                for j, val in enumerate(vals):
+                    w = cols_w[j] if j < len(cols_w) else 2.0
+                    add_text_box(
+                        slide,
+                        val,
+                        left=left,
+                        top=row_top,
+                        width=w,
+                        height=0.35,
+                        font_size=12,
+                        bold=(j == 0),
+                        color=self.accent_color if j == 0 else GRAY_70,
+                    )
+                    left += w
+                handled_elements.add(id(tr))
+            current_top += len(tier_rows) * 0.40 + GAP_SECTION
+
+        # ── Diagram boxes (shadow-environments style flow) ───────────────────
+        diagram = slide_div.find(class_="diagram")
+        if diagram and id(diagram) not in handled_elements:
+            boxes = diagram.find_all(class_="diagram-box")
+            if boxes:
+                num_boxes = len(boxes)
+                gap_d = 0.15
+                arrow_w = 0.30
+                total_arrows = num_boxes - 1
+                total_arrow_space = (
+                    total_arrows * (arrow_w + 2 * gap_d) if total_arrows > 0 else 0
+                )
+                box_w = min(
+                    2.4, (CONTENT_WIDTH - total_arrow_space) / max(num_boxes, 1)
+                )
+                total_w = num_boxes * box_w + total_arrow_space
+                cur_left = CONTENT_LEFT + (CONTENT_WIDTH - total_w) / 2
+                box_h = 0.80
+
+                for bi, box_el in enumerate(boxes):
+                    title_el = box_el.find(class_="diagram-box-title")
+                    content_el = box_el.find(class_="diagram-box-content")
+                    add_filled_box(
+                        slide,
+                        cur_left,
+                        current_top,
+                        box_w,
+                        box_h,
+                        fill_color=DARK_GRAY,
+                        border_color=self.accent_color,
+                        border_width=1,
+                    )
+                    if title_el:
+                        add_text_box(
+                            slide,
+                            get_text(title_el),
+                            left=cur_left + 0.08,
+                            top=current_top + 0.08,
+                            width=box_w - 0.16,
+                            height=0.30,
+                            font_size=12,
+                            bold=True,
+                            color=WHITE,
+                            align=PP_ALIGN.CENTER,
+                        )
+                    if content_el:
+                        add_text_box(
+                            slide,
+                            get_text(content_el),
+                            left=cur_left + 0.08,
+                            top=current_top + 0.38,
+                            width=box_w - 0.16,
+                            height=0.35,
+                            font_size=10,
+                            color=GRAY_70,
+                            align=PP_ALIGN.CENTER,
+                        )
+                    cur_left += box_w
+                    if bi < num_boxes - 1:
+                        add_text_box(
+                            slide,
+                            "\u2192",
+                            left=cur_left + gap_d,
+                            top=current_top + box_h / 2 - 0.12,
+                            width=arrow_w,
+                            height=0.25,
+                            font_size=18,
+                            bold=True,
+                            color=self.accent_color,
+                            align=PP_ALIGN.CENTER,
+                        )
+                        cur_left += arrow_w + 2 * gap_d
+                    handled_elements.add(id(box_el))
+
+                current_top += box_h + GAP_SECTION
+            handled_elements.add(id(diagram))
+
+        # ── Before/After comparison ──────────────────────────────────────────
+        before_after = slide_div.find(class_="before-after")
+        if before_after and id(before_after) not in handled_elements:
+            ba_cards = before_after.find_all(
+                class_=lambda c: c and ("before-card" in c or "after-card" in c)
+            )
+            col_w = CONTENT_WIDTH / 2 - 0.1
+            for ci, ba_card in enumerate(ba_cards):
+                ba_left = CONTENT_LEFT + ci * (col_w + 0.2)
+                label_el = ba_card.find(class_="comparison-label")
+                value_el = ba_card.find(class_="comparison-value")
+                label = get_text(label_el) if label_el else ""
+                value = get_text(value_el) if value_el else ""
+                desc = get_text(ba_card)
+
+                card_classes = ba_card.get("class", [])
+                border_c = MS_ORANGE if "before-card" in card_classes else MS_GREEN
+
+                add_filled_box(
+                    slide,
+                    ba_left,
+                    current_top,
+                    col_w,
+                    1.2,
+                    fill_color=DARK_GRAY,
+                    border_color=border_c,
+                    border_width=1,
+                )
+                add_text_box(
+                    slide,
+                    label,
+                    left=ba_left + 0.12,
+                    top=current_top + 0.08,
+                    width=col_w - 0.24,
+                    height=0.30,
+                    font_size=14,
+                    bold=True,
+                    color=border_c,
+                )
+                if value:
+                    add_text_box(
+                        slide,
+                        value,
+                        left=ba_left + 0.12,
+                        top=current_top + 0.38,
+                        width=col_w - 0.24,
+                        height=0.35,
+                        font_size=28,
+                        bold=True,
+                        color=WHITE,
+                    )
+                # Remaining description below value
+                remaining_text = desc.replace(label, "").replace(value, "").strip()
+                if remaining_text and len(remaining_text) > 5:
+                    add_text_box(
+                        slide,
+                        remaining_text,
+                        left=ba_left + 0.12,
+                        top=current_top + 0.75,
+                        width=col_w - 0.24,
+                        height=0.40,
+                        font_size=10,
+                        color=GRAY_70,
+                    )
+                handled_elements.add(id(ba_card))
+            current_top += 1.3 + GAP_SECTION
+            handled_elements.add(id(before_after))
+
+        # ── Token display rows ───────────────────────────────────────────────
+        token_displays = [
+            td
+            for td in slide_div.find_all(class_="token-display")
+            if id(td) not in handled_elements
+        ]
+        if token_displays:
+            row_h = 0.25
+            for i, td in enumerate(token_displays):
+                text = get_text(td)
+                add_text_box(
+                    slide,
+                    text,
+                    left=CONTENT_LEFT,
+                    top=current_top + i * row_h,
+                    width=CONTENT_WIDTH,
+                    height=row_h,
+                    font_size=11,
+                    font_name=CODE_FONT,
+                    color=WHITE,
+                )
+                handled_elements.add(id(td))
+            current_top += len(token_displays) * row_h + GAP_NORMAL
+
+        # ── Good/bad pattern lists ───────────────────────────────────────────
+        good_patterns = [
+            gp
+            for gp in slide_div.find_all(class_="good-pattern")
+            if id(gp) not in handled_elements
+        ]
+        bad_patterns = [
+            bp
+            for bp in slide_div.find_all(class_="bad-pattern")
+            if id(bp) not in handled_elements
+        ]
+        if good_patterns or bad_patterns:
+            col_w = CONTENT_WIDTH / 2 - 0.1
+            # Bad patterns on left
+            for i, bp in enumerate(bad_patterns):
+                add_text_box(
+                    slide,
+                    f"\u2717 {get_text(bp)}",
+                    left=CONTENT_LEFT,
+                    top=current_top + i * 0.32,
+                    width=col_w,
+                    height=0.30,
+                    font_size=13,
+                    color=MS_RED,
+                )
+                handled_elements.add(id(bp))
+            # Good patterns on right
+            for i, gp in enumerate(good_patterns):
+                add_text_box(
+                    slide,
+                    f"\u2713 {get_text(gp)}",
+                    left=CONTENT_LEFT + col_w + 0.2,
+                    top=current_top + i * 0.32,
+                    width=col_w,
+                    height=0.30,
+                    font_size=13,
+                    color=MS_GREEN,
+                )
+                handled_elements.add(id(gp))
+            max_items = max(len(good_patterns), len(bad_patterns))
+            current_top += max_items * 0.32 + GAP_SECTION
+
+        # ── Summary rows (table-like summary) ────────────────────────────────
+        summary_rows = [
+            sr
+            for sr in slide_div.find_all(class_="summary-row")
+            if id(sr) not in handled_elements
+        ]
+        if summary_rows:
+            for i, sr in enumerate(summary_rows):
+                cells = sr.find_all(class_="summary-cell")
+                num_cells = len(cells) or 1
+                cell_w = CONTENT_WIDTH / num_cells
+                for j, cell in enumerate(cells):
+                    text = get_text(cell)
+                    is_first_row = i == 0
+                    add_text_box(
+                        slide,
+                        text,
+                        left=CONTENT_LEFT + j * cell_w,
+                        top=current_top + i * 0.32,
+                        width=cell_w,
+                        height=0.30,
+                        font_size=12 if is_first_row else 11,
+                        bold=is_first_row,
+                        color=self.accent_color if is_first_row else GRAY_70,
+                    )
+                    handled_elements.add(id(cell))
+                handled_elements.add(id(sr))
+            current_top += len(summary_rows) * 0.32 + GAP_SECTION
+
+        # ── Body text paragraphs ─────────────────────────────────────────────
+        body_texts = [
+            bt
+            for bt in slide_div.find_all(class_="body-text")
+            if id(bt) not in handled_elements
+        ]
+        for bt in body_texts:
+            text = get_text(bt)
+            if text:
+                bt_h = _estimate_text_height(text, 14, CONTENT_WIDTH)
+                bt_h = max(0.3, min(bt_h, 1.0))
+                add_text_box(
+                    slide,
+                    text,
+                    left=CONTENT_LEFT,
+                    top=current_top,
+                    width=CONTENT_WIDTH,
+                    height=bt_h,
+                    font_size=14,
+                    color=GRAY_70,
+                    align=PP_ALIGN.CENTER,
+                )
+                current_top += bt_h + GAP_NORMAL
+            handled_elements.add(id(bt))
+
+        # ── Title meta (small info text on title slides) ─────────────────────
+        title_meta = slide_div.find(class_="title-meta")
+        if title_meta and id(title_meta) not in handled_elements:
+            meta_text = get_text(title_meta)
+            if meta_text:
+                meta_top = max(current_top, 4.5)
+                add_text_box(
+                    slide,
+                    meta_text,
+                    left=CONTENT_LEFT,
+                    top=meta_top,
+                    width=CONTENT_WIDTH,
+                    height=0.4,
+                    font_size=14,
+                    color=GRAY_50,
+                    align=PP_ALIGN.CENTER if is_centered else PP_ALIGN.LEFT,
+                )
+                current_top = meta_top + 0.4
+            handled_elements.add(id(title_meta))
 
         # ── Highlight boxes ──────────────────────────────────────────────────
         highlight_boxes = slide_div.find_all(class_="highlight-box")
@@ -924,14 +1492,16 @@ class HTMLToPPTXConverter:
             color = parse_color_from_class(classes) or self.accent_color
             rich = get_rich_text(hb)
             plain = get_text(hb)
+            # Place at current_top; cap near bottom but never above current_top
+            hb_top = min(current_top, SLIDE_HEIGHT - 0.85)
             add_highlight_box(
                 slide,
                 plain,
-                top=min(current_top, 4.5),
+                top=hb_top,
                 color=color,
                 rich_runs=rich if len(rich) > 1 else None,
             )
-            current_top += 0.8
+            current_top = hb_top + 0.8
             handled_elements.add(id(hb))
 
         # ── Quote ────────────────────────────────────────────────────────────
@@ -1059,11 +1629,16 @@ class HTMLToPPTXConverter:
         # up to 3 columns; "thirds" (min 280px) fits up to 3.  Explicit grid-N
         # classes always force exactly N columns.  For auto-fit classes we cap at
         # the CSS-implied maximum and let card count fill rows naturally.
+        #
+        # Multi-row logic: when >4 cards, cap columns so each card is ≥2.5" wide.
+        # E.g. grid-5 with 5 cards → 3+2 layout; grid with 6 → 3+3.
         forced_cols = None
         if container:
             cls = " ".join(container.get("class", []))
             if "grid-5" in cls or "fifths" in cls:
-                forced_cols = 5
+                # 5 cols at 8.4" width → 1.52" each (too narrow).
+                # Cap at 3 cols for ≥2.5" minimum card width.
+                forced_cols = 3
             elif "grid-4" in cls or "fourths" in cls:
                 forced_cols = 4
             elif "grid-3" in cls or "thirds" in cls:
@@ -1075,6 +1650,13 @@ class HTMLToPPTXConverter:
                 forced_cols = min(num_cards, 3)
 
         cols = forced_cols or min(num_cards, 4)
+
+        # Enforce minimum card width of 2.5" — reduce columns if needed
+        gap = 0.2
+        min_card_width = 2.5
+        while cols > 1 and (CONTENT_WIDTH - gap * (cols - 1)) / cols < min_card_width:
+            cols -= 1
+
         num_rows = -(-num_cards // cols)  # ceil division
         gap = 0.2
         total_width = CONTENT_WIDTH
@@ -1114,10 +1696,16 @@ class HTMLToPPTXConverter:
             else:
                 title_el = card_el.find(class_=["card-title", "tool-name"])
                 text_el = card_el.find(class_=["card-text", "card-desc", "tool-desc"])
+                usage_el = card_el.find(class_="tool-usage")
                 number_el = card_el.find(class_="card-number")
 
                 title = get_text(title_el) if title_el else ""
                 text = get_text(text_el) if text_el else ""
+                # Append tool-usage text (e.g. example invocations)
+                if usage_el:
+                    usage_text = get_text(usage_el)
+                    if usage_text:
+                        text = f"{text}\n{usage_text}" if text else usage_text
                 rich = get_rich_text(text_el) if text_el else []
 
                 if number_el:
@@ -1161,16 +1749,33 @@ class HTMLToPPTXConverter:
             left = CONTENT_LEFT + col * (col_width + 0.2)
             ptop = top + row * (row_height + row_gap)
 
-            num_el = principle.find(class_="principle-number")
-            content_el = principle.find(class_="principle-content")
+            num_el = principle.find(
+                class_=["principle-number", "principle-num"]
+            )
+            content_el = principle.find(
+                class_=["principle-content", "principle-text"]
+            )
             number = get_text(num_el) if num_el else str(i + 1)
             title = ""
             desc = ""
             if content_el:
                 h3 = content_el.find("h3")
                 p_tag = content_el.find("p")
-                title = get_text(h3) if h3 else ""
-                desc = get_text(p_tag) if p_tag else ""
+                strong = content_el.find("strong")
+                if h3:
+                    title = get_text(h3)
+                    desc = get_text(p_tag) if p_tag else ""
+                elif strong:
+                    # Pattern: <strong>Title</strong> Description text
+                    title = get_text(strong)
+                    # Description is the remaining text after <strong>
+                    strong.extract()
+                    desc = get_text(content_el).strip()
+                elif p_tag:
+                    title = get_text(p_tag)
+                else:
+                    # Flat text — use as title
+                    title = get_text(content_el)
 
             add_tenet(
                 slide,
@@ -1390,6 +1995,82 @@ class HTMLToPPTXConverter:
                 width=CONTENT_WIDTH - 0.4,
                 height=height - 0.24,
                 font_size=10,
+                font_name=CODE_FONT,
+                color=CODE_DEFAULT,
+            )
+
+    def _add_code_block_sized(
+        self, slide, code_el: Tag, top: float, left: float, width: float
+    ):
+        """Add a code block at a specific position and width (for side-by-side grids)."""
+        code_runs = self._extract_code_runs(code_el)
+        plain_text = get_text(code_el)
+        lines = plain_text.count("\n") + 1
+        height = max(1.0, min(lines * 0.18 + 0.3, 3.5))
+
+        # Dark background
+        add_filled_box(
+            slide,
+            left,
+            top,
+            width,
+            height,
+            fill_color=CODE_BG,
+            border_color=RGBColor(0x30, 0x30, 0x30),
+            border_width=1,
+            shape_type=MSO_SHAPE.ROUNDED_RECTANGLE,
+        )
+
+        pad = 0.15
+        font_size = 9  # slightly smaller for side-by-side
+
+        if code_runs:
+            box = slide.shapes.add_textbox(
+                Inches(left + pad),
+                Inches(top + 0.10),
+                Inches(width - 2 * pad),
+                Inches(height - 0.20),
+            )
+            tf = box.text_frame
+            tf.word_wrap = True
+
+            paragraphs: list[list[dict]] = [[]]
+            for r in code_runs:
+                parts = r["text"].split("\n")
+                for part_idx, part in enumerate(parts):
+                    if part_idx > 0:
+                        paragraphs.append([])
+                    if part:
+                        paragraphs[-1].append({**r, "text": part})
+
+            for p_idx, p_runs in enumerate(paragraphs):
+                p = tf.paragraphs[0] if p_idx == 0 else tf.add_paragraph()
+                p.space_before = Pt(0)
+                p.space_after = Pt(0)
+                if not p_runs:
+                    run = p.add_run()
+                    run.text = ""
+                    _set_font(run, name=CODE_FONT, size=font_size, color=CODE_DEFAULT)
+                else:
+                    for r in p_runs:
+                        run = p.add_run()
+                        run.text = r["text"]
+                        _set_font(
+                            run,
+                            name=CODE_FONT,
+                            size=font_size,
+                            bold=r.get("bold", False),
+                            color=r.get("color", CODE_DEFAULT),
+                        )
+        else:
+            add_text_box(
+                slide,
+                plain_text,
+                left=left + pad,
+                top=top + 0.10,
+                width=width - 2 * pad,
+                height=height - 0.20,
+                font_size=font_size,
                 font_name=CODE_FONT,
                 color=CODE_DEFAULT,
             )
@@ -2074,8 +2755,14 @@ class HTMLToPPTXConverter:
     # ── Stats grid/row ───────────────────────────────────────────────────────
 
     def _add_stats(self, slide, stat_container: Tag, top: float):
-        """Add a stats grid or stat row to the slide."""
-        stats = stat_container.find_all(class_="stat")
+        """Add a stats grid or stat row to the slide.
+
+        Handles both stat-grid/stat-row (stat, stat-number, stat-label)
+        and velocity-grid (velocity-stat, velocity-number, velocity-label).
+        """
+        stats = stat_container.find_all(class_="stat") or stat_container.find_all(
+            class_="velocity-stat"
+        )
         num_stats = len(stats)
         if num_stats == 0:
             return
@@ -2084,11 +2771,15 @@ class HTMLToPPTXConverter:
         start_left = CONTENT_LEFT
 
         for i, stat in enumerate(stats):
-            # Try both naming conventions
-            number_el = stat.find(class_="stat-number") or stat.find(
-                class_="stat-value"
+            # Try all naming conventions (stat-* and velocity-*)
+            number_el = (
+                stat.find(class_="stat-number")
+                or stat.find(class_="stat-value")
+                or stat.find(class_="velocity-number")
             )
-            label_el = stat.find(class_="stat-label")
+            label_el = stat.find(class_="stat-label") or stat.find(
+                class_="velocity-label"
+            )
 
             number = get_text(number_el) if number_el else ""
             label = get_text(label_el) if label_el else ""
@@ -2136,7 +2827,9 @@ class HTMLToPPTXConverter:
             color=WHITE,
             align=PP_ALIGN.CENTER,
         )
-        attribution = quote.find_next_sibling(class_="quote-attribution")
+        attribution = quote.find_next_sibling(
+            class_="quote-attribution"
+        ) or quote.find_next_sibling(class_="quote-attr")
         if attribution:
             add_text_box(
                 slide,
