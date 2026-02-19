@@ -42,6 +42,29 @@ cp .env.local.example .env.local
 ./deploy.sh my-deck.html       # Specific deck
 ```
 
+## HTML to PowerPoint Conversion
+
+To convert any HTML deck to PowerPoint, use `tools/html2pptx_v2.py`:
+
+```bash
+uv run --with python-pptx --with beautifulsoup4 --with lxml \
+  python3 tools/html2pptx_v2.py docs/my-deck.html output.pptx
+```
+
+This is the **production converter**. It uses semantic layout (merged header
+text frames, native PowerPoint tables, TEXT_TO_FIT_SHAPE auto-sizing) instead
+of absolute positioning. Key features:
+
+- Header elements (section-label, headline, subhead) merge into a single text frame
+- Card grids render as native PowerPoint tables
+- Code blocks cap to available slide space (never clip past bottom)
+- Split containers route through the card grid handler
+- All 90+ decks convert without crashes
+
+The older `tools/html2pptx.py` (v1) is preserved for reference but should not
+be used for new conversions. `tools/pptx_verify.py` can inspect output for
+overflow and overlap issues.
+
 ## Bundle Structure
 
 ```
@@ -52,23 +75,14 @@ amplifier-stories/
 ├── context/
 │   ├── presentation-styles.md
 │   └── storyteller-instructions.md
-├── docs/               # Generated decks
+├── tools/
+│   ├── html2pptx_v2.py    # Production HTML-to-PPTX converter
+│   ├── html2pptx.py       # Legacy v1 converter (reference only)
+│   └── pptx_verify.py     # Overflow/overlap detection
+├── docs/                  # Generated HTML decks
 ├── deploy.sh              # SharePoint deployment
-├── .env.local             # Your SharePoint path (gitignored)
-└── FUTURE_TOPICS.md       # Ideas for future decks
+└── .env.local             # Your SharePoint path (gitignored)
 ```
-
-## Available Decks
-
-| Deck | Topic |
-|------|-------|
-| cortex-amplifier-presentation.html | Cortex project showcase |
-| shadow-environments-deck.html | Shadow environment testing |
-| cost-optimization-deck.html | Token cost reduction |
-| session-forking-deck.html | Conversation branching |
-| ecosystem-audit-deck.html | Compliance automation |
-| attention-firewall-deck.html | Notification filtering |
-| notifications-deck.html | Desktop/mobile alerts |
 
 ## Presentation Styles
 
