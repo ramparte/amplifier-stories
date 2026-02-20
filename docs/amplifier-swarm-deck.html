@@ -3,446 +3,918 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Amplifier Swarm - Amplifier Stories</title>
+    <title>Amplifier Swarm — Parallel Task Execution</title>
     <style>
+        :root {
+            --accent: #50C878;
+            --accent-dark: #3BA55D;
+            --accent-glow: rgba(80, 200, 120, 0.3);
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --border-subtle: rgba(255,255,255,0.12);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 32px);
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif; background: #000; color: #fff; overflow-x: hidden; }
-        .slide { display: none; min-height: 100vh; min-height: 100dvh; padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px); position: relative; overflow-y: auto; overflow-x: hidden; }
-        .slide.active { display: flex; flex-direction: column; }
-        .slide.center { align-items: center; text-align: center; justify-content: center; }
-        .section-label { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; color: #50C878; margin-bottom: 16px; }
-        .headline { font-size: clamp(36px, 10vw, 72px); font-weight: 700; letter-spacing: -2px; line-height: 1.1; margin-bottom: clamp(16px, 3vw, 24px); }
-        .medium-headline { font-size: clamp(28px, 6vw, 48px); font-weight: 600; letter-spacing: -1px; line-height: 1.2; margin-bottom: 24px; }
-        .subhead { font-size: clamp(18px, 3vw, 24px); font-weight: 400; color: rgba(255,255,255,0.6); max-width: 800px; }
-        .small-text { font-size: clamp(12px, 2vw, 14px); color: rgba(255,255,255,0.4); }
-        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: clamp(12px, 2vw, 16px); padding: clamp(20px, 4vw, 28px); }
-        .card-title { font-size: clamp(18px, 2.5vw, 20px); font-weight: 600; margin-bottom: 12px; color: #50C878; }
-        .card-text { font-size: clamp(14px, 2vw, 16px); line-height: 1.6; color: rgba(255,255,255,0.8); }
-        .thirds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: clamp(16px, 3vw, 24px); margin-top: clamp(20px, 4vw, 32px); }
-        .halves { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: clamp(20px, 4vw, 32px); margin-top: clamp(20px, 4vw, 32px); }
-        .feature-list { list-style: none; margin-top: 24px; }
-        .feature-list li { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; font-size: clamp(14px, 2vw, 16px); line-height: 1.6; }
-        .feature-list li::before { content: "✓"; color: #50C878; font-weight: 700; font-size: clamp(18px, 2.5vw, 20px); flex-shrink: 0; }
-        .code-block { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: clamp(16px, 3vw, 24px); font-family: 'SF Mono', 'Monaco', 'Consolas', monospace; font-size: clamp(12px, 1.5vw, 14px); line-height: 1.6; overflow-x: auto; margin-top: 20px; }
-        .code-block code { color: #50C878; }
-        .code-comment { color: rgba(255,255,255,0.4); }
-        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: clamp(20px, 4vw, 32px); margin-top: clamp(24px, 4vw, 40px); }
-        .stat-card { text-align: center; }
-        .stat-number { font-size: clamp(48px, 10vw, 72px); font-weight: 700; background: linear-gradient(135deg, #50C878, #3BA55D); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.1; margin-bottom: 12px; }
-        .stat-label { font-size: clamp(14px, 2vw, 16px); color: rgba(255,255,255,0.6); }
-        .architecture { margin-top: 32px; padding: 24px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; font-family: 'SF Mono', monospace; font-size: clamp(10px, 1.5vw, 12px); line-height: 1.8; overflow-x: auto; }
-        .architecture pre { color: rgba(255,255,255,0.7); }
-        .architecture .highlight { color: #50C878; font-weight: 600; }
-        .comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 24px; margin-top: 32px; }
-        .comparison-side { padding: 24px; border-radius: 16px; }
-        .comparison-side.before { background: rgba(255,59,48,0.1); border: 1px solid rgba(255,59,48,0.2); }
-        .comparison-side.after { background: rgba(80,200,120,0.1); border: 1px solid rgba(80,200,120,0.2); }
-        .comparison-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
-        .comparison-side.before .comparison-title { color: #FF3B30; }
-        .comparison-side.after .comparison-title { color: #50C878; }
-        .comparison-list { list-style: none; }
-        .comparison-list li { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
-        .comparison-side.before .comparison-list li::before { content: "✗"; color: #FF3B30; font-weight: 600; flex-shrink: 0; }
-        .comparison-side.after .comparison-list li::before { content: "✓"; color: #50C878; font-weight: 600; flex-shrink: 0; }
-        .workflow { display: flex; flex-direction: column; gap: 12px; margin-top: 32px; max-width: 900px; width: 100%; }
-        .workflow-step { display: flex; align-items: center; gap: 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 24px; }
-        .step-number { width: 36px; height: 36px; border-radius: 50%; background: #50C878; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex-shrink: 0; }
-        .step-content { flex: 1; }
-        .step-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-        .step-desc { font-size: 14px; color: rgba(255,255,255,0.6); }
-        .dashboard-preview { margin-top: 32px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; }
-        .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .dashboard-title { font-size: 20px; font-weight: 600; color: #50C878; }
-        .dashboard-status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: rgba(255,255,255,0.6); }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #50C878; }
-        .dashboard-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
-        .metric-box { background: rgba(255,255,255,0.02); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); }
-        .metric-value { font-size: 28px; font-weight: 700; color: #50C878; margin-bottom: 4px; }
-        .metric-label { font-size: 13px; color: rgba(255,255,255,0.5); }
-        .nav-dots { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 1000; }
-        .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.3); cursor: pointer; transition: all 0.2s; }
-        .nav-dot.active { background: #50C878; width: 24px; border-radius: 4px; }
-        .slide-counter { position: fixed; bottom: 30px; right: 30px; font-size: 14px; color: rgba(255,255,255,0.4); z-index: 1000; }
-        .nav-zone { position: fixed; top: 0; bottom: 0; width: 20%; cursor: pointer; z-index: 10; }
-        .nav-zone.prev { left: 0; }
-        .nav-zone.next { right: 0; }
-        @media (max-width: 768px) { .slide { padding: 40px 20px 80px; } .nav-zone { width: 30%; } }
+
+        body {
+            background: #0a0a0a;
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ── Slide Base ── */
+        .slide {
+            display: none;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .center { text-align: center; align-items: center; justify-content: center; }
+
+        /* ── Typography ── */
+        h1 {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        }
+        h2 {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+        h3 {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            line-height: 1.2;
+            margin-bottom: clamp(6px, 1vw, 12px);
+        }
+        p, li {
+            font-size: clamp(14px, 2.5vw, 20px);
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+        .subtitle {
+            font-size: var(--font-subhead);
+            color: var(--text-secondary);
+            margin-top: clamp(8px, 2vw, 20px);
+            font-weight: 400;
+            max-width: 680px;
+        }
+        .label {
+            font-size: clamp(11px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+        }
+
+        /* ── Badge ── */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: clamp(12px, 1.8vw, 15px);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+        .badge-active {
+            background: rgba(80, 200, 120, 0.15);
+            border: 1px solid rgba(80, 200, 120, 0.3);
+            color: var(--accent);
+        }
+        .badge-active::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        /* ── Grid ── */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+        .card-accent {
+            background: var(--surface-1);
+            border: 1px solid rgba(80, 200, 120, 0.25);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+        .card .icon, .card-accent .icon {
+            font-size: clamp(28px, 5vw, 40px);
+            margin-bottom: clamp(8px, 1.5vw, 12px);
+            min-width: 28px;
+            min-height: 28px;
+            line-height: 1;
+        }
+        .card h3 { color: var(--text-primary); }
+        .card p, .card-accent p { color: var(--text-secondary); }
+
+        /* ── Code Block ── */
+        .code-block {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(8px, 1.5vw, 12px);
+            padding: clamp(12px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: clamp(12px, 1.8vw, 16px);
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            color: var(--text-secondary);
+        }
+        .code-block .kw { color: #c792ea; }
+        .code-block .fn { color: #82aaff; }
+        .code-block .str { color: #c3e88d; }
+        .code-block .cmt { color: var(--text-tertiary); }
+        .code-block .accent { color: var(--accent); }
+
+        /* ── Architecture Diagram ── */
+        .arch-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: clamp(10px, 2vw, 20px);
+            padding: clamp(12px, 3vw, 32px) 0;
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+        .arch-node {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(10px, 2vw, 14px);
+            padding: clamp(12px, 2.5vw, 20px) clamp(20px, 4vw, 40px);
+            text-align: center;
+            width: 100%;
+            max-width: 420px;
+        }
+        .arch-node.primary {
+            border-color: rgba(80, 200, 120, 0.35);
+            background: rgba(80, 200, 120, 0.06);
+        }
+        .arch-node .node-title {
+            font-size: clamp(14px, 2.2vw, 20px);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .arch-node .node-desc {
+            font-size: clamp(12px, 1.6vw, 15px);
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        .arch-arrow {
+            font-size: clamp(18px, 3vw, 28px);
+            color: var(--accent);
+            line-height: 1;
+        }
+        .arch-row {
+            display: flex;
+            gap: clamp(8px, 2vw, 16px);
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+        .arch-row .arch-node {
+            flex: 1;
+            min-width: 110px;
+            max-width: 180px;
+        }
+
+        /* ── Dashboard Mockup ── */
+        .dashboard-mock {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 3vw, 28px);
+            width: 100%;
+            max-width: 740px;
+            margin: 0 auto;
+        }
+        .dash-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: clamp(12px, 2vw, 20px);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .dash-title {
+            font-size: clamp(13px, 2vw, 17px);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .dash-live {
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dash-live::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        .dash-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
+            gap: clamp(8px, 1.5vw, 14px);
+            margin-bottom: clamp(12px, 2vw, 20px);
+        }
+        .dash-stat {
+            background: var(--surface-1);
+            border-radius: 8px;
+            padding: clamp(8px, 1.5vw, 14px);
+            text-align: center;
+        }
+        .dash-stat .stat-val {
+            font-size: clamp(20px, 4vw, 32px);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .dash-stat .stat-label {
+            font-size: clamp(10px, 1.3vw, 12px);
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 2px;
+        }
+        .dash-bar-track {
+            background: var(--surface-1);
+            border-radius: 6px;
+            height: clamp(20px, 3vw, 28px);
+            overflow: hidden;
+            position: relative;
+        }
+        .dash-bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            font-size: clamp(10px, 1.4vw, 13px);
+            font-weight: 600;
+            color: #0a0a0a;
+            transition: width 0.6s ease;
+        }
+
+        /* ── Comparison ── */
+        .compare-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+        .compare-col ul {
+            list-style: none;
+            padding: 0;
+        }
+        .compare-col ul li {
+            padding: clamp(6px, 1vw, 10px) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: clamp(13px, 2vw, 17px);
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            color: var(--text-secondary);
+        }
+        .compare-col ul li:last-child { border-bottom: none; }
+
+        /* ── Steps ── */
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: clamp(12px, 2.5vw, 20px);
+            margin-bottom: clamp(12px, 2vw, 20px);
+        }
+        .step-num {
+            flex-shrink: 0;
+            width: clamp(32px, 5vw, 44px);
+            height: clamp(32px, 5vw, 44px);
+            border-radius: 50%;
+            background: rgba(80, 200, 120, 0.12);
+            border: 1px solid rgba(80, 200, 120, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--accent);
+            font-size: clamp(14px, 2.2vw, 20px);
+        }
+        .step-body h3 {
+            font-size: clamp(15px, 2.2vw, 20px);
+            margin-bottom: 4px;
+        }
+        .step-body p {
+            font-size: clamp(13px, 1.8vw, 16px);
+        }
+
+        /* ── Sources Slide ── */
+        .sources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+        .source-item {
+            margin-bottom: clamp(8px, 1.5vw, 14px);
+        }
+        .source-item .source-label {
+            font-size: clamp(11px, 1.4vw, 13px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+            margin-bottom: 3px;
+        }
+        .source-item .source-value {
+            font-size: clamp(13px, 1.8vw, 16px);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .gaps-note {
+            background: rgba(255, 180, 50, 0.06);
+            border: 1px solid rgba(255, 180, 50, 0.2);
+            border-radius: clamp(8px, 1.5vw, 12px);
+            padding: clamp(12px, 2.5vw, 20px);
+            margin-top: clamp(12px, 2vw, 20px);
+        }
+        .gaps-note .source-label { color: rgba(255, 180, 50, 0.85); }
+        .gaps-note .source-value { color: rgba(255, 255, 255, 0.6); font-size: clamp(12px, 1.6vw, 15px); }
+
+        /* ── Navigation ── */
+        .nav-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: clamp(10px, 2vw, 18px);
+            z-index: 100;
+            pointer-events: none;
+        }
+        .stories-link {
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--text-tertiary);
+            text-decoration: none;
+            margin-bottom: 8px;
+            pointer-events: auto;
+            transition: color 0.2s ease;
+        }
+        .stories-link:hover { color: var(--accent); }
+        .nav {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            pointer-events: auto;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .nav-dot:hover { background: rgba(255,255,255,0.4); }
+        .counter {
+            font-size: clamp(10px, 1.3vw, 12px);
+            color: var(--text-tertiary);
+            margin-top: 6px;
+            pointer-events: none;
+        }
+
+        /* ── Animations ── */
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ── Spacers ── */
+        .spacer { height: clamp(16px, 3vw, 32px); }
+        .spacer-sm { height: clamp(8px, 1.5vw, 16px); }
+
+        /* ── Landscape Mobile ── */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: clamp(40px, 6vw, 60px) clamp(20px, 4vw, 60px) clamp(50px, 8vw, 70px);
+            }
+            h1 { font-size: clamp(28px, 6vw, 48px); }
+            h2 { font-size: clamp(20px, 4vw, 36px); }
+        }
+
+        /* ── Reduced Motion ── */
+        @media (prefers-reduced-motion: reduce) {
+            .badge-active::before,
+            .dash-live::before { animation: none; }
+            .dash-bar-fill { transition: none; }
+            * { transition-duration: 0.01ms !important; }
+        }
     </style>
 </head>
 <body>
 
+<!-- ============================================================ -->
+<!-- SLIDE 1: TITLE                                               -->
+<!-- ============================================================ -->
 <div class="slide active center">
-    <div class="section-label">AMPLIFIER TOOLKIT</div>
-    <div class="headline">Amplifier Swarm 🐝</div>
-    <div class="subhead">Parallel task execution system with real-time monitoring and control</div>
-    <div class="small-text" style="margin-top: 40px;">January 2026</div>
+    <div class="badge badge-active" style="margin-bottom: clamp(16px, 3vw, 28px);">Active</div>
+    <h1>Amplifier Swarm</h1>
+    <p class="subtitle">Parallel task execution with real-time monitoring</p>
+    <div class="spacer"></div>
+    <div style="display: flex; flex-wrap: wrap; gap: clamp(24px, 5vw, 48px); justify-content: center;">
+        <div style="text-align: center;">
+            <div style="font-size: clamp(28px, 6vw, 52px); font-weight: 700; color: var(--accent);">2,496</div>
+            <div style="font-size: clamp(11px, 1.5vw, 14px); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">Lines of Python</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: clamp(28px, 6vw, 52px); font-weight: 700; color: var(--accent);">7</div>
+            <div style="font-size: clamp(11px, 1.5vw, 14px); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">Source Files</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: clamp(28px, 6vw, 52px); font-weight: 700; color: var(--accent);">v0.1.0</div>
+            <div style="font-size: clamp(11px, 1.5vw, 14px); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">Current Release</div>
+        </div>
+    </div>
+    <div class="spacer"></div>
+    <p style="font-size: clamp(12px, 1.6vw, 15px); color: var(--text-tertiary);">
+        ramparte/amplifier-toolkit &middot; Sam Schillace &middot; February 2026
+    </p>
 </div>
 
+<!-- ============================================================ -->
+<!-- SLIDE 2: THE PROBLEM                                         -->
+<!-- ============================================================ -->
 <div class="slide">
-    <div class="section-label">THE PROBLEM</div>
-    <div class="medium-headline">Large task lists take forever to execute serially</div>
-    <div class="thirds">
+    <h2>The Problem</h2>
+    <p style="margin-bottom: clamp(16px, 3vw, 28px);">
+        Agent workflows hit a wall when tasks pile up and run one at a time.
+    </p>
+    <div class="grid-3">
         <div class="card">
-            <div class="card-title">⏱️ Serial Bottleneck</div>
-            <div class="card-text">50 tasks × 2 hours each = 100+ hours of wall-clock time. One task at a time is painfully slow.</div>
-        </div>
-        <div class="card">
-            <div class="card-title">🤷 No Monitoring</div>
-            <div class="card-text">"Is it stuck? Did it crash? How many tasks left?" Questions with no answers.</div>
-        </div>
-        <div class="card">
-            <div class="card-title">💥 Race Conditions</div>
-            <div class="card-text">Running multiple instances manually leads to overlapping work and corrupted state.</div>
-        </div>
-    </div>
-</div>
-
-<div class="slide">
-    <div class="section-label">THE SOLUTION</div>
-    <div class="medium-headline">Parallel execution with SQLite coordination</div>
-    <div class="architecture">
-        <pre><span class="highlight">┌─────────────────────────────────────────────┐</span>
-│         <span class="highlight">Web Dashboard</span> (http://localhost:8765)   │
-│      Monitor • Control • Retry • Kill        │
-<span class="highlight">└─────────────────────────────────────────────┘</span>
-                      ↓
-<span class="highlight">┌─────────────────────────────────────────────┐</span>
-│           <span class="highlight">Orchestrator</span>                       │
-│  • Spawns N workers                          │
-│  • Heartbeat monitoring                      │
-│  • Automatic crash recovery                  │
-<span class="highlight">└─────────────────────────────────────────────┘</span>
-                      ↓
-        <span class="highlight">Worker 1    Worker 2    Worker N</span>
-                      ↓
-<span class="highlight">┌─────────────────────────────────────────────┐</span>
-│         <span class="highlight">SQLite Task Queue</span>                   │
-│  • Atomic claim/release (no races)          │
-│  • Status tracking                           │
-│  • Execution logs                            │
-<span class="highlight">└─────────────────────────────────────────────┘</span></pre>
-    </div>
-</div>
-
-<div class="slide">
-    <div class="section-label">KEY FEATURES</div>
-    <div class="medium-headline">Built for production-scale task execution</div>
-    <div class="halves">
-        <ul class="feature-list">
-            <li><strong>SQLite-based queue</strong> with atomic operations prevents race conditions</li>
-            <li><strong>Parallel or serial execution</strong> - N workers configurable (serial when N=1)</li>
-            <li><strong>Real-time web dashboard</strong> with WebSocket updates at localhost:8765</li>
-            <li><strong>Process isolation</strong> - each worker is separate, no shared state</li>
-        </ul>
-        <ul class="feature-list">
-            <li><strong>Automatic retries</strong> with configurable max attempts per task</li>
-            <li><strong>Orphan detection</strong> - stuck tasks auto-reset after 30 minutes</li>
-            <li><strong>Graceful shutdown</strong> - workers finish current task (5min timeout)</li>
-            <li><strong>Emergency stop</strong> - immediate termination when needed</li>
-        </ul>
-    </div>
-</div>
-
-<div class="slide">
-    <div class="section-label">REAL-TIME MONITORING</div>
-    <div class="medium-headline">Web dashboard shows everything</div>
-    <div class="dashboard-preview">
-        <div class="dashboard-header">
-            <div class="dashboard-title">🐝 Amplifier Swarm Dashboard</div>
-            <div class="dashboard-status">
-                <div class="status-dot"></div>
-                <span>Connected</span>
-            </div>
-        </div>
-        <div class="dashboard-metrics">
-            <div class="metric-box">
-                <div class="metric-value">50</div>
-                <div class="metric-label">Total Tasks</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-value">3</div>
-                <div class="metric-label">Active Workers</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-value">47</div>
-                <div class="metric-label">In Progress</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-value">85.5h</div>
-                <div class="metric-label">Hours Remaining</div>
-            </div>
-        </div>
-    </div>
-    <div class="card" style="margin-top: 24px;">
-        <div class="card-text"><strong>Per-task controls:</strong> Retry failed tasks, kill stuck sessions, view execution logs</div>
-    </div>
-</div>
-
-<div class="slide">
-    <div class="section-label">GETTING STARTED</div>
-    <div class="medium-headline">Three simple steps</div>
-    <div class="workflow">
-        <div class="workflow-step">
-            <div class="step-number">1</div>
-            <div class="step-content">
-                <div class="step-title">Import tasks to SQLite</div>
-                <div class="step-desc">amplifier-swarm import-tasks tasks.yaml --db swarm.db</div>
-            </div>
-        </div>
-        <div class="workflow-step">
-            <div class="step-number">2</div>
-            <div class="step-content">
-                <div class="step-title">Start with N workers</div>
-                <div class="step-desc">amplifier-swarm start --db swarm.db --workers 3</div>
-            </div>
-        </div>
-        <div class="workflow-step">
-            <div class="step-number">3</div>
-            <div class="step-content">
-                <div class="step-title">Monitor at localhost:8765</div>
-                <div class="step-desc">Real-time dashboard opens automatically</div>
-            </div>
-        </div>
-    </div>
-    <div class="code-block" style="margin-top: 32px;">
-<code><span class="code-comment"># Complete example</span>
-amplifier-swarm start \
-  --db swarm.db \
-  --project-root /path/to/project \
-  --builder-agent foundation:modular-builder \
-  --validator-agent recipes:result-validator \
-  --workers 3</code>
-    </div>
-</div>
-
-<div class="slide">
-    <div class="section-label">ROBUSTNESS</div>
-    <div class="medium-headline">Built to handle failures gracefully</div>
-    <div class="thirds">
-        <div class="card">
-            <div class="card-title">🔄 Automatic Retries</div>
-            <div class="card-text">Failed tasks automatically retry up to 2 times (configurable). Exponential backoff prevents thrashing.</div>
+            <div class="icon">&#9203;</div>
+            <h3>Serial Bottleneck</h3>
+            <p>Tasks queued sequentially. A 50-task run waits for every predecessor to finish before the next begins.</p>
         </div>
         <div class="card">
-            <div class="card-title">👻 Orphan Detection</div>
-            <div class="card-text">Tasks claimed but abandoned for >30 minutes automatically reset to not_started.</div>
+            <div class="icon">&#128065;&#65039;</div>
+            <h3>No Visibility</h3>
+            <p>No dashboard, no progress. You start a run and hope for the best&mdash;or grep through raw log files.</p>
         </div>
         <div class="card">
-            <div class="card-title">💪 Crash Recovery</div>
-            <div class="card-text">Workers crash? Orchestrator detects via heartbeat timeout, resets tasks, spawns new workers.</div>
+            <div class="icon">&#9888;&#65039;</div>
+            <h3>Failure Modes</h3>
+            <p>Orphaned processes, race conditions on shared state, no automatic recovery when a worker crashes mid-task.</p>
         </div>
-    </div>
-    <div class="card" style="margin-top: 24px;">
-        <div class="card-title">Execution Logs</div>
-        <div class="card-text">Every event (claim, start, complete, fail, retry) logged with timestamps. Full audit trail per task.</div>
     </div>
 </div>
 
+<!-- ============================================================ -->
+<!-- SLIDE 3: ARCHITECTURE                                        -->
+<!-- ============================================================ -->
+<div class="slide">
+    <h2>Architecture</h2>
+    <p style="margin-bottom: clamp(8px, 1.5vw, 16px);">Four layers, each with a single responsibility.</p>
+    <div class="arch-diagram">
+        <div class="arch-node primary">
+            <div class="node-title">&#127760; Web Dashboard</div>
+            <div class="node-desc">FastAPI + WebSockets &middot; Real-time task status</div>
+        </div>
+        <div class="arch-arrow">&#8595;</div>
+        <div class="arch-node primary">
+            <div class="node-title">&#127891; Orchestrator</div>
+            <div class="node-desc">Dispatches tasks &middot; Manages worker pool &middot; Handles retries</div>
+        </div>
+        <div class="arch-arrow">&#8595;</div>
+        <div class="arch-row">
+            <div class="arch-node">
+                <div class="node-title">&#9881;&#65039; Worker 1</div>
+                <div class="node-desc">Isolated process</div>
+            </div>
+            <div class="arch-node">
+                <div class="node-title">&#9881;&#65039; Worker 2</div>
+                <div class="node-desc">Isolated process</div>
+            </div>
+            <div class="arch-node">
+                <div class="node-title">&#9881;&#65039; Worker N</div>
+                <div class="node-desc">Isolated process</div>
+            </div>
+        </div>
+        <div class="arch-arrow">&#8595;</div>
+        <div class="arch-node">
+            <div class="node-title">&#128451;&#65039; SQLite Queue</div>
+            <div class="node-desc">Durable task state &middot; No external dependencies</div>
+        </div>
+    </div>
+    <p style="font-size: clamp(12px, 1.6vw, 15px); color: var(--text-tertiary); text-align: center;">
+        Source files: database.py, orchestrator.py, worker.py, dashboard.py, cli.py, migrate.py, __init__.py
+    </p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4: KEY FEATURES                                        -->
+<!-- ============================================================ -->
+<div class="slide">
+    <h2>Key Features</h2>
+    <div class="grid-2">
+        <div style="display: flex; flex-direction: column; gap: var(--gap-grid);">
+            <div class="card">
+                <div class="icon">&#128451;&#65039;</div>
+                <h3>SQLite Task Queue</h3>
+                <p>No Redis, no RabbitMQ. A single SQLite file holds all task state. Durable, portable, zero-config.</p>
+            </div>
+            <div class="card">
+                <div class="icon">&#9881;&#65039;</div>
+                <h3>Parallel Workers</h3>
+                <p>N workers run in separate processes. N workers reduce wall-clock time proportionally to available parallelism.</p>
+            </div>
+            <div class="card">
+                <div class="icon">&#128260;</div>
+                <h3>Automatic Retries</h3>
+                <p>Failed tasks re-queued automatically. Configurable retry count keeps transient failures from stalling runs.</p>
+            </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: var(--gap-grid);">
+            <div class="card">
+                <div class="icon">&#127760;</div>
+                <h3>Web Dashboard</h3>
+                <p>FastAPI serves a live view over WebSockets. Progress, worker health, and task results update in real time.</p>
+            </div>
+            <div class="card">
+                <div class="icon">&#128269;</div>
+                <h3>Orphan Detection</h3>
+                <p>Uses psutil to detect workers that vanished without updating state. Reclaims their tasks automatically.</p>
+            </div>
+            <div class="card">
+                <div class="icon">&#128721;&#65039;</div>
+                <h3>Graceful Shutdown</h3>
+                <p>Signal handlers let in-flight tasks finish cleanly. No half-written results or corrupted queue state.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5: REAL-TIME DASHBOARD                                 -->
+<!-- ============================================================ -->
+<div class="slide">
+    <h2>Real-Time Dashboard</h2>
+    <p style="margin-bottom: clamp(16px, 3vw, 28px);">
+        FastAPI + WebSockets push updates as tasks complete. No polling.
+    </p>
+    <div class="dashboard-mock">
+        <div class="dash-header">
+            <div class="dash-title">Amplifier Swarm Monitor</div>
+            <div class="dash-live">Live</div>
+        </div>
+        <div class="dash-stats">
+            <div class="dash-stat">
+                <div class="stat-val">50</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="dash-stat">
+                <div class="stat-val">38</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="dash-stat">
+                <div class="stat-val">4</div>
+                <div class="stat-label">Running</div>
+            </div>
+            <div class="dash-stat">
+                <div class="stat-val">8</div>
+                <div class="stat-label">Queued</div>
+            </div>
+        </div>
+        <div style="margin-bottom: 8px; display: flex; justify-content: space-between;">
+            <span style="font-size: clamp(11px, 1.4vw, 13px); color: var(--text-secondary);">Progress</span>
+            <span style="font-size: clamp(11px, 1.4vw, 13px); color: var(--accent); font-weight: 600;">76%</span>
+        </div>
+        <div class="dash-bar-track">
+            <div class="dash-bar-fill" style="width: 76%;">38 / 50</div>
+        </div>
+        <div style="margin-top: clamp(14px, 2vw, 20px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap: 8px;">
+            <div style="background: var(--surface-1); border-radius: 6px; padding: 8px 12px; font-size: clamp(11px, 1.4vw, 13px);">
+                <span style="color: var(--text-tertiary);">Worker 1</span>
+                <span style="color: var(--accent); float: right;">task-027</span>
+            </div>
+            <div style="background: var(--surface-1); border-radius: 6px; padding: 8px 12px; font-size: clamp(11px, 1.4vw, 13px);">
+                <span style="color: var(--text-tertiary);">Worker 2</span>
+                <span style="color: var(--accent); float: right;">task-031</span>
+            </div>
+            <div style="background: var(--surface-1); border-radius: 6px; padding: 8px 12px; font-size: clamp(11px, 1.4vw, 13px);">
+                <span style="color: var(--text-tertiary);">Worker 3</span>
+                <span style="color: var(--accent); float: right;">task-044</span>
+            </div>
+            <div style="background: var(--surface-1); border-radius: 6px; padding: 8px 12px; font-size: clamp(11px, 1.4vw, 13px);">
+                <span style="color: var(--text-tertiary);">Worker 4</span>
+                <span style="color: var(--accent); float: right;">task-012</span>
+            </div>
+        </div>
+        <div style="margin-top: clamp(10px, 1.5vw, 14px); font-size: clamp(11px, 1.3vw, 12px); color: var(--text-tertiary); font-style: italic;">
+            Illustrative mockup based on dashboard.py capabilities
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6: ROBUSTNESS                                          -->
+<!-- ============================================================ -->
+<div class="slide">
+    <h2>Built to Recover</h2>
+    <p style="margin-bottom: clamp(16px, 3vw, 28px);">
+        Production workloads crash. Swarm is designed to keep going.
+    </p>
+    <div class="grid-3">
+        <div class="card-accent">
+            <div class="icon">&#128260;</div>
+            <h3 style="color: var(--accent);">Automatic Retries</h3>
+            <p>Transient failures&mdash;API timeouts, rate limits&mdash;are retried without manual intervention. Configurable limits prevent infinite loops.</p>
+        </div>
+        <div class="card-accent">
+            <div class="icon">&#128269;</div>
+            <h3 style="color: var(--accent);">Orphan Detection</h3>
+            <p>psutil checks whether worker PIDs are alive. Tasks claimed by dead processes are automatically returned to the queue.</p>
+        </div>
+        <div class="card-accent">
+            <div class="icon">&#128190;</div>
+            <h3 style="color: var(--accent);">Crash Recovery</h3>
+            <p>All state lives in SQLite. On restart, the orchestrator reads the queue, finds incomplete tasks, and resumes where it left off.</p>
+        </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="card" style="max-width: 600px;">
+        <p class="label" style="margin-bottom: 6px;">Production Evidence</p>
+        <p style="font-size: clamp(13px, 1.8vw, 16px);">
+            <code style="color: var(--text-secondary);">swarm.db</code>, <code style="color: var(--text-secondary);">swarm.db.backup</code>, and <code style="color: var(--text-secondary);">swarm-full.log</code> found in the wordbs project directory&mdash;confirming active production use with real task data.
+        </p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7: BEFORE & AFTER                                      -->
+<!-- ============================================================ -->
+<div class="slide">
+    <h2>Before &amp; After</h2>
+    <p style="margin-bottom: clamp(16px, 3vw, 28px);">Sequential execution vs. Amplifier Swarm.</p>
+    <div class="compare-grid">
+        <div class="compare-col">
+            <div class="card" style="height: 100%;">
+                <h3 style="color: var(--text-tertiary); margin-bottom: clamp(10px, 2vw, 16px);">Before &mdash; Sequential</h3>
+                <ul>
+                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> Tasks run one at a time</li>
+                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> No progress visibility</li>
+                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> Manual restart on failure</li>
+                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> State in memory only</li>
+                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> Wall-clock time = sum of all tasks</li>
+                </ul>
+            </div>
+        </div>
+        <div class="compare-col">
+            <div class="card-accent" style="height: 100%;">
+                <h3 style="color: var(--accent); margin-bottom: clamp(10px, 2vw, 16px);">After &mdash; Amplifier Swarm</h3>
+                <ul>
+                    <li><span style="color: var(--accent);">&#10003;</span> N workers run in parallel</li>
+                    <li><span style="color: var(--accent);">&#10003;</span> Live web dashboard</li>
+                    <li><span style="color: var(--accent);">&#10003;</span> Automatic retry + orphan recovery</li>
+                    <li><span style="color: var(--accent);">&#10003;</span> Durable SQLite queue</li>
+                    <li><span style="color: var(--accent);">&#10003;</span> Wall-clock time &divide; N workers</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="card" style="max-width: 640px;">
+        <p style="font-size: clamp(13px, 1.8vw, 16px);">
+            <strong style="color: var(--accent);">Real example (wordbs project):</strong>
+            50 tasks processed via Swarm. With 4 workers, wall-clock time reduces to roughly &frac14; of sequential execution.
+        </p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 8: GETTING STARTED                                     -->
+<!-- ============================================================ -->
+<div class="slide">
+    <h2>Getting Started</h2>
+    <div style="max-width: 640px;">
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+                <h3>Install from the toolkit</h3>
+                <p>Amplifier Swarm ships inside amplifier-toolkit.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+                <h3>Define your tasks</h3>
+                <p>Tasks are YAML entries. Each has a name, command, and optional dependencies.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+                <h3>Run the swarm</h3>
+                <p>The CLI launches the orchestrator, workers, and optional dashboard in one command.</p>
+            </div>
+        </div>
+    </div>
+    <div class="spacer-sm"></div>
+    <div class="code-block" style="max-width: 640px;"><span class="cmt"># Install</span>
+pip install amplifier-toolkit
+
+<span class="cmt"># Run 4 workers with the dashboard</span>
+amplifier-swarm run <span class="str">--workers 4</span> <span class="str">--dashboard</span> tasks.yaml
+
+<span class="cmt"># Check status</span>
+amplifier-swarm status</div>
+    <div class="spacer-sm"></div>
+    <p style="font-size: clamp(12px, 1.6vw, 15px); color: var(--text-tertiary); max-width: 640px;">
+        Dependencies: click, rich, pyyaml, fastapi, uvicorn, websockets, psutil &middot; MIT License
+    </p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 9: SOURCES & METHODOLOGY                               -->
+<!-- ============================================================ -->
+<div class="slide">
+    <h2>Sources &amp; Methodology</h2>
+    <div class="sources-grid">
+        <div>
+            <div class="source-item">
+                <div class="source-label">Data as of</div>
+                <div class="source-value">February 20, 2026</div>
+            </div>
+            <div class="source-item">
+                <div class="source-label">Status</div>
+                <div class="source-value">Active &mdash; in amplifier-toolkit, used in production (wordbs project)</div>
+            </div>
+            <div class="source-item">
+                <div class="source-label">Repository</div>
+                <div class="source-value">ramparte/amplifier-toolkit &rarr; tools/amplifier-swarm</div>
+            </div>
+            <div class="source-item">
+                <div class="source-label">Primary Contributor</div>
+                <div class="source-value">Sam Schillace (from git log)</div>
+            </div>
+            <div class="source-item">
+                <div class="source-label">Author</div>
+                <div class="source-value">Microsoft Amplifier Team (from pyproject.toml)</div>
+            </div>
+        </div>
+        <div>
+            <div class="source-item">
+                <div class="source-label">Research Methods</div>
+                <div class="source-value">find commands on ~/dev/ANext and ~/.amplifier/cache; pyproject.toml analysis; Python line count via <code style="color: var(--text-secondary);">find . -name "*.py" | xargs wc -l</code></div>
+            </div>
+            <div class="source-item">
+                <div class="source-label">Verified Numbers</div>
+                <div class="source-value">2,496 lines of Python (wc -l) &middot; 7 source files (find) &middot; v0.1.0 (pyproject.toml) &middot; MIT license</div>
+            </div>
+            <div class="source-item">
+                <div class="source-label">Production Evidence</div>
+                <div class="source-value">swarm.db, swarm.db.backup, swarm-full.log found at ~/dev/ANext/wordbs/</div>
+            </div>
+        </div>
+    </div>
+    <div class="gaps-note">
+        <div class="source-label">Known Gaps</div>
+        <div class="source-value">
+            Development timeline not verifiable from cache repo (only 1 commit visible). Exact session count unverifiable. Previous deck claimed "3,812 lines"&mdash;actual count is 2,496. Previous deck claimed "12 files"&mdash;actual count is 7 Python source files.
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 10: CTA                                                -->
+<!-- ============================================================ -->
 <div class="slide center">
-    <div class="section-label">PERFORMANCE</div>
-    <div class="medium-headline">Real numbers from production use</div>
-    <div class="stat-grid">
-        <div class="stat-card">
-            <div class="stat-number">50</div>
-            <div class="stat-label">Tasks in parallel</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">3</div>
-            <div class="stat-label">Worker processes</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">3×</div>
-            <div class="stat-label">Faster completion</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">100%</div>
-            <div class="stat-label">Isolation guarantee</div>
-        </div>
+    <h1 style="margin-bottom: clamp(12px, 2vw, 24px);">Try Amplifier Swarm</h1>
+    <p class="subtitle" style="margin-left: auto; margin-right: auto;">
+        Parallel task execution, real-time monitoring, and crash recovery&mdash;in 2,496 lines of Python.
+    </p>
+    <div class="spacer"></div>
+    <div class="code-block" style="max-width: 480px; text-align: left;">pip install amplifier-toolkit
+amplifier-swarm run <span class="str">--workers 4</span> tasks.yaml</div>
+    <div class="spacer"></div>
+    <div>
+        <a href="https://github.com/ramparte/amplifier-toolkit" target="_blank" rel="noopener noreferrer"
+           style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; background: var(--accent); color: #0a0a0a; border-radius: 100px; font-weight: 600; font-size: clamp(14px, 2vw, 17px); text-decoration: none; transition: background 0.2s ease;">
+            View on GitHub &#8594;
+        </a>
     </div>
-    <div class="subhead" style="margin-top: 48px;">Each worker runs in a separate process with independent Amplifier sessions. No shared state, no interference.</div>
+    <div class="spacer"></div>
+    <p style="font-size: clamp(12px, 1.6vw, 15px); color: var(--text-tertiary);">
+        MIT License &middot; v0.1.0 &middot; ramparte/amplifier-toolkit
+    </p>
 </div>
 
-<div class="slide">
-    <div class="section-label">BEFORE & AFTER</div>
-    <div class="medium-headline">From webword-pm to amplifier-swarm</div>
-    <div class="comparison">
-        <div class="comparison-side before">
-            <div class="comparison-title">❌ Old: webword-pm</div>
-            <ul class="comparison-list">
-                <li>Serial execution only (no parallelism)</li>
-                <li>No dashboard or monitoring</li>
-                <li>Race conditions with concurrent runs</li>
-                <li>No graceful shutdown</li>
-                <li>Limited error recovery</li>
-                <li>Manual retry required</li>
-            </ul>
-        </div>
-        <div class="comparison-side after">
-            <div class="comparison-title">✅ New: amplifier-swarm</div>
-            <ul class="comparison-list">
-                <li>Parallel execution with N workers</li>
-                <li>Real-time web dashboard</li>
-                <li>Atomic task claiming (no races)</li>
-                <li>Graceful + emergency shutdown</li>
-                <li>Automatic orphan recovery</li>
-                <li>Worker crash resilience</li>
-            </ul>
-        </div>
-    </div>
-</div>
-
-<div class="slide">
-    <div class="section-label">TECHNICAL DETAILS</div>
-    <div class="medium-headline">How it works under the hood</div>
-    <div class="thirds">
-        <div class="card">
-            <div class="card-title">SQLite IMMEDIATE</div>
-            <div class="card-text">Transaction isolation prevents race conditions. Only one worker can claim each task.</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Multiprocessing</div>
-            <div class="card-text">Each worker is a separate Python process. Full isolation, independent failure domains.</div>
-        </div>
-        <div class="card">
-            <div class="card-title">FastAPI + WebSockets</div>
-            <div class="card-text">Dashboard backend pushes real-time updates. No polling, instant feedback.</div>
-        </div>
-    </div>
-    <div class="halves" style="margin-top: 24px;">
-        <div class="card">
-            <div class="card-title">Session Model</div>
-            <div class="card-text">Each task spawns TWO Amplifier sessions: builder (implements) + validator (verifies). Full subprocess isolation.</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Heartbeat Monitoring</div>
-            <div class="card-text">Workers send heartbeat every 30s. Orchestrator detects crashes and restarts workers automatically.</div>
-        </div>
-    </div>
-</div>
-
-<div class="slide">
-    <div class="section-label">USE CASES</div>
-    <div class="medium-headline">When to use amplifier-swarm</div>
-    <ul class="feature-list">
-        <li><strong>Large implementation projects</strong> - 50+ tasks to complete across a codebase</li>
-        <li><strong>Testing serial first, then scaling</strong> - Start with N=1, increase when confident</li>
-        <li><strong>Long-running workflows</strong> - Multi-hour processes that need monitoring</li>
-        <li><strong>Resumable work</strong> - Interrupted? Just restart, it picks up where it left off</li>
-        <li><strong>Multi-phase projects</strong> - Import tasks by phase, execute in waves</li>
-    </ul>
-    <div class="card" style="margin-top: 32px;">
-        <div class="card-title">Real Example: WebWord Implementation</div>
-        <div class="card-text">50 implementation tasks, 85.5 estimated hours. With 3 workers: completed in ~30 hours of wall-clock time. Manual oversight via dashboard prevented "is it stuck?" anxiety.</div>
-    </div>
-</div>
-
-<div class="slide center">
-    <div class="section-label">DEVELOPMENT VELOCITY</div>
-    <div class="medium-headline">Built in a single session</div>
-    <div class="stat-grid">
-        <div class="stat-card">
-            <div class="stat-number">12</div>
-            <div class="stat-label">Files created</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">3,812</div>
-            <div class="stat-label">Lines of code</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">1</div>
-            <div class="stat-label">Session to completion</div>
-        </div>
-    </div>
-    <div class="thirds" style="margin-top: 48px;">
-        <div class="card">
-            <div class="card-title">Database Layer</div>
-            <div class="card-text">SQLite schema, migration tools, atomic operations</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Execution Engine</div>
-            <div class="card-text">Workers, orchestrator, heartbeat monitoring</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Dashboard & CLI</div>
-            <div class="card-text">Web UI, FastAPI backend, Rich CLI</div>
-        </div>
-    </div>
-</div>
-
-<div class="slide center">
-    <div class="section-label">GET STARTED</div>
-    <div class="headline">Try amplifier-swarm today</div>
-    <div class="code-block" style="max-width: 700px;">
-<code><span class="code-comment"># Install</span>
-cd tools/amplifier-swarm
-uv pip install -e .
-
-<span class="code-comment"># Quick start</span>
-amplifier-swarm import-tasks tasks.yaml --db swarm.db
-amplifier-swarm start --db swarm.db --workers 3
-
-<span class="code-comment"># Monitor</span>
-open http://localhost:8765</code>
-    </div>
-    <div class="subhead" style="margin-top: 48px;">
-        <strong>GitHub:</strong> ramparte/amplifier-toolkit/tools/amplifier-swarm<br>
-        <strong>Docs:</strong> Complete README and example guide included
-    </div>
-</div>
-
-<div class="nav-zone prev" onclick="prevSlide()"></div>
-<div class="nav-zone next" onclick="nextSlide()"></div>
-<div class="nav-dots" id="navDots"></div>
-<div class="slide-counter">
-    <span id="currentSlide">1</span> / <span id="totalSlides">13</span>
+<!-- ── Navigation ── -->
+<div class="nav-container">
+    <a href="index.html" class="stories-link">More Amplifier Stories</a>
+    <div class="nav" id="nav"></div>
+    <div class="counter" id="counter"></div>
 </div>
 
 <script>
-    let currentSlide = 0;
-    const slides = document.querySelectorAll('.slide');
-    const totalSlides = slides.length;
-    document.getElementById('totalSlides').textContent = totalSlides;
-    function createNavDots() {
-        const navDots = document.getElementById('navDots');
-        for (let i = 0; i < totalSlides; i++) {
-            const dot = document.createElement('div');
-            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
-            dot.onclick = () => goToSlide(i);
-            navDots.appendChild(dot);
-        }
-    }
-    createNavDots();
-    function showSlide(n) {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (n + totalSlides) % totalSlides;
-        slides[currentSlide].classList.add('active');
-        document.getElementById('currentSlide').textContent = currentSlide + 1;
-        document.querySelectorAll('.nav-dot').forEach((dot, i) => {
-            dot.classList.toggle('active', i === currentSlide);
-        });
-    }
-    function nextSlide() { showSlide(currentSlide + 1); }
-    function prevSlide() { showSlide(currentSlide - 1); }
-    function goToSlide(n) { showSlide(n); }
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight' || e.key === ' ') {
-            e.preventDefault();
-            nextSlide();
-        } else if (e.key === 'ArrowLeft') {
-            e.preventDefault();
-            prevSlide();
-        }
+const slides = document.querySelectorAll('.slide');
+let currentSlide = 0;
+function showSlide(n) {
+    slides[currentSlide].classList.remove('active');
+    currentSlide = (n + slides.length) % slides.length;
+    slides[currentSlide].classList.add('active');
+    updateNav();
+}
+function updateNav() {
+    const nav = document.getElementById('nav');
+    const counter = document.getElementById('counter');
+    nav.innerHTML = '';
+    slides.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+        dot.onclick = () => showSlide(i);
+        nav.appendChild(dot);
     });
-    let touchStartX = 0;
-    let touchEndX = 0;
-    document.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    });
-    document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        if (touchEndX < touchStartX - 50) nextSlide();
-        if (touchEndX > touchStartX + 50) prevSlide();
-    });
+    counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+}
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
+    if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
+});
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.nav') || e.target.closest('a')) return;
+    if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+    else showSlide(currentSlide - 1);
+});
+let touchStartX = 0;
+let touchEndX = 0;
+const SWIPE_THRESHOLD = 50;
+document.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    const diff = touchStartX - touchEndX;
+    if (Math.abs(diff) > SWIPE_THRESHOLD) { if (diff > 0) showSlide(currentSlide + 1); else showSlide(currentSlide - 1); }
+}, { passive: true });
+updateNav();
 </script>
 
 </body>

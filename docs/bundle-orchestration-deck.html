@@ -2,139 +2,209 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bundle Orchestration - Deep Dive</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Bundle Orchestration — How Amplifier Bundles Compose and Load</title>
     <style>
         :root {
-            --accent: #30D158;
-            --accent-light: #5EE07A;
-            --accent-glow: rgba(48, 209, 88, 0.3);
-            --bg: #0a0a0a;
-            --card-bg: rgba(255,255,255,0.05);
-            --card-border: rgba(255,255,255,0.12);
-            --text: #fff;
-            --text-dim: rgba(255,255,255,0.6);
-            --warning: #FF9F0A;
-            --purple: #9B7BFF;
-            --blue: #0078D4;
-            --cyan: #00CED1;
+            --accent: #FF7EB3;
+            --accent-light: #FFB3D1;
+            --accent-glow: rgba(255, 126, 179, 0.3);
 
-    /* Surface hierarchy (injected by deck-style-fix) */
-    --surface-1: rgba(255,255,255,0.06);
-    --surface-2: rgba(255,255,255,0.10);
-    --surface-3: rgba(255,255,255,0.15);
-    --border-subtle: rgba(255,255,255,0.12);
-    --text-primary: #ffffff;
-    --text-readable: rgba(255,255,255,0.7);
-    --text-muted-floor: rgba(255,255,255,0.5);
-}
-        
+            /* Fluid typography */
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 32px);
+
+            /* Fluid spacing */
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
+            background: #000;
+            color: #fff;
             overflow: hidden;
+            overscroll-behavior: none;
         }
-        
-        .deck { height: 100vh; height: 100dvh; overflow: hidden; }
-        
+
         .slide {
             display: none;
+            width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
-            padding: clamp(24px, 5vw, 80px);
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
-            justify-content: center;
             overflow-y: auto;
+            overflow-x: hidden;
+            /* NO justify-content: center here */
         }
-        
+
         .slide.active { display: flex; }
-        
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Typography */
         .section-label {
-            font-size: clamp(11px, 1.5vw, 14px);
+            font-size: clamp(12px, 1.5vw, 14px);
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 3px;
+            letter-spacing: 2px;
             color: var(--accent);
             margin-bottom: 16px;
         }
-        
+
         .headline {
-            font-size: clamp(36px, 8vw, 72px);
+            font-size: var(--font-headline);
             font-weight: 700;
-            letter-spacing: -2px;
+            letter-spacing: clamp(-1px, -0.03em, -2px);
             line-height: 1.1;
             margin-bottom: 24px;
         }
-        
-        .subhead {
-            font-size: clamp(18px, 3vw, 32px);
-            font-weight: 400;
-            color: var(--text-dim);
-            line-height: 1.4;
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -1px;
+            line-height: 1.2;
+            margin-bottom: 24px;
         }
-        
+
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: 700px;
+        }
+
         .body-text {
             font-size: clamp(14px, 2vw, 18px);
             line-height: 1.6;
-            color: var(--text-dim);
+            color: var(--text-secondary);
         }
-        
-        .title-slide { text-align: center; align-items: center; }
-        
+
+        .small-text {
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: var(--text-tertiary);
+        }
+
+        /* Badge */
         .badge {
             display: inline-block;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
             color: #000;
-            font-size: clamp(12px, 1.5vw, 16px);
+            font-size: clamp(10px, 1.5vw, 13px);
             font-weight: 700;
             letter-spacing: 2px;
             text-transform: uppercase;
-            padding: 12px 32px;
+            padding: 8px 24px;
             border-radius: 100px;
-            margin-bottom: 32px;
-            box-shadow: 0 8px 32px var(--accent-glow);
+            margin-bottom: 24px;
         }
-        
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            padding: clamp(20px, 4vw, 32px);
+
+        /* Grids */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
         }
-        
-        .card-title {
-            font-size: clamp(18px, 3vw, 24px);
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: var(--accent);
-        }
-        
-        .grid-2 {
+
+        .split {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: clamp(16px, 3vw, 32px);
+            gap: var(--gap-grid);
         }
-        
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
-            gap: clamp(16px, 3vw, 24px);
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
         }
-        
+
+        .card h3, .card h4 { color: var(--text-primary); }
+        .card p, .card li { color: var(--text-secondary); }
+
+        .card-title {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+
+        /* Icons */
+        .icon-card { font-size: clamp(28px, 5vw, 48px); margin-bottom: 12px; }
+
+        /* Code */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 2vw, 15px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        code {
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9em;
+        }
+
+        .code-comment { color: var(--text-tertiary); }
+        .code-keyword { color: var(--accent); }
+        .code-string { color: #30D158; }
+        .code-type { color: #64D2FF; }
+
+        /* Bullet list */
         .bullet-list { list-style: none; padding-left: 0; }
-        
         .bullet-list li {
             position: relative;
             padding-left: 24px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             font-size: clamp(14px, 2vw, 18px);
-            color: var(--text-dim);
+            color: var(--text-secondary);
             line-height: 1.5;
         }
-        
         .bullet-list li::before {
             content: '';
             position: absolute;
@@ -145,111 +215,133 @@
             background: var(--accent);
             border-radius: 50%;
         }
-        
-        .quote-block {
-            background: linear-gradient(135deg, rgba(48, 209, 88, 0.1) 0%, transparent 100%);
-            border-left: 4px solid var(--accent);
-            border-radius: 0 16px 16px 0;
-            padding: clamp(20px, 4vw, 32px);
-            margin: 24px 0;
+
+        /* Merge strategy cards — elevated surface for visibility */
+        .merge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--gap-grid);
         }
-        
-        .quote-text {
-            font-size: clamp(18px, 3vw, 28px);
-            font-style: italic;
-            line-height: 1.4;
-            color: var(--text);
+
+        .merge-card {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 24px);
         }
-        
-        .highlight-box {
-            background: linear-gradient(135deg, rgba(48, 209, 88, 0.15) 0%, rgba(94, 224, 122, 0.05) 100%);
-            border: 1px solid var(--accent);
-            border-radius: 16px;
-            padding: clamp(20px, 4vw, 32px);
-            margin-top: 24px;
+
+        .merge-strategy {
+            font-size: clamp(15px, 2.2vw, 19px);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
         }
-        
+
+        .merge-applies {
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .merge-desc {
+            font-size: clamp(13px, 1.8vw, 16px);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Bundle diagram */
         .bundle-diagram {
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            max-width: 600px;
-            margin: 32px auto;
+            gap: 10px;
+            max-width: 650px;
+            margin: 24px auto;
         }
-        
+
         .bundle-layer {
-            background: var(--card-bg);
-            border: 2px solid var(--card-border);
+            background: var(--surface-1);
+            border: 2px solid var(--border-subtle);
             border-radius: 12px;
-            padding: 16px 24px;
+            padding: clamp(12px, 2vw, 16px) clamp(16px, 3vw, 24px);
             display: flex;
             align-items: center;
             gap: 16px;
         }
-        
-        .bundle-layer.primary { border-color: var(--accent); }
-        .bundle-layer.secondary { border-color: var(--purple); }
-        .bundle-layer.tertiary { border-color: var(--cyan); }
-        
-        .bundle-icon {
-            font-size: 28px;
-            width: 40px;
-            text-align: center;
-        }
-        
-        .bundle-name {
-            font-weight: 600;
-            font-size: clamp(14px, 2vw, 16px);
-        }
-        
-        .bundle-layer.primary .bundle-name { color: var(--accent); }
-        .bundle-layer.secondary .bundle-name { color: var(--purple); }
-        .bundle-layer.tertiary .bundle-name { color: var(--cyan); }
-        
+
+        .layer-user { border-color: var(--accent); }
+        .layer-domain { border-color: #BF5AF2; }
+        .layer-foundation { border-color: #64D2FF; }
+
+        .bundle-icon { font-size: clamp(28px, 5vw, 36px); width: 44px; text-align: center; }
+
+        .bundle-name { font-weight: 600; font-size: clamp(14px, 2vw, 17px); }
+        .layer-user .bundle-name { color: var(--accent); }
+        .layer-domain .bundle-name { color: #BF5AF2; }
+        .layer-foundation .bundle-name { color: #64D2FF; }
+
         .bundle-desc {
             font-size: clamp(12px, 1.5vw, 14px);
-            color: var(--text-dim);
+            color: var(--text-secondary);
             margin-left: auto;
         }
-        
+
         .compose-arrow {
             text-align: center;
-            font-size: 24px;
-            color: var(--accent);
+            font-size: clamp(16px, 2vw, 20px);
+            color: var(--text-tertiary);
         }
-        
-        .metric-row {
-            display: flex;
-            gap: 32px;
-            justify-content: center;
-            flex-wrap: wrap;
+
+        /* Velocity */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap-grid);
             margin: 32px 0;
         }
-        
-        .metric-item {
-            text-align: center;
-        }
-        
-        .metric-value {
-            font-size: clamp(48px, 10vw, 72px);
+
+        .velocity-stat { text-align: center; }
+
+        .velocity-number {
+            font-size: clamp(48px, 12vw, 80px);
             font-weight: 700;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             line-height: 1;
         }
-        
-        .metric-label {
+
+        .velocity-label {
             font-size: clamp(12px, 1.5vw, 14px);
-            color: var(--text-dim);
+            color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-top: 8px;
         }
-        
+
+        .velocity-source {
+            font-size: clamp(10px, 1.2vw, 12px);
+            color: var(--text-tertiary);
+            margin-top: 4px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* Sources */
+        .sources-content {
+            font-size: clamp(12px, 1.8vw, 15px);
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .sources-content strong { color: var(--text-primary); }
+        .sources-content ul { padding-left: 20px; margin: 8px 0; }
+        .sources-content li { margin-bottom: 4px; }
+
         /* Navigation */
-        .nav-dots {
+        .nav {
             position: fixed;
             bottom: 24px;
             left: 50%;
@@ -258,7 +350,7 @@
             gap: 8px;
             z-index: 100;
         }
-        
+
         .nav-dot {
             width: 8px;
             height: 8px;
@@ -267,311 +359,322 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
-        
+
         .nav-dot.active {
             background: var(--accent);
             box-shadow: 0 0 12px var(--accent-glow);
         }
-        
+
         .slide-counter {
             position: fixed;
             bottom: 24px;
             right: 32px;
-            font-size: 14px;
+            font-size: clamp(11px, 1.5vw, 14px);
             color: rgba(255,255,255,0.4);
             font-family: 'SF Mono', monospace;
             z-index: 100;
         }
-        
-        .back-link {
+
+        .more-stories {
             position: fixed;
-            top: 24px;
-            left: 32px;
-            font-size: 14px;
-            color: var(--text-dim);
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
             text-decoration: none;
             z-index: 100;
-            transition: color 0.3s ease;
         }
-        
-        .back-link:hover { color: var(--accent); }
-        
-        .click-zone {
-            position: fixed;
-            top: 0;
-            bottom: 80px;
-            width: 15%;
-            cursor: pointer;
-            z-index: 50;
-        }
-        
-        .click-zone.left { left: 0; }
-        .click-zone.right { right: 0; }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
     </style>
 </head>
 <body>
-    <a href="00-master-overview.html" class="back-link">← Back to Overview</a>
-    
-    <div class="deck">
-        
-        <!-- Slide 1: Title -->
-        <div class="slide title-slide active" data-slide="1">
-            <div class="badge">Personal Project</div>
-            <h1 class="headline">Bundle Orchestration</h1>
-            <p class="subhead" style="max-width: 700px;">
-                <span style="color: var(--accent);">wilMM</span>—a personal demo of Amplifier's multi-bundle composition capabilities.
-            </p>
-        </div>
-        
-        <!-- Slide 2: The Purpose -->
-        <div class="slide" data-slide="2">
-            <div class="section-label">Why This Project</div>
-            <h2 class="headline">Learning by Building</h2>
-            <div class="grid-2" style="margin-top: 24px;">
-                <div>
-                    <div class="quote-block">
-                        <div class="quote-text">"I wanted to see how I could orchestrate multiple bundles together to make something work."</div>
-                    </div>
-                    <div class="body-text" style="margin-top: 24px;">
-                        This isn't about the healthcare domain—it's about understanding Amplifier's composition model. How do bundles connect? How do agents hand off? How does context flow?
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-title">The Real Focus</div>
-                    <ul class="bullet-list">
-                        <li><strong>Bundle composition</strong>—how pieces fit together</li>
-                        <li><strong>Multi-agent orchestration</strong>—handoffs and context</li>
-                        <li><strong>Practical learning</strong>—by building something real</li>
-                        <li><strong>Pattern discovery</strong>—what works, what doesn't</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Slide 3: The Architecture -->
-        <div class="slide" data-slide="3">
-            <div class="section-label">Architecture</div>
-            <h2 class="headline" style="margin-bottom: 24px;">Bundle Composition</h2>
-            <div class="bundle-diagram">
-                <div class="bundle-layer primary">
-                    <div class="bundle-icon">🏥</div>
-                    <div class="bundle-name">wilMM Bundle</div>
-                    <div class="bundle-desc">Domain-specific agents & context</div>
-                </div>
-                <div class="compose-arrow">↓ composes</div>
-                <div class="bundle-layer secondary">
-                    <div class="bundle-icon">🎨</div>
-                    <div class="bundle-name">Design Intelligence</div>
-                    <div class="bundle-desc">Research & analysis capabilities</div>
-                </div>
-                <div class="compose-arrow">↓ composes</div>
-                <div class="bundle-layer tertiary">
-                    <div class="bundle-icon">🔧</div>
-                    <div class="bundle-name">Foundation</div>
-                    <div class="bundle-desc">Core agents & behaviors</div>
-                </div>
-            </div>
-            <div class="body-text" style="text-align: center; max-width: 600px; margin: 0 auto;">
-                Each layer adds capabilities. The composition model means you get everything below, plus your additions on top.
-            </div>
-        </div>
-        
-        <!-- Slide 4: What Was Built -->
-        <div class="slide" data-slide="4">
-            <div class="section-label">The Work</div>
-            <h2 class="headline" style="margin-bottom: 32px;">What Was Built</h2>
-            <div class="grid-3">
-                <div class="card">
-                    <div class="card-title" style="color: var(--text);">Custom Agents</div>
-                    <div class="body-text" style="margin-bottom: 16px;">
-                        Domain-specific agents that leverage underlying capabilities.
-                    </div>
-                    <ul class="bullet-list">
-                        <li>Health context agents</li>
-                        <li>Data integration patterns</li>
-                        <li>Workflow orchestration</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <div class="card-title" style="color: var(--text);">Bundle Structure</div>
-                    <div class="body-text" style="margin-bottom: 16px;">
-                        Proper composition following Amplifier patterns.
-                    </div>
-                    <ul class="bullet-list">
-                        <li>Context files</li>
-                        <li>Agent definitions</li>
-                        <li>Behavior compositions</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <div class="card-title" style="color: var(--text);">Integration Points</div>
-                    <div class="body-text" style="margin-bottom: 16px;">
-                        Connecting to external systems and APIs.
-                    </div>
-                    <ul class="bullet-list">
-                        <li>Health data sources</li>
-                        <li>Analytics pipelines</li>
-                        <li>Notification systems</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Slide 5: The Learnings -->
-        <div class="slide" data-slide="5">
-            <div class="section-label">Insights</div>
-            <h2 class="headline" style="margin-bottom: 32px;">What I Learned</h2>
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-title">What Works Well</div>
-                    <ul class="bullet-list">
-                        <li><strong>Composition is powerful</strong>—inherit capabilities without copying</li>
-                        <li><strong>Context flows naturally</strong>—agents share what they need</li>
-                        <li><strong>Behaviors are reusable</strong>—define once, use everywhere</li>
-                        <li><strong>Agents specialize cleanly</strong>—each does one thing well</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <div class="card-title">What Needs Attention</div>
-                    <ul class="bullet-list">
-                        <li><strong>Context management</strong>—knowing what to pass and when</li>
-                        <li><strong>Handoff clarity</strong>—explicit about what agent does what</li>
-                        <li><strong>Error boundaries</strong>—when one agent fails, what happens?</li>
-                        <li><strong>Testing patterns</strong>—how to validate compositions</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Slide 6: By The Numbers -->
-        <div class="slide" data-slide="6">
-            <div class="section-label">This Week</div>
-            <h2 class="headline" style="margin-bottom: 24px;">By The Numbers</h2>
-            <div class="metric-row">
-                <div class="metric-item">
-                    <div class="metric-value">66</div>
-                    <div class="metric-label">Conversation Turns</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-value">27+</div>
-                    <div class="metric-label">Commits</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-value">3</div>
-                    <div class="metric-label">Bundle Layers</div>
-                </div>
-            </div>
-            <div class="highlight-box" style="margin-top: 32px;">
-                <div class="card-title" style="color: var(--text); margin-bottom: 12px;">A Working Demo</div>
-                <div class="body-text" style="color: var(--text);">
-                    This isn't production software—it's a learning project. The value is in understanding how Amplifier's pieces fit together, not in the healthcare domain itself.
-                </div>
-            </div>
-        </div>
-        
-        <!-- Slide 7: Implications for Amplifier -->
-        <div class="slide" data-slide="7">
-            <div class="section-label">Takeaways</div>
-            <h2 class="headline" style="margin-bottom: 32px;">For Amplifier</h2>
-            <div class="grid-2">
-                <div>
-                    <div class="quote-block">
-                        <div class="quote-text">"Building something real reveals what the documentation doesn't—the friction points, the happy paths, the patterns that emerge."</div>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Feedback Loop</div>
-                    <ul class="bullet-list">
-                        <li>Bundle composition patterns documented</li>
-                        <li>Friction points identified for improvement</li>
-                        <li>Real usage informs ecosystem design</li>
-                        <li>Learning shared with team</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="body-text" style="margin-top: 32px; text-align: center; max-width: 700px; margin-left: auto; margin-right: auto;">
-                Personal projects like this are how we understand what users will experience—and how we improve the developer experience for everyone.
-            </div>
-        </div>
-        
-        <!-- Slide 8: What's Next -->
-        <div class="slide" data-slide="8">
-            <div class="section-label">Looking Ahead</div>
-            <h2 class="headline" style="margin-bottom: 32px;">Next Steps</h2>
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-title">For This Project</div>
-                    <ul class="bullet-list">
-                        <li>Continue refinement</li>
-                        <li>Document patterns discovered</li>
-                        <li>Share learnings with team</li>
-                        <li>Identify areas for Amplifier improvement</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <div class="card-title">For Amplifier</div>
-                    <ul class="bullet-list">
-                        <li>Better composition documentation</li>
-                        <li>Clearer handoff patterns</li>
-                        <li>Testing utilities for bundles</li>
-                        <li>Error boundary guidance</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="quote-block" style="margin-top: 32px;">
-                <div class="quote-text" style="font-size: clamp(16px, 2.5vw, 24px);">"The best way to understand a system is to build something with it."</div>
-            </div>
-        </div>
-        
+
+    <!-- Slide 1: Title -->
+    <div class="slide active center">
+        <div class="badge">Active</div>
+        <h1 class="headline">Bundle Orchestration</h1>
+        <p class="subhead">How Amplifier bundles compose, merge, and load — the engine that makes layered agent systems possible</p>
+        <div class="small-text" style="margin-top: 24px;">February 2026</div>
     </div>
-    
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Configuration Doesn't Compose</h2>
+        <div class="thirds" style="margin-top: 16px;">
+            <div class="card">
+                <div class="icon-card">🔁</div>
+                <h4>Duplication</h4>
+                <p>Every new project re-declares the same providers, tools, and hooks. No inheritance means no consistency across projects.</p>
+            </div>
+            <div class="card">
+                <div class="icon-card">💥</div>
+                <h4>Collisions</h4>
+                <p>When two configs define context files with the same name, one silently overwrites the other. No namespacing, no warning.</p>
+            </div>
+            <div class="card">
+                <div class="icon-card">🧩</div>
+                <h4>No Layering</h4>
+                <p>Want foundation behaviors plus your domain logic? Copy-paste everything. Changes upstream? Copy-paste again.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: The Solution -->
+    <div class="slide">
+        <div class="section-label">The Solution</div>
+        <h2 class="medium-headline">Bundle.compose() — Declarative Layering</h2>
+        <div class="split">
+            <div>
+                <div class="body-text" style="margin-bottom: 20px;">
+                    A single method on the Bundle dataclass handles all composition. Declare your <code>includes</code>, and the engine merges everything with well-defined rules — 1,347 lines of composition logic.
+                </div>
+                <div class="code-block"><span class="code-comment"># Your bundle.yaml</span>
+<span class="code-keyword">includes</span>:
+  - <span class="code-string">foundation</span>
+  - <span class="code-string">design-intelligence</span>
+
+<span class="code-keyword">agents</span>:
+  my-agent:
+    <span class="code-keyword">instruction</span>: <span class="code-string">"Your domain logic"</span>
+
+<span class="code-comment"># Foundation providers, tools, hooks</span>
+<span class="code-comment"># merged in automatically</span></div>
+            </div>
+            <div class="card">
+                <div class="card-title">What compose() Does</div>
+                <ul class="bullet-list">
+                    <li><strong>Reads</strong> the <code>includes</code> list from your bundle</li>
+                    <li><strong>Loads</strong> each included bundle recursively</li>
+                    <li><strong>Merges</strong> config using 5 distinct strategies</li>
+                    <li><strong>Namespaces</strong> context keys to prevent collisions</li>
+                    <li><strong>Returns</strong> a single unified Bundle dataclass</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: The Five Merge Strategies -->
+    <div class="slide">
+        <div class="section-label">How It Works</div>
+        <h2 class="medium-headline">Five Merge Strategies</h2>
+        <div class="merge-grid">
+            <div class="merge-card">
+                <div class="merge-applies">Session · Spawn</div>
+                <div class="merge-strategy">Deep Merge</div>
+                <div class="merge-desc">Nested dicts merged recursively. Later bundle wins for scalar values. Structure preserved — only leaf values override.</div>
+            </div>
+            <div class="merge-card">
+                <div class="merge-applies">Providers · Tools · Hooks</div>
+                <div class="merge-strategy">Merge by Module ID</div>
+                <div class="merge-desc">Each module has a unique ID. Same ID → later config wins. Different IDs → both kept. No silent loss of modules.</div>
+            </div>
+            <div class="merge-card">
+                <div class="merge-applies">Agents</div>
+                <div class="merge-strategy">Override by Name</div>
+                <div class="merge-desc">Later bundle's agent definition replaces earlier one with the same name. New names are added to the merged set.</div>
+            </div>
+            <div class="merge-card">
+                <div class="merge-applies">Context</div>
+                <div class="merge-strategy">Accumulate + Namespace</div>
+                <div class="merge-desc">Every bundle contributes context files. Keys prefixed with bundle name (<code>foundation:behaviors.md</code>) to avoid collisions.</div>
+            </div>
+            <div class="merge-card">
+                <div class="merge-applies">Instruction</div>
+                <div class="merge-strategy">Replace</div>
+                <div class="merge-desc">Later instruction replaces earlier entirely. Your bundle's instruction is the final word — no merging of prose.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Bundle Stacking -->
+    <div class="slide">
+        <div class="section-label">Composition Model</div>
+        <h2 class="medium-headline">Bundles Stack, Not Nest</h2>
+        <div class="bundle-diagram">
+            <div class="bundle-layer layer-user">
+                <div class="bundle-icon">📦</div>
+                <div>
+                    <div class="bundle-name">Your Bundle</div>
+                </div>
+                <div class="bundle-desc">Domain agents, custom instruction</div>
+            </div>
+            <div class="compose-arrow">↑ compose()</div>
+            <div class="bundle-layer layer-domain">
+                <div class="bundle-icon">🎨</div>
+                <div>
+                    <div class="bundle-name">Domain Bundle</div>
+                </div>
+                <div class="bundle-desc">Shared tools, specialized hooks</div>
+            </div>
+            <div class="compose-arrow">↑ compose()</div>
+            <div class="bundle-layer layer-foundation">
+                <div class="bundle-icon">🔧</div>
+                <div>
+                    <div class="bundle-name">Foundation</div>
+                </div>
+                <div class="bundle-desc">Core agents, base providers, behaviors</div>
+            </div>
+        </div>
+        <div class="card" style="max-width: 650px; margin: 0 auto;">
+            <div class="card-title">The Key Insight</div>
+            <p>Each layer adds capabilities without seeing the layers above. Foundation provides the base. Domain bundles add specialization. Your bundle adds the final instruction and custom agents. <code>compose()</code> flattens this stack into one unified configuration.</p>
+        </div>
+    </div>
+
+    <!-- Slide 6: Context Namespacing -->
+    <div class="slide">
+        <div class="section-label">Collision Avoidance</div>
+        <h2 class="medium-headline">Context Namespacing</h2>
+        <div class="split">
+            <div>
+                <div class="body-text" style="margin-bottom: 20px;">
+                    When bundles compose, each bundle's context keys are automatically prefixed with the bundle name. This prevents silent overwrites when multiple bundles define files with the same name.
+                </div>
+                <div class="code-block"><span class="code-comment"># Before compose — collision risk</span>
+<span class="code-type">foundation</span>/context/behaviors.md
+<span class="code-type">stories</span>/context/behaviors.md
+
+<span class="code-comment"># After compose — namespaced</span>
+<span class="code-keyword">foundation:</span>context/behaviors.md
+<span class="code-keyword">stories:</span>context/behaviors.md
+
+<span class="code-comment"># Both preserved, zero collision</span></div>
+            </div>
+            <div class="card">
+                <div class="card-title">Why This Matters</div>
+                <ul class="bullet-list">
+                    <li><strong>No silent data loss</strong> — every bundle's context survives composition</li>
+                    <li><strong>Predictable resolution</strong> — namespace tells you which bundle owns what</li>
+                    <li><strong>Safe evolution</strong> — bundles add files without breaking others</li>
+                    <li><strong>source_base_paths tracking</strong> — each namespace maps back to its source directory for @mention resolution</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Velocity -->
+    <div class="slide center">
+        <div class="section-label">Development</div>
+        <h2 class="medium-headline">By the Numbers</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">1,347</div>
+                <div class="velocity-label">Lines in bundle.py</div>
+                <div class="velocity-source">wc -l bundle.py</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">317</div>
+                <div class="velocity-label">Foundation Commits</div>
+                <div class="velocity-source">git log --oneline | wc -l</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">~94%</div>
+                <div class="velocity-label">Single-Author Share</div>
+                <div class="velocity-source">Brian Krabach: 299/317</div>
+            </div>
+        </div>
+        <div class="body-text" style="max-width: 650px;">
+            Primary contributor: <strong>Brian Krabach</strong> (299 commits, ~94.3%). Additional contributors: Samuel Lee (8), Marc Goodner (5), Diego Colombo (4).
+        </div>
+    </div>
+
+    <!-- Slide 8: Sources & Methodology -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Research Methodology</h2>
+        <div class="sources-content">
+            <p><strong>Data as of:</strong> February 20, 2026</p>
+            <p><strong>Feature status:</strong> Active — bundle composition is the core loading mechanism in amplifier-foundation</p>
+            <p><strong>Repository:</strong> amplifier-foundation (local clone)</p>
+            <p style="margin-top: 12px;"><strong>Research performed:</strong></p>
+            <ul>
+                <li>File discovery: <code>find . -name "bundle.py" -path "*/amplifier_foundation/*"</code> → 1 file</li>
+                <li>Line count: <code>wc -l amplifier_foundation/bundle.py</code> → 1,347 lines</li>
+                <li>Composition logic: <code>grep -n "compose|merge|include" bundle.py</code> → 30+ matches analyzed</li>
+                <li>Merge rules: <code>grep -n "deep.*merge|replace|accumulate" bundle.py</code> → 10 matches</li>
+                <li>Source reading: <code>sed -n '95,215p' bundle.py</code> — full compose() method verified</li>
+                <li>Commit count: <code>git log --oneline | wc -l</code> → 317</li>
+                <li>Contributors: <code>git log --format="%an" | sort | uniq -c | sort -rn</code> → 5 entries (incl. bot)</li>
+            </ul>
+            <p style="margin-top: 12px;"><strong>Gaps:</strong> PR-level data not queried. Merge strategy descriptions from source code docstrings and comments, not runtime testing. Bundle loading performance not measured.</p>
+            <p><strong>Primary contributor:</strong> Brian Krabach — 299 of 317 commits (~94.3%)</p>
+        </div>
+    </div>
+
+    <!-- Slide 9: CTA -->
+    <div class="slide center">
+        <div class="section-label">Get Started</div>
+        <h1 class="headline">Try Bundle Composition</h1>
+        <p class="subhead">Add <code>includes: [foundation]</code> to your bundle.yaml and inherit the entire foundation layer — providers, tools, hooks, agents, and behaviors.</p>
+        <div class="small-text" style="margin-top: 32px;">amplifier-foundation · bundle.py · 1,347 lines of composition logic</div>
+    </div>
+
     <!-- Navigation -->
-    <div class="nav-dots" id="navDots"></div>
-    <div class="slide-counter" id="slideCounter">1 / 8</div>
-    <div class="click-zone left" onclick="prevSlide()"></div>
-    <div class="click-zone right" onclick="nextSlide()"></div>
-    
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link — REQUIRED -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
     <script>
-        let currentSlide = 1;
-        const totalSlides = 8;
-        
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
         function showSlide(n) {
-            if (n < 1) n = 1;
-            if (n > totalSlides) n = totalSlides;
-            currentSlide = n;
-            
-            document.querySelectorAll('.slide').forEach(slide => slide.classList.remove('active'));
-            document.querySelector(`[data-slide="${n}"]`).classList.add('active');
-            
-            document.querySelectorAll('.nav-dot').forEach((dot, i) => {
-                dot.classList.toggle('active', i + 1 === n);
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = () => showSlide(i);
+                nav.appendChild(dot);
             });
-            
-            document.getElementById('slideCounter').textContent = `${n} / ${totalSlides}`;
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
         }
-        
-        function nextSlide() { showSlide(currentSlide + 1); }
-        function prevSlide() { showSlide(currentSlide - 1); }
-        
-        const navDots = document.getElementById('navDots');
-        for (let i = 1; i <= totalSlides; i++) {
-            const dot = document.createElement('div');
-            dot.className = 'nav-dot' + (i === 1 ? ' active' : '');
-            dot.onclick = () => showSlide(i);
-            navDots.appendChild(dot);
-        }
-        
+
+        // Keyboard navigation
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
-            else if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+            if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
+            if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
         });
-        
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.target.closest('a')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe navigation
         let touchStartX = 0;
-        document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-        document.addEventListener('touchend', e => {
-            const diff = touchStartX - e.changedTouches[0].screenX;
-            if (Math.abs(diff) > 50) { diff > 0 ? nextSlide() : prevSlide(); }
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
     </script>
 </body>
 </html>

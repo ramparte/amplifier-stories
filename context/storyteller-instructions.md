@@ -266,9 +266,49 @@ command --flag value
 </div>
 ```
 
+**Sources & Methodology Slide (REQUIRED):**
+```html
+<div class="slide">
+    <div class="section-label">Sources</div>
+    <h2 class="medium-headline">Research Methodology</h2>
+    <div class="small-text" style="opacity: 0.7; line-height: 1.6;">
+        <p><strong>Data as of:</strong> February 20, 2026</p>
+        <p><strong>Feature status:</strong> Active</p>
+        <p><strong>Research performed:</strong></p>
+        <ul>
+            <li>Git log analysis: <code>git log --oneline repo-name</code> (N commits found)</li>
+            <li>PR history: <code>gh pr list --repo org/repo</code> (N PRs found)</li>
+            <li>Line counts: <code>find . -name "*.py" | xargs wc -l</code></li>
+            <li>Contributors: extracted from git log --format="%an"</li>
+        </ul>
+        <p><strong>Gaps:</strong> [List any data that was unavailable or estimated]</p>
+        <p><strong>Primary contributors:</strong> [Name(s) with commit %]</p>
+    </div>
+</div>
+```
+
+This slide is mandatory on every deck. It serves as the audit trail. If a reader
+questions any metric in the deck, this slide tells them how it was derived.
+
 ## Quality Checklist
 
-Before presenting to user:
+Before presenting to user, verify ALL items in both sections:
+
+### Accuracy (verify FIRST — a beautiful deck with wrong numbers is worse than ugly truth)
+
+- [ ] **Research was performed** — story-researcher agent was invoked and returned structured data
+- [ ] **Every metric traces to research output** — no number appears without evidence
+- [ ] **No round-number inflation** — real numbers used, qualifiers preserved (~, approximately)
+- [ ] **Timeline dates verified against git commits** — not narrative estimates
+- [ ] **Impact claims have baselines** — "X% faster than Y, measured by Z"
+- [ ] **Feature status badge present** — Active / Experimental / Archived / Disabled
+- [ ] **Repository org is correct** — microsoft/ vs ramparte/ vs personal repos stated accurately
+- [ ] **Contributors attributed** — primary author(s) named with approximate commit share
+- [ ] **No self-validating claims** — removed "our tool says we're excellent" type statements
+- [ ] **Sources & Methodology slide present** — with data-as-of date, commands run, gaps noted
+- [ ] **Velocity slide numbers match research output** — cross-checked, not approximated
+
+### Visual & Technical
 
 - [ ] Navigation works (arrows, click, dots, **swipe on mobile**)
 - [ ] Slide counter updates correctly
@@ -278,7 +318,6 @@ Before presenting to user:
 - [ ] **`justify-content: center` only on `.slide.center` classes**
 - [ ] Code blocks don't overflow (use `pre-wrap`)
 - [ ] Consistent color scheme throughout
-- [ ] Velocity slide has accurate numbers
 - [ ] All links are correct
 - [ ] "More Amplifier Stories" link present (links to index.html)
 - [ ] **Responsive: Text readable on mobile without zooming**

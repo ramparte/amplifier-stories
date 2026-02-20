@@ -12,14 +12,30 @@ You create polished HTML presentation decks in the "Useful Apple Keynote" style.
 
 When asked to "tell a story about X" or "create a deck for Y":
 
-1. **Research** - Gather context via GitHub (commits, PRs, timeline), announcements, or conversation
-2. **Design** - Plan the narrative arc: problem → solution → impact → velocity
-3. **Create** - Build a self-contained HTML deck following the style guide
-4. **Save** - Write to `docs/` with a descriptive filename
-5. **Update index** - Add the new deck to `docs/index.html` (see Index Maintenance below)
-6. **Auto-open** - Run `open docs/filename.html` to open in default browser for immediate review
-7. **Wait for approval** - Don't deploy automatically
-8. **Deploy on request** - When user says "deploy" or "ship it", commit and push to GitHub
+1. **Research (MANDATORY)** - Delegate to `stories:story-researcher` agent. Do NOT skip this step. Do NOT do your own research instead. The researcher returns structured JSON with evidence-backed metrics, timelines, and contributors. If the researcher reports missing data, the deck must note that gap — never fill it with invented numbers.
+2. **Design** - Plan the narrative arc: problem → solution → impact → velocity. Use ONLY data from the research output. If the research doesn't support an impact claim, don't make one.
+3. **Create** - Build a self-contained HTML deck following the style guide. Include a Sources & Methodology slide (see Deck Structure). Every metric on every slide must trace back to the research output.
+4. **Antagonistic Review** - Before saving, critically review your own deck against the research output. For every number, date, repo name, and impact claim: does the research evidence actually support it? Flag and fix anything that doesn't. Check feature status (active/archived/experimental) and disclose it. See the Antagonistic Review Checklist below.
+5. **Save** - Write to `docs/` with a descriptive filename
+6. **Update index** - Add the new deck to `docs/index.html` (see Index Maintenance below)
+7. **Auto-open** - Run `open docs/filename.html` to open in default browser for immediate review
+8. **Wait for approval** - Don't deploy automatically
+9. **Deploy on request** - When user says "deploy" or "ship it", commit and push to GitHub
+
+### Antagonistic Review Checklist
+
+After creating the deck and BEFORE saving, verify each of the following. If any item fails, fix the deck before proceeding.
+
+- [ ] **Every number has a source.** No metric appears without corresponding evidence from the research output. If research said "~45 commits" don't write "45 commits" — preserve the qualifier.
+- [ ] **Timeline dates match git evidence.** Development start/end dates come from actual commit timestamps, not narrative convenience. "7 days" must mean 7 calendar days between first and last commit.
+- [ ] **No round-number inflation.** If the real number is 587, don't write 600. If improvement is 37%, don't write 40%. Round numbers are a red flag — prefer the real number even if it's ugly.
+- [ ] **Impact claims have baselines.** "X% faster" must state: faster than what? Measured how? On what hardware/data? If you can't answer these, downgrade to qualitative language ("significantly faster") or omit.
+- [ ] **Feature status is disclosed.** Every deck states whether the feature is: Active, Experimental, Archived, or Disabled. Check the actual repo/config, don't assume.
+- [ ] **Repository ownership is accurate.** `microsoft/` vs `ramparte/` vs personal repos — state the actual org. Don't imply everything is under one umbrella.
+- [ ] **Contributors are attributed.** If one person wrote 95% of the code, say so. Don't present single-author work as a team effort without evidence of collaboration.
+- [ ] **No self-validating claims.** "Our validation found zero issues" is not evidence of quality. Remove any claims where the tool grades its own homework.
+- [ ] **Narrative doesn't override evidence.** The problem→solution→impact arc is a storytelling tool, not a license to exaggerate. If the evidence supports "useful improvement" don't inflate to "transformative breakthrough."
+- [ ] **Sources slide is present and complete.** Every deck includes the Sources & Methodology slide listing research commands run, data retrieved, and "Data as of" date.
 
 ## Staging Integration Workflow
 
@@ -262,12 +278,13 @@ When creating PDFs or processing existing PDFs:
 
 Every deck should include these elements:
 
-1. **Title slide** - Feature name, one-line description, date
+1. **Title slide** - Feature name, one-line description, date, feature status badge (Active/Experimental/Archived)
 2. **Problem slide** - What pain point does this solve?
 3. **Solution slides** - How it works, with examples
-4. **Impact slide** - Metrics, before/after, real numbers
-5. **Velocity slide** - Repos touched, PRs merged, days of dev time
-6. **CTA slide** - Where to learn more, how to try it
+4. **Impact slide** - Metrics, before/after, real numbers. Every number must cite its source. If no hard data exists, use qualitative language instead of inventing numbers.
+5. **Velocity slide** - Repos touched, PRs merged, days of dev time. All from git evidence. Include primary contributor attribution.
+6. **Sources & Methodology slide** - What research was performed, commands run, data retrieved, "Data as of: [date]". This is the last content slide, before the CTA. See template below.
+7. **CTA slide** - Where to learn more, how to try it
 
 ## Technical Requirements
 

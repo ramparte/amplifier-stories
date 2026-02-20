@@ -2,137 +2,339 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>withamplifier.com - Deep Dive</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>withamplifier.com — Amplifier's Communication Layer</title>
     <style>
         :root {
             --accent: #0078D4;
             --accent-light: #00A4EF;
+            --accent-dim: rgba(0, 120, 212, 0.15);
             --accent-glow: rgba(0, 120, 212, 0.3);
-            --bg: #0a0a0a;
-            --card-bg: rgba(255,255,255,0.05);
-            --card-border: rgba(255,255,255,0.12);
-            --text: #fff;
-            --text-dim: rgba(255,255,255,0.6);
-            --success: #30D158;
-            --warning: #FF9F0A;
+            --bg: #000;
 
-    /* Surface hierarchy (injected by deck-style-fix) */
-    --surface-1: rgba(255,255,255,0.06);
-    --surface-2: rgba(255,255,255,0.10);
-    --surface-3: rgba(255,255,255,0.15);
-    --border-subtle: rgba(255,255,255,0.12);
-    --text-primary: #ffffff;
-    --text-readable: rgba(255,255,255,0.7);
-    --text-muted-floor: rgba(255,255,255,0.5);
-}
-        
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Semantic */
+            --success: #4ADE80;
+            --warning: #FBBF24;
+
+            /* Fluid typography */
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(18px, 3vw, 32px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-small: clamp(12px, 1.5vw, 14px);
+            --font-big-number: clamp(48px, 12vw, 96px);
+
+            /* Fluid spacing */
+            --padding-slide: clamp(24px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
-            color: var(--text);
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .deck {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
             overflow: hidden;
         }
-        
-        .deck { height: 100vh; height: 100dvh; overflow: hidden; }
-        
+
+        /* Core slide — NO justify-content:center by default */
         .slide {
             display: none;
+            flex-direction: column;
             min-height: 100vh;
             min-height: 100dvh;
-            padding: clamp(24px, 5vw, 80px);
-            flex-direction: column;
-            justify-content: center;
+            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
             overflow-y: auto;
+            overflow-x: hidden;
         }
-        
+
         .slide.active { display: flex; }
-        
+
+        /* Centering is OPT-IN for title/short slides only */
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px var(--padding-slide) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        /* Respect reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* ── Typography ── */
         .section-label {
-            font-size: clamp(11px, 1.5vw, 14px);
+            font-size: var(--font-small);
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 3px;
+            letter-spacing: 2px;
             color: var(--accent);
             margin-bottom: 16px;
         }
-        
+
         .headline {
-            font-size: clamp(36px, 8vw, 72px);
+            font-size: var(--font-headline);
             font-weight: 700;
-            letter-spacing: -2px;
+            letter-spacing: clamp(-1px, -0.03em, -2px);
             line-height: 1.1;
             margin-bottom: 24px;
         }
-        
-        .subhead {
-            font-size: clamp(18px, 3vw, 32px);
-            font-weight: 400;
-            color: var(--text-dim);
-            line-height: 1.4;
-        }
-        
-        .body-text {
-            font-size: clamp(14px, 2vw, 18px);
-            line-height: 1.6;
-            color: var(--text-dim);
-        }
-        
-        .title-slide { text-align: center; align-items: center; }
-        
-        .site-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
-            color: #fff;
-            font-size: clamp(12px, 1.5vw, 16px);
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            padding: 12px 32px;
-            border-radius: 100px;
-            margin-bottom: 32px;
-            box-shadow: 0 8px 32px var(--accent-glow);
-        }
-        
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            padding: clamp(20px, 4vw, 32px);
-        }
-        
-        .card-title {
-            font-size: clamp(18px, 3vw, 24px);
+
+        .medium-headline {
+            font-size: var(--font-medium);
             font-weight: 600;
-            margin-bottom: 16px;
+            letter-spacing: -1px;
+            line-height: 1.2;
+            margin-bottom: 32px;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: 900px;
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .highlight { color: var(--accent); }
+
+        /* ── Layout Utilities ── */
+        .grid { display: grid; gap: var(--gap-grid); }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
+        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); }
+        .grid-4 { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
+
+        .mt-16 { margin-top: 16px; }
+        .mt-24 { margin-top: 24px; }
+        .mt-32 { margin-top: 32px; }
+        .mt-48 { margin-top: 48px; }
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card-title {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .card-title-accent {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            margin-bottom: 12px;
             color: var(--accent);
         }
-        
-        .grid-2 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: clamp(16px, 3vw, 32px);
+
+        .card-desc {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
         }
-        
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
-            gap: clamp(16px, 3vw, 24px);
+
+        /* ── Status Badge ── */
+        .status-badge {
+            display: inline-block;
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ADE80;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: var(--font-small);
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
         }
-        
+
+        /* ── Stat Cards ── */
+        .stat-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(24px, 4vw, 40px) clamp(16px, 3vw, 24px);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: var(--font-big-number);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 12px;
+        }
+
+        .stat-source {
+            font-size: clamp(11px, 1.2vw, 13px);
+            color: var(--text-tertiary);
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        /* ── Pipeline Icons ── */
+        .pipeline-icon {
+            font-size: clamp(32px, 6vw, 48px);
+            margin-bottom: 16px;
+            line-height: 1;
+        }
+
+        /* ── Contributors ── */
+        .contributor {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(12px, 2vw, 20px);
+        }
+
+        .contributor-avatar {
+            width: clamp(40px, 6vw, 56px);
+            height: clamp(40px, 6vw, 56px);
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: clamp(16px, 2vw, 22px);
+            flex-shrink: 0;
+        }
+
+        .contributor-info { flex: 1; min-width: 0; }
+
+        .contributor-name {
+            font-weight: 600;
+            font-size: var(--font-body);
+        }
+
+        .contributor-handle {
+            font-size: var(--font-small);
+            color: var(--accent);
+            margin-top: 2px;
+        }
+
+        .contributor-role {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        .contributor-bot .contributor-avatar {
+            background: var(--surface-3);
+            color: var(--text-tertiary);
+        }
+
+        /* ── Quote Block ── */
+        .quote-block {
+            background: linear-gradient(135deg, var(--accent-dim) 0%, transparent 100%);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 clamp(12px, 2vw, 16px) clamp(12px, 2vw, 16px) 0;
+            padding: clamp(16px, 4vw, 32px);
+        }
+
+        .quote-text {
+            font-size: var(--font-subhead);
+            font-style: italic;
+            line-height: 1.4;
+            color: var(--text-primary);
+        }
+
+        /* ── Highlight Box ── */
+        .highlight-box {
+            background: linear-gradient(135deg, var(--accent-dim) 0%, rgba(0, 164, 239, 0.05) 100%);
+            border: 1px solid var(--accent);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 32px);
+        }
+
+        .highlight-box-content {
+            font-size: var(--font-subhead);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* ── Code Block ── */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(11px, 1.5vw, 14px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            color: var(--success);
+        }
+
+        .code-comment { color: var(--text-tertiary); }
+
+        /* ── Bullet List ── */
         .bullet-list { list-style: none; padding-left: 0; }
-        
+
         .bullet-list li {
             position: relative;
             padding-left: 24px;
             margin-bottom: 12px;
-            font-size: clamp(14px, 2vw, 18px);
-            color: var(--text-dim);
+            font-size: var(--font-body);
+            color: var(--text-secondary);
             line-height: 1.5;
         }
-        
+
         .bullet-list li::before {
             content: '';
             position: absolute;
@@ -143,127 +345,104 @@
             background: var(--accent);
             border-radius: 50%;
         }
-        
-        .quote-block {
-            background: linear-gradient(135deg, rgba(0, 120, 212, 0.1) 0%, transparent 100%);
-            border-left: 4px solid var(--accent);
-            border-radius: 0 16px 16px 0;
-            padding: clamp(20px, 4vw, 32px);
-            margin: 24px 0;
-        }
-        
-        .quote-text {
-            font-size: clamp(18px, 3vw, 28px);
-            font-style: italic;
-            line-height: 1.4;
-            color: var(--text);
-        }
-        
-        .highlight-box {
-            background: linear-gradient(135deg, rgba(0, 120, 212, 0.15) 0%, rgba(0, 164, 239, 0.05) 100%);
-            border: 1px solid var(--accent);
-            border-radius: 16px;
-            padding: clamp(20px, 4vw, 32px);
-            margin-top: 24px;
-        }
-        
-        .code-block {
-            background: rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 20px;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: clamp(12px, 1.5vw, 14px);
-            overflow-x: auto;
-            color: var(--success);
-        }
-        
-        .timeline {
-            position: relative;
-            padding-left: 32px;
-        }
-        
-        .timeline::before {
-            content: '';
-            position: absolute;
-            left: 8px;
-            top: 8px;
-            bottom: 8px;
-            width: 2px;
-            background: linear-gradient(to bottom, var(--accent), var(--accent-light));
-        }
-        
-        .timeline-item {
-            position: relative;
-            margin-bottom: 32px;
-        }
-        
-        .timeline-item::before {
-            content: '';
-            position: absolute;
-            left: -28px;
-            top: 8px;
-            width: 12px;
-            height: 12px;
-            background: var(--accent);
-            border-radius: 50%;
-            box-shadow: 0 0 12px var(--accent-glow);
-        }
-        
-        .timeline-date {
-            font-size: clamp(11px, 1.5vw, 13px);
+
+        /* ── Repo Cards ── */
+        .repo-name {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--font-body);
             color: var(--accent);
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
             margin-bottom: 4px;
         }
-        
-        .timeline-title {
-            font-size: clamp(16px, 2.5vw, 22px);
-            font-weight: 600;
+
+        .repo-owner {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
             margin-bottom: 8px;
         }
-        
-        .timeline-desc {
+
+        /* ── Sources Slide ── */
+        .sources-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        .sources-card p { margin-bottom: 8px; }
+
+        .sources-card ul {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 12px;
+        }
+
+        .sources-card li {
+            padding-left: 20px;
+            position: relative;
+            margin-bottom: 4px;
+            line-height: 1.6;
+        }
+
+        .sources-card li::before {
+            content: '›';
+            position: absolute;
+            left: 4px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .sources-card code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(11px, 1.3vw, 13px);
+            background: rgba(255,255,255,0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .sources-heading {
             font-size: clamp(14px, 2vw, 16px);
-            color: var(--text-dim);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .sources-heading:first-child { margin-top: 0; }
+
+        .gap-color { color: var(--warning); }
+
+        /* ── Impact List ── */
+        .impact-item {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .impact-icon {
+            font-size: clamp(28px, 5vw, 40px);
+            margin-bottom: 12px;
+            line-height: 1;
+        }
+
+        .impact-title {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .impact-desc {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
             line-height: 1.5;
         }
-        
-        .collaborator {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px;
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-        }
-        
-        .collaborator-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 18px;
-        }
-        
-        .collaborator-name {
-            font-weight: 600;
-            margin-bottom: 2px;
-        }
-        
-        .collaborator-role {
-            font-size: 13px;
-            color: var(--text-dim);
-        }
-        
-        /* Navigation */
+
+        /* ── Navigation ── */
         .nav-dots {
             position: fixed;
             bottom: 24px;
@@ -273,7 +452,7 @@
             gap: 8px;
             z-index: 100;
         }
-        
+
         .nav-dot {
             width: 8px;
             height: 8px;
@@ -281,327 +460,455 @@
             background: rgba(255,255,255,0.3);
             cursor: pointer;
             transition: all 0.3s ease;
+            border: none;
+            padding: 0;
         }
-        
+
         .nav-dot.active {
             background: var(--accent);
             box-shadow: 0 0 12px var(--accent-glow);
         }
-        
+
         .slide-counter {
             position: fixed;
             bottom: 24px;
             right: 32px;
             font-size: 14px;
-            color: rgba(255,255,255,0.4);
+            color: var(--text-tertiary);
             font-family: 'SF Mono', monospace;
             z-index: 100;
         }
-        
-        .back-link {
+
+        .nav-hint {
             position: fixed;
-            top: 24px;
+            bottom: 24px;
             left: 32px;
-            font-size: 14px;
-            color: var(--text-dim);
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 52px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
             text-decoration: none;
             z-index: 100;
             transition: color 0.3s ease;
+            white-space: nowrap;
         }
-        
-        .back-link:hover { color: var(--accent); }
-        
-        .click-zone {
-            position: fixed;
-            top: 0;
-            bottom: 80px;
-            width: 15%;
-            cursor: pointer;
-            z-index: 50;
-        }
-        
-        .click-zone.left { left: 0; }
-        .click-zone.right { right: 0; }
+
+        .more-stories:hover { color: var(--accent); }
     </style>
 </head>
 <body>
-    <a href="00-master-overview.html" class="back-link">← Back to Overview</a>
-    
     <div class="deck">
-        
+
         <!-- Slide 1: Title -->
-        <div class="slide title-slide active" data-slide="1">
-            <div class="site-badge">Strategic Communication</div>
+        <section class="slide center active" data-slide="0">
+            <div class="status-badge">&#9679; Active</div>
             <h1 class="headline">withamplifier.com</h1>
-            <p class="subhead" style="max-width: 700px;">
-                Not just a website—<span style="color: var(--accent);">the communication layer</span> for everything we do with Amplifier.
+            <p class="subhead">
+                Not just a website&mdash;<span class="highlight">the communication layer</span> for everything built with Amplifier.
             </p>
-        </div>
-        
-        <!-- Slide 2: The Strategic Purpose -->
-        <div class="slide" data-slide="2">
-            <div class="section-label">Why It Matters</div>
-            <h2 class="headline">The Communication Layer</h2>
-            <div class="grid-2" style="margin-top: 24px;">
+        </section>
+
+        <!-- Slide 2: Problem -->
+        <section class="slide" data-slide="1">
+            <div class="section-label">The Problem</div>
+            <h2 class="medium-headline">Great Work, Invisible Impact</h2>
+            <div class="grid grid-2">
                 <div>
                     <div class="quote-block">
-                        <div class="quote-text">"Every artifact, every story, every presentation we create needs a home. withamplifier.com is that home."</div>
+                        <div class="quote-text">Amplifier sessions produce real outcomes&mdash;but without a surface layer, that work stays invisible to the people who need to see it.</div>
                     </div>
-                    <div class="body-text" style="margin-top: 24px;">
-                        As Amplifier grows, so does the need to communicate what it does, what's being built with it, and why it matters. This site becomes the central touchpoint for all of that communication—internally and externally.
-                    </div>
+                    <p class="body-text mt-24">
+                        Presentations, case studies, feature showcases, and team updates are created constantly. They need a home that&rsquo;s accessible, shareable, and always current.
+                    </p>
                 </div>
                 <div class="card">
-                    <div class="card-title">Strategic Functions</div>
+                    <div class="card-title-accent">What Was Missing</div>
                     <ul class="bullet-list">
-                        <li><strong>Showcase:</strong> Presentations, stories, and work created with Amplifier</li>
-                        <li><strong>Coordinate:</strong> Team visibility into what's being built</li>
-                        <li><strong>Automate:</strong> Pipeline from sessions to published stories</li>
-                        <li><strong>Evangelize:</strong> External-facing proof of what's possible</li>
+                        <li>No central place to showcase Amplifier-built work</li>
+                        <li>No automated path from session output to published content</li>
+                        <li>No external-facing proof of capabilities</li>
+                        <li>No team coordination surface for narratives</li>
                     </ul>
                 </div>
             </div>
-        </div>
-        
-        <!-- Slide 3: The Vision -->
-        <div class="slide" data-slide="3">
+        </section>
+
+        <!-- Slide 3: Vision — Session → Story → Site -->
+        <section class="slide" data-slide="2">
             <div class="section-label">The Vision</div>
-            <h2 class="headline" style="margin-bottom: 32px;">Session → Story → Site</h2>
-            <div class="grid-3">
-                <div class="card" style="text-align: center;">
-                    <div style="font-size: 48px; margin-bottom: 16px;">💬</div>
-                    <div class="card-title" style="color: var(--text);">Sessions</div>
-                    <div class="body-text">Work happens in Amplifier sessions—conversations, code, decisions, outcomes.</div>
+            <h2 class="medium-headline">Session &rarr; Story &rarr; Site</h2>
+            <div class="grid grid-3">
+                <div class="card text-center">
+                    <div class="pipeline-icon">&#128172;</div>
+                    <div class="card-title">Sessions</div>
+                    <div class="card-desc">Work happens in Amplifier sessions&mdash;conversations, code, decisions, outcomes.</div>
                 </div>
-                <div class="card" style="text-align: center;">
-                    <div style="font-size: 48px; margin-bottom: 16px;">📖</div>
-                    <div class="card-title" style="color: var(--text);">Stories</div>
-                    <div class="body-text">Stories bundle transforms sessions into compelling narratives and presentations.</div>
+                <div class="card text-center">
+                    <div class="pipeline-icon">&#128214;</div>
+                    <div class="card-title">Stories</div>
+                    <div class="card-desc">The stories bundle transforms sessions into compelling narratives and presentations.</div>
                 </div>
-                <div class="card" style="text-align: center;">
-                    <div style="font-size: 48px; margin-bottom: 16px;">🌐</div>
-                    <div class="card-title" style="color: var(--text);">Site</div>
-                    <div class="body-text">withamplifier.com publishes and hosts stories for team and public consumption.</div>
-                </div>
-            </div>
-            <div class="highlight-box" style="text-align: center; margin-top: 32px;">
-                <div style="font-size: clamp(16px, 2.5vw, 22px); color: var(--text);">
-                    <strong>The Goal:</strong> Automated content pipeline from work to publication
+                <div class="card text-center">
+                    <div class="pipeline-icon">&#127760;</div>
+                    <div class="card-title">Site</div>
+                    <div class="card-desc">withamplifier.com publishes and hosts stories for team and public consumption.</div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Slide 4: Technical Work This Week -->
-        <div class="slide" data-slide="4">
-            <div class="section-label">This Week</div>
-            <h2 class="headline" style="margin-bottom: 32px;">Technical Progress</h2>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <div class="timeline-date">Animation System</div>
-                    <div class="timeline-title">Typewriter Scroll Sync</div>
-                    <div class="timeline-desc">Implemented fade-in per line approach (Option A) for the typewriter animation, ensuring smooth scroll synchronization as content reveals.</div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-date">Visual Polish</div>
-                    <div class="timeline-title">Dark Theme Particle Fix</div>
-                    <div class="timeline-desc">Fixed depth-obsidian theme opacity issue that was preventing background particles from being visible. Subtle but important atmospheric detail.</div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-date">Automation</div>
-                    <div class="timeline-title">GitHub Workflow Created</div>
-                    <div class="timeline-desc">Built <code style="color: var(--success);">sync-presentations.yml</code> workflow to automatically sync presentation decks from the stories repository.</div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-date">SEO & Social</div>
-                    <div class="timeline-title">Preview Optimization</div>
-                    <div class="timeline-desc">Optimized social media previews—thumbnails, favicons, meta tags for proper unfurling on Teams, Slack, Twitter.</div>
-                </div>
+            <div class="highlight-box mt-32 text-center">
+                <div class="highlight-box-content">The Goal: automated content pipeline from work to publication</div>
             </div>
-        </div>
-        
-        <!-- Slide 5: The Automation Pipeline -->
-        <div class="slide" data-slide="5">
-            <div class="section-label">Infrastructure</div>
-            <h2 class="headline" style="margin-bottom: 24px;">Sync Pipeline</h2>
-            <div class="code-block" style="margin-bottom: 24px;">
-# .github/workflows/sync-presentations.yml
+        </section>
 
-name: Sync Presentations from Stories
-on:
-  repository_dispatch:
-    types: [new-presentation]
-  schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+        <!-- Slide 4: Architecture — Repo Ecosystem & Automation -->
+        <section class="slide" data-slide="3">
+            <div class="section-label">Architecture</div>
+            <h2 class="medium-headline">Repo Ecosystem &amp; Automation</h2>
+            <div class="grid grid-2">
+                <div>
+                    <div class="card">
+                        <div class="card-title-accent">3+ Repositories</div>
+                        <div class="card mt-16">
+                            <div class="repo-name">anderlpz/withamplifier</div>
+                            <div class="repo-owner">Primary site &bull; 100+ commits</div>
+                            <div class="card-desc">Production site for withamplifier.com, with automated deployment pipeline.</div>
+                        </div>
+                        <div class="card mt-16">
+                            <div class="repo-name">anderlpz/withamplifier-preview</div>
+                            <div class="repo-owner">Staging environment</div>
+                            <div class="card-desc">Preview and review site before production pushes.</div>
+                        </div>
+                        <div class="card mt-16">
+                            <div class="repo-name">momuno/withamplifier-narrative</div>
+                            <div class="repo-owner">Content &amp; narrative planning</div>
+                            <div class="card-desc">Narrative strategy and content coordination, created Feb 18, 2026.</div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="card">
+                        <div class="card-title-accent">Sync Pipeline</div>
+                        <div class="code-block"><span class="code-comment"># Automated deployment flow</span>
+<span class="code-comment"># 109 commits from github-actions[bot]</span>
 
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Fetch from amplifier-stories
-        run: |
-          # Pull latest presentations
-          # Copy to site/presentations/
-          # Commit and push
-            </div>
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-title">Trigger Sources</div>
-                    <ul class="bullet-list">
-                        <li>Repository dispatch (real-time)</li>
-                        <li>Scheduled sync (every 6 hours)</li>
-                        <li>Manual workflow dispatch</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <div class="card-title">What Gets Synced</div>
-                    <ul class="bullet-list">
-                        <li>HTML presentation decks</li>
-                        <li>Supporting assets (images, CSS)</li>
-                        <li>Index/manifest updates</li>
-                    </ul>
+amplifier-stories/docs/
+  &rarr; sync to withamplifier.com
+  &rarr; automated via GitHub Actions
+  &rarr; repository_dispatch + schedule
+
+<span class="code-comment"># Triggers:</span>
+- repository_dispatch (real-time)
+- scheduled sync (periodic)
+- manual workflow dispatch</div>
+                    </div>
+                    <div class="card mt-16">
+                        <div class="card-title">What Gets Synced</div>
+                        <ul class="bullet-list">
+                            <li>HTML presentation decks</li>
+                            <li>Supporting assets and images</li>
+                            <li>Index and manifest updates</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Slide 6: Team Coordination -->
-        <div class="slide" data-slide="6">
+        </section>
+
+        <!-- Slide 5: Team & Contributors -->
+        <section class="slide" data-slide="4">
             <div class="section-label">Collaboration</div>
-            <h2 class="headline" style="margin-bottom: 32px;">Team Coordination</h2>
-            <p class="subhead" style="margin-bottom: 32px;">This week involved significant coordination with team members on priorities and direction.</p>
-            <div class="grid-3">
-                <div class="collaborator">
-                    <div class="collaborator-avatar">B</div>
-                    <div>
-                        <div class="collaborator-name">Brian</div>
-                        <div class="collaborator-role">Content strategy & automation planning</div>
+            <h2 class="medium-headline">Team &amp; Contributors</h2>
+            <p class="subhead">Three people coordinating site development, content strategy, and technical implementation.</p>
+            <div class="grid grid-2 mt-32">
+                <div class="contributor">
+                    <div class="contributor-avatar">A</div>
+                    <div class="contributor-info">
+                        <div class="contributor-name">Anderson Lopez</div>
+                        <div class="contributor-handle">anderlpz &bull; 2 commits</div>
+                        <div class="contributor-role">Repo owner, site development lead</div>
                     </div>
                 </div>
-                <div class="collaborator">
-                    <div class="collaborator-avatar">M</div>
-                    <div>
-                        <div class="collaborator-name">Mollie</div>
-                        <div class="collaborator-role">Site priorities & feature alignment</div>
+                <div class="contributor">
+                    <div class="contributor-avatar">S</div>
+                    <div class="contributor-info">
+                        <div class="contributor-name">Samuel Lee</div>
+                        <div class="contributor-handle">samueljklee &bull; 8 commits</div>
+                        <div class="contributor-role">Technical contributions</div>
                     </div>
                 </div>
-                <div class="collaborator">
-                    <div class="collaborator-avatar">S</div>
-                    <div>
-                        <div class="collaborator-name">Samuel</div>
-                        <div class="collaborator-role">Technical coordination</div>
+                <div class="contributor">
+                    <div class="contributor-avatar">M</div>
+                    <div class="contributor-info">
+                        <div class="contributor-name">Mollie</div>
+                        <div class="contributor-handle">momuno &bull; narrative repo</div>
+                        <div class="contributor-role">Narrative &amp; content planning</div>
+                    </div>
+                </div>
+                <div class="contributor contributor-bot">
+                    <div class="contributor-avatar">&#9881;</div>
+                    <div class="contributor-info">
+                        <div class="contributor-name">github-actions[bot]</div>
+                        <div class="contributor-handle">109 commits (automated)</div>
+                        <div class="contributor-role">CI/CD deployment pipeline</div>
                     </div>
                 </div>
             </div>
-            <div class="highlight-box" style="margin-top: 32px;">
-                <div class="card-title" style="color: var(--warning); margin-bottom: 12px;">Team Feedback Analyzed</div>
-                <div class="body-text" style="color: var(--text);">
-                    Reviewed internal team feedback on Amplifier CLI behaviors this week. This informs both the site experience and the underlying tools we're building.
+            <div class="highlight-box mt-32 text-center">
+                <div class="highlight-box-content">Human vision, automated execution</div>
+            </div>
+        </section>
+
+        <!-- Slide 6: Impact -->
+        <section class="slide" data-slide="5">
+            <div class="section-label">Impact</div>
+            <h2 class="medium-headline">What the Site Enables</h2>
+            <div class="grid grid-2">
+                <div class="impact-item">
+                    <div class="impact-icon">&#128218;</div>
+                    <div class="impact-title">Living Showcase</div>
+                    <div class="impact-desc">Not a static page&mdash;a continuously updated showcase of what Amplifier produces. Every new story deck becomes visible automatically.</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-icon">&#9889;</div>
+                    <div class="impact-title">Automated Publishing</div>
+                    <div class="impact-desc">Content flows from creation to publication without manual deployment steps. The 109 automated commits demonstrate this pipeline in action.</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-icon">&#128101;</div>
+                    <div class="impact-title">Team Coordination</div>
+                    <div class="impact-desc">A shared surface for Anderson, Samuel, and Mollie to coordinate across site development, technical work, and narrative strategy.</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-icon">&#127758;</div>
+                    <div class="impact-title">External Proof</div>
+                    <div class="impact-desc">The approachable public presence for Amplifier. Makes internal capabilities visible and shareable with anyone outside the project.</div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Slide 7: By The Numbers -->
-        <div class="slide" data-slide="7">
-            <div class="section-label">This Week</div>
-            <h2 class="headline" style="margin-bottom: 32px;">By The Numbers</h2>
-            <div class="grid-3">
-                <div class="card" style="text-align: center; padding: 40px 20px;">
-                    <div style="font-size: clamp(48px, 10vw, 72px); font-weight: 700; color: var(--accent); line-height: 1;">4</div>
-                    <div style="font-size: 14px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 8px;">Sessions</div>
+        </section>
+
+        <!-- Slide 7: Velocity -->
+        <section class="slide" data-slide="6">
+            <div class="section-label">Velocity</div>
+            <h2 class="medium-headline">Development Momentum</h2>
+            <div class="grid grid-3">
+                <div class="stat-card">
+                    <div class="stat-number">100+</div>
+                    <div class="stat-label">Total Commits</div>
+                    <div class="stat-source">GitHub API, paginated results</div>
                 </div>
-                <div class="card" style="text-align: center; padding: 40px 20px;">
-                    <div style="font-size: clamp(48px, 10vw, 72px); font-weight: 700; color: var(--accent); line-height: 1;">94+</div>
-                    <div style="font-size: 14px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 8px;">Conversation Turns</div>
+                <div class="stat-card">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">Human Contributors</div>
+                    <div class="stat-source">anderlpz, samueljklee, momuno</div>
                 </div>
-                <div class="card" style="text-align: center; padding: 40px 20px;">
-                    <div style="font-size: clamp(48px, 10vw, 72px); font-weight: 700; color: var(--accent); line-height: 1;">1</div>
-                    <div style="font-size: 14px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 8px;">GitHub Workflow</div>
+                <div class="stat-card">
+                    <div class="stat-number">~5</div>
+                    <div class="stat-label">Weeks of Development</div>
+                    <div class="stat-source">Jan 14 &ndash; Feb 20, 2026</div>
                 </div>
             </div>
-            <div class="quote-block" style="margin-top: 32px;">
-                <div class="quote-text" style="font-size: clamp(16px, 2.5vw, 24px);">"94 turns coordinating vision with execution—that's what strategic work looks like with AI."</div>
-            </div>
-        </div>
-        
-        <!-- Slide 8: What's Next -->
-        <div class="slide" data-slide="8">
-            <div class="section-label">Looking Ahead</div>
-            <h2 class="headline" style="margin-bottom: 32px;">Next Steps</h2>
-            <div class="grid-2">
+            <div class="grid grid-2 mt-32">
                 <div class="card">
-                    <div class="card-title">Immediate</div>
+                    <div class="card-title-accent">Timeline</div>
                     <ul class="bullet-list">
-                        <li>Launch preparation</li>
-                        <li>Content seeding—initial presentations</li>
-                        <li>Team review and feedback cycle</li>
-                        <li>Performance optimization</li>
+                        <li><strong>Jan 14, 2026:</strong> withamplifier repo created</li>
+                        <li><strong>Jan 14, 2026:</strong> Preview site repo created</li>
+                        <li><strong>Jan 31, 2026:</strong> Content workflow planning begins</li>
+                        <li><strong>Feb 18, 2026:</strong> Narrative planning repo created</li>
+                        <li><strong>Feb 20, 2026:</strong> Latest update (today)</li>
                     </ul>
                 </div>
                 <div class="card">
-                    <div class="card-title">Future Vision</div>
+                    <div class="card-title-accent">Automation Signal</div>
+                    <p class="body-text">
+                        Of 100+ total commits, <strong>109 came from github-actions[bot]</strong>&mdash;the automated deployment pipeline accounts for the majority of repository activity. This is a feature, not an anomaly: it means the CI/CD pipeline is doing its job.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 8: What's Next -->
+        <section class="slide" data-slide="7">
+            <div class="section-label">Looking Ahead</div>
+            <h2 class="medium-headline">Next Steps</h2>
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-title-accent">Immediate</div>
+                    <ul class="bullet-list">
+                        <li>Content seeding with initial presentations</li>
+                        <li>Team review and feedback cycle</li>
+                        <li>Performance optimization pass</li>
+                        <li>Social preview and SEO polish</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <div class="card-title-accent">Future Vision</div>
                     <ul class="bullet-list">
                         <li>Automated story generation from sessions</li>
-                        <li>Team activity feeds</li>
+                        <li>Team activity feeds and dashboards</li>
                         <li>Public showcase of Amplifier capabilities</li>
-                        <li>Integration with EXO Protocol concepts</li>
+                        <li>EXO Protocol integration (conceptual&mdash;status unknown)</li>
                     </ul>
                 </div>
             </div>
-            <div class="highlight-box" style="text-align: center; margin-top: 32px;">
-                <div style="font-size: clamp(18px, 3vw, 24px); color: var(--text); font-weight: 600;">
-                    The site is the surface. The pipeline is the power.
+            <div class="highlight-box mt-32 text-center">
+                <div class="highlight-box-content">The site is the surface. The pipeline is the power.</div>
+            </div>
+        </section>
+
+        <!-- Slide 9: Sources & Methodology -->
+        <section class="slide" data-slide="8">
+            <div class="section-label">Appendix</div>
+            <h2 class="medium-headline">Sources &amp; Methodology</h2>
+            <div class="grid grid-2">
+                <div class="sources-card">
+                    <div class="sources-heading">Data as of</div>
+                    <p>February 20, 2026</p>
+
+                    <div class="sources-heading">Feature Status</div>
+                    <p>Active (last updated Feb 20, 2026)</p>
+
+                    <div class="sources-heading">Research Commands</div>
+                    <ul>
+                        <li><code>gh api repos/anderlpz/withamplifier</code> &rarr; repo metadata</li>
+                        <li><code>gh api repos/anderlpz/withamplifier/commits?per_page=100</code> &rarr; 100+ commits (paginated)</li>
+                        <li><code>gh api repos/anderlpz/withamplifier/contributors</code> &rarr; contributor breakdown</li>
+                        <li><code>gh search repos withamplifier</code> &rarr; ecosystem repo discovery</li>
+                        <li><code>gh api repos/momuno/withamplifier-narrative</code> &rarr; narrative repo metadata</li>
+                        <li><code>gh api repos/anderlpz/withamplifier-preview</code> &rarr; preview repo metadata</li>
+                    </ul>
+                </div>
+                <div class="sources-card">
+                    <div class="sources-heading">Key Numbers</div>
+                    <ul>
+                        <li><strong>100+ commits</strong> &mdash; first page returned 100; at least that many since Feb 2</li>
+                        <li><strong>109 automated commits</strong> &mdash; github-actions[bot] contributor count</li>
+                        <li><strong>8 commits</strong> &mdash; samueljklee contributor count</li>
+                        <li><strong>2 commits</strong> &mdash; anderlpz contributor count</li>
+                        <li><strong>3+ repos</strong> &mdash; withamplifier, withamplifier-preview, withamplifier-narrative, plus outline-recipe-work</li>
+                    </ul>
+
+                    <div class="sources-heading gap-color">Known Gaps</div>
+                    <ul>
+                        <li>No local repo clone available&mdash;tech stack unverified</li>
+                        <li>Exact total commit count unknown (API pagination limit)</li>
+                        <li>Previous deck claimed &ldquo;4 sessions, 94+ turns&rdquo;&mdash;unverifiable from git data</li>
+                        <li>EXO Protocol integration status unknown</li>
+                    </ul>
                 </div>
             </div>
-        </div>
-        
+        </section>
+
+        <!-- Slide 10: CTA -->
+        <section class="slide center" data-slide="9">
+            <div class="section-label">Get Involved</div>
+            <h2 class="headline">Explore the Site</h2>
+            <p class="subhead">
+                withamplifier.com is a living showcase&mdash;check it out, contribute content, and help shape Amplifier&rsquo;s public presence.
+            </p>
+            <div class="grid grid-3 mt-48 text-left">
+                <div class="card">
+                    <div class="card-title">Visit the Site</div>
+                    <div class="card-desc">See what&rsquo;s live at <span class="highlight">withamplifier.com</span> and explore published stories.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Create Stories</div>
+                    <div class="card-desc">Use the <span class="highlight">stories bundle</span> to turn your sessions into publishable content.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Shape the Narrative</div>
+                    <div class="card-desc">Coordinate with the team on what stories to tell and how to tell them.</div>
+                </div>
+            </div>
+        </section>
+
     </div>
-    
+
     <!-- Navigation -->
-    <div class="nav-dots" id="navDots"></div>
-    <div class="slide-counter" id="slideCounter">1 / 8</div>
-    <div class="click-zone left" onclick="prevSlide()"></div>
-    <div class="click-zone right" onclick="nextSlide()"></div>
-    
+    <div class="nav-dots"></div>
+    <div class="slide-counter">1 / 10</div>
+    <div class="nav-hint">&larr; &rarr; or click to navigate</div>
+
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
     <script>
-        let currentSlide = 1;
-        const totalSlides = 8;
-        
-        function showSlide(n) {
-            if (n < 1) n = 1;
-            if (n > totalSlides) n = totalSlides;
-            currentSlide = n;
-            
-            document.querySelectorAll('.slide').forEach(slide => slide.classList.remove('active'));
-            document.querySelector(`[data-slide="${n}"]`).classList.add('active');
-            
-            document.querySelectorAll('.nav-dot').forEach((dot, i) => {
-                dot.classList.toggle('active', i + 1 === n);
-            });
-            
-            document.getElementById('slideCounter').textContent = `${n} / ${totalSlides}`;
-        }
-        
-        function nextSlide() { showSlide(currentSlide + 1); }
-        function prevSlide() { showSlide(currentSlide - 1); }
-        
-        const navDots = document.getElementById('navDots');
-        for (let i = 1; i <= totalSlides; i++) {
+        const slides = document.querySelectorAll('.slide');
+        const navDots = document.querySelector('.nav-dots');
+        const counter = document.querySelector('.slide-counter');
+        let currentSlide = 0;
+
+        // Create nav dots
+        slides.forEach((_, i) => {
             const dot = document.createElement('div');
-            dot.className = 'nav-dot' + (i === 1 ? ' active' : '');
-            dot.onclick = () => showSlide(i);
+            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+            dot.onclick = () => goToSlide(i);
             navDots.appendChild(dot);
-        }
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
-            else if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
         });
-        
+
+        function goToSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            navDots.children[currentSlide].classList.remove('active');
+
+            currentSlide = (n + slides.length) % slides.length;
+
+            slides[currentSlide].classList.add('active');
+            navDots.children[currentSlide].classList.add('active');
+            slides[currentSlide].scrollTop = 0;
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                goToSlide(currentSlide + 1);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                goToSlide(currentSlide - 1);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                goToSlide(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                goToSlide(slides.length - 1);
+            }
+        });
+
+        // Click navigation (left/right halves, avoid nav elements)
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav-dots')) return;
+            if (e.target.closest('.more-stories')) return;
+            if (e.target.closest('a')) return;
+            const x = e.clientX / window.innerWidth;
+            if (x < 0.3) {
+                goToSlide(currentSlide - 1);
+            } else if (x > 0.7) {
+                goToSlide(currentSlide + 1);
+            }
+        });
+
+        // Touch/swipe navigation
         let touchStartX = 0;
-        document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-        document.addEventListener('touchend', e => {
-            const diff = touchStartX - e.changedTouches[0].screenX;
-            if (Math.abs(diff) > 50) { diff > 0 ? nextSlide() : prevSlide(); }
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goToSlide(currentSlide + 1);
+                else goToSlide(currentSlide - 1);
+            }
         }, { passive: true });
     </script>
 </body>

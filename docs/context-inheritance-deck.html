@@ -2,434 +2,395 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Context Inheritance - Smarter Agent Delegation</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --accent: #5856D6;
+            --accent-light: #8884FF;
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-small: clamp(12px, 1.5vw, 14px);
+            --font-code: clamp(12px, 1.8vw, 15px);
+            --padding-slide: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
             background: #000;
-            color: #fff;
+            color: var(--text-primary);
             overflow: hidden;
-            height: 100vh;
+            overscroll-behavior: none;
         }
 
-        .deck {
-            height: 100vh;
-            position: relative;
-        }
-
+        /* Slide layout — NO justify-content: center by default */
         .slide {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 60px 80px;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.5s ease, visibility 0.5s ease;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
-        .slide.active {
-            opacity: 1;
-            visibility: visible;
+        .slide.active { display: flex; }
+
+        /* Centering is OPT-IN for title/short slides only */
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
         }
 
         /* Typography */
         .section-label {
-            font-size: 14px;
+            font-size: var(--font-small);
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 3px;
-            color: #0A84FF;
-            margin-bottom: 20px;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: clamp(12px, 2vw, 20px);
         }
 
         .headline {
-            font-size: 72px;
+            font-size: var(--font-headline);
             font-weight: 700;
-            letter-spacing: -3px;
-            line-height: 1.05;
-            text-align: center;
+            letter-spacing: clamp(-1px, -0.03em, -2px);
+            line-height: 1.1;
             max-width: 1000px;
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: clamp(-0.5px, -0.02em, -1px);
+            line-height: 1.15;
+            margin-bottom: clamp(24px, 4vw, 48px);
         }
 
         .subhead {
-            font-size: 28px;
+            font-size: var(--font-subhead);
             font-weight: 400;
-            color: rgba(255,255,255,0.6);
-            margin-top: 24px;
-            text-align: center;
+            color: var(--text-secondary);
+            margin-top: clamp(16px, 3vw, 24px);
             max-width: 700px;
         }
 
-        .slide-title {
-            font-size: 56px;
-            font-weight: 700;
-            letter-spacing: -2px;
-            margin-bottom: 48px;
-            text-align: center;
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
         }
 
-        /* Content layouts */
-        .content-centered {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            max-width: 1000px;
+        .small-text {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
         }
 
-        .content-left {
-            align-items: flex-start;
-            text-align: left;
+        /* Utility classes to avoid inline styles */
+        .mt-sm { margin-top: clamp(12px, 2vw, 20px); }
+        .mt-md { margin-top: clamp(16px, 3vw, 24px); }
+        .mt-lg { margin-top: clamp(24px, 4vw, 40px); }
+        .text-center { text-align: center; }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            padding: clamp(4px, 0.5vw, 6px) clamp(10px, 1.5vw, 16px);
+            border-radius: 100px;
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: clamp(16px, 3vw, 24px);
+        }
+
+        .status-active {
+            background: rgba(48,209,88,0.15);
+            color: #30D158;
+            border: 1px solid rgba(48,209,88,0.3);
+        }
+
+        /* Grids */
+        .split {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
             width: 100%;
             max-width: 1100px;
         }
 
-        /* Problem slide */
-        .problem-visual {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 40px;
-            margin-top: 40px;
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+            max-width: 1100px;
         }
 
-        .agent-box {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 16px;
-            padding: 32px 48px;
-            text-align: center;
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
         }
 
-        .agent-box.parent {
-            border-color: #0A84FF;
-        }
-
-        .agent-box.child {
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .agent-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-        }
-
-        .agent-label {
-            font-size: 20px;
+        .card h3 {
+            color: var(--text-primary);
+            font-size: var(--font-body);
             font-weight: 600;
-            color: rgba(255,255,255,0.8);
+            margin-bottom: clamp(6px, 1vw, 10px);
         }
 
-        .agent-status {
-            font-size: 14px;
-            color: rgba(255,255,255,0.4);
-            margin-top: 8px;
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--font-small);
+            line-height: 1.5;
         }
 
-        .arrow-broken {
-            font-size: 48px;
-            color: #FF453A;
-            position: relative;
-        }
-
-        .arrow-broken::after {
-            content: '✗';
-            position: absolute;
-            top: -10px;
-            right: -15px;
-            font-size: 20px;
-        }
+        .card-accent { border-color: var(--accent); }
 
         /* Code blocks */
         .code-block {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 12px;
-            padding: 28px 32px;
-            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-            font-size: 16px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(8px, 1.5vw, 12px);
+            padding: clamp(12px, 3vw, 24px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--font-code);
             line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             width: 100%;
             max-width: 900px;
             text-align: left;
         }
 
-        .code-block.small {
-            font-size: 14px;
-            padding: 20px 24px;
-        }
+        .code-comment { color: var(--text-tertiary); }
+        .code-keyword { color: #FF7AC6; }
+        .code-string { color: #30D158; }
+        .code-function { color: var(--accent-light); }
+        .code-param { color: #FFD60A; }
 
-        .code-comment {
-            color: rgba(255,255,255,0.35);
-        }
-
-        .code-keyword {
-            color: #FF7AC6;
-        }
-
-        .code-string {
-            color: #30D158;
-        }
-
-        .code-function {
-            color: #0A84FF;
-        }
-
-        .code-param {
-            color: #FFD60A;
-        }
-
-        /* Before/After comparison */
+        /* Comparison layout */
         .comparison {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--gap-grid);
             width: 100%;
-            max-width: 1200px;
+            max-width: 1100px;
         }
 
         .comparison-card {
-            background: rgba(255,255,255,0.03);
-            border-radius: 16px;
-            padding: 32px;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .comparison-card.before {
-            border-color: rgba(255,69,58,0.3);
-        }
-
-        .comparison-card.after {
-            border-color: rgba(48,209,88,0.3);
+            background: var(--surface-1);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+            border: 1px solid var(--border-subtle);
         }
 
         .comparison-label {
-            font-size: 14px;
+            font-size: var(--font-small);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 2px;
-            margin-bottom: 20px;
+            margin-bottom: clamp(12px, 2vw, 20px);
         }
 
-        .comparison-card.before .comparison-label {
-            color: #FF453A;
-        }
+        .label-before { color: #FF453A; }
+        .label-after { color: #30D158; }
+        .border-before { border-color: rgba(255,69,58,0.3); }
+        .border-after { border-color: rgba(48,209,88,0.3); }
 
-        .comparison-card.after .comparison-label {
-            color: #30D158;
-        }
-
-        /* Table styles */
-        .mode-table {
+        /* Inline tables inside cards */
+        .param-table {
             width: 100%;
-            max-width: 1000px;
-            border-collapse: collapse;
-            margin-top: 32px;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: clamp(8px, 1.5vw, 14px);
         }
 
-        .mode-table th,
-        .mode-table td {
-            padding: 20px 24px;
-            text-align: left;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+        .param-table td {
+            padding: clamp(8px, 1vw, 12px) 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            vertical-align: top;
         }
 
-        .mode-table th {
-            font-size: 13px;
+        .param-table tr:last-child td { border-bottom: none; }
+
+        .param-table td:first-child {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            color: var(--accent);
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: rgba(255,255,255,0.5);
+            font-size: var(--font-code);
+            padding-right: clamp(12px, 2vw, 20px);
+            white-space: nowrap;
         }
 
-        .mode-table td {
-            font-size: 18px;
+        .param-table td:last-child {
+            color: var(--text-secondary);
+            font-size: var(--font-small);
         }
 
-        .mode-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .mode-name {
-            font-family: 'SF Mono', monospace;
-            color: #0A84FF;
-            font-weight: 600;
-        }
-
-        .mode-desc {
-            color: rgba(255,255,255,0.7);
+        .mono {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            color: var(--accent);
         }
 
         /* Architecture diagram */
-        .architecture {
+        .arch-flow {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 24px;
-            margin-top: 32px;
+            gap: clamp(12px, 2vw, 20px);
+            width: 100%;
+            max-width: 800px;
         }
 
-        .arch-layer {
+        .arch-row {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: clamp(8px, 1.5vw, 16px);
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .arch-box {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 20px 32px;
-            font-size: 16px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(8px, 1.5vw, 12px);
+            padding: clamp(12px, 2vw, 20px) clamp(16px, 3vw, 28px);
+            font-size: var(--font-body);
             text-align: center;
-            min-width: 180px;
         }
 
-        .arch-box.highlight {
-            border-color: #0A84FF;
-            background: rgba(10,132,255,0.1);
+        .arch-highlight {
+            border-color: var(--accent);
+            background: rgba(88,86,214,0.1);
         }
 
         .arch-arrow {
-            font-size: 24px;
-            color: rgba(255,255,255,0.3);
+            font-size: clamp(16px, 3vw, 24px);
+            color: var(--text-tertiary);
         }
 
         .arch-arrow-down {
-            font-size: 32px;
-            color: #0A84FF;
+            font-size: clamp(20px, 4vw, 32px);
+            color: var(--accent);
         }
 
-        /* Design principles */
+        .arch-detail {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(8px, 1.5vw, 12px);
+            padding: clamp(16px, 3vw, 24px);
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        /* Principles grid */
         .principles {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--gap-grid);
             width: 100%;
             max-width: 1000px;
-            margin-top: 32px;
-        }
-
-        .principle-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px;
-            padding: 28px;
         }
 
         .principle-number {
-            font-size: 14px;
+            font-size: var(--font-small);
             font-weight: 700;
-            color: #0A84FF;
-            margin-bottom: 12px;
+            color: var(--accent);
+            margin-bottom: clamp(6px, 1vw, 12px);
         }
 
         .principle-title {
-            font-size: 20px;
+            font-size: var(--font-body);
             font-weight: 600;
-            margin-bottom: 8px;
+            color: var(--text-primary);
+            margin-bottom: clamp(4px, 0.5vw, 8px);
         }
 
         .principle-desc {
-            font-size: 15px;
-            color: rgba(255,255,255,0.6);
+            font-size: var(--font-small);
+            color: var(--text-secondary);
             line-height: 1.5;
         }
 
-        /* Use cases grid */
-        .use-cases {
+        /* Velocity grid */
+        .velocity-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+            gap: var(--gap-grid);
             width: 100%;
-            max-width: 1100px;
-            margin-top: 32px;
+            max-width: 900px;
         }
 
-        .use-case-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px;
-            padding: 28px;
-            text-align: center;
-        }
+        .velocity-stat { text-align: center; }
 
-        .use-case-mode {
-            font-family: 'SF Mono', monospace;
-            font-size: 18px;
-            font-weight: 600;
-            color: #0A84FF;
-            margin-bottom: 16px;
-        }
-
-        .use-case-examples {
-            font-size: 15px;
-            color: rgba(255,255,255,0.6);
-            line-height: 1.6;
-        }
-
-        /* Result metrics */
-        .metrics-row {
-            display: flex;
-            gap: 60px;
-            margin-top: 48px;
-        }
-
-        .metric {
-            text-align: center;
-        }
-
-        .metric-value {
-            font-size: 72px;
+        .velocity-number {
+            font-size: clamp(36px, 10vw, 72px);
             font-weight: 700;
-            letter-spacing: -3px;
-            background: linear-gradient(135deg, #0A84FF, #5AC8FA);
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .metric-label {
-            font-size: 16px;
-            color: rgba(255,255,255,0.5);
-            margin-top: 8px;
+        .velocity-label {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            margin-top: clamp(4px, 0.5vw, 8px);
         }
 
-        /* Footer link */
-        .footer-link {
-            position: absolute;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 14px;
-            color: rgba(255,255,255,0.4);
+        /* Sources */
+        .sources-content {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: 900px;
+            width: 100%;
         }
 
-        .footer-link a {
-            color: #0A84FF;
-            text-decoration: none;
+        .sources-content code {
+            font-family: 'SF Mono', monospace;
+            color: var(--accent);
+            font-size: inherit;
         }
 
-        .footer-link a:hover {
-            text-decoration: underline;
+        .sources-content ul {
+            margin: clamp(8px, 1vw, 12px) 0;
+            padding-left: clamp(16px, 3vw, 24px);
         }
+
+        .sources-content li { margin-bottom: clamp(4px, 0.5vw, 6px); }
+        .sources-content strong { color: var(--text-primary); }
+
+        /* Icon sizing */
+        .icon-card { font-size: clamp(28px, 5vw, 48px); }
 
         /* Navigation */
-        .nav-dots {
+        .nav {
             position: fixed;
             bottom: 30px;
             left: 50%;
@@ -449,400 +410,312 @@
         }
 
         .nav-dot.active {
-            background: #0A84FF;
-            transform: scale(1.2);
+            background: var(--accent);
+            transform: scale(1.3);
         }
 
-        .nav-dot:hover {
-            background: rgba(255,255,255,0.4);
-        }
+        .nav-dot:hover { background: rgba(255,255,255,0.4); }
 
         .slide-counter {
             position: fixed;
             bottom: 30px;
             right: 40px;
-            font-size: 14px;
-            color: rgba(255,255,255,0.4);
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
             font-variant-numeric: tabular-nums;
             z-index: 100;
         }
 
-        /* Click zones for navigation */
-        .nav-zone {
+        .more-stories {
             position: fixed;
-            top: 0;
-            width: 20%;
-            height: 100%;
-            cursor: pointer;
-            z-index: 50;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
         }
 
-        .nav-zone.prev {
-            left: 0;
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Responsive: landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
         }
 
-        .nav-zone.next {
-            right: 0;
-        }
-
-        /* Accent colors */
-        .accent {
-            color: #0A84FF;
-        }
-
-        .accent-green {
-            color: #30D158;
-        }
-
-        .accent-red {
-            color: #FF453A;
-        }
-
-        /* Small text */
-        .small-note {
-            font-size: 14px;
-            color: rgba(255,255,255,0.4);
-            margin-top: 24px;
+        /* Accessibility: respect reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="deck">
-        <!-- Slide 1: Title -->
-        <div class="slide active" data-slide="1">
-            <div class="content-centered">
-                <div class="section-label">Task Tool Enhancement</div>
-                <h1 class="headline">Context Inheritance</h1>
-                <p class="subhead">Smarter agent delegation through automatic conversation context sharing</p>
-            </div>
-            <div class="footer-link">
-                <a href="index.html">More Amplifier Stories →</a>
-            </div>
-        </div>
-
-        <!-- Slide 2: The Problem -->
-        <div class="slide" data-slide="2">
-            <div class="content-centered">
-                <div class="section-label">The Problem</div>
-                <h2 class="slide-title">Child Agents Fly Blind</h2>
-                <div class="problem-visual">
-                    <div class="agent-box parent">
-                        <div class="agent-icon">🧠</div>
-                        <div class="agent-label">Parent Agent</div>
-                        <div class="agent-status">Full conversation context</div>
-                    </div>
-                    <div class="arrow-broken">→</div>
-                    <div class="agent-box child">
-                        <div class="agent-icon">❓</div>
-                        <div class="agent-label">Child Agent</div>
-                        <div class="agent-status">Blank slate</div>
-                    </div>
-                </div>
-                <p class="subhead" style="margin-top: 48px;">
-                    When task() spawns a child agent, it starts with <span class="accent-red">zero knowledge</span> of the parent conversation
-                </p>
-            </div>
-        </div>
-
-        <!-- Slide 3: Before -->
-        <div class="slide" data-slide="3">
-            <div class="content-centered content-left">
-                <div class="section-label">Before</div>
-                <h2 class="slide-title" style="text-align: left;">Verbose Re-explanation</h2>
-                <div class="code-block">
-<span class="code-function">task</span>(<br>
-&nbsp;&nbsp;<span class="code-param">agent</span>=<span class="code-string">"explorer"</span>,<br>
-&nbsp;&nbsp;<span class="code-param">instruction</span>=<span class="code-string">"""Find auth bug in user module.</span><br>
-<span class="code-string"></span><br>
-<span class="code-string">&nbsp;&nbsp;&nbsp;&nbsp;The user asked about authentication issues.</span><br>
-<span class="code-string">&nbsp;&nbsp;&nbsp;&nbsp;They mentioned seeing 401 errors after login.</span><br>
-<span class="code-string">&nbsp;&nbsp;&nbsp;&nbsp;We discussed the session token handling.</span><br>
-<span class="code-string">&nbsp;&nbsp;&nbsp;&nbsp;The user tried clearing cookies already.</span><br>
-<span class="code-string">&nbsp;&nbsp;&nbsp;&nbsp;They're using the React frontend...</span><br>
-<span class="code-string">&nbsp;&nbsp;"""</span><br>
-)
-                </div>
-                <p class="small-note">Parent must manually copy entire conversation context into the instruction</p>
-            </div>
-        </div>
-
-        <!-- Slide 4: After -->
-        <div class="slide" data-slide="4">
-            <div class="content-centered">
-                <div class="section-label">After</div>
-                <h2 class="slide-title">One Config, Automatic Context</h2>
-                <div class="comparison">
-                    <div class="comparison-card">
-                        <div class="comparison-label" style="color: rgba(255,255,255,0.5);">Bundle Config</div>
-                        <div class="code-block small">
-<span class="code-comment"># agents/explorer.yaml</span><br>
-<span class="code-keyword">inherit_context</span>: recent<br>
-<span class="code-keyword">inherit_context_turns</span>: 3
-                        </div>
-                    </div>
-                    <div class="comparison-card after">
-                        <div class="comparison-label">Task Call</div>
-                        <div class="code-block small">
-<span class="code-function">task</span>(<br>
-&nbsp;&nbsp;<span class="code-param">agent</span>=<span class="code-string">"explorer"</span>,<br>
-&nbsp;&nbsp;<span class="code-param">instruction</span>=<span class="code-string">"Find auth bug"</span><br>
-)
-                        </div>
-                    </div>
-                </div>
-                <p class="subhead" style="margin-top: 32px;">
-                    Child <span class="accent-green">automatically receives</span> last 3 turns of conversation
-                </p>
-            </div>
-        </div>
-
-        <!-- Slide 5: Three Modes -->
-        <div class="slide" data-slide="5">
-            <div class="content-centered">
-                <div class="section-label">Configuration</div>
-                <h2 class="slide-title">Three Inheritance Modes</h2>
-                <table class="mode-table">
-                    <thead>
-                        <tr>
-                            <th>Mode</th>
-                            <th>Behavior</th>
-                            <th>Use Case</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><span class="mode-name">none</span></td>
-                            <td>Child starts fresh</td>
-                            <td class="mode-desc">Privacy-sensitive tasks, stateless ops</td>
-                        </tr>
-                        <tr>
-                            <td><span class="mode-name">recent</span></td>
-                            <td>Pass last N turns</td>
-                            <td class="mode-desc">Most common — recent context without overflow</td>
-                        </tr>
-                        <tr>
-                            <td><span class="mode-name">all</span></td>
-                            <td>Pass entire history</td>
-                            <td class="mode-desc">Full conversation context needed</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <p class="small-note">Default is <code style="color: #0A84FF;">none</code> — opt-in only, no surprise context sharing</p>
-            </div>
-        </div>
-
-        <!-- Slide 6: How It Works -->
-        <div class="slide" data-slide="6">
-            <div class="content-centered">
-                <div class="section-label">Architecture</div>
-                <h2 class="slide-title">How It Works</h2>
-                <div class="architecture">
-                    <div class="arch-layer">
-                        <div class="arch-box">Parent Agent</div>
-                        <div class="arch-arrow">→</div>
-                        <div class="arch-box highlight">Task Tool</div>
-                        <div class="arch-arrow">→</div>
-                        <div class="arch-box">Child Agent</div>
-                    </div>
-                    <div class="arch-arrow-down">↓</div>
-                    <div class="arch-layer">
-                        <div class="arch-box" style="max-width: 500px; font-size: 14px; color: rgba(255,255,255,0.7);">
-                            Task tool reads <code style="color: #0A84FF;">inherit_context</code> from bundle config<br>
-                            Extracts last N turns from parent's ContextManager<br>
-                            Sanitizes to user/assistant roles only<br>
-                            Passes to child via <code style="color: #0A84FF;">set_messages()</code>
-                        </div>
-                    </div>
-                </div>
-                <p class="small-note" style="margin-top: 32px;">
-                    <span class="accent">No kernel changes</span> — uses existing ContextManager API
-                </p>
-            </div>
-        </div>
-
-        <!-- Slide 7: Design Philosophy -->
-        <div class="slide" data-slide="7">
-            <div class="content-centered">
-                <div class="section-label">Philosophy</div>
-                <h2 class="slide-title">Policy at the Edges</h2>
-                <div class="principles">
-                    <div class="principle-card">
-                        <div class="principle-number">01</div>
-                        <div class="principle-title">Opt-in Only</div>
-                        <div class="principle-desc">Default to none — agents must explicitly request context inheritance</div>
-                    </div>
-                    <div class="principle-card">
-                        <div class="principle-number">02</div>
-                        <div class="principle-title">Turn-based, Not Message-based</div>
-                        <div class="principle-desc">More intuitive — "last 3 exchanges" vs "last 6 messages"</div>
-                    </div>
-                    <div class="principle-card">
-                        <div class="principle-number">03</div>
-                        <div class="principle-title">Sanitized Messages</div>
-                        <div class="principle-desc">Only user/assistant roles passed — no system prompts or tool calls leak</div>
-                    </div>
-                    <div class="principle-card">
-                        <div class="principle-number">04</div>
-                        <div class="principle-title">Resume Compatible</div>
-                        <div class="principle-desc">Ignores parent context when resuming — uses persisted state instead</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Slide 8: Use Cases -->
-        <div class="slide" data-slide="8">
-            <div class="content-centered">
-                <div class="section-label">Guidance</div>
-                <h2 class="slide-title">When to Use Each Mode</h2>
-                <div class="use-cases">
-                    <div class="use-case-card">
-                        <div class="use-case-mode">none</div>
-                        <div class="use-case-examples">
-                            Sensitive information<br>
-                            Security-critical tasks<br>
-                            Stateless operations<br>
-                            Clean-room analysis
-                        </div>
-                    </div>
-                    <div class="use-case-card" style="border-color: rgba(10,132,255,0.3);">
-                        <div class="use-case-mode">recent (N=3-5)</div>
-                        <div class="use-case-examples">
-                            Most delegations<br>
-                            Bug investigation<br>
-                            Feature implementation<br>
-                            Code review tasks
-                        </div>
-                    </div>
-                    <div class="use-case-card">
-                        <div class="use-case-mode">all</div>
-                        <div class="use-case-examples">
-                            Architecture discussions<br>
-                            Complex debugging<br>
-                            Multi-step refactoring<br>
-                            Full context required
-                        </div>
-                    </div>
-                </div>
-                <p class="small-note">Use <code style="color: #0A84FF;">recent</code> with N=1-2 for quick lookups and simple queries</p>
-            </div>
-        </div>
-
-        <!-- Slide 9: The Result -->
-        <div class="slide" data-slide="9">
-            <div class="content-centered">
-                <div class="section-label">Impact</div>
-                <h2 class="slide-title">Smarter Delegation</h2>
-                <div class="metrics-row">
-                    <div class="metric">
-                        <div class="metric-value">70%</div>
-                        <div class="metric-label">Shorter instructions</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-value">0</div>
-                        <div class="metric-label">Kernel changes</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-value">3</div>
-                        <div class="metric-label">Config options</div>
-                    </div>
-                </div>
-                <p class="subhead" style="margin-top: 48px;">
-                    Children inherit context.<br>
-                    Parents write less.<br>
-                    <span class="accent">Everyone wins.</span>
-                </p>
-            </div>
-            <div class="footer-link">
-                <a href="index.html">More Amplifier Stories →</a>
-            </div>
-        </div>
-
-        <!-- Navigation -->
-        <div class="nav-zone prev" onclick="prevSlide()"></div>
-        <div class="nav-zone next" onclick="nextSlide()"></div>
-        <div class="nav-dots"></div>
-        <div class="slide-counter">1 / 9</div>
+    <!-- Slide 1: Title -->
+    <div class="slide active center">
+        <div class="section-label">Delegate Tool Feature</div>
+        <h1 class="headline">Context Inheritance</h1>
+        <p class="subhead">Smarter agent delegation through two-parameter context control</p>
+        <div class="status-badge status-active">Active</div>
+        <div class="small-text mt-sm">February 2026</div>
     </div>
 
+    <!-- Slide 2: The Problem -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="medium-headline">Child Agents Start from Zero</h2>
+        <div class="split">
+            <div class="card card-accent">
+                <div class="icon-card">&#x1F9E0;</div>
+                <h3>Parent Agent</h3>
+                <p>Has full conversation history &mdash; knows what the user asked, what was discussed, and what decisions were made</p>
+            </div>
+            <div class="card">
+                <div class="icon-card">&#x2753;</div>
+                <h3>Child Agent</h3>
+                <p>Starts with a blank slate &mdash; receives only the instruction string, with no surrounding conversation context</p>
+            </div>
+        </div>
+        <p class="subhead">Every delegation required manually re-explaining the conversation in the instruction string</p>
+    </div>
+
+    <!-- Slide 3: Before / After -->
+    <div class="slide">
+        <div class="section-label">The Fix</div>
+        <h2 class="medium-headline">Before &amp; After</h2>
+        <div class="comparison">
+            <div class="comparison-card border-before">
+                <div class="comparison-label label-before">Before &mdash; Verbose</div>
+                <div class="code-block"><span class="code-function">delegate</span>(
+  <span class="code-param">agent</span>=<span class="code-string">"explorer"</span>,
+  <span class="code-param">instruction</span>=<span class="code-string">"""Find auth bug.
+    User reports 401 errors after login.
+    We discussed session token handling.
+    They tried clearing cookies.
+    Using the React frontend..."""</span>
+)</div>
+            </div>
+            <div class="comparison-card border-after">
+                <div class="comparison-label label-after">After &mdash; Automatic</div>
+                <div class="code-block"><span class="code-function">delegate</span>(
+  <span class="code-param">agent</span>=<span class="code-string">"explorer"</span>,
+  <span class="code-param">instruction</span>=<span class="code-string">"Find auth bug"</span>
+)
+<span class="code-comment"># Smart defaults handle the rest:</span>
+<span class="code-comment">#   context_depth="recent"</span>
+<span class="code-comment">#   context_scope="conversation"</span>
+<span class="code-comment">#   context_turns=5</span></div>
+            </div>
+        </div>
+        <p class="body-text mt-md text-center">Child automatically receives the last 5 conversation turns &mdash; no manual re-explanation needed</p>
+    </div>
+
+    <!-- Slide 4: Two Dimensions -->
+    <div class="slide">
+        <div class="section-label">The Design</div>
+        <h2 class="medium-headline">Two Independent Parameters</h2>
+        <div class="split">
+            <div class="card card-accent">
+                <h3>context_depth &mdash; How Much</h3>
+                <table class="param-table">
+                    <tr><td>none</td><td>Clean slate &mdash; no parent context passed</td></tr>
+                    <tr><td>recent</td><td>Last N turns (default: 5). Most common choice.</td></tr>
+                    <tr><td>all</td><td>Full conversation history</td></tr>
+                </table>
+            </div>
+            <div class="card card-accent">
+                <h3>context_scope &mdash; Which Content</h3>
+                <table class="param-table">
+                    <tr><td>conversation</td><td>User/assistant text only &mdash; no tool calls leak</td></tr>
+                    <tr><td>agents</td><td>+ delegate results included</td></tr>
+                    <tr><td>full</td><td>+ all tool results included</td></tr>
+                </table>
+            </div>
+        </div>
+        <p class="body-text mt-md text-center">Mix and match: <code class="mono">recent</code> depth with <code class="mono">agents</code> scope gives recent context including prior delegate results</p>
+    </div>
+
+    <!-- Slide 5: How It Works -->
+    <div class="slide center">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">How It Works</h2>
+        <div class="arch-flow">
+            <div class="arch-row">
+                <div class="arch-box">Parent Agent</div>
+                <div class="arch-arrow">&rarr;</div>
+                <div class="arch-box arch-highlight">Delegate Tool</div>
+                <div class="arch-arrow">&rarr;</div>
+                <div class="arch-box">Child Agent</div>
+            </div>
+            <div class="arch-arrow-down">&darr;</div>
+            <div class="arch-detail">
+                Reads <code class="mono">context_depth</code> and <code class="mono">context_scope</code> from call parameters<br>
+                Extracts messages from parent&rsquo;s ContextManager<br>
+                Filters by scope (conversation / agents / full)<br>
+                Trims by depth (none / recent N / all)<br>
+                Passes filtered context to child session
+            </div>
+        </div>
+        <p class="body-text mt-md">Module-level implementation &mdash; uses existing ContextManager API, no kernel changes required</p>
+    </div>
+
+    <!-- Slide 6: Design Principles -->
+    <div class="slide">
+        <div class="section-label">Philosophy</div>
+        <h2 class="medium-headline">Design Principles</h2>
+        <div class="principles">
+            <div class="card">
+                <div class="principle-number">01</div>
+                <div class="principle-title">Smart Defaults</div>
+                <div class="principle-desc">Default <code class="mono">recent</code> with 5 turns means context flows automatically without extra configuration</div>
+            </div>
+            <div class="card">
+                <div class="principle-number">02</div>
+                <div class="principle-title">Two Orthogonal Axes</div>
+                <div class="principle-desc">Separate &ldquo;how much&rdquo; from &ldquo;which content&rdquo; &mdash; independent controls for precise context shaping</div>
+            </div>
+            <div class="card">
+                <div class="principle-number">03</div>
+                <div class="principle-title">Turn-Based Counting</div>
+                <div class="principle-desc">Count exchanges, not messages &mdash; &ldquo;last 3 turns&rdquo; is more intuitive than &ldquo;last 6 messages&rdquo;</div>
+            </div>
+            <div class="card">
+                <div class="principle-number">04</div>
+                <div class="principle-title">Safety Caps</div>
+                <div class="principle-desc">Bundle-level <code class="mono">max_turns</code> config (default: 10) prevents runaway context from overwhelming child agents</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Velocity -->
+    <div class="slide center">
+        <div class="section-label">Development</div>
+        <h2 class="medium-headline">Velocity</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">1</div>
+                <div class="velocity-label">Repository</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">~35</div>
+                <div class="velocity-label">Commits</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">1,109</div>
+                <div class="velocity-label">Lines of code</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">2</div>
+                <div class="velocity-label">Days to production</div>
+            </div>
+        </div>
+        <p class="body-text mt-lg">PR #44 merged January 30, 2026 &rarr; promoted to production February 1, 2026</p>
+        <p class="body-text">Primary contributor: Brian Krabach (~97% of delegate-related commits)</p>
+    </div>
+
+    <!-- Slide 8: Sources & Methodology -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Research Methodology</h2>
+        <div class="sources-content">
+            <p><strong>Data as of:</strong> February 20, 2026</p>
+            <p><strong>Feature status:</strong> Active (in production bundle via behaviors/agents.yaml)</p>
+            <p><strong>Repository:</strong> microsoft/amplifier-foundation</p>
+            <p><strong>Research performed:</strong></p>
+            <ul>
+                <li>Git log analysis: <code>git log --all --oneline --grep="delegate"</code> (~35 commits found)</li>
+                <li>PR review: <code>git show b73813b --stat</code> (PR #44: 11 files, +1,718/&minus;95 lines)</li>
+                <li>Source inspection: <code>wc -l modules/tool-delegate/__init__.py</code> (1,109 lines)</li>
+                <li>Parameter verification: <code>grep -n "context_depth\|context_scope" __init__.py</code></li>
+                <li>Contributors: <code>git log --format="%an" --grep="delegate"</code> (Brian Krabach: 34/35 commits)</li>
+                <li>Feature status: <code>grep "tool-delegate" behaviors/agents.yaml</code> (confirmed active in bundle)</li>
+                <li>Core session check: <code>grep -n "context\|parent" amplifier_core/session.py</code> (ContextManager API)</li>
+            </ul>
+            <p><strong>Gaps:</strong> No instruction-length reduction metrics measured. No performance benchmarks available. Impact of shorter delegation calls is qualitative, not quantified.</p>
+            <p><strong>Primary contributor:</strong> Brian Krabach (~97% of delegate-related commits)</p>
+        </div>
+    </div>
+
+    <!-- Slide 9: CTA -->
+    <div class="slide center">
+        <div class="section-label">Try It</div>
+        <h1 class="headline">Delegate Smarter</h1>
+        <p class="subhead">Context flows automatically. Just delegate.</p>
+        <div class="code-block mt-lg"><span class="code-function">delegate</span>(
+  <span class="code-param">agent</span>=<span class="code-string">"foundation:explorer"</span>,
+  <span class="code-param">instruction</span>=<span class="code-string">"Find the auth bug"</span>,
+  <span class="code-param">context_depth</span>=<span class="code-string">"recent"</span>,
+  <span class="code-param">context_scope</span>=<span class="code-string">"agents"</span>
+)</div>
+        <p class="body-text mt-md">microsoft/amplifier-foundation</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
     <script>
-        let currentSlide = 1;
-        const totalSlides = 9;
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
 
-        // Initialize nav dots
-        const navDots = document.querySelector('.nav-dots');
-        for (let i = 1; i <= totalSlides; i++) {
-            const dot = document.createElement('div');
-            dot.className = `nav-dot${i === 1 ? ' active' : ''}`;
-            dot.onclick = () => goToSlide(i);
-            navDots.appendChild(dot);
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
         }
 
-        function updateSlide() {
-            // Update slides
-            document.querySelectorAll('.slide').forEach((slide, index) => {
-                slide.classList.toggle('active', index + 1 === currentSlide);
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = () => showSlide(i);
+                nav.appendChild(dot);
             });
-
-            // Update dots
-            document.querySelectorAll('.nav-dot').forEach((dot, index) => {
-                dot.classList.toggle('active', index + 1 === currentSlide);
-            });
-
-            // Update counter
-            document.querySelector('.slide-counter').textContent = `${currentSlide} / ${totalSlides}`;
-        }
-
-        function nextSlide() {
-            if (currentSlide < totalSlides) {
-                currentSlide++;
-                updateSlide();
-            }
-        }
-
-        function prevSlide() {
-            if (currentSlide > 1) {
-                currentSlide--;
-                updateSlide();
-            }
-        }
-
-        function goToSlide(n) {
-            currentSlide = n;
-            updateSlide();
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
         }
 
         // Keyboard navigation
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') {
-                e.preventDefault();
-                nextSlide();
-            } else if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                prevSlide();
-            } else if (e.key === 'Home') {
-                e.preventDefault();
-                goToSlide(1);
-            } else if (e.key === 'End') {
-                e.preventDefault();
-                goToSlide(totalSlides);
-            }
+            if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
+            if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
         });
 
-        // Touch support
-        let touchStartX = 0;
-        document.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.target.closest('a')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
         });
+
+        // Touch/swipe navigation (REQUIRED for mobile)
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            const touchEndX = e.changedTouches[0].clientX;
+            touchEndX = e.changedTouches[0].screenX;
             const diff = touchStartX - touchEndX;
-            if (Math.abs(diff) > 50) {
-                if (diff > 0) nextSlide();
-                else prevSlide();
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
             }
-        });
+        }, { passive: true });
+
+        updateNav();
     </script>
 </body>
 </html>
