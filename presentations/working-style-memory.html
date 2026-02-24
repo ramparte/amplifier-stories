@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Working-Style Memory — No Ware</title>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #000;
+  --fg: #fff;
+  --muted: rgba(255,255,255,0.6);
+  --accent: #00CED1;
+  --card-bg: rgba(255,255,255,0.05);
+  --card-border: rgba(255,255,255,0.1);
+  --font: -apple-system, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --h1: clamp(32px, 5vw, 72px);
+  --body: clamp(16px, 2vw, 24px);
+  --small: clamp(12px, 1.5vw, 14px);
+  --transition-speed: 0.5s;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: var(--body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Deck container ── */
+.deck {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ── Slide base ── */
+.slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  padding: clamp(32px, 5vw, 80px) clamp(24px, 6vw, 120px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow-y: auto;
+  opacity: 0;
+  transform: translateX(60px);
+  pointer-events: none;
+  transition: opacity var(--transition-speed) ease, transform var(--transition-speed) ease;
+}
+
+.slide.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.slide.exit-left {
+  opacity: 0;
+  transform: translateX(-60px);
+}
+
+/* ── Typography ── */
+.section-label {
+  font-size: var(--small);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.75em;
+}
+
+h1 {
+  font-size: var(--h1);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.4em;
+}
+
+h2 {
+  font-size: clamp(24px, 3.5vw, 48px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin-bottom: 0.5em;
+}
+
+.subtitle {
+  font-size: clamp(18px, 2.5vw, 32px);
+  color: var(--muted);
+  font-weight: 400;
+  margin-bottom: 0.5em;
+}
+
+.context-line {
+  font-size: var(--small);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  margin-top: 1em;
+}
+
+p {
+  color: var(--muted);
+  max-width: 52ch;
+  margin-bottom: 1em;
+}
+
+.text-white { color: var(--fg); }
+.text-accent { color: var(--accent); }
+
+/* ── Cards grid ── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: clamp(12px, 2vw, 24px);
+  margin-top: clamp(16px, 3vw, 40px);
+  width: 100%;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: clamp(16px, 2.5vw, 32px);
+}
+
+.card-title {
+  font-size: clamp(16px, 2vw, 22px);
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 0.5em;
+}
+
+.card-body {
+  font-size: clamp(14px, 1.6vw, 18px);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ── Big numbers ── */
+.big-numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: clamp(16px, 3vw, 40px);
+  margin-top: clamp(20px, 4vw, 48px);
+  width: 100%;
+}
+
+.big-number {
+  text-align: center;
+}
+
+.big-number .value {
+  font-size: clamp(48px, 8vw, 120px);
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.big-number .label {
+  font-size: clamp(13px, 1.6vw, 18px);
+  color: var(--muted);
+  margin-top: 0.5em;
+}
+
+/* ── Flow ── */
+.flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(8px, 1.5vw, 16px);
+  margin: clamp(16px, 2vw, 32px) 0;
+}
+
+.flow-step {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: clamp(8px, 1.5vw, 16px) clamp(12px, 2vw, 24px);
+  font-size: clamp(13px, 1.6vw, 18px);
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.flow-arrow {
+  color: var(--accent);
+  font-size: clamp(16px, 2vw, 24px);
+  flex-shrink: 0;
+}
+
+/* ── Correction examples ── */
+.correction-list {
+  list-style: none;
+  margin: clamp(12px, 2vw, 24px) 0;
+  width: 100%;
+  max-width: 680px;
+}
+
+.correction-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  padding: clamp(10px, 1.5vw, 16px) 0;
+  border-bottom: 1px solid var(--card-border);
+  font-size: clamp(14px, 1.6vw, 18px);
+}
+
+.correction-list .trigger {
+  color: var(--muted);
+}
+
+.correction-list .arrow {
+  color: var(--accent);
+}
+
+.correction-list .pattern {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.correction-list .count {
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Comparison columns ── */
+.comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: clamp(16px, 3vw, 40px);
+  margin-top: clamp(16px, 2vw, 32px);
+  width: 100%;
+}
+
+.comparison-col {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: clamp(16px, 2.5vw, 32px);
+}
+
+.comparison-col.after {
+  border-color: var(--accent);
+}
+
+.comparison-col h3 {
+  font-size: clamp(14px, 1.5vw, 18px);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 1em;
+  color: var(--muted);
+}
+
+.comparison-col.after h3 {
+  color: var(--accent);
+}
+
+.comparison-col ul {
+  list-style: none;
+  padding: 0;
+}
+
+.comparison-col li {
+  padding: 0.4em 0;
+  font-size: clamp(14px, 1.6vw, 18px);
+  color: var(--muted);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.comparison-col.after li {
+  color: var(--fg);
+}
+
+/* ── Stack visual ── */
+.layer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: clamp(16px, 3vw, 40px) 0;
+  width: 100%;
+  max-width: 640px;
+}
+
+.layer {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  padding: clamp(14px, 2vw, 24px) clamp(16px, 2.5vw, 32px);
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.5vw, 20px);
+}
+
+.layer:first-child { border-radius: 12px 12px 0 0; }
+.layer:last-child { border-radius: 0 0 12px 12px; }
+
+.layer-number {
+  font-size: clamp(20px, 3vw, 36px);
+  font-weight: 800;
+  color: var(--accent);
+  min-width: 2ch;
+  text-align: center;
+}
+
+.layer-content .layer-title {
+  font-size: clamp(15px, 1.8vw, 20px);
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.layer-content .layer-desc {
+  font-size: clamp(12px, 1.4vw, 16px);
+  color: var(--muted);
+}
+
+/* ── Timeline ── */
+.timeline {
+  margin: clamp(16px, 3vw, 40px) 0;
+  width: 100%;
+  max-width: 720px;
+  position: relative;
+  padding-left: clamp(20px, 3vw, 40px);
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent), rgba(0,206,209,0.2));
+}
+
+.timeline-item {
+  position: relative;
+  padding: 0 0 clamp(16px, 2.5vw, 32px) 0;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: calc(-1 * clamp(20px, 3vw, 40px) + 2px);
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+}
+
+.timeline-item .time {
+  font-size: var(--small);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.25em;
+}
+
+.timeline-item .desc {
+  font-size: clamp(14px, 1.6vw, 18px);
+  color: var(--muted);
+}
+
+/* ── Steps list ── */
+.steps-list {
+  list-style: none;
+  counter-reset: step;
+  margin: clamp(12px, 2vw, 24px) 0;
+  width: 100%;
+  max-width: 680px;
+}
+
+.steps-list li {
+  counter-increment: step;
+  display: flex;
+  align-items: baseline;
+  gap: clamp(8px, 1.5vw, 16px);
+  padding: clamp(8px, 1vw, 14px) 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: clamp(14px, 1.6vw, 18px);
+  color: var(--fg);
+}
+
+.steps-list li::before {
+  content: counter(step);
+  font-size: clamp(14px, 1.5vw, 18px);
+  font-weight: 800;
+  color: var(--accent);
+  min-width: 2ch;
+  text-align: right;
+}
+
+.steps-list .detail {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.callout {
+  margin-top: clamp(16px, 2.5vw, 32px);
+  padding: clamp(12px, 2vw, 24px);
+  background: rgba(0,206,209,0.08);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  font-size: clamp(14px, 1.6vw, 18px);
+  color: var(--fg);
+  max-width: 680px;
+}
+
+.insight {
+  margin-top: clamp(12px, 2vw, 24px);
+  font-size: clamp(14px, 1.6vw, 18px);
+  color: var(--accent);
+  font-style: italic;
+  max-width: 52ch;
+}
+
+/* ── Blueprint list ── */
+.blueprint-list {
+  list-style: none;
+  margin: clamp(8px, 1.5vw, 16px) 0;
+  padding: 0;
+}
+
+.blueprint-list li {
+  padding: 0.35em 0;
+  font-size: clamp(14px, 1.6vw, 18px);
+  color: var(--muted);
+}
+
+.blueprint-list li span {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+/* ── CTA slide ── */
+.cta-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  flex: 1;
+}
+
+.cta-center h1 { margin-bottom: 0.3em; }
+
+.cta-center p {
+  max-width: 48ch;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: clamp(16px, 2.2vw, 26px);
+  color: var(--muted);
+}
+
+.cta-link {
+  display: inline-block;
+  margin-top: clamp(16px, 3vw, 40px);
+  padding: clamp(8px, 1.5vw, 14px) clamp(20px, 3vw, 40px);
+  background: rgba(0,206,209,0.12);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: clamp(13px, 1.5vw, 16px);
+  text-decoration: none;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.cta-footer {
+  font-size: var(--small);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  margin-top: clamp(24px, 4vw, 56px);
+}
+
+/* ── Title slide vertical center ── */
+.slide.title-slide {
+  justify-content: center;
+}
+
+/* ── Nav dots ── */
+.nav-dots {
+  position: fixed;
+  bottom: clamp(16px, 2.5vw, 28px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 100;
+}
+
+.nav-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.nav-dot.active {
+  background: var(--accent);
+  transform: scale(1.3);
+}
+
+.nav-dot:hover {
+  background: rgba(255,255,255,0.5);
+}
+
+/* ── Slide counter ── */
+.slide-counter {
+  position: fixed;
+  bottom: clamp(16px, 2.5vw, 28px);
+  right: clamp(20px, 3vw, 40px);
+  font-size: var(--small);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  z-index: 100;
+  letter-spacing: 0.05em;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .slide {
+    transition: opacity 0.15s ease;
+    transform: none !important;
+  }
+  .slide.active { transform: none !important; }
+  .slide.exit-left { transform: none !important; }
+  .nav-dot { transition: none; }
+}
+
+/* ── Landscape mobile ── */
+@media (max-height: 500px) {
+  .slide {
+    padding: clamp(16px, 3vw, 32px) clamp(20px, 5vw, 80px);
+  }
+  h1 { font-size: clamp(24px, 4vw, 48px); }
+  .big-number .value { font-size: clamp(36px, 6vw, 72px); }
+  .nav-dots { bottom: 8px; }
+  .slide-counter { bottom: 8px; }
+}
+
+/* ── Narrow screens ── */
+@media (max-width: 600px) {
+  .slide {
+    padding: clamp(24px, 4vw, 40px) clamp(16px, 4vw, 32px);
+    padding-bottom: 60px;
+  }
+  .flow { flex-direction: column; align-items: flex-start; }
+  .flow-arrow { transform: rotate(90deg); }
+}
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- ============ SLIDE 1: Title ============ -->
+  <section class="slide title-slide active" data-slide="0">
+    <div class="section-label">No Ware &middot; Feature Proposal &middot; February 2026</div>
+    <h1>Working-Style Memory</h1>
+    <p class="subtitle">The Platform That Learns How You Work</p>
+  </section>
+
+  <!-- ============ SLIDE 2: The Problem ============ -->
+  <section class="slide" data-slide="1">
+    <div class="section-label">The Problem</div>
+    <h1>Every App Starts From Scratch</h1>
+    <p>You've built 200 apps. You've said "make it wider" 12 times. The system still doesn't know how you work.</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">First-Turn Blindspot</div>
+        <div class="card-body">Learning only triggers on the first message. Corrections in turns 2–20 are invisible.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Zero App Reuse</div>
+        <div class="card-body">Each app starts from nothing. The AI has no knowledge of your previous 200 apps.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">No Pattern Detection</div>
+        <div class="card-body">When you correct the same thing 12 times, no one notices.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 3: The Cost ============ -->
+  <section class="slide" data-slide="2">
+    <div class="section-label">The Cost</div>
+    <h1>Death by a Thousand Corrections</h1>
+    <div class="big-numbers">
+      <div class="big-number">
+        <div class="value">12x</div>
+        <div class="label">times you've said "make it wider"</div>
+      </div>
+      <div class="big-number">
+        <div class="value">60%</div>
+        <div class="label">of first attempts need correction</div>
+      </div>
+      <div class="big-number">
+        <div class="value">0</div>
+        <div class="label">previous apps the AI can reference</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 4: Solution Overview ============ -->
+  <section class="slide" data-slide="3">
+    <div class="section-label">The Solution</div>
+    <h1>Three Systems That Learn Together</h1>
+    <p>A feedback loop that turns every correction into prevention.</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">Correction Journal</div>
+        <div class="card-body">Every correction logged, normalized, counted across apps. Patterns detected automatically.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Style Profile</div>
+        <div class="card-body">A living document synthesized from hundreds of interactions. Injected into every session.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">App Catalog</div>
+        <div class="card-body">Every finished app becomes a reusable template. Similar apps found and adapted automatically.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 5: Correction Journal ============ -->
+  <section class="slide" data-slide="4">
+    <div class="section-label">How It Works</div>
+    <h1>Corrections Are Gold</h1>
+    <div class="flow">
+      <div class="flow-step">User corrects</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Pattern detected</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Style profile updated</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Next app gets it right</div>
+    </div>
+    <ul class="correction-list">
+      <li>
+        <span class="trigger">"make it wider"</span>
+        <span class="arrow">→</span>
+        <span class="pattern">wider-layouts</span>
+        <span class="count">(12x)</span>
+      </li>
+      <li>
+        <span class="trigger">"use a table not cards"</span>
+        <span class="arrow">→</span>
+        <span class="pattern">prefer-tables</span>
+        <span class="count">(5x)</span>
+      </li>
+      <li>
+        <span class="trigger">"remove the header image"</span>
+        <span class="arrow">→</span>
+        <span class="pattern">no-decorative</span>
+        <span class="count">(8x)</span>
+      </li>
+    </ul>
+    <div class="insight">When a pattern hits 3 occurrences, it's promoted to the style profile.</div>
+  </section>
+
+  <!-- ============ SLIDE 6: Style Profile ============ -->
+  <section class="slide" data-slide="5">
+    <div class="section-label">How It Works</div>
+    <h1>A Living Guide, Not Scattered Facts</h1>
+    <div class="comparison">
+      <div class="comparison-col">
+        <h3>Before</h3>
+        <ul>
+          <li>prefers dark mode</li>
+          <li>likes tables</li>
+          <li>wants wider layouts</li>
+          <li>no header images</li>
+          <li>scattered, unstructured</li>
+        </ul>
+      </div>
+      <div class="comparison-col after">
+        <h3>After</h3>
+        <ul>
+          <li><span>Layout</span> — Full-width, no max-width constraints</li>
+          <li><span>Components</span> — Tables over cards, minimal chrome</li>
+          <li><span>Behavior</span> — Dark mode, dense information display</li>
+          <li><span>Anti-patterns</span> — No decorative images, no card grids</li>
+        </ul>
+      </div>
+    </div>
+    <div class="insight">Rebuilt automatically from all corrections and app blueprints.</div>
+  </section>
+
+  <!-- ============ SLIDE 7: App Catalog ============ -->
+  <section class="slide" data-slide="6">
+    <div class="section-label">How It Works</div>
+    <h1>Every App Becomes a Template</h1>
+    <p class="text-white" style="font-weight:500; margin-bottom:0.5em;">What's stored per blueprint:</p>
+    <ul class="blueprint-list">
+      <li><span>Category</span> — dashboard, tracker, form, tool</li>
+      <li><span>Final HTML</span> — the corrected, production version</li>
+      <li><span>Corrections applied</span> — what was fixed and why</li>
+      <li><span>Components used</span> — tables, charts, forms, maps</li>
+      <li><span>Layout pattern</span> — sidebar, single-column, grid</li>
+      <li><span>Usage score</span> — how often it's reused as a template</li>
+    </ul>
+    <div class="flow" style="margin-top: clamp(16px, 2.5vw, 32px);">
+      <div class="flow-step">New prompt</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Classify</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Search catalog</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Inject best match</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">AI adapts</div>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 8: New Tools ============ -->
+  <section class="slide" data-slide="7">
+    <div class="section-label">New Capabilities</div>
+    <h1>The AI Gets Smarter Tools</h1>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title" style="font-family: monospace; color: var(--accent);">find_similar_apps</div>
+        <div class="card-body">Search the catalog by query. "Make it like that stock tracker I built."</div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-family: monospace; color: var(--accent);">reuse_app</div>
+        <div class="card-body">Retrieve a previous app's final HTML as a starting point.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Enhanced recall</div>
+        <div class="card-body">Now searches both memories <em>and</em> the app catalog for richer context.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 9: Context Assembly ============ -->
+  <section class="slide" data-slide="8">
+    <div class="section-label">How It Comes Together</div>
+    <h1>Every Session Starts Informed</h1>
+    <div class="layer-stack">
+      <div class="layer">
+        <div class="layer-number">1</div>
+        <div class="layer-content">
+          <div class="layer-title">Style Profile</div>
+          <div class="layer-desc">Always injected — your preferences, patterns, anti-patterns</div>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-number">2</div>
+        <div class="layer-content">
+          <div class="layer-title">Matched Template</div>
+          <div class="layer-desc">Best catalog match for this prompt — adapted, not copied</div>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-number">3</div>
+        <div class="layer-content">
+          <div class="layer-title">User Identity</div>
+          <div class="layer-desc">Existing global memory — name, role, preferences</div>
+        </div>
+      </div>
+    </div>
+    <p class="text-white" style="font-size: clamp(16px, 2vw, 22px); font-weight: 500; margin-top: clamp(12px, 2vw, 24px);">The AI never starts from scratch again.</p>
+  </section>
+
+  <!-- ============ SLIDE 10: Trajectory ============ -->
+  <section class="slide" data-slide="9">
+    <div class="section-label">The Impact</div>
+    <h1>The More You Use It, The Better It Gets</h1>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="time">Day 1</div>
+        <div class="desc">Generic results. System observes.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="time">Week 1 — 20 apps</div>
+        <div class="desc">Patterns emerging. Corrections drop.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="time">Month 1 — 100 apps</div>
+        <div class="desc">Rich profile. Templates for most categories. Corrections drop 60%.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="time">Month 3 — 300 apps</div>
+        <div class="desc">Near-zero corrections. The system gets you.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="time">Month 6+</div>
+        <div class="desc">True colleague.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 11: Implementation ============ -->
+  <section class="slide" data-slide="10">
+    <div class="section-label">The Path</div>
+    <h1>Six Steps, 80/20 Split</h1>
+    <ol class="steps-list">
+      <li>Remove first-turn gate <span class="detail">(1 line change)</span></li>
+      <li>Correction extraction <span class="detail">(every turn)</span></li>
+      <li>App Catalog <span class="detail">(store final HTML + category)</span></li>
+      <li>Template injection <span class="detail">(search + inject)</span></li>
+      <li>Style Profile generator <span class="detail">(synthesize)</span></li>
+      <li>New tools <span class="detail">(find_similar_apps, reuse_app)</span></li>
+    </ol>
+    <div class="callout">Steps 1–4 deliver 80% of the value.</div>
+  </section>
+
+  <!-- ============ SLIDE 12: CTA ============ -->
+  <section class="slide title-slide" data-slide="11">
+    <div class="cta-center">
+      <h1>Let's Build the Colleague</h1>
+      <p>The platform that learns your working style. Every correction makes it smarter. Every app makes it faster.</p>
+      <a class="cta-link" href="docs/memory-redesign-proposal.md">Full design: docs/memory-redesign-proposal.md</a>
+      <div class="cta-footer">No Ware &middot; 2026</div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Nav dots -->
+<nav class="nav-dots" id="navDots" aria-label="Slide navigation"></nav>
+
+<!-- Slide counter -->
+<div class="slide-counter" id="slideCounter"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const deck = document.getElementById('deck');
+  const slides = Array.from(deck.querySelectorAll('.slide'));
+  const dotsContainer = document.getElementById('navDots');
+  const counter = document.getElementById('slideCounter');
+  const total = slides.length;
+  let current = 0;
+  let isTransitioning = false;
+
+  // Build nav dots
+  slides.forEach(function (_, i) {
+    const btn = document.createElement('button');
+    btn.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    btn.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+    btn.addEventListener('click', function () { goTo(i); });
+    dotsContainer.appendChild(btn);
+  });
+
+  const dots = Array.from(dotsContainer.querySelectorAll('.nav-dot'));
+
+  function updateCounter() {
+    counter.textContent = (current + 1) + ' / ' + total;
+  }
+
+  function goTo(index) {
+    if (index === current || index < 0 || index >= total || isTransitioning) return;
+
+    isTransitioning = true;
+    const direction = index > current ? 1 : -1;
+    const prev = slides[current];
+    const next = slides[index];
+
+    // Remove active from previous
+    prev.classList.remove('active');
+    prev.classList.add(direction > 0 ? 'exit-left' : '');
+    prev.style.transform = direction > 0 ? 'translateX(-60px)' : 'translateX(60px)';
+    prev.style.opacity = '0';
+
+    // Prepare next slide entry direction
+    next.style.transform = direction > 0 ? 'translateX(60px)' : 'translateX(-60px)';
+    next.style.opacity = '0';
+
+    // Force reflow so browser registers starting position
+    void next.offsetWidth;
+
+    // Activate next and clear inline styles so .active CSS takes over with transition
+    next.classList.add('active');
+    next.style.transform = '';
+    next.style.opacity = '';
+
+    // Scroll to top if content overflows
+    next.scrollTop = 0;
+
+    // Update dots
+    dots[current].classList.remove('active');
+    dots[index].classList.add('active');
+
+    current = index;
+    updateCounter();
+
+    // Clear transition lock
+    setTimeout(function () {
+      prev.classList.remove('exit-left');
+      prev.style.transform = '';
+      prev.style.opacity = '';
+      isTransitioning = false;
+    }, 520);
+  }
+
+  function next() { goTo(current + 1); }
+  function prev() { goTo(current - 1); }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+    if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+    if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+  });
+
+  // Touch swipe support
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchEndX = 0;
+  let touchEndY = 0;
+
+  deck.addEventListener('touchstart', function (e) {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+  deck.addEventListener('touchend', function (e) {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe();
+  }, { passive: true });
+
+  function handleSwipe() {
+    var dx = touchEndX - touchStartX;
+    var dy = touchEndY - touchStartY;
+
+    // Only register horizontal swipes where horizontal distance > vertical
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+
+    if (dx < 0) { next(); }
+    else { prev(); }
+  }
+
+  // Initial state
+  updateCounter();
+})();
+</script>
+</body>
+</html>
