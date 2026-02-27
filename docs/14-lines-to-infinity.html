@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>14 Lines to Infinity — Amplifier Composition Model</title>
+    <style>
+        :root {
+            /* Geological palette */
+            --parchment: #F7F5F2;
+            --parchment-mid: #EDEAE5;
+            --parchment-deep: #E3DED7;
+            --graphite: #2C2A28;
+            --graphite-mid: #4A4744;
+            --graphite-light: #6B6663;
+            --amethyst: #7B6B8A;
+            --amethyst-light: #9B8BAA;
+            --amethyst-deep: #5C4D6B;
+            --malachite: #5B8C6F;
+            --malachite-light: #7BAA8F;
+            --copper: #B87333;
+            --copper-light: #D49555;
+
+            /* Fluid typography */
+            --font-headline: clamp(36px, 7vw, 68px);
+            --font-medium: clamp(24px, 4.5vw, 44px);
+            --font-subhead: clamp(16px, 2.5vw, 24px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-small: clamp(11px, 1.4vw, 13px);
+            --font-code: clamp(11px, 1.5vw, 14px);
+            --font-big-number: clamp(48px, 12vw, 110px);
+
+            /* Fluid spacing */
+            --padding-slide: clamp(24px, 5vw, 80px);
+            --padding-top: clamp(60px, 10vw, 120px);
+            --gap: clamp(12px, 2.5vw, 32px);
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--parchment);
+            color: var(--graphite);
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* === SLIDE BASE === */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-top) var(--padding-slide) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: var(--parchment);
+            color: var(--graphite);
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* === DARK VARIANT === */
+        .slide.dark {
+            background: var(--graphite);
+            color: var(--parchment);
+        }
+        .slide.dark .section-label { color: var(--amethyst-light); }
+        .slide.dark .subhead { color: rgba(247, 245, 242, 0.7); }
+        .slide.dark .meta-text { color: rgba(247, 245, 242, 0.5); }
+
+        /* === TYPOGRAPHY === */
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--amethyst);
+            margin-bottom: clamp(12px, 2vw, 20px);
+        }
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+        .medium-headline {
+            font-size: var(--font-medium);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            line-height: 1.5;
+            color: var(--graphite-mid);
+            max-width: 680px;
+        }
+        .body-text {
+            font-size: var(--font-body);
+            line-height: 1.6;
+            color: var(--graphite-mid);
+        }
+        .meta-text {
+            font-size: var(--font-small);
+            color: var(--graphite-light);
+        }
+        .accent-copper { color: var(--copper); }
+        .accent-amethyst { color: var(--amethyst); }
+        .accent-malachite { color: var(--malachite); }
+        .em-line {
+            font-size: var(--font-subhead);
+            line-height: 1.5;
+            color: var(--graphite-mid);
+            max-width: 700px;
+            margin-top: clamp(16px, 3vw, 32px);
+        }
+        .em-line em {
+            font-style: italic;
+            color: var(--amethyst);
+        }
+
+        /* === CODE BLOCKS === */
+        .code-container { position: relative; }
+        .code-label {
+            position: absolute;
+            top: 0;
+            left: clamp(12px, 2vw, 24px);
+            background: var(--amethyst);
+            color: var(--parchment);
+            padding: 3px 14px;
+            border-radius: 0 0 6px 6px;
+            font-size: var(--font-small);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-weight: 500;
+            z-index: 1;
+        }
+        .dark-code {
+            background: #1A1918;
+            border-radius: clamp(8px, 1.5vw, 16px);
+            padding: clamp(28px, 4vw, 40px) clamp(16px, 3vw, 32px) clamp(16px, 3vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+            font-size: var(--font-code);
+            line-height: 1.75;
+            color: var(--parchment);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            white-space: pre;
+            word-wrap: normal;
+        }
+        .ln {
+            color: rgba(247, 245, 242, 0.2);
+            user-select: none;
+            display: inline-block;
+            width: 2.2em;
+            text-align: right;
+            margin-right: 1.5em;
+        }
+        .yk { color: var(--amethyst-light); }
+        .yv { color: var(--malachite-light); }
+        .yc { color: var(--copper-light); font-style: italic; }
+        .yp { color: rgba(247, 245, 242, 0.35); }
+
+        /* Small code blocks inline */
+        .mini-code {
+            background: #1A1918;
+            border-radius: clamp(6px, 1vw, 10px);
+            padding: clamp(12px, 2vw, 20px) clamp(14px, 2.5vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: var(--font-small);
+            line-height: 1.7;
+            color: var(--parchment);
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        /* === CARDS === */
+        .card {
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.07);
+            border-radius: clamp(10px, 1.5vw, 16px);
+            padding: clamp(16px, 3vw, 28px);
+        }
+        .card h3 {
+            font-size: clamp(15px, 2.2vw, 19px);
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--graphite);
+        }
+        .card p {
+            font-size: var(--font-body);
+            line-height: 1.55;
+            color: var(--graphite-mid);
+        }
+        .card-icon {
+            font-size: clamp(28px, 5vw, 40px);
+            margin-bottom: 10px;
+        }
+        .icon-amethyst { color: var(--amethyst); }
+        .icon-malachite { color: var(--malachite); }
+        .icon-copper { color: var(--copper); }
+
+        /* Annotation cards with colored left border */
+        .annotation {
+            border-left: 3px solid var(--amethyst);
+            padding: clamp(10px, 2vw, 16px) clamp(12px, 2.5vw, 20px);
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 0 8px 8px 0;
+        }
+        .annotation.border-malachite { border-left-color: var(--malachite); }
+        .annotation.border-copper { border-left-color: var(--copper); }
+        .annotation-label {
+            font-size: var(--font-small);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 4px;
+        }
+        .annotation p {
+            font-size: clamp(13px, 1.8vw, 16px);
+            line-height: 1.5;
+            color: var(--graphite-mid);
+        }
+
+        /* === GRIDS === */
+        .split {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--gap);
+            width: 100%;
+        }
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+            gap: var(--gap);
+            width: 100%;
+        }
+        .fourths {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap);
+            width: 100%;
+        }
+        .annotation-stack {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(8px, 1.5vw, 14px);
+            justify-content: center;
+        }
+
+        /* === COMPARISON LAYOUT (Slide 3) === */
+        .compare-thin {
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.07);
+            border-radius: clamp(10px, 1.5vw, 16px);
+            padding: clamp(20px, 3.5vw, 32px);
+            text-align: center;
+        }
+        .compare-thin h3 {
+            font-size: clamp(14px, 2vw, 17px);
+            font-weight: 600;
+            margin-bottom: clamp(12px, 2vw, 20px);
+            color: var(--amethyst);
+        }
+        .thin-list {
+            list-style: none;
+            font-size: var(--font-body);
+            line-height: 2;
+            color: var(--graphite-mid);
+        }
+        .thin-count {
+            margin-top: clamp(12px, 2vw, 20px);
+            font-size: var(--font-medium);
+            font-weight: 700;
+            color: var(--graphite);
+        }
+        .pill-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+        }
+        .pill {
+            display: inline-block;
+            padding: 5px 14px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 100px;
+            font-size: var(--font-small);
+            color: var(--graphite-mid);
+            white-space: nowrap;
+        }
+        .pill.highlight {
+            background: var(--amethyst);
+            color: var(--parchment);
+        }
+
+        /* === BRICK GRID (Slide 6) === */
+        .brick-section h3 {
+            font-size: clamp(13px, 1.8vw, 15px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: clamp(10px, 1.5vw, 16px);
+        }
+        .brick-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+            gap: clamp(8px, 1.5vw, 12px);
+        }
+        .brick {
+            padding: clamp(12px, 2vw, 18px);
+            border-radius: clamp(8px, 1vw, 12px);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .brick-name {
+            font-size: clamp(13px, 1.8vw, 15px);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .brick-desc {
+            font-size: var(--font-small);
+            color: var(--graphite-light);
+        }
+        .brick-hook { background: rgba(184, 115, 51, 0.08); }
+        .brick-tool { background: rgba(91, 140, 111, 0.08); }
+        .brick-composite { background: rgba(123, 107, 138, 0.08); }
+
+        /* === CHAIN (Slide 8) === */
+        .chain {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
+            gap: clamp(6px, 1vw, 10px);
+            width: 100%;
+        }
+        .chain-step {
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.07);
+            border-radius: clamp(8px, 1vw, 12px);
+            padding: clamp(12px, 2vw, 20px) clamp(10px, 1.5vw, 16px);
+            text-align: center;
+            position: relative;
+        }
+        .step-num {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            border-radius: 50%;
+            background: var(--amethyst);
+            color: var(--parchment);
+            font-size: var(--font-small);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .step-name {
+            display: block;
+            font-size: clamp(12px, 1.6vw, 14px);
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--graphite);
+        }
+        .step-desc {
+            display: block;
+            font-size: clamp(10px, 1.3vw, 12px);
+            color: var(--graphite-light);
+            line-height: 1.4;
+        }
+
+        /* === NUMBERS GRID (Slide 9) === */
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+            gap: var(--gap);
+            width: 100%;
+        }
+        .stat-block { text-align: center; }
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+        }
+        .stat-label {
+            font-size: clamp(13px, 1.8vw, 16px);
+            font-weight: 500;
+            color: var(--graphite-mid);
+            margin-top: 8px;
+        }
+
+        /* === QUOTE BLOCK (Closing) === */
+        .quote-block {
+            max-width: 800px;
+            font-size: clamp(18px, 3vw, 28px);
+            line-height: 1.6;
+            font-weight: 400;
+            color: rgba(247, 245, 242, 0.85);
+        }
+        .quote-block .parallel {
+            display: block;
+            margin-bottom: clamp(8px, 1.5vw, 16px);
+            padding-left: clamp(16px, 3vw, 32px);
+            border-left: 3px solid var(--amethyst-light);
+        }
+        .quote-accent {
+            color: var(--parchment);
+            font-weight: 600;
+        }
+        .quote-attribution {
+            margin-top: clamp(24px, 4vw, 40px);
+            font-size: var(--font-small);
+            color: rgba(247, 245, 242, 0.4);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* === STATUS BADGE === */
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 100px;
+            font-size: var(--font-small);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .badge-active {
+            background: rgba(91, 140, 111, 0.15);
+            color: var(--malachite);
+            border: 1px solid rgba(91, 140, 111, 0.3);
+        }
+        .slide.dark .badge-active {
+            background: rgba(123, 170, 143, 0.15);
+            color: var(--malachite-light);
+            border-color: rgba(123, 170, 143, 0.3);
+        }
+
+        /* === SOURCES === */
+        .sources-content {
+            font-size: var(--font-body);
+            line-height: 1.7;
+            color: var(--graphite-mid);
+            max-width: 800px;
+        }
+        .sources-content strong { color: var(--graphite); }
+        .sources-content code {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.9em;
+        }
+        .sources-content ul {
+            padding-left: 1.5em;
+            margin: 8px 0;
+        }
+        .sources-content li { margin-bottom: 4px; }
+
+        /* === NAVIGATION === */
+        .nav-container {
+            position: fixed;
+            bottom: clamp(14px, 2.5vw, 22px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            padding: 7px 16px;
+            background: rgba(44, 42, 40, 0.55);
+            border-radius: 20px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 200;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(247, 245, 242, 0.35);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .nav-dot:hover { background: rgba(247, 245, 242, 0.6); }
+        .nav-dot.active {
+            background: var(--amethyst-light);
+            transform: scale(1.3);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(16px, 2.5vw, 24px);
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--font-small);
+            color: rgba(44, 42, 40, 0.35);
+            z-index: 200;
+            font-variant-numeric: tabular-nums;
+        }
+        .slide.dark ~ .slide-counter { color: rgba(247, 245, 242, 0.3); }
+
+        .more-stories {
+            position: fixed;
+            top: clamp(12px, 2vw, 20px);
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--font-small);
+            color: rgba(44, 42, 40, 0.3);
+            text-decoration: none;
+            z-index: 200;
+            transition: color 0.2s;
+        }
+        .more-stories:hover { color: rgba(44, 42, 40, 0.6); }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 600px) {
+            .split { grid-template-columns: 1fr; }
+            .chain { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+        }
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px var(--padding-slide) 60px; }
+            .slide.center { justify-content: flex-start; padding-top: 24px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========== SLIDE 1: TITLE ========== -->
+    <div class="slide active center dark">
+        <div class="section-label">Amplifier Composition</div>
+        <h1 class="headline" style="margin-bottom: clamp(12px, 2vw, 24px);">14 Lines<br><span class="accent-copper">to Infinity</span></h1>
+        <p class="subhead" style="color: rgba(247,245,242,0.65); margin-bottom: clamp(20px, 3vw, 36px);">
+            The composition model that makes AI agents as simple as YAML<br>
+            and as powerful as your imagination
+        </p>
+        <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: center;">
+            <span class="badge badge-active">Active</span>
+            <span class="meta-text">February 2026</span>
+        </div>
+    </div>
+
+    <!-- ========== SLIDE 2: THE 14-LINE MIRACLE ========== -->
+    <div class="slide">
+        <div class="section-label">The Miracle</div>
+        <h2 class="medium-headline">14 lines. One complete AI assistant.</h2>
+        <div class="split">
+            <div class="code-container">
+                <div class="code-label">bundle.md</div>
+                <pre class="dark-code"><code><span class="ln"> 1</span><span class="yp">---</span>
+<span class="ln"> 2</span><span class="yk">bundle:</span>
+<span class="ln"> 3</span>  <span class="yk">name:</span> <span class="yv">recipe-author</span>
+<span class="ln"> 4</span>  <span class="yk">version:</span> <span class="yv">1.0.0</span>
+<span class="ln"> 5</span>  <span class="yk">description:</span> <span class="yv">Conversational recipe expert</span>
+<span class="ln"> 6</span>
+<span class="ln"> 7</span><span class="yk">includes:</span>
+<span class="ln"> 8</span>  <span class="yp">-</span> <span class="yk">bundle:</span> <span class="yv">git+https://...amplifier-foundation@main</span>
+<span class="ln"> 9</span>  <span class="yp">-</span> <span class="yk">bundle:</span> <span class="yv">foundation:behaviors/recipes</span>
+<span class="ln">10</span>  <span class="yp">-</span> <span class="yk">bundle:</span> <span class="yv">foundation:behaviors/amplifier-dev</span>
+<span class="ln">11</span>
+<span class="ln">12</span><span class="yk">context:</span>
+<span class="ln">13</span>  <span class="yp">-</span> <span class="yk">path:</span> <span class="yv">instructions.md</span>
+<span class="ln">14</span><span class="yp">---</span></code></pre>
+            </div>
+            <div class="annotation-stack">
+                <div class="annotation">
+                    <div class="annotation-label accent-amethyst">Identity · lines 2–5</div>
+                    <p>Name, version, purpose — who this agent <em>is</em></p>
+                </div>
+                <div class="annotation border-malachite">
+                    <div class="annotation-label accent-malachite">Composition · lines 7–10</div>
+                    <p>Foundation + two behaviors. Three lines that inherit 50+ agents, 10+ tools, 15+ hooks, and 8 providers</p>
+                </div>
+                <div class="annotation border-copper">
+                    <div class="annotation-label accent-copper">Instructions · lines 12–13</div>
+                    <p>Custom context — the markdown body below the frontmatter is the system prompt. This line adds more.</p>
+                </div>
+            </div>
+        </div>
+        <div class="em-line"><em>The markdown body below line 14 becomes the agent's instruction.</em> That's a production-ready AI assistant.</div>
+    </div>
+
+    <!-- ========== SLIDE 3: THE THIN BUNDLE PATTERN ========== -->
+    <div class="slide">
+        <div class="section-label">The Pattern</div>
+        <h2 class="medium-headline">The power is in what's <span class="accent-amethyst">absent</span></h2>
+        <div class="split">
+            <div class="compare-thin">
+                <h3>What you declare</h3>
+                <ul class="thin-list">
+                    <li>bundle name</li>
+                    <li>version</li>
+                    <li>description</li>
+                    <li><code>includes: [foundation]</code></li>
+                    <li><code>context: [instructions]</code></li>
+                </ul>
+                <div class="thin-count">5 <span class="meta-text" style="font-size: var(--font-body); font-weight: 400;">declarations</span></div>
+            </div>
+            <div class="compare-thin">
+                <h3>What you inherit</h3>
+                <div class="pill-grid">
+                    <span class="pill highlight">50+ agents</span>
+                    <span class="pill highlight">10+ tools</span>
+                    <span class="pill highlight">15+ hooks</span>
+                    <span class="pill highlight">8 providers</span>
+                    <span class="pill">streaming UI</span>
+                    <span class="pill">session management</span>
+                    <span class="pill">security &amp; redaction</span>
+                    <span class="pill">progress monitoring</span>
+                    <span class="pill">multi-step recipes</span>
+                    <span class="pill">code navigation</span>
+                    <span class="pill">browser testing</span>
+                    <span class="pill">design intelligence</span>
+                    <span class="pill">git operations</span>
+                    <span class="pill">web research</span>
+                    <span class="pill">container orchestration</span>
+                    <span class="pill">LSP integration</span>
+                </div>
+            </div>
+        </div>
+        <div class="em-line">
+            This isn't laziness — it's <em>dependency inversion</em>. Thin bundles trust foundation to provide the runtime substrate. They declare only what's uniquely theirs.
+        </div>
+    </div>
+
+    <!-- ========== SLIDE 4: COMPOSITION OVER CONFIGURATION ========== -->
+    <div class="slide">
+        <div class="section-label">Composition</div>
+        <h2 class="medium-headline"><code style="font-family: inherit; color: var(--malachite);">includes:</code> not configures:</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 28px); max-width: 700px;">Instead of hundreds of config flags, Amplifier uses <code>includes:</code> chains. Each behavior is a composable capability. Snap them together like crystalline bonds.</p>
+        <div class="fourths">
+            <div class="card">
+                <div class="card-icon icon-malachite">⚡</div>
+                <h3>agents.yaml</h3>
+                <p>Delegation with context inheritance, session resume, self-delegation, and provider selection</p>
+            </div>
+            <div class="card">
+                <div class="card-icon icon-amethyst">📡</div>
+                <h3>streaming-ui.yaml</h3>
+                <p>Live terminal rendering of thinking blocks, tool calls, and token usage display</p>
+            </div>
+            <div class="card">
+                <div class="card-icon icon-copper">📋</div>
+                <h3>recipes.yaml</h3>
+                <p>Multi-step workflows with approval gates, foreach loops, and automatic checkpointing</p>
+            </div>
+            <div class="card">
+                <div class="card-icon icon-malachite">✅</div>
+                <h3>todo-reminder.yaml</h3>
+                <p>Progress tracking with visual bar and analysis-paralysis detection after 30 reads</p>
+            </div>
+        </div>
+        <div class="em-line">
+            Each behavior bundles agents + context + tools into a single <code style="font-family: inherit;">includes:</code> line. No merge conflicts. Just <em>additive composition</em>.
+        </div>
+    </div>
+
+    <!-- ========== SLIDE 5: BEHAVIORS ========== -->
+    <div class="slide">
+        <div class="section-label">Behaviors</div>
+        <h2 class="medium-headline">The unit of <span class="accent-malachite">reuse</span></h2>
+        <div class="split">
+            <div>
+                <p class="body-text" style="margin-bottom: clamp(14px, 2vw, 24px);">
+                    A behavior packages one capability — tools, hooks, agents, context, or any combination — into a composable unit. Anyone can <code>include</code> your behavior without inheriting your entire configuration.
+                </p>
+                <div class="code-container">
+                    <div class="code-label">behaviors/todo-reminder.yaml</div>
+                    <pre class="dark-code"><code><span class="yk">bundle:</span>
+  <span class="yk">name:</span> <span class="yv">behavior-todo-reminder</span>
+
+<span class="yk">tools:</span>
+  <span class="yp">-</span> <span class="yk">module:</span> <span class="yv">tool-todo</span>
+
+<span class="yk">hooks:</span>
+  <span class="yp">-</span> <span class="yk">module:</span> <span class="yv">hooks-todo-reminder</span>
+  <span class="yp">-</span> <span class="yk">module:</span> <span class="yv">hooks-todo-display</span></code></pre>
+                </div>
+            </div>
+            <div class="annotation-stack">
+                <div class="annotation border-malachite">
+                    <div class="annotation-label accent-malachite">1 tool</div>
+                    <p>The <code>tool-todo</code> module gives agents the ability to create and manage task lists</p>
+                </div>
+                <div class="annotation border-copper">
+                    <div class="annotation-label accent-copper">2 hooks</div>
+                    <p>One hook reminds the agent about pending tasks. The other renders a visual progress bar in the terminal.</p>
+                </div>
+                <div class="annotation">
+                    <div class="annotation-label accent-amethyst">1 include line</div>
+                    <p>Any bundle gets all three by adding one line:<br><code>- bundle: foundation:behaviors/todo-reminder</code></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SLIDE 6: THE LEGO MODEL ========== -->
+    <div class="slide">
+        <div class="section-label">The Model</div>
+        <h2 class="medium-headline">Every brick does <span class="accent-copper">one thing</span></h2>
+
+        <div class="brick-section" style="margin-bottom: clamp(20px, 3vw, 36px);">
+            <h3 class="accent-amethyst">Foundation bricks</h3>
+            <div class="brick-grid">
+                <div class="brick brick-hook">
+                    <div class="brick-name">streaming-ui</div>
+                    <div class="brick-desc">Live display · hook</div>
+                </div>
+                <div class="brick brick-tool">
+                    <div class="brick-name">agents</div>
+                    <div class="brick-desc">Delegation · tool</div>
+                </div>
+                <div class="brick brick-hook">
+                    <div class="brick-name">sessions</div>
+                    <div class="brick-desc">Lifecycle · composite</div>
+                </div>
+                <div class="brick brick-hook">
+                    <div class="brick-name">redaction</div>
+                    <div class="brick-desc">Security · hook</div>
+                </div>
+                <div class="brick brick-tool">
+                    <div class="brick-name">todo-reminder</div>
+                    <div class="brick-desc">Progress · tool + hooks</div>
+                </div>
+                <div class="brick brick-hook">
+                    <div class="brick-name">status-context</div>
+                    <div class="brick-desc">Environment · hook</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="brick-section">
+            <h3 class="accent-malachite">Ecosystem bricks</h3>
+            <div class="brick-grid">
+                <div class="brick brick-tool">
+                    <div class="brick-name">recipes</div>
+                    <div class="brick-desc">Workflows · tool + agents</div>
+                </div>
+                <div class="brick brick-composite">
+                    <div class="brick-name">design-intelligence</div>
+                    <div class="brick-desc">Design system · agents</div>
+                </div>
+                <div class="brick brick-tool">
+                    <div class="brick-name">python-dev</div>
+                    <div class="brick-desc">Code quality · tool + agents</div>
+                </div>
+                <div class="brick brick-composite">
+                    <div class="brick-name">browser-tester</div>
+                    <div class="brick-desc">UI testing · agents</div>
+                </div>
+                <div class="brick brick-tool">
+                    <div class="brick-name">shadow</div>
+                    <div class="brick-desc">Isolated envs · tool + agents</div>
+                </div>
+                <div class="brick brick-tool">
+                    <div class="brick-name">skills</div>
+                    <div class="brick-desc">Knowledge · tool</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="em-line">
+            Composition is <em>additive</em>. Each brick provides one thing cleanly. No merge conflicts. No side effects. Just capability accrual.
+        </div>
+    </div>
+
+    <!-- ========== SLIDE 7: AGENTS ARE BUNDLES ========== -->
+    <div class="slide">
+        <div class="section-label">Unification</div>
+        <h2 class="medium-headline">Agents <span class="accent-amethyst">are</span> bundles</h2>
+        <p class="body-text" style="margin-bottom: clamp(14px, 2.5vw, 24px); max-width: 700px;">Same file format. Same <code>tools:</code> section. Same composition rules. An agent is a bundle with <code>meta:</code> instead of <code>bundle:</code> — loaded into a spawn context instead of the root session.</p>
+        <div class="split">
+            <div class="code-container">
+                <div class="code-label">bundle.md</div>
+                <pre class="dark-code"><code><span class="yp">---</span>
+<span class="yk">bundle:</span>
+  <span class="yk">name:</span> <span class="yv">recipe-author</span>
+  <span class="yk">version:</span> <span class="yv">1.0.0</span>
+
+<span class="yk">includes:</span>
+  <span class="yp">-</span> <span class="yk">bundle:</span> <span class="yv">foundation</span>
+
+<span class="yk">tools:</span>
+  <span class="yp">-</span> <span class="yk">module:</span> <span class="yv">tool-recipes</span>
+<span class="yp">---</span></code></pre>
+            </div>
+            <div class="code-container">
+                <div class="code-label">agents/bug-hunter.md</div>
+                <pre class="dark-code"><code><span class="yp">---</span>
+<span class="yk">meta:</span>
+  <span class="yk">name:</span> <span class="yv">bug-hunter</span>
+  <span class="yk">description:</span> <span class="yv">"Debugging expert"</span>
+
+<span class="yk">tools:</span>
+  <span class="yp">-</span> <span class="yk">module:</span> <span class="yv">tool-filesystem</span>
+  <span class="yp">-</span> <span class="yk">module:</span> <span class="yv">tool-bash</span>
+  <span class="yp">-</span> <span class="yk">module:</span> <span class="yv">tool-lsp</span>
+<span class="yp">---</span></code></pre>
+            </div>
+        </div>
+        <div class="em-line">
+            Agents include behaviors. Agents declare tools. Agents configure providers. <em>The same composition model, all the way down.</em>
+        </div>
+    </div>
+
+    <!-- ========== SLIDE 8: THE COMPOSITION CHAIN ========== -->
+    <div class="slide">
+        <div class="section-label">The Chain</div>
+        <h2 class="medium-headline">From YAML to <span class="accent-malachite">running session</span></h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 28px); max-width: 700px;">Each layer adds exactly what it owns. Nothing bleeds across boundaries.</p>
+        <div class="chain">
+            <div class="chain-step">
+                <span class="step-num">1</span>
+                <span class="step-name">Protocols</span>
+                <span class="step-desc">Kernel contracts define module types</span>
+            </div>
+            <div class="chain-step">
+                <span class="step-num">2</span>
+                <span class="step-name">Foundation</span>
+                <span class="step-desc">Assembles the base runtime substrate</span>
+            </div>
+            <div class="chain-step">
+                <span class="step-num">3</span>
+                <span class="step-name">Behaviors</span>
+                <span class="step-desc">Package capabilities for reuse</span>
+            </div>
+            <div class="chain-step">
+                <span class="step-num">4</span>
+                <span class="step-name">Bundle</span>
+                <span class="step-desc">Composes foundation + behaviors</span>
+            </div>
+            <div class="chain-step">
+                <span class="step-num">5</span>
+                <span class="step-name">App Layer</span>
+                <span class="step-desc">Injects secrets &amp; preferences</span>
+            </div>
+            <div class="chain-step">
+                <span class="step-num">6</span>
+                <span class="step-name">Mount Plan</span>
+                <span class="step-desc">Flat dict — the kernel contract</span>
+            </div>
+            <div class="chain-step">
+                <span class="step-num">7</span>
+                <span class="step-name">Session</span>
+                <span class="step-desc">Mounts modules in fixed order</span>
+            </div>
+        </div>
+        <div style="margin-top: clamp(20px, 3vw, 36px);">
+            <p class="body-text" style="margin-bottom: clamp(8px, 1.5vw, 14px);"><strong>Resolution is parallel.</strong> Includes are loaded via <code>asyncio.gather()</code> with diamond deduplication and circular-reference detection.</p>
+            <p class="body-text"><strong>Mount order is fixed.</strong> Orchestrator → Context → Providers → Tools → Hooks. Each <code>loader.load()</code> returns a mount function registered on the <code>ModuleCoordinator</code>.</p>
+        </div>
+    </div>
+
+    <!-- ========== SLIDE 9: THE REAL ECOSYSTEM ========== -->
+    <div class="slide">
+        <div class="section-label">The Ecosystem</div>
+        <h2 class="medium-headline">All text files. All composable. <span class="accent-copper">All yours.</span></h2>
+        <div class="numbers-grid">
+            <div class="stat-block">
+                <div class="big-number accent-amethyst">29</div>
+                <div class="stat-label">Bundles</div>
+                <div class="meta-text">22 first-party · 7 community</div>
+            </div>
+            <div class="stat-block">
+                <div class="big-number accent-malachite">50+</div>
+                <div class="stat-label">Agents</div>
+                <div class="meta-text">18 local · 30+ remote</div>
+            </div>
+            <div class="stat-block">
+                <div class="big-number accent-copper">19</div>
+                <div class="stat-label">Behaviors</div>
+                <div class="meta-text">12 in foundation · 7 in ecosystem</div>
+            </div>
+            <div class="stat-block">
+                <div class="big-number accent-malachite">17</div>
+                <div class="stat-label">Tools</div>
+                <div class="meta-text">10 first-party · 7 community</div>
+            </div>
+            <div class="stat-block">
+                <div class="big-number accent-copper">17</div>
+                <div class="stat-label">Hooks</div>
+                <div class="meta-text">15 first-party · 2 community</div>
+            </div>
+            <div class="stat-block">
+                <div class="big-number accent-amethyst">11</div>
+                <div class="stat-label">Providers</div>
+                <div class="meta-text">8 first-party · 3 community</div>
+            </div>
+        </div>
+        <div class="em-line">
+            Every module is a text file you can read, diff, review, and compose. <em>No black boxes. No lock-in.</em>
+        </div>
+    </div>
+
+    <!-- ========== SLIDE 10: SOURCES ========== -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Research Methodology</h2>
+        <div class="sources-content">
+            <p><strong>Data as of:</strong> February 26, 2026</p>
+            <p><strong>Feature status:</strong> Active — core composition model powering all Amplifier sessions</p>
+            <p style="margin-top: 12px;"><strong>Research performed:</strong></p>
+            <ul>
+                <li>Local repo inspection: <code>~/dev/amplifier-foundation/</code>, <code>~/dev/amplifier-core/</code>, and 4 additional cloned repos</li>
+                <li>Bundle enumeration: <code>find . -name "bundle.md"</code> across all repos (6 local, 16 via MODULES.md catalog)</li>
+                <li>Agent enumeration: <code>find . -path "*/agents/*.md"</code> (18 local production agents found)</li>
+                <li>Behavior enumeration: YAML files in <code>behaviors/</code> directories (19 behaviors across repos)</li>
+                <li>Module counts: Cross-referenced with canonical <code>MODULES.md</code> catalog</li>
+                <li>Composition chain: Source analysis of <code>registry.py</code>, <code>bundle.py</code>, and <code>session.py</code></li>
+            </ul>
+            <p style="margin-top: 12px;"><strong>Gaps:</strong></p>
+            <ul>
+                <li>15 remote-only first-party bundles not directly inspected (counts from MODULES.md)</li>
+                <li>Community bundle internals not inspected (metadata only)</li>
+                <li>Agent count marked "50+" — 18 confirmed locally, ~32 estimated from remote bundles</li>
+                <li>The 14-line bundle shown is a representative example of the thin bundle pattern, not a verbatim copy</li>
+            </ul>
+            <p style="margin-top: 12px;"><strong>Primary repository:</strong> <code>microsoft/amplifier-foundation</code> (composition engine), <code>microsoft/amplifier-core</code> (kernel)</p>
+        </div>
+    </div>
+
+    <!-- ========== SLIDE 11: CLOSING ========== -->
+    <div class="slide center dark">
+        <div class="quote-block">
+            <span class="parallel">In design systems, tokens compose into components compose into patterns compose into <span class="quote-accent">experiences</span>.</span>
+            <span class="parallel">In Amplifier, protocols compose into modules compose into behaviors compose into <span class="quote-accent">agents</span>.</span>
+        </div>
+        <p style="font-size: var(--font-subhead); color: rgba(247,245,242,0.9); margin-top: clamp(24px, 4vw, 40px); font-weight: 600;">
+            The composition is the architecture.
+        </p>
+        <div class="quote-attribution">The Amplifier Design Philosophy</div>
+        <div style="margin-top: clamp(32px, 5vw, 56px); display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;">
+            <span class="badge badge-active">Try it</span>
+            <span class="meta-text" style="line-height: 28px; color: rgba(247,245,242,0.5);">
+                github.com/microsoft/amplifier-foundation
+            </span>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-container" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+            // Update counter color based on slide theme
+            const counter = document.getElementById('counter');
+            const link = document.querySelector('.more-stories');
+            if (slides[currentSlide].classList.contains('dark')) {
+                counter.style.color = 'rgba(247,245,242,0.3)';
+                link.style.color = 'rgba(247,245,242,0.25)';
+            } else {
+                counter.style.color = 'rgba(44,42,40,0.35)';
+                link.style.color = 'rgba(44,42,40,0.3)';
+            }
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = (currentSlide + 1) + ' / ' + slides.length;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav-container') || e.target.closest('.more-stories') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+        showSlide(0);
+    </script>
+</body>
+</html>

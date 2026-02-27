@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Composition All the Way Down — Amplifier Architecture</title>
+    <style>
+        :root {
+            /* Palette — geological strata */
+            --amethyst: #7B6B8A;
+            --amethyst-glow: rgba(123,107,138,0.25);
+            --copper: #B87333;
+            --copper-glow: rgba(184,115,51,0.25);
+            --malachite: #5B8C6F;
+            --malachite-glow: rgba(91,140,111,0.25);
+            --graphite: #2C2A28;
+            --parchment: #F7F5F2;
+            --accent: var(--amethyst);
+
+            /* Surfaces */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Typography fluid */
+            --font-headline: clamp(36px, 6vw, 64px);
+            --font-medium-headline: clamp(24px, 4vw, 42px);
+            --font-subhead: clamp(16px, 2.5vw, 28px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-small: clamp(12px, 1.5vw, 14px);
+            --font-code: clamp(12px, 1.8vw, 15px);
+            --font-big-number: clamp(48px, 12vw, 120px);
+
+            /* Spacing */
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(12px, 2vw, 24px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Slides */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(50px, 8vw, 100px) var(--padding-slide) clamp(70px, 10vw, 90px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: clamp(12px, 2vw, 20px);
+        }
+        .section-label.amethyst { color: var(--amethyst); }
+        .section-label.copper { color: var(--copper); }
+        .section-label.malachite { color: var(--malachite); }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: clamp(12px, 2vw, 24px);
+        }
+        .subhead {
+            font-size: var(--font-subhead);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: 720px;
+        }
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Grids */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+            gap: var(--gap-grid);
+        }
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap-grid);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(10px, 1.5vw, 14px);
+            padding: clamp(14px, 3vw, 24px);
+        }
+        .card h3 {
+            font-size: clamp(15px, 2.2vw, 20px);
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        .card p, .card li {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .card .icon {
+            font-size: clamp(28px, 5vw, 40px);
+            margin-bottom: 10px;
+        }
+        .card.amethyst-border { border-color: rgba(123,107,138,0.4); }
+        .card.copper-border { border-color: rgba(184,115,51,0.4); }
+        .card.malachite-border { border-color: rgba(91,140,111,0.4); }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--graphite);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(10px, 1.5vw, 14px);
+            padding: clamp(14px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: var(--font-code);
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: var(--text-secondary);
+        }
+        .code-keyword { color: #C792EA; }
+        .code-type { color: #FFCB6B; }
+        .code-string { color: #C3E88D; }
+        .code-comment { color: rgba(255,255,255,0.35); font-style: italic; }
+        .code-field { color: #89DDFF; }
+        .code-value { color: #F78C6C; }
+        .code-accent { color: var(--amethyst); font-weight: 600; }
+        .code-copper { color: var(--copper); font-weight: 600; }
+        .code-malachite { color: var(--malachite); font-weight: 600; }
+
+        /* Strata visualization */
+        .strata {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            width: 100%;
+            max-width: 800px;
+        }
+        .stratum {
+            padding: clamp(16px, 3vw, 28px) clamp(20px, 4vw, 36px);
+            border-radius: clamp(8px, 1vw, 12px);
+            position: relative;
+        }
+        .stratum h3 {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .stratum p {
+            font-size: var(--font-body);
+            line-height: 1.4;
+        }
+        .stratum-bundle {
+            background: rgba(123,107,138,0.2);
+            border: 1px solid rgba(123,107,138,0.4);
+        }
+        .stratum-bundle h3 { color: var(--amethyst); }
+        .stratum-bundle p { color: var(--text-secondary); }
+        .stratum-foundation {
+            background: rgba(184,115,51,0.15);
+            border: 1px solid rgba(184,115,51,0.35);
+        }
+        .stratum-foundation h3 { color: var(--copper); }
+        .stratum-foundation p { color: var(--text-secondary); }
+        .stratum-kernel {
+            background: rgba(91,140,111,0.15);
+            border: 1px solid rgba(91,140,111,0.35);
+        }
+        .stratum-kernel h3 { color: var(--malachite); }
+        .stratum-kernel p { color: var(--text-secondary); }
+
+        /* Merge rule table */
+        .merge-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .merge-table th {
+            color: var(--amethyst);
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-align: left;
+            padding: clamp(8px, 1.5vw, 12px);
+            border-bottom: 1px solid var(--border-visible);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .merge-table td {
+            font-size: var(--font-body);
+            padding: clamp(8px, 1.5vw, 12px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            vertical-align: top;
+        }
+        .merge-table td:first-child {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            color: var(--text-primary);
+            white-space: nowrap;
+            font-size: var(--font-code);
+        }
+        .merge-table td:nth-child(2) {
+            color: var(--text-secondary);
+        }
+        .merge-table td:nth-child(3) {
+            color: var(--text-tertiary);
+            font-size: var(--font-small);
+        }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(6px, 1vw, 10px);
+            counter-reset: step;
+        }
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: clamp(10px, 2vw, 16px);
+            counter-increment: step;
+        }
+        .flow-step::before {
+            content: counter(step);
+            flex-shrink: 0;
+            width: clamp(24px, 4vw, 32px);
+            height: clamp(24px, 4vw, 32px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--font-small);
+            font-weight: 700;
+        }
+        .flow-step.amethyst::before {
+            background: var(--amethyst-glow);
+            color: var(--amethyst);
+            border: 1px solid rgba(123,107,138,0.5);
+        }
+        .flow-step.copper::before {
+            background: var(--copper-glow);
+            color: var(--copper);
+            border: 1px solid rgba(184,115,51,0.5);
+        }
+        .flow-step.malachite::before {
+            background: var(--malachite-glow);
+            color: var(--malachite);
+            border: 1px solid rgba(91,140,111,0.5);
+        }
+        .flow-step .step-text {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            padding-top: 2px;
+        }
+        .flow-step .step-text strong {
+            color: var(--text-primary);
+        }
+
+        /* Context sink diagram */
+        .sink-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(8px, 1.5vw, 14px);
+            max-width: 720px;
+            width: 100%;
+        }
+        .sink-row {
+            display: flex;
+            align-items: center;
+            gap: clamp(8px, 2vw, 16px);
+        }
+        .sink-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: clamp(60px, 12vw, 100px);
+            flex-shrink: 0;
+            text-align: right;
+        }
+        .sink-bar {
+            flex: 1;
+            border-radius: 6px;
+            padding: clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px);
+            font-size: var(--font-code);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        .sink-bar.thin {
+            background: rgba(123,107,138,0.15);
+            border: 1px solid rgba(123,107,138,0.3);
+            color: var(--text-secondary);
+        }
+        .sink-bar.heavy {
+            background: rgba(184,115,51,0.15);
+            border: 1px solid rgba(184,115,51,0.3);
+            color: var(--text-secondary);
+        }
+        .sink-bar.result {
+            background: rgba(91,140,111,0.15);
+            border: 1px solid rgba(91,140,111,0.3);
+            color: var(--text-secondary);
+        }
+        .sink-tokens {
+            font-size: var(--font-small);
+            font-weight: 600;
+            flex-shrink: 0;
+            width: clamp(60px, 10vw, 90px);
+            text-align: right;
+        }
+
+        /* Isomorphism table */
+        .iso-row {
+            display: grid;
+            grid-template-columns: 1fr clamp(24px, 4vw, 40px) 1fr;
+            align-items: center;
+            gap: 0;
+            padding: clamp(8px, 1.5vw, 12px) 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .iso-left {
+            text-align: right;
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+        }
+        .iso-arrow {
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: var(--font-body);
+        }
+        .iso-right {
+            text-align: left;
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+        }
+        .iso-left strong { color: var(--malachite); }
+        .iso-right strong { color: var(--amethyst); }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-top: 12px;
+        }
+        .badge.active {
+            background: rgba(91,140,111,0.2);
+            color: var(--malachite);
+            border: 1px solid rgba(91,140,111,0.4);
+        }
+
+        /* Arrow connectors */
+        .arrow-down {
+            text-align: center;
+            font-size: clamp(18px, 3vw, 28px);
+            color: var(--text-tertiary);
+            padding: clamp(4px, 1vw, 8px) 0;
+        }
+
+        /* Stats grid */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(16px, 3vw, 32px);
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-number {
+            font-size: clamp(36px, 8vw, 72px);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+        }
+        .stat-label {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-dot.active {
+            background: var(--amethyst);
+            transform: scale(1.3);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+            font-variant-numeric: tabular-nums;
+            z-index: 100;
+        }
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px var(--padding-slide) 60px;
+            }
+            .slide.center { justify-content: flex-start; padding-top: 32px; }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
+        /* Small helper utilities */
+        .mt-sm { margin-top: clamp(8px, 1.5vw, 14px); }
+        .mt-md { margin-top: clamp(16px, 3vw, 28px); }
+        .mt-lg { margin-top: clamp(24px, 4vw, 40px); }
+        .mono { font-family: 'SF Mono', 'Fira Code', monospace; }
+        .dim { color: var(--text-tertiary); }
+        .nowrap { white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+<!-- ===== SLIDE 1: TITLE ===== -->
+<div class="slide active center">
+    <div class="section-label amethyst">Technical Architecture Deep-Dive</div>
+    <h1 class="headline" style="max-width: 900px;">Composition All<br>the Way Down</h1>
+    <p class="subhead" style="margin-top: clamp(8px, 1.5vw, 16px);">
+        How markdown files become AI agent systems —<br>
+        the architecture of amplifier-foundation
+    </p>
+    <div class="badge active">Active — amplifier-foundation</div>
+    <p class="dim mt-md" style="font-size: var(--font-small);">February 2026</p>
+</div>
+
+<!-- ===== SLIDE 2: THE FOUNDATION LAYER ===== -->
+<div class="slide">
+    <div class="section-label copper">The Foundation Layer</div>
+    <h2 class="medium-headline">8,645 lines of composition intelligence</h2>
+    <p class="body-text" style="max-width: 680px;">
+        amplifier-foundation is the library that turns 11-line YAML bundles into running AI agents.
+        Without it, every application would need hundreds of lines of wiring code.
+    </p>
+    <div class="grid-3 mt-md">
+        <div class="card copper-border">
+            <div class="icon">📦</div>
+            <h3>Bundle Loading</h3>
+            <p><span class="mono">load_bundle()</span> — parses YAML front-matter + markdown body into the Bundle dataclass</p>
+        </div>
+        <div class="card copper-border">
+            <div class="icon">🔗</div>
+            <h3>Composition Engine</h3>
+            <p><span class="mono">Bundle.compose()</span> — merges bundles with 5 distinct strategies per field type</p>
+        </div>
+        <div class="card copper-border">
+            <div class="icon">📎</div>
+            <h3>@mention Resolution</h3>
+            <p>Namespace-aware file references with recursive loading, SHA-256 dedup, max depth 3</p>
+        </div>
+        <div class="card copper-border">
+            <div class="icon">⬇️</div>
+            <h3>Module Activation</h3>
+            <p><span class="mono">ModuleActivator</span> — downloads modules from source URIs to local cache, installs deps</p>
+        </div>
+        <div class="card copper-border">
+            <div class="icon">🌱</div>
+            <h3>Spawn Utilities</h3>
+            <p>Create child sessions with context inheritance, provider preferences, and session resume</p>
+        </div>
+        <div class="card copper-border">
+            <div class="icon">🏭</div>
+            <h3>PreparedBundle Factory</h3>
+            <p>The expensive one-time step: activate all modules, build resolver, then create sessions cheaply</p>
+        </div>
+    </div>
+    <div class="mt-md" style="display: flex; gap: clamp(16px, 4vw, 40px); flex-wrap: wrap;">
+        <div>
+            <span class="dim" style="font-size: var(--font-small);">LIBRARY CORE</span><br>
+            <span style="font-size: var(--font-subhead); font-weight: 600; color: var(--copper);">8,645 LOC</span>
+        </div>
+        <div>
+            <span class="dim" style="font-size: var(--font-small);">TOTAL WITH MODULES</span><br>
+            <span style="font-size: var(--font-subhead); font-weight: 600; color: var(--text-secondary);">22,996 LOC</span>
+        </div>
+        <div>
+            <span class="dim" style="font-size: var(--font-small);">PYTHON FILES</span><br>
+            <span style="font-size: var(--font-subhead); font-weight: 600; color: var(--text-secondary);">97</span>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SLIDE 3: BUNDLE DATA STRUCTURE ===== -->
+<div class="slide">
+    <div class="section-label amethyst">Data Structure</div>
+    <h2 class="medium-headline">The Bundle dataclass — 14 fields in 4 groups</h2>
+    <div class="code-block"><span class="code-keyword">@dataclass</span>
+<span class="code-keyword">class</span> <span class="code-type">Bundle</span>:
+    <span class="code-comment"># ── Identity ──────────────────────────────</span>
+    <span class="code-field">name</span>: <span class="code-type">str</span>                          <span class="code-comment"># REQUIRED — also defines namespace</span>
+    <span class="code-field">version</span>: <span class="code-type">str</span> = <span class="code-string">"1.0.0"</span>
+    <span class="code-field">description</span>: <span class="code-type">str</span> = <span class="code-string">""</span>
+    <span class="code-field">includes</span>: <span class="code-type">list[str]</span> = []           <span class="code-comment"># URIs of bundles to compose</span>
+
+    <span class="code-comment"># ── Mount Plan ────────────────────────────</span>
+    <span class="code-field">session</span>: <span class="code-type">dict[str, Any]</span> = {}       <span class="code-comment"># orchestrator + context module specs</span>
+    <span class="code-field">providers</span>: <span class="code-type">list[dict]</span> = []        <span class="code-comment"># LLM provider configurations</span>
+    <span class="code-field">tools</span>: <span class="code-type">list[dict]</span> = []             <span class="code-comment"># tool module configurations</span>
+    <span class="code-field">hooks</span>: <span class="code-type">list[dict]</span> = []             <span class="code-comment"># lifecycle hook configurations</span>
+    <span class="code-field">spawn</span>: <span class="code-type">dict[str, Any]</span> = {}        <span class="code-comment"># child session defaults</span>
+
+    <span class="code-comment"># ── Resources ─────────────────────────────</span>
+    <span class="code-field">agents</span>: <span class="code-type">dict[str, dict]</span> = {}      <span class="code-comment"># agent name → definition</span>
+    <span class="code-field">context</span>: <span class="code-type">dict[str, Path]</span> = {}     <span class="code-comment"># context file references</span>
+    <span class="code-field">instruction</span>: <span class="code-type">str | None</span> = None   <span class="code-comment"># system prompt (from markdown body)</span>
+
+    <span class="code-comment"># ── Internal ──────────────────────────────</span>
+    <span class="code-field">base_path</span>: <span class="code-type">Path | None</span> = None     <span class="code-comment"># filesystem root for this bundle</span>
+    <span class="code-field">source_base_paths</span>: <span class="code-type">dict[str, Path]</span> = {}  <span class="code-comment"># namespace → base_path (for @mentions)</span></div>
+    <p class="body-text mt-sm" style="max-width: 600px;">
+        Plus <span class="mono">_pending_context</span> for deferred namespace resolution.
+        The <span class="mono">source_base_paths</span> dict is the key to multi-bundle @mention resolution —
+        it maps every composed namespace to its filesystem root.
+    </p>
+</div>
+
+<!-- ===== SLIDE 4: COMPOSITION SEMANTICS ===== -->
+<div class="slide">
+    <div class="section-label amethyst">Composition Semantics</div>
+    <h2 class="medium-headline">Bundle.compose(*others) — 5 merge strategies</h2>
+    <p class="body-text" style="max-width: 600px; margin-bottom: clamp(12px, 2vw, 20px);">
+        Returns a <em>new</em> Bundle. The original is never mutated. Later bundles win for conflicts.
+    </p>
+    <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <table class="merge-table">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Strategy</th>
+                    <th>Effect</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>session</td>
+                    <td style="color: var(--text-secondary);">deep_merge()</td>
+                    <td>Nested dicts merged recursively; scalars: later wins</td>
+                </tr>
+                <tr>
+                    <td>spawn</td>
+                    <td style="color: var(--text-secondary);">deep_merge()</td>
+                    <td>Same recursive merge as session</td>
+                </tr>
+                <tr>
+                    <td>providers</td>
+                    <td style="color: var(--text-secondary);">merge_module_lists()</td>
+                    <td>Index by <span class="mono">module</span> key; deep merge per module ID</td>
+                </tr>
+                <tr>
+                    <td>tools</td>
+                    <td style="color: var(--text-secondary);">merge_module_lists()</td>
+                    <td>Same — matching modules merge, new modules append</td>
+                </tr>
+                <tr>
+                    <td>hooks</td>
+                    <td style="color: var(--text-secondary);">merge_module_lists()</td>
+                    <td>Same — preserves module identity across compositions</td>
+                </tr>
+                <tr>
+                    <td>agents</td>
+                    <td style="color: var(--text-secondary);">dict.update()</td>
+                    <td>Later overrides entirely by agent name</td>
+                </tr>
+                <tr>
+                    <td>context</td>
+                    <td style="color: var(--text-primary); font-weight: 600;">accumulate</td>
+                    <td>Namespaced with <span class="mono">bundle_name:</span> prefix — no collision</td>
+                </tr>
+                <tr>
+                    <td>instruction</td>
+                    <td style="color: var(--text-primary); font-weight: 600;">replace</td>
+                    <td>Later replaces earlier entirely</td>
+                </tr>
+                <tr>
+                    <td>source_base_paths</td>
+                    <td style="color: var(--text-primary); font-weight: 600;">accumulate</td>
+                    <td>First write wins per namespace; never overwrites</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="body-text mt-sm dim" style="font-size: var(--font-small);">
+        Lists are NOT merged by deep_merge — child replaces parent. Module lists use a special
+        merge_module_lists() that indexes by the 'module' key for identity-preserving merges.
+    </p>
+</div>
+
+<!-- ===== SLIDE 5: THE PREPARE STEP ===== -->
+<div class="slide">
+    <div class="section-label copper">The Prepare Step</div>
+    <h2 class="medium-headline">Bundle.prepare() — the expensive step, done once</h2>
+    <div class="grid-2">
+        <div>
+            <div class="flow-steps">
+                <div class="flow-step copper">
+                    <div class="step-text"><strong>Generate mount plan</strong> via <span class="mono">bundle.to_mount_plan()</span> — raw config dict</div>
+                </div>
+                <div class="flow-step copper">
+                    <div class="step-text"><strong>Create ModuleActivator</strong> with install_deps flag and base_path</div>
+                </div>
+                <div class="flow-step copper">
+                    <div class="step-text"><strong>Install bundle's own package</strong> via <span class="mono">uv pip install</span> (pyproject.toml) — critical: before modules</div>
+                </div>
+                <div class="flow-step copper">
+                    <div class="step-text"><strong>Install included bundles'</strong> packages from all <span class="mono">source_base_paths</span></div>
+                </div>
+                <div class="flow-step copper">
+                    <div class="step-text"><strong>Collect ALL module specs</strong> across providers, tools, hooks, orchestrator, context, and agents</div>
+                </div>
+                <div class="flow-step copper">
+                    <div class="step-text"><strong>activator.activate_all()</strong> — download each module from source URI to local cache</div>
+                </div>
+                <div class="flow-step copper">
+                    <div class="step-text"><strong>activator.finalize()</strong> — persist install state for fast subsequent startups</div>
+                </div>
+                <div class="flow-step copper">
+                    <div class="step-text"><strong>Return PreparedBundle</strong> with resolver + mount plan + bundle_package_paths</div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="code-block"><span class="code-comment"># PreparedBundle — the output</span>
+<span class="code-keyword">@dataclass</span>
+<span class="code-keyword">class</span> <span class="code-type">PreparedBundle</span>:
+    <span class="code-field">mount_plan</span>: <span class="code-type">dict[str, Any]</span>
+    <span class="code-field">resolver</span>:   <span class="code-type">BundleModuleResolver</span>
+    <span class="code-field">bundle</span>:     <span class="code-type">Bundle</span>
+    <span class="code-field">bundle_package_paths</span>: <span class="code-type">list[str]</span>
+
+<span class="code-comment"># BundleModuleResolver</span>
+<span class="code-comment"># Implements kernel's ModuleSourceResolver</span>
+<span class="code-comment"># - sync resolve: pre-activated paths</span>
+<span class="code-comment"># - async resolve: lazy activation</span>
+<span class="code-comment">#   with asyncio.Lock() for safety</span></div>
+            <div class="card copper-border mt-sm">
+                <h3>Key insight</h3>
+                <p>prepare() is expensive (network I/O, package installs). But it's done <em>once</em>.
+                   After that, <span class="mono">create_session()</span> and <span class="mono">spawn()</span>
+                   are cheap — they reuse the resolver.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SLIDE 6: FROM PREPARED TO SESSION ===== -->
+<div class="slide">
+    <div class="section-label copper">From Prepared to Session</div>
+    <h2 class="medium-headline">PreparedBundle.create_session()</h2>
+    <p class="body-text" style="max-width: 640px; margin-bottom: clamp(12px, 2vw, 20px);">
+        From 11 lines of YAML to a running agent loop. This is the wiring that
+        foundation does so you don't have to.
+    </p>
+    <div class="flow-steps">
+        <div class="flow-step copper">
+            <div class="step-text"><strong>AmplifierSession(mount_plan)</strong> — instantiate the kernel session with the prepared config</div>
+        </div>
+        <div class="flow-step copper">
+            <div class="step-text"><strong>Mount BundleModuleResolver</strong> at <span class="mono">module-source-resolver</span> capability slot</div>
+        </div>
+        <div class="flow-step copper">
+            <div class="step-text"><strong>Register bundle_package_paths</strong> capability for child session inheritance</div>
+        </div>
+        <div class="flow-step copper">
+            <div class="step-text"><strong>Register session.working_dir</strong> — the filesystem root for @mention resolution</div>
+        </div>
+        <div class="flow-step malachite">
+            <div class="step-text"><strong>session.initialize()</strong> — kernel loads all modules from mount plan</div>
+        </div>
+        <div class="flow-step copper">
+            <div class="step-text"><strong>Resolve pending context refs</strong> — deferred namespaced @mentions now have source_base_paths</div>
+        </div>
+        <div class="flow-step copper">
+            <div class="step-text"><strong>Register mention_resolver + deduplicator</strong> as session capabilities</div>
+        </div>
+        <div class="flow-step copper">
+            <div class="step-text"><strong>Create system prompt factory</strong> — re-reads all @mentioned files every turn (dynamic!)</div>
+        </div>
+        <div class="flow-step copper">
+            <div class="step-text"><strong>Register factory</strong> with context manager — or fallback to pre-resolved static prompt</div>
+        </div>
+    </div>
+    <div class="card mt-sm" style="border-color: rgba(184,115,51,0.4); max-width: 640px;">
+        <h3 style="color: var(--copper);">Dynamic system prompts</h3>
+        <p>The system prompt factory is re-called on <em>every</em> <span class="mono">get_messages_for_request()</span>.
+        Files are re-read fresh each turn. Edit AGENTS.md mid-session and changes are picked up immediately.</p>
+    </div>
+</div>
+
+<!-- ===== SLIDE 7: CONTEXT SINK ARCHITECTURE ===== -->
+<div class="slide">
+    <div class="section-label amethyst">Context Sink Architecture</div>
+    <h2 class="medium-headline">40+ agents, zero context poisoning</h2>
+    <p class="body-text" style="max-width: 640px; margin-bottom: clamp(12px, 2vw, 20px);">
+        Heavy documentation loads only when the expert spawns. The root session never sees it.
+        Context flows through a two-parameter model: <strong>depth × scope</strong>.
+    </p>
+    <div class="sink-diagram">
+        <div class="sink-row">
+            <div class="sink-label" style="color: var(--amethyst);">Root</div>
+            <div class="sink-bar thin">"bundle system exists, delegate to foundation-expert"</div>
+            <div class="sink-tokens" style="color: var(--malachite);">~30 lines</div>
+        </div>
+        <div class="arrow-down">↓ <span class="dim" style="font-size: var(--font-small);">spawn()</span></div>
+        <div class="sink-row">
+            <div class="sink-label" style="color: var(--copper);">Expert</div>
+            <div class="sink-bar heavy">@foundation:docs/BUNDLE_GUIDE.md, PATTERNS.md ...</div>
+            <div class="sink-tokens" style="color: #F78C6C;">15,000+ tok</div>
+        </div>
+        <div class="arrow-down">↓ <span class="dim" style="font-size: var(--font-small);">return</span></div>
+        <div class="sink-row">
+            <div class="sink-label" style="color: var(--malachite);">Result</div>
+            <div class="sink-bar result">Distilled answer — structured summary</div>
+            <div class="sink-tokens" style="color: var(--malachite);">~500 tok</div>
+        </div>
+    </div>
+    <div class="grid-2 mt-md">
+        <div class="card">
+            <h3>Depth — how much history</h3>
+            <p><span class="mono">none</span> — clean slate<br>
+               <span class="mono">recent</span> — last N turns (default 5)<br>
+               <span class="mono">all</span> — full conversation</p>
+        </div>
+        <div class="card">
+            <h3>Scope — which content</h3>
+            <p><span class="mono">conversation</span> — text only<br>
+               <span class="mono">agents</span> — + delegate results<br>
+               <span class="mono">full</span> — + all tool results</p>
+        </div>
+    </div>
+    <p class="body-text mt-sm dim" style="font-size: var(--font-small);">
+        3 depth options × 3 scope options = 9 context inheritance strategies.
+        Messages >2,000 chars are truncated. Tool use/result blocks are stripped in non-full scopes.
+    </p>
+</div>
+
+<!-- ===== SLIDE 8: NAMESPACE RESOLUTION ===== -->
+<div class="slide">
+    <div class="section-label amethyst">Namespace Resolution</div>
+    <h2 class="medium-headline">How @mentions resolve — a 3-layer pipeline</h2>
+    <div class="grid-2">
+        <div>
+            <div class="code-block"><span class="code-comment"># 1. Parser (regex extraction)</span>
+parse_mentions(text) → list[str]
+<span class="code-comment"># Extracts @mentions, skips code blocks</span>
+<span class="code-comment"># Preserves order, returns unique list</span>
+
+<span class="code-comment"># 2. Resolver (namespace + path)</span>
+<span class="code-keyword">class</span> <span class="code-type">BaseMentionResolver</span>:
+  <span class="code-comment"># @bundle-name:path → bundles[ns].resolve()</span>
+  <span class="code-comment"># @path           → base_path / path</span>
+  <span class="code-comment"># @~/path         → expanduser()</span>
+
+<span class="code-comment"># 3. Loader (recursive + dedup)</span>
+load_mentions(text, resolver, dedup,
+              relative_to, <span class="code-value">max_depth=3</span>)
+<span class="code-comment"># SHA-256 content deduplication</span>
+<span class="code-comment"># Directories → listing</span>
+<span class="code-comment"># Recursive @mentions in loaded files</span></div>
+        </div>
+        <div>
+            <div class="card amethyst-border" style="margin-bottom: var(--gap-grid);">
+                <h3>Namespace rules</h3>
+                <p>Namespace comes from <span class="mono">bundle.name</span>, always.
+                   Not the repo name, not the directory. Root bundles establish namespaces;
+                   composed bundles share the parent's.</p>
+            </div>
+            <div class="card amethyst-border" style="margin-bottom: var(--gap-grid);">
+                <h3>YAML vs Markdown syntax</h3>
+                <p><strong>YAML sections:</strong> no @ prefix<br>
+                   <span class="mono">my-bundle:context/guide.md</span><br>
+                   <strong>Markdown body:</strong> @ prefix required<br>
+                   <span class="mono">@my-bundle:context/guide.md</span></p>
+            </div>
+            <div class="card amethyst-border">
+                <h3>Opposite semantics, intentionally</h3>
+                <p><span class="mono">context.include</span> propagates <strong>upward</strong> (parent sees it).<br>
+                   <span class="mono">@mentions</span> stay <strong>local</strong> (only the loading session sees the content).</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SLIDE 9: SPAWN ===== -->
+<div class="slide">
+    <div class="section-label copper">Spawn — Agent Delegation</div>
+    <h2 class="medium-headline">PreparedBundle.spawn()</h2>
+    <div class="code-block" style="margin-bottom: clamp(12px, 2vw, 20px); font-size: clamp(11px, 1.5vw, 13px);"><span class="code-keyword">async def</span> <span class="code-type">spawn</span>(self,
+    child_bundle: <span class="code-type">Bundle</span>,
+    instruction:  <span class="code-type">str</span>,
+    *,
+    compose:              <span class="code-type">bool</span> = <span class="code-value">True</span>,      <span class="code-comment"># compose child with parent?</span>
+    parent_session:       <span class="code-type">Any</span>  = <span class="code-value">None</span>,      <span class="code-comment"># lineage tracking + UX</span>
+    session_id:           <span class="code-type">str</span>  = <span class="code-value">None</span>,      <span class="code-comment"># resume existing session</span>
+    orchestrator_config:  <span class="code-type">dict</span> = <span class="code-value">None</span>,      <span class="code-comment"># override orchestrator</span>
+    parent_messages:      <span class="code-type">list</span> = <span class="code-value">None</span>,      <span class="code-comment"># inject parent context</span>
+    provider_preferences: <span class="code-type">list</span> = <span class="code-value">None</span>,      <span class="code-comment"># ordered fallback chain</span>
+    self_delegation_depth:<span class="code-type">int</span>  = <span class="code-value">0</span>,         <span class="code-comment"># recursion limiter</span>
+) → <span class="code-type">dict[str, Any]</span>:
+    <span class="code-comment"># Returns: {output, session_id, status, turn_count, metadata}</span></div>
+    <div class="grid-2">
+        <div class="flow-steps">
+            <div class="flow-step copper">
+                <div class="step-text"><strong>Compose</strong> child with parent bundle (inherits parent's tools)</div>
+            </div>
+            <div class="flow-step copper">
+                <div class="step-text"><strong>Generate child mount plan</strong> + merge orchestrator config</div>
+            </div>
+            <div class="flow-step copper">
+                <div class="step-text"><strong>Apply provider preferences</strong> with glob pattern resolution</div>
+            </div>
+            <div class="flow-step malachite">
+                <div class="step-text"><strong>Create AmplifierSession</strong> with parent_id linking</div>
+            </div>
+            <div class="flow-step copper">
+                <div class="step-text"><strong>Mount resolver</strong>, register working_dir, initialize</div>
+            </div>
+        </div>
+        <div class="flow-steps">
+            <div class="flow-step copper" style="counter-increment: step 5;">
+                <div class="step-text"><strong>Inject parent_messages</strong> via context manager (new sessions only)</div>
+            </div>
+            <div class="flow-step copper">
+                <div class="step-text"><strong>Register system prompt factory</strong> for child</div>
+            </div>
+            <div class="flow-step copper">
+                <div class="step-text"><strong>Hook orchestrator:complete</strong> to capture metadata</div>
+            </div>
+            <div class="flow-step malachite">
+                <div class="step-text"><strong>session.execute(instruction)</strong> — the agent does its work</div>
+            </div>
+            <div class="flow-step copper">
+                <div class="step-text"><strong>Return result dict</strong> — session_id enables resume</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SLIDE 10: THREE-LAYER ARCHITECTURE ===== -->
+<div class="slide">
+    <div class="section-label malachite">The Three-Layer Architecture</div>
+    <h2 class="medium-headline">Why this works</h2>
+    <div class="strata mt-md" style="margin: 0 auto;">
+        <div class="stratum stratum-bundle">
+            <h3>Bundles — User Intent</h3>
+            <p>11-line YAML files. What agents to include, what behaviors to compose.
+               Thin, declarative, composed via <span class="mono">includes:</span></p>
+        </div>
+        <div class="stratum stratum-foundation">
+            <h3>Foundation — Composition Intelligence</h3>
+            <p>8,645 LOC. Bundle loading, compose(), prepare(), spawn(), @mentions, activation.
+               The library that makes 11-line bundles possible.</p>
+        </div>
+        <div class="stratum stratum-kernel">
+            <h3>Kernel — Mechanisms Only</h3>
+            <p>4,492 LOC. Session lifecycle, module loading, event dispatch, coordinator.
+               Five protocols. Zero opinions about composition.</p>
+        </div>
+    </div>
+    <div class="stats-row" style="max-width: 800px; margin: 0 auto;">
+        <div class="stat">
+            <div class="stat-number" style="color: var(--amethyst);">11</div>
+            <div class="stat-label">Lines for a behavior</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number" style="color: var(--copper);">8,645</div>
+            <div class="stat-label">LOC foundation core</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number" style="color: var(--malachite);">4,492</div>
+            <div class="stat-label">LOC kernel</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number" style="color: var(--text-secondary);">5</div>
+            <div class="stat-label">Kernel protocols</div>
+        </div>
+    </div>
+    <p class="body-text mt-md dim" style="text-align: center; max-width: 640px; margin-left: auto; margin-right: auto; font-size: var(--font-small);">
+        The foundation layer is the secret weapon. Like a programming language's standard library —
+        not part of the spec, but essential to making the language usable.
+    </p>
+</div>
+
+<!-- ===== SLIDE 11: DESIGN SYSTEM PARALLEL ===== -->
+<div class="slide">
+    <div class="section-label amethyst">Structural Isomorphism</div>
+    <h2 class="medium-headline">The design system parallel</h2>
+    <p class="body-text" style="max-width: 640px; margin-bottom: clamp(12px, 2vw, 20px);">
+        Both systems solve the same problem: composable, constrained, semantically meaningful
+        primitives enabling diverse creators to build consistent, high-quality experiences.
+    </p>
+    <div style="max-width: 700px; width: 100%;">
+        <div style="display: grid; grid-template-columns: 1fr clamp(20px, 3vw, 36px) 1fr; gap: 0; margin-bottom: 8px;">
+            <div style="text-align: right; font-size: var(--font-small); color: var(--malachite); font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Amplifier</div>
+            <div></div>
+            <div style="font-size: var(--font-small); color: var(--amethyst); font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Design System</div>
+        </div>
+        <div class="iso-row">
+            <div class="iso-left"><strong>Protocol types</strong></div>
+            <div class="iso-arrow">≅</div>
+            <div class="iso-right"><strong>Design tokens</strong></div>
+        </div>
+        <div class="iso-row">
+            <div class="iso-left"><strong>Configured modules</strong></div>
+            <div class="iso-arrow">≅</div>
+            <div class="iso-right"><strong>Semantic tokens</strong></div>
+        </div>
+        <div class="iso-row">
+            <div class="iso-left"><strong>Behaviors</strong></div>
+            <div class="iso-arrow">≅</div>
+            <div class="iso-right"><strong>Design patterns</strong></div>
+        </div>
+        <div class="iso-row">
+            <div class="iso-left"><strong>Bundles</strong></div>
+            <div class="iso-arrow">≅</div>
+            <div class="iso-right"><strong>Components</strong></div>
+        </div>
+        <div class="iso-row">
+            <div class="iso-left"><strong>.amplifier/settings.yaml</strong></div>
+            <div class="iso-arrow">≅</div>
+            <div class="iso-right"><strong>Themes</strong></div>
+        </div>
+        <div class="iso-row" style="border-bottom: none;">
+            <div class="iso-left"><strong>Running session</strong></div>
+            <div class="iso-arrow">≅</div>
+            <div class="iso-right"><strong>Rendered application</strong></div>
+        </div>
+    </div>
+    <p class="body-text mt-md dim" style="font-size: var(--font-small); max-width: 600px;">
+        Atomic primitives → meaningful mappings → reusable compositions → complete units →
+        environmental application → running output. The pattern is fractal.
+    </p>
+</div>
+
+<!-- ===== SLIDE 12: SOURCES ===== -->
+<div class="slide">
+    <div class="section-label dim">Sources</div>
+    <h2 class="medium-headline">Research Methodology</h2>
+    <div class="body-text" style="line-height: 1.7; max-width: 680px;">
+        <p><strong>Data as of:</strong> February 26, 2026</p>
+        <p><strong>Feature status:</strong> Active</p>
+        <p style="margin-top: 12px;"><strong>Research performed:</strong></p>
+        <ul style="margin-left: 20px; margin-top: 6px; color: var(--text-secondary);">
+            <li>Line counts: <span class="mono">find amplifier_foundation/ -name "*.py" | xargs wc -l</span> (8,645 LOC library core; 22,996 total across 97 files)</li>
+            <li>Kernel LOC: <span class="mono">find amplifier_core/ -name "*.py" | xargs wc -l</span> (4,492 LOC production; 12,865 total across 57 files)</li>
+            <li>Bundle dataclass: <span class="mono">bundle.py</span> lines 29–81 (14 fields verified)</li>
+            <li>compose() method: <span class="mono">bundle.py</span> lines 98–213; <span class="mono">merge.py</span> (deep_merge, merge_module_lists)</li>
+            <li>prepare() method: <span class="mono">bundle.py</span> lines 245–383</li>
+            <li>PreparedBundle class: <span class="mono">bundle.py</span> lines 890–909</li>
+            <li>create_session(): <span class="mono">bundle.py</span> lines 1,030–1,158</li>
+            <li>spawn() method: <span class="mono">bundle.py</span> lines 1,160–1,377</li>
+            <li>@mention system: <span class="mono">mentions/parser.py</span>, <span class="mono">resolver.py</span>, <span class="mono">loader.py</span>, <span class="mono">models.py</span></li>
+            <li>Minimal bundles: <span class="mono">wc -l behaviors/*.yaml</span> (11-line smallest verified)</li>
+            <li>Context inheritance: <span class="mono">tool-delegate/__init__.py</span> lines 564–641 (depth × scope model)</li>
+        </ul>
+        <p style="margin-top: 12px;"><strong>Repositories:</strong> amplifier-foundation (local), amplifier-core (local submodule)</p>
+        <p><strong>Gaps:</strong> Production session counts and performance benchmarks not available in source code. Community bundle count not surveyed.</p>
+    </div>
+</div>
+
+<!-- ===== SLIDE 13: CLOSING ===== -->
+<div class="slide center">
+    <div class="section-label amethyst">Composition All the Way Down</div>
+    <h2 class="headline" style="max-width: 800px; line-height: 1.2;">
+        Three layers. Two libraries.<br>
+        Five protocols. Eleven lines of YAML.<br>
+        <span style="color: var(--text-secondary);">Infinite possibility.</span>
+    </h2>
+    <p class="subhead mt-md" style="font-size: var(--font-body);">
+        That's composition all the way down.
+    </p>
+    <div class="mt-lg" style="display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;">
+        <div class="badge" style="background: rgba(123,107,138,0.2); color: var(--amethyst); border: 1px solid rgba(123,107,138,0.4);">Bundles</div>
+        <div class="badge" style="background: rgba(184,115,51,0.15); color: var(--copper); border: 1px solid rgba(184,115,51,0.35);">Foundation</div>
+        <div class="badge" style="background: rgba(91,140,111,0.15); color: var(--malachite); border: 1px solid rgba(91,140,111,0.35);">Kernel</div>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav" id="nav"></div>
+<div class="slide-counter" id="counter"></div>
+<a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let currentSlide = 0;
+
+function showSlide(n) {
+    slides[currentSlide].classList.remove('active');
+    currentSlide = (n + slides.length) % slides.length;
+    slides[currentSlide].classList.add('active');
+    updateNav();
+}
+
+function updateNav() {
+    const nav = document.getElementById('nav');
+    const counter = document.getElementById('counter');
+    nav.innerHTML = '';
+    slides.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+        dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+        nav.appendChild(dot);
+    });
+    counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+});
+
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.nav') || e.target.closest('a')) return;
+    if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+    else showSlide(currentSlide - 1);
+});
+
+let touchStartX = 0;
+let touchEndX = 0;
+const SWIPE_THRESHOLD = 50;
+document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    const diff = touchStartX - touchEndX;
+    if (Math.abs(diff) > SWIPE_THRESHOLD) {
+        if (diff > 0) showSlide(currentSlide + 1);
+        else showSlide(currentSlide - 1);
+    }
+}, { passive: true });
+
+updateNav();
+</script>
+</body>
+</html>
