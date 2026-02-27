@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Teaching AI to Have Taste — An Amplifier Case Study</title>
+    <style>
+        :root {
+            /* Typography scale */
+            --fs-hero: clamp(36px, 10vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 32px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 17px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 2vw, 15px);
+            --fs-stat: clamp(36px, 8vw, 64px);
+
+            /* Spacing scale */
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Border radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+
+            /* Colors */
+            --bg-dark: #0a0a0f;
+            --bg-card: rgba(255, 255, 255, 0.04);
+            --bg-card-accent: rgba(255, 255, 255, 0.07);
+            --accent: #c9a0ff;
+            --accent-dim: rgba(201, 160, 255, 0.15);
+            --accent-warm: #ffb088;
+            --text-primary: rgba(255, 255, 255, 0.92);
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-dim: rgba(255, 255, 255, 0.35);
+            --border: rgba(255, 255, 255, 0.08);
+            --green: #7defa0;
+            --red: #ff7b7b;
+            --yellow: #ffd97a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active { display: flex; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--fs-small);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--accent);
+            margin-bottom: var(--space-md);
+            font-weight: 600;
+        }
+
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            margin-bottom: var(--space-md);
+        }
+
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.015em;
+            margin-bottom: var(--space-md);
+        }
+
+        .small-headline {
+            font-size: var(--fs-h2);
+            font-weight: 600;
+            line-height: 1.3;
+            margin-bottom: var(--space-sm);
+        }
+
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            max-width: min(700px, 90vw);
+        }
+
+        .body-text {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: min(700px, 90vw);
+        }
+
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-dim);
+        }
+
+        /* Cards and layout */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+
+        .card-accent {
+            background: var(--bg-card-accent);
+            border: 1px solid rgba(201, 160, 255, 0.12);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--space-md);
+            width: 100%;
+            max-width: min(960px, 90vw);
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+            gap: var(--space-md);
+            width: 100%;
+            max-width: min(1100px, 90vw);
+        }
+
+        .gap-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--space-sm);
+            width: 100%;
+            max-width: min(960px, 90vw);
+        }
+
+        .gap-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: var(--space-sm) var(--space-md);
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-sm);
+        }
+
+        .gap-icon {
+            font-size: clamp(18px, 2.5vw, 22px);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .gap-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .gap-title {
+            font-size: var(--fs-body);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .gap-desc {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Quote */
+        .quote-block {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            padding: var(--space-md) var(--space-lg);
+            max-width: min(700px, 90vw);
+            margin: var(--space-md) 0;
+        }
+
+        .quote-text {
+            font-size: var(--fs-h3);
+            font-style: italic;
+            line-height: 1.5;
+            color: var(--text-primary);
+        }
+
+        .quote-attr {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Stats */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(160px, 45%), 1fr));
+            gap: var(--space-md);
+            width: 100%;
+            max-width: min(800px, 90vw);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: var(--space-md);
+        }
+
+        .stat-number {
+            font-size: var(--fs-stat);
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+            margin-bottom: var(--space-xs);
+        }
+
+        .stat-label {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Comparison */
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--space-md);
+            width: 100%;
+            max-width: min(900px, 90vw);
+        }
+
+        .comparison-side {
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+
+        .comparison-before {
+            background: rgba(255, 123, 123, 0.06);
+            border: 1px solid rgba(255, 123, 123, 0.15);
+        }
+
+        .comparison-after {
+            background: rgba(125, 239, 160, 0.06);
+            border: 1px solid rgba(125, 239, 160, 0.15);
+        }
+
+        .comparison-label {
+            font-size: var(--fs-small);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+        }
+
+        .label-before { color: var(--red); }
+        .label-after { color: var(--green); }
+
+        .comparison-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+        }
+
+        .comparison-list li {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            padding-left: var(--space-md);
+            position: relative;
+        }
+
+        .comparison-list li::before {
+            position: absolute;
+            left: 0;
+        }
+
+        .comparison-before .comparison-list li::before { content: '\2715'; color: var(--red); }
+        .comparison-after .comparison-list li::before { content: '\2713'; color: var(--green); }
+
+        /* Layers diagram */
+        .layer-stack {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+            width: 100%;
+            max-width: min(700px, 90vw);
+        }
+
+        .layer {
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+        }
+
+        .layer-b {
+            background: rgba(201, 160, 255, 0.08);
+            border: 1px solid rgba(201, 160, 255, 0.2);
+        }
+
+        .layer-a {
+            background: rgba(255, 176, 136, 0.08);
+            border: 1px solid rgba(255, 176, 136, 0.2);
+        }
+
+        .layer-label {
+            font-size: var(--fs-small);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .layer-b .layer-label { color: var(--accent); }
+        .layer-a .layer-label { color: var(--accent-warm); }
+
+        .layer-title {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .layer-desc {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .layer-arrow {
+            text-align: center;
+            font-size: var(--fs-body);
+            color: var(--text-dim);
+            padding: var(--space-xs) 0;
+        }
+
+        /* Code block */
+        .code-block {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            color: var(--text-secondary);
+            max-width: min(800px, 90vw);
+        }
+
+        .code-accent { color: var(--accent); }
+        .code-warm { color: var(--accent-warm); }
+        .code-green { color: var(--green); }
+        .code-dim { color: var(--text-dim); }
+
+        /* Decision cards */
+        .decision-flow {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+            width: 100%;
+            max-width: min(700px, 90vw);
+        }
+
+        .decision-item {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+        }
+
+        .decision-mode {
+            font-size: var(--fs-small);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            flex-shrink: 0;
+            min-width: min(100px, 25vw);
+        }
+
+        .mode-decide { color: var(--green); }
+        .mode-flag { color: var(--yellow); }
+        .mode-recommend { color: var(--accent); }
+
+        .decision-desc {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            width: 100%;
+            max-width: min(700px, 90vw);
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: var(--space-md);
+            padding: var(--space-sm) 0;
+            border-left: 2px solid var(--border);
+            padding-left: var(--space-md);
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: var(--space-sm);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        .timeline-time {
+            font-size: var(--fs-small);
+            color: var(--text-dim);
+            flex-shrink: 0;
+            min-width: min(80px, 20vw);
+            padding-top: 2px;
+        }
+
+        .timeline-content {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .timeline-content strong {
+            color: var(--text-primary);
+        }
+
+        /* Takeaway cards */
+        .takeaway-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--space-md);
+            width: 100%;
+            max-width: min(960px, 90vw);
+        }
+
+        .takeaway-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+
+        .takeaway-number {
+            font-size: var(--fs-h2);
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: var(--space-xs);
+        }
+
+        .takeaway-title {
+            font-size: var(--fs-body);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .takeaway-desc {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: clamp(24px, 4vw, 36px);
+            right: clamp(16px, 3vw, 40px);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .nav-dot:hover { background: rgba(255, 255, 255, 0.4); }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(24px, 4vw, 36px);
+            left: clamp(16px, 3vw, 40px);
+            font-size: var(--fs-small);
+            color: var(--text-dim);
+            z-index: 100;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255, 255, 255, 0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255, 255, 255, 0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Touch targets */
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active center">
+        <div class="section-label">Amplifier Case Study</div>
+        <h1 class="headline">Teaching AI<br>to Have Taste</h1>
+        <p class="subhead">How a brainstorm session turned a passive design archive into a self-improving intelligence system &mdash; in one afternoon.</p>
+        <div class="small-text" style="margin-top: var(--space-lg);">February 2026 &middot; Design Intelligence Enhanced</div>
+    </div>
+
+    <!-- SLIDE 2: The Honest Assessment -->
+    <div class="slide">
+        <div class="section-label">The Starting Point</div>
+        <h2 class="medium-headline">An honest question. A harder answer.</h2>
+        <p class="body-text">The Design Intelligence Enhanced bundle already had an impressive pipeline: weekly scrapes of design showcase sites, vision AI analysis of screenshots, and a growing archive of trend data.</p>
+        <p class="body-text" style="margin-top: var(--space-sm);">Then someone asked the obvious question:</p>
+        <div class="quote-block">
+            <div class="quote-text">"How does it actually self-improve?"</div>
+        </div>
+        <p class="body-text" style="margin-top: var(--space-sm);">The honest answer was uncomfortable:</p>
+        <div class="quote-block">
+            <div class="quote-text">"It gets more informed over time, but it doesn't get smarter over time."</div>
+            <div class="quote-attr">&mdash; End-of-session reflection</div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: The Six Gaps -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="medium-headline">Six gaps between data and intelligence</h2>
+        <p class="body-text" style="margin-bottom: var(--space-md);">The bundle accumulated data. It never learned from it. A forensic look at the architecture revealed six structural gaps:</p>
+        <div class="gap-list">
+            <div class="gap-item">
+                <div class="gap-icon">1</div>
+                <div class="gap-content">
+                    <div class="gap-title">No outcome tracking</div>
+                    <div class="gap-desc">Couldn't tell if design decisions actually worked</div>
+                </div>
+            </div>
+            <div class="gap-item">
+                <div class="gap-icon">2</div>
+                <div class="gap-content">
+                    <div class="gap-title">No preference persistence</div>
+                    <div class="gap-desc">Every session started from zero &mdash; your taste forgotten</div>
+                </div>
+            </div>
+            <div class="gap-item">
+                <div class="gap-icon">3</div>
+                <div class="gap-content">
+                    <div class="gap-title">Static knowledge base</div>
+                    <div class="gap-desc">Cognitive task catalog and observation files were hand-curated</div>
+                </div>
+            </div>
+            <div class="gap-item">
+                <div class="gap-icon">4</div>
+                <div class="gap-content">
+                    <div class="gap-title">No self-modifying agents</div>
+                    <div class="gap-desc">Agent instructions never evolved from experience</div>
+                </div>
+            </div>
+            <div class="gap-item">
+                <div class="gap-icon">5</div>
+                <div class="gap-content">
+                    <div class="gap-title">No quality scoring</div>
+                    <div class="gap-desc">All archive entries weighted equally &mdash; noise and signal treated the same</div>
+                </div>
+            </div>
+            <div class="gap-item">
+                <div class="gap-icon">6</div>
+                <div class="gap-content">
+                    <div class="gap-title">No cross-session learning</div>
+                    <div class="gap-desc">No feedback loop between sessions whatsoever</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: The Design Insight -->
+    <div class="slide">
+        <div class="section-label">The Brainstorm</div>
+        <h2 class="medium-headline">Two layers of learning</h2>
+        <p class="body-text" style="margin-bottom: var(--space-lg);">Through a structured brainstorm, a design emerged. Not a single monolithic "learning engine," but two complementary layers &mdash; each meaningless without the other.</p>
+        <div class="layer-stack">
+            <div class="layer layer-b">
+                <div class="layer-label">Layer B &mdash; Personal Taste Profile</div>
+                <div class="layer-title">Remembers what you like</div>
+                <div class="layer-desc">Per-user and per-project preferences that evolve through inferred-then-confirmed suggestions. The system watches your choices, notices patterns, proposes updates &mdash; but nothing writes without your say.</div>
+            </div>
+            <div class="layer-arrow">built on top of</div>
+            <div class="layer layer-a">
+                <div class="layer-label">Layer A &mdash; Collective Design Intelligence</div>
+                <div class="layer-title">Knows what's happening in design</div>
+                <div class="layer-desc">The bundle's knowledge base grows organically from real project work. When agents encounter patterns from archive data that aren't captured yet, they propose additions inline.</div>
+            </div>
+        </div>
+        <p class="body-text" style="margin-top: var(--space-md);">The key insight: B without A is a static preference file. A without B is a knowledge base nobody's taste is mapped against. Together they create the loop.</p>
+    </div>
+
+    <!-- SLIDE 5: Design Decisions -->
+    <div class="slide">
+        <div class="section-label">Design Decisions</div>
+        <h2 class="medium-headline">Every choice was the user's</h2>
+        <p class="body-text" style="margin-bottom: var(--space-md);">Five questions. Five answers. Each one shaped the architecture through collaborative Q&amp;A:</p>
+        <div class="decision-flow">
+            <div class="decision-item">
+                <div class="decision-mode" style="color: var(--accent-warm);">Scope</div>
+                <div class="decision-desc"><strong>Both layers, together.</strong> Collective intelligence informs personal taste. As the user's taste evolves, the system recommends how to evolve it because it's on trend and up-to-date.</div>
+            </div>
+            <div class="decision-item">
+                <div class="decision-mode" style="color: var(--accent-warm);">Storage</div>
+                <div class="decision-desc"><strong>Layered profiles.</strong> Global user baseline + per-project overrides. Your e-commerce site can be bold while your blog stays minimal. Project wins on conflicts.</div>
+            </div>
+            <div class="decision-item">
+                <div class="decision-mode" style="color: var(--accent-warm);">Updates</div>
+                <div class="decision-desc"><strong>Inferred, then confirmed.</strong> The system watches choices silently, surfaces patterns as proposals, but nothing gets written to your profile without your explicit approval.</div>
+            </div>
+            <div class="decision-item">
+                <div class="decision-mode" style="color: var(--accent-warm);">Growth</div>
+                <div class="decision-desc"><strong>Agent-driven, on demand.</strong> Knowledge base enrichment happens during real project work &mdash; not on a schedule. Aligned with what the user is actually doing.</div>
+            </div>
+            <div class="decision-item">
+                <div class="decision-mode" style="color: var(--accent-warm);">Surface</div>
+                <div class="decision-desc"><strong>Woven into reasoning.</strong> Taste awareness isn't a sidebar or notification. It's part of how every design agent thinks &mdash; baked into their reasoning, surfaced transparently in output.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 6: The Three Modes -->
+    <div class="slide">
+        <div class="section-label">The Protocol</div>
+        <h2 class="medium-headline">Decide. Flag. Recommend.</h2>
+        <p class="body-text" style="margin-bottom: var(--space-md);">Every design agent now reasons through taste using three modes, each triggered by different confidence levels:</p>
+        <div class="decision-flow">
+            <div class="decision-item">
+                <div class="decision-mode mode-decide">Decide</div>
+                <div class="decision-desc"><em>"Using a muted earth tone palette here. Your profile strongly favors this direction and it fits the editorial tone of this project."</em><br><br>High confidence + context aligns. The agent applies the preference and explains why. Transparent, not blocking.</div>
+            </div>
+            <div class="decision-item">
+                <div class="decision-mode mode-flag">Flag</div>
+                <div class="decision-desc"><em>"Your profile leans toward generous whitespace, but this dashboard has 12 data points that need to be scannable. Tighter spacing with clear grouping, or keep the whitespace and use progressive disclosure?"</em><br><br>Medium confidence, or tension between preference and context. The agent asks for a call.</div>
+            </div>
+            <div class="decision-item">
+                <div class="decision-mode mode-recommend">Recommend</div>
+                <div class="decision-desc"><em>"You favor serif headlines, and there's a strong current trend toward condensed bold sans-serifs for data-dense headers. Worth considering for this project where you need density?"</em><br><br>Archive trend intersects with a preference. The agent suggests evolution.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 7: Before/After -->
+    <div class="slide">
+        <div class="section-label">The Shift</div>
+        <h2 class="medium-headline">Before and after</h2>
+        <div class="comparison" style="margin-top: var(--space-md);">
+            <div class="comparison-side comparison-before">
+                <div class="comparison-label label-before">Before</div>
+                <ul class="comparison-list">
+                    <li>Every session starts from zero</li>
+                    <li>Archive data sits passively</li>
+                    <li>Knowledge base is hand-curated</li>
+                    <li>Agents explain choices generically</li>
+                    <li>No memory of user preferences</li>
+                    <li>Gets more informed, not smarter</li>
+                </ul>
+            </div>
+            <div class="comparison-side comparison-after">
+                <div class="comparison-label label-after">After</div>
+                <ul class="comparison-list">
+                    <li>Profiles persist across sessions</li>
+                    <li>Trends inform active design reasoning</li>
+                    <li>Knowledge base grows from real work</li>
+                    <li>Agents reason with your taste explicitly</li>
+                    <li>Preferences evolve with confirmation</li>
+                    <li>Gets more informed AND smarter</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: Implementation -->
+    <div class="slide">
+        <div class="section-label">The Build</div>
+        <h2 class="medium-headline">From design to shipped in one session</h2>
+        <p class="body-text" style="margin-bottom: var(--space-md);">7 tasks dispatched to subagents. 5 clean commits. All markdown and YAML &mdash; no code, no new modules.</p>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-time">Task 1</div>
+                <div class="timeline-content"><strong>Core instructions created</strong> &mdash; 185 lines teaching agents the decide/flag/recommend protocol, profile update proposals, and knowledge enrichment flow</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">Task 2</div>
+                <div class="timeline-content"><strong>Behavior YAML authored</strong> &mdash; thin bundle definition wiring instructions into the composition system</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">Task 3</div>
+                <div class="timeline-content"><strong>Registered in bundle.md</strong> &mdash; taste-awareness added as a composable sub-bundle</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">Tasks 4-6</div>
+                <div class="timeline-content"><strong>8 design agents updated</strong> &mdash; art director, system architect, component designer, layout architect, responsive strategist, animation choreographer, voice strategist, research analyst</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-time">Task 7</div>
+                <div class="timeline-content"><strong>End-to-end validation</strong> &mdash; all 8 agents wired correctly, all checks pass, 4 utility agents correctly excluded</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: The Numbers -->
+    <div class="slide center">
+        <div class="section-label">By the Numbers</div>
+        <h2 class="medium-headline">What shipped</h2>
+        <div class="stat-grid" style="margin-top: var(--space-md);">
+            <div class="stat-item">
+                <div class="stat-number">2</div>
+                <div class="stat-label">Files Created</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">9</div>
+                <div class="stat-label">Files Modified</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">8</div>
+                <div class="stat-label">Agents Updated</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">5</div>
+                <div class="stat-label">Clean Commits</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">185</div>
+                <div class="stat-label">Lines of Instructions</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Lines of Code</div>
+            </div>
+        </div>
+        <p class="body-text" style="margin-top: var(--space-lg); text-align: center;">Pure instruction-driven behavior. All markdown and YAML. No new modules, no new tools, no code changes.</p>
+    </div>
+
+    <!-- SLIDE 10: The Human Element -->
+    <div class="slide">
+        <div class="section-label">The Process</div>
+        <h2 class="medium-headline">Designed by conversation</h2>
+        <p class="body-text">The entire architecture emerged through structured brainstorming. Five questions, five answers. The system presented options; the user made every call.</p>
+        <p class="body-text" style="margin-top: var(--space-sm);">A pattern emerged in the choices: the user consistently selected the "both, layered" option. Not the simplest path. Not the most complex. The nuanced one.</p>
+        <div class="quote-block" style="margin-top: var(--space-md);">
+            <div class="quote-text">"This should be per... ugh, every time you give me a 'both' option I want to select both. It really is layered and there are per-project considerations."</div>
+        </div>
+        <p class="body-text" style="margin-top: var(--space-md);">That instinct &mdash; that real design systems need nuance, not binary switches &mdash; shaped every decision. Layered profiles, not flat. Inferred-then-confirmed, not silent or manual. Woven into reasoning, not bolted on as a sidebar.</p>
+        <p class="body-text" style="margin-top: var(--space-sm);">The brainstorm moved from "what should self-improvement mean?" to "here's the exact file format for taste profiles" in about 20 minutes of back-and-forth. Design by conversation, then implemented by dispatching subagents straight from the plan.</p>
+    </div>
+
+    <!-- SLIDE 11: Takeaways -->
+    <div class="slide">
+        <div class="section-label">Takeaways</div>
+        <h2 class="medium-headline">What others can learn</h2>
+        <div class="takeaway-grid" style="margin-top: var(--space-md);">
+            <div class="takeaway-card">
+                <div class="takeaway-number">01</div>
+                <div class="takeaway-title">Instructions are infrastructure</div>
+                <div class="takeaway-desc">185 lines of well-structured markdown gave 8 agents a new capability. No code required. In the Amplifier ecosystem, behavior is composition &mdash; you teach agents by writing clear instructions, not by writing code.</div>
+            </div>
+            <div class="takeaway-card">
+                <div class="takeaway-number">02</div>
+                <div class="takeaway-title">Design the learning loop, not the data store</div>
+                <div class="takeaway-desc">The bundle already had data collection. What it lacked was the loop: observe, propose, confirm, remember. The self-improvement wasn't about more data. It was about closing the feedback cycle.</div>
+            </div>
+            <div class="takeaway-card">
+                <div class="takeaway-number">03</div>
+                <div class="takeaway-title">Brainstorm before you build</div>
+                <div class="takeaway-desc">The brainstorm mode worked. Present options, let the user decide, validate each section before moving on. Twenty minutes of conversation produced a design that would have taken days to spec in a document-first approach.</div>
+            </div>
+            <div class="takeaway-card">
+                <div class="takeaway-number">04</div>
+                <div class="takeaway-title">Respect user agency</div>
+                <div class="takeaway-desc">The system infers preferences but never writes them silently. Every profile update is proposed, explained with evidence, and only persisted on confirmation. Transparency builds trust. Trust enables the learning loop.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 12: Sources -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Methodology</h2>
+        <div class="body-text" style="line-height: 1.8;">
+            <p><strong>Session date:</strong> February 25-26, 2026</p>
+            <p><strong>Bundle:</strong> design-intelligence-enhanced (Amplifier ecosystem)</p>
+            <p><strong>Feature status:</strong> Shipped to origin, awaiting real-session validation</p>
+            <p style="margin-top: var(--space-sm);"><strong>Artifacts produced:</strong></p>
+            <ul style="list-style: none; padding-left: var(--space-md);">
+                <li>Design doc: <span style="font-family: monospace;">docs/plans/2026-02-25-self-improvement-design.md</span></li>
+                <li>Implementation plan: <span style="font-family: monospace;">docs/plans/2026-02-26-self-improvement-plan.md</span></li>
+                <li>Core instructions: <span style="font-family: monospace;">context/taste-awareness-instructions.md</span></li>
+                <li>Behavior definition: <span style="font-family: monospace;">behaviors/taste-awareness.yaml</span></li>
+            </ul>
+            <p style="margin-top: var(--space-sm);"><strong>Commits:</strong> 5 commits (bbd8291 through 52bdb8c)</p>
+            <p><strong>Approach:</strong> Brainstorm mode (design) &rarr; Plan-write mode (spec) &rarr; Subagent-driven execution (build) &rarr; End-to-end validation (verify)</p>
+            <p style="margin-top: var(--space-sm);"><strong>What's next:</strong> Validate the core loop by running real design sessions. If the reasoning feels natural and profile proposals emerge organically, the foundation is sound. If not, the instructions get tuned &mdash; which is exactly the kind of iteration this system is designed for.</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = () => showSlide(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
+            if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
+        });
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.target.closest('a')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>
