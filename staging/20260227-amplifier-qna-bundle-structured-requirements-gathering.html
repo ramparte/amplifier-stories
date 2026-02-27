@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>amplifier-qna-bundle — Structured Requirements, Conversationally</title>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif; }
+
+    /* ── Design Tokens ── */
+    :root {
+      --bg:           #000000;
+      --surface-1:    #0f0f11;
+      --surface-2:    #1a1a1f;
+      --surface-3:    #242430;
+      --border:       rgba(255,255,255,0.08);
+      --accent:       #6366F1;
+      --accent-light: #818CF8;
+      --accent-glow:  rgba(99,102,241,0.25);
+      --accent-soft:  rgba(99,102,241,0.12);
+      --green:        #34D399;
+      --amber:        #FBBF24;
+      --rose:         #F87171;
+      --sky:          #38BDF8;
+      --text-1:       rgba(255,255,255,0.95);
+      --text-2:       rgba(255,255,255,0.70);
+      --text-3:       rgba(255,255,255,0.45);
+    }
+
+    /* ── Deck Shell ── */
+    #deck { position: relative; width: 100vw; height: 100vh; }
+
+    /* ── Slides ── */
+    .slide {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.55s cubic-bezier(0.4,0,0.2,1), transform 0.55s cubic-bezier(0.4,0,0.2,1);
+      transform: translateY(24px);
+      background: var(--bg);
+      padding: clamp(28px, 5vw, 64px);
+    }
+    .slide.active  { opacity: 1; pointer-events: all; transform: translateY(0); }
+    .slide.out-up  { opacity: 0; transform: translateY(-24px); }
+    .slide.in-down { opacity: 0; transform: translateY(24px); }
+
+    /* Subtle grid pattern */
+    .slide::before {
+      content: "";
+      position: absolute; inset: 0; pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 64px 64px;
+    }
+
+    /* ── Inner ── */
+    .slide-inner {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 1100px;
+      display: flex; flex-direction: column; gap: clamp(20px, 3vw, 36px);
+    }
+
+    /* ── Label / Eyebrow ── */
+    .eyebrow {
+      font-size: clamp(10px, 1.1vw, 13px);
+      font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--accent-light);
+    }
+
+    /* ── Headlines ── */
+    h1 {
+      font-size: clamp(36px, 6vw, 80px);
+      font-weight: 700; line-height: 1.05; letter-spacing: -0.03em;
+      color: var(--text-1);
+    }
+    h2 {
+      font-size: clamp(26px, 4vw, 52px);
+      font-weight: 700; line-height: 1.1; letter-spacing: -0.025em;
+      color: var(--text-1);
+    }
+    h3 {
+      font-size: clamp(15px, 1.8vw, 22px);
+      font-weight: 600; line-height: 1.3;
+      color: var(--text-1);
+    }
+    p {
+      font-size: clamp(14px, 1.5vw, 18px);
+      line-height: 1.65; color: var(--text-2);
+    }
+    .lead {
+      font-size: clamp(17px, 2vw, 26px);
+      line-height: 1.5; color: var(--text-2); font-weight: 400;
+    }
+
+    /* ── Accent text ── */
+    .hi { color: var(--accent-light); }
+
+    /* ── Status Badge ── */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 14px; border-radius: 40px;
+      background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3);
+      font-size: clamp(11px, 1vw, 13px); font-weight: 600; color: var(--green);
+      width: fit-content;
+    }
+    .status-badge::before {
+      content: ""; display: block; width: 7px; height: 7px;
+      border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Divider ── */
+    .divider {
+      width: 48px; height: 3px; border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    }
+
+    /* ── Problem Columns ── */
+    .problem-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    }
+    .problem-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: clamp(18px,2.5vw,28px);
+      position: relative; overflow: hidden;
+    }
+    .problem-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--rose), transparent);
+    }
+    .problem-icon {
+      font-size: clamp(24px,3vw,36px); margin-bottom: 12px; display: block;
+    }
+    .problem-card h3 { color: var(--text-1); margin-bottom: 8px; }
+    .problem-card p { font-size: clamp(13px,1.3vw,16px); }
+
+    /* ── Solution Layout ── */
+    .solution-layout {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;
+    }
+    .solution-left { display: flex; flex-direction: column; gap: 14px; }
+    .solution-right {
+      background: var(--surface-1); border: 1px solid var(--border);
+      border-radius: 20px; padding: clamp(20px,2.5vw,32px);
+      position: relative; overflow: hidden;
+    }
+    .solution-right::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-light), transparent);
+    }
+
+    /* Chat bubbles */
+    .chat { display: flex; flex-direction: column; gap: 10px; }
+    .bubble {
+      max-width: 88%; padding: 10px 15px; border-radius: 16px;
+      font-size: clamp(12px,1.2vw,14px); line-height: 1.5;
+    }
+    .bubble.agent {
+      align-self: flex-start;
+      background: var(--surface-3); color: var(--text-1);
+      border-bottom-left-radius: 4px;
+    }
+    .bubble.user {
+      align-self: flex-end;
+      background: var(--accent); color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .bubble.agent .label, .bubble.user .label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; opacity: 0.6; margin-bottom: 4px;
+    }
+    .chat-caption {
+      text-align: center; font-size: clamp(10px,1vw,12px);
+      color: var(--text-3); margin-top: 8px; font-style: italic;
+    }
+
+    /* ── Step list ── */
+    .step-list { display: flex; flex-direction: column; gap: 12px; }
+    .step-item {
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .step-num {
+      flex-shrink: 0; width: 28px; height: 28px;
+      border-radius: 50%; background: var(--accent-soft);
+      border: 1px solid var(--accent); color: var(--accent-light);
+      font-size: 12px; font-weight: 700; letter-spacing: -0.02em;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-text { font-size: clamp(13px,1.4vw,16px); color: var(--text-2); line-height: 1.5; }
+    .step-text strong { color: var(--text-1); font-weight: 600; }
+
+    /* ── Components Grid ── */
+    .comp-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    }
+    .comp-card {
+      background: var(--surface-1); border: 1px solid var(--border);
+      border-radius: 18px; padding: clamp(18px,2.2vw,26px);
+      position: relative; overflow: hidden;
+    }
+    .comp-card.primary::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    }
+    .comp-card.secondary::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--sky), transparent);
+    }
+    .comp-label {
+      font-size: clamp(10px,0.95vw,12px); font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text-3); margin-bottom: 6px;
+    }
+    .comp-name {
+      font-size: clamp(15px,1.7vw,20px); font-weight: 700; color: var(--text-1);
+      margin-bottom: 10px; font-family: "SF Mono", "Fira Code", monospace;
+    }
+    .comp-name.accent { color: var(--accent-light); }
+    .comp-name.sky { color: var(--sky); }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .tag {
+      padding: 3px 10px; border-radius: 20px; font-size: clamp(10px,0.95vw,12px);
+      font-weight: 500; background: var(--surface-3); color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+    .tag.accent { background: var(--accent-soft); border-color: rgba(99,102,241,0.3); color: var(--accent-light); }
+
+    /* Template grid */
+    .tmpl-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px;
+    }
+    .tmpl-item {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+    }
+    .tmpl-icon { font-size: 18px; flex-shrink: 0; }
+    .tmpl-name { font-size: clamp(11px,1.1vw,13px); font-weight: 600; color: var(--text-1); }
+    .tmpl-desc { font-size: clamp(10px,0.95vw,12px); color: var(--text-3); }
+
+    /* ── Features slide ── */
+    .feat-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    }
+    .feat-card {
+      background: var(--surface-1); border: 1px solid var(--border);
+      border-radius: 18px; padding: clamp(18px,2.2vw,26px);
+      position: relative; overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .feat-card:hover { border-color: rgba(99,102,241,0.4); }
+    .feat-icon {
+      font-size: clamp(26px,3.5vw,40px); margin-bottom: 14px; display: block;
+    }
+    .feat-card h3 { margin-bottom: 8px; font-size: clamp(14px,1.5vw,18px); }
+    .feat-card p { font-size: clamp(12px,1.2vw,14px); }
+    .feat-pill {
+      display: inline-block; margin-top: 12px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: clamp(9px,0.9vw,11px); font-weight: 700; letter-spacing: 0.06em;
+      background: var(--accent-soft); color: var(--accent-light);
+      border: 1px solid rgba(99,102,241,0.3);
+    }
+
+    /* ── Extend slide ── */
+    .extend-layout {
+      display: grid; grid-template-columns: 1fr 1.1fr; gap: 20px; align-items: start;
+    }
+    .extend-left { display: flex; flex-direction: column; gap: 14px; }
+    .extend-card {
+      background: var(--surface-1); border: 1px solid var(--border);
+      border-radius: 16px; padding: clamp(16px,2vw,22px);
+    }
+    .extend-card h3 { font-size: clamp(14px,1.5vw,18px); margin-bottom: 6px; }
+    .extend-card p { font-size: clamp(12px,1.2vw,14px); }
+
+    /* Code block */
+    .code-block {
+      background: #0a0a0f; border: 1px solid var(--border);
+      border-radius: 14px; padding: clamp(16px,2vw,24px);
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: clamp(11px,1.1vw,13px); line-height: 1.7;
+      color: var(--text-2); overflow: hidden; position: relative;
+    }
+    .code-block::before {
+      content: "api-design-review.yaml";
+      display: block; font-size: 11px; font-weight: 600;
+      color: var(--text-3); letter-spacing: 0.05em;
+      margin-bottom: 14px; padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .code-key   { color: var(--accent-light); }
+    .code-str   { color: var(--green); }
+    .code-cmt   { color: var(--text-3); font-style: italic; }
+    .code-num   { color: var(--amber); }
+
+    /* Output pills */
+    .output-row { display: flex; gap: 10px; margin-top: 14px; }
+    .output-pill {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 16px; border-radius: 10px; font-size: clamp(12px,1.2vw,14px);
+      font-weight: 600;
+    }
+    .output-pill.md  { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: var(--green); }
+    .output-pill.json { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); color: var(--amber); }
+
+    /* ── Sources slide ── */
+    .sources-box {
+      background: var(--surface-1); border: 1px solid var(--border);
+      border-radius: 18px; padding: clamp(22px,3vw,36px);
+    }
+    .sources-row { display: flex; gap: 20px; }
+    .sources-col { flex: 1; }
+    .source-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .source-item:last-child { border-bottom: none; }
+    .source-dot {
+      flex-shrink: 0; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--accent); margin-top: 6px;
+    }
+    .source-text { font-size: clamp(12px,1.2vw,14px); color: var(--text-2); line-height: 1.5; }
+    .source-text strong { color: var(--text-1); font-weight: 600; }
+    .source-date {
+      margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border);
+      font-size: clamp(11px,1.1vw,13px); color: var(--text-3); font-style: italic;
+    }
+
+    /* ── CTA slide ── */
+    .cta-center { text-align: center; align-items: center; }
+    .cta-cards {
+      display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+    }
+    .cta-card {
+      background: var(--surface-1); border: 1px solid var(--border);
+      border-radius: 18px; padding: clamp(18px,2.5vw,28px);
+      width: clamp(200px, 28vw, 280px); text-align: left;
+      position: relative; overflow: hidden;
+    }
+    .cta-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+    }
+    .cta-card-icon { font-size: clamp(24px,3vw,36px); margin-bottom: 10px; }
+    .cta-card h3 { font-size: clamp(13px,1.4vw,16px); margin-bottom: 6px; }
+    .cta-card p { font-size: clamp(11px,1.1vw,13px); }
+    .cta-url {
+      display: inline-block; margin-top: 8px;
+      font-family: "SF Mono", monospace; font-size: clamp(10px,1vw,12px);
+      color: var(--accent-light); word-break: break-all;
+    }
+
+    /* ── Navigation ── */
+    #nav-dots {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 8px; z-index: 100;
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: rgba(255,255,255,0.2); border: none; cursor: pointer;
+      transition: all 0.3s; padding: 0;
+    }
+    .dot.active { background: var(--accent); width: 22px; border-radius: 4px; }
+
+    #slide-counter {
+      position: fixed; bottom: 20px; right: 28px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+      color: var(--text-3); z-index: 100;
+    }
+
+    #nav-prev, #nav-next {
+      position: fixed; top: 50%; transform: translateY(-50%);
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 50%; width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 100; color: var(--text-2);
+      font-size: 16px; transition: all 0.2s;
+    }
+    #nav-prev { left: 16px; }
+    #nav-next { right: 16px; }
+    #nav-prev:hover, #nav-next:hover {
+      background: var(--accent-soft); border-color: var(--accent);
+      color: var(--text-1);
+    }
+
+    /* ── Subtle glow on title slide ── */
+    .glow-bg {
+      position: absolute; pointer-events: none;
+      border-radius: 50%; filter: blur(90px); opacity: 0.18;
+    }
+    .glow-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; right: -150px; }
+    .glow-2 { width: 400px; height: 400px; background: var(--sky); bottom: -150px; left: -100px; }
+
+    /* monospace inline */
+    code {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.88em; background: var(--surface-2);
+      padding: 2px 7px; border-radius: 5px; color: var(--accent-light);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Responsive tweaks ── */
+    @media (max-width: 800px) {
+      .problem-grid, .comp-grid, .feat-grid { grid-template-columns: 1fr 1fr; }
+      .solution-layout, .extend-layout { grid-template-columns: 1fr; }
+      .sources-row { flex-direction: column; }
+    }
+    @media (max-width: 550px) {
+      .problem-grid, .feat-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="deck">
+
+  <!-- ════════════════════════════════════════
+       SLIDE 1 — TITLE
+  ════════════════════════════════════════ -->
+  <div class="slide active" id="s1">
+    <div class="glow-bg glow-1"></div>
+    <div class="glow-bg glow-2"></div>
+    <div class="slide-inner">
+      <div class="status-badge">Active &middot; amplifier-qna-bundle</div>
+      <h1>Requirements<br><span class="hi">by conversation.</span></h1>
+      <p class="lead" style="max-width:640px;">
+        A structured Q&amp;A system that turns a messy, freeform requirements
+        chat into a polished, stakeholder-ready document &mdash; one question at a time.
+      </p>
+      <div class="divider"></div>
+      <p style="font-size:clamp(12px,1.1vw,14px); color:var(--text-3);">
+        Amplifier Community &middot; February 2026
+      </p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SLIDE 2 — THE PROBLEM
+  ════════════════════════════════════════ -->
+  <div class="slide" id="s2">
+    <div class="slide-inner">
+      <div class="eyebrow">The Problem</div>
+      <h2>Requirements gathering<br>is consistently <span class="hi">broken.</span></h2>
+      <div class="problem-grid">
+
+        <div class="problem-card">
+          <span class="problem-icon">&#128172;</span>
+          <h3>Freeform &amp; Fragmented</h3>
+          <p>Engineers and PMs collect requirements through Slack threads,
+             scattered docs, and impromptu calls &mdash; with no consistent structure.</p>
+        </div>
+
+        <div class="problem-card">
+          <span class="problem-icon">&#128203;</span>
+          <h3>Inconsistent Outputs</h3>
+          <p>Every team member produces a different document. Critical fields
+             are missing. Stakeholders can&rsquo;t compare or approve them at scale.</p>
+        </div>
+
+        <div class="problem-card">
+          <span class="problem-icon">&#128260;</span>
+          <h3>Endless Revision Loops</h3>
+          <p>Incomplete requirements surface late &mdash; during review or after development
+             starts &mdash; forcing costly rework and delayed deliveries.</p>
+        </div>
+
+      </div>
+      <p style="color:var(--text-3); font-size:clamp(12px,1.2vw,15px);">
+        The root cause isn&rsquo;t effort &mdash; it&rsquo;s the absence of a <strong style="color:var(--text-2)">structured, guided process.</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SLIDE 3 — THE SOLUTION
+  ════════════════════════════════════════ -->
+  <div class="slide" id="s3">
+    <div class="slide-inner">
+      <div class="eyebrow">The Solution</div>
+      <h2>A guided conversation<br>that <span class="hi">never dumps a questionnaire.</span></h2>
+      <div class="solution-layout">
+
+        <div class="solution-left">
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-text"><strong>Select a template</strong> &mdash; the agent picks the right one for your situation (software feature, bug report, kickoff, user story).</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-text"><strong>Conversational Q&amp;A</strong> &mdash; one or two questions at a time, with confirmation after complex answers. Never a wall of text.</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-text"><strong>Capture what wasn&rsquo;t asked</strong> &mdash; organic insights get recorded as freeform notes alongside structured answers.</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">4</div>
+              <div class="step-text"><strong>Generate a polished document</strong> &mdash; Markdown for stakeholders, JSON for systems. Review, revise, ship.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="solution-right">
+          <p class="comp-label" style="margin-bottom:12px;">Live conversation</p>
+          <div class="chat">
+            <div class="bubble agent">
+              <div class="label">requirements-analyst</div>
+              Let&rsquo;s start with the core problem. In one or two sentences &mdash; what pain does this feature solve for the user?
+            </div>
+            <div class="bubble user">
+              Users can&rsquo;t track which team reviewed a PR. They have to dig through Slack.
+            </div>
+            <div class="bubble agent">
+              <div class="label">requirements-analyst</div>
+              Got it &mdash; visibility into reviewer status. Who are the primary users: individual contributors, team leads, or both?
+            </div>
+            <div class="bubble user">
+              Mostly ICs, but leads need a summary view too.
+            </div>
+            <div class="bubble agent">
+              <div class="label">requirements-analyst</div>
+              Noted &mdash; I&rsquo;ll capture a lead summary view as an implicit requirement. Does this feature replace an existing workflow or extend one?
+            </div>
+          </div>
+          <div class="chat-caption">One question at a time. Stateful. Never overwhelming.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SLIDE 4 — UNDER THE HOOD
+  ════════════════════════════════════════ -->
+  <div class="slide" id="s4">
+    <div class="slide-inner">
+      <div class="eyebrow">Architecture</div>
+      <h2>Two components.<br><span class="hi">One seamless experience.</span></h2>
+      <div class="comp-grid">
+
+        <div class="comp-card primary">
+          <div class="comp-label">Agent</div>
+          <div class="comp-name accent">requirements-analyst</div>
+          <p style="font-size:clamp(12px,1.2vw,14px);">
+            A purpose-built AI persona. Selects templates, paces questions conversationally,
+            listens for implicit requirements, confirms understanding, and presents the final
+            document for review with revision support.
+          </p>
+          <div class="tag-list">
+            <span class="tag accent">template selection</span>
+            <span class="tag accent">paced Q&amp;A</span>
+            <span class="tag accent">implicit capture</span>
+            <span class="tag accent">revision support</span>
+          </div>
+        </div>
+
+        <div class="comp-card secondary">
+          <div class="comp-label">Python Tool &middot; 7 operations</div>
+          <div class="comp-name sky">tool-qna</div>
+          <p style="font-size:clamp(12px,1.2vw,14px);">
+            The stateful engine. Manages sessions, validates typed answers, tracks conditional
+            question logic, records freeform notes, reports progress, and generates dual-format output.
+          </p>
+          <div class="tag-list">
+            <span class="tag">list_templates</span>
+            <span class="tag">start_session</span>
+            <span class="tag">get_questions</span>
+            <span class="tag">record_answer</span>
+            <span class="tag">record_note</span>
+            <span class="tag">get_progress</span>
+            <span class="tag">generate_report</span>
+          </div>
+        </div>
+
+        <div class="comp-card" style="grid-column: span 2;">
+          <div class="comp-label" style="margin-bottom:10px;">4 Built-in Templates</div>
+          <div class="tmpl-grid">
+            <div class="tmpl-item">
+              <span class="tmpl-icon">&#9881;&#65039;</span>
+              <div>
+                <div class="tmpl-name">software_requirements</div>
+                <div class="tmpl-desc">4 sections &middot; ~19 questions</div>
+              </div>
+            </div>
+            <div class="tmpl-item">
+              <span class="tmpl-icon">&#128218;</span>
+              <div>
+                <div class="tmpl-name">user_story</div>
+                <div class="tmpl-desc">3 sections &middot; ~11 questions</div>
+              </div>
+            </div>
+            <div class="tmpl-item">
+              <span class="tmpl-icon">&#128027;</span>
+              <div>
+                <div class="tmpl-name">bug_report</div>
+                <div class="tmpl-desc">4 sections &middot; ~15 questions</div>
+              </div>
+            </div>
+            <div class="tmpl-item">
+              <span class="tmpl-icon">&#128640;</span>
+              <div>
+                <div class="tmpl-name">project_kickoff</div>
+                <div class="tmpl-desc">4 sections &middot; ~16 questions</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SLIDE 5 — INTELLIGENT FEATURES
+  ════════════════════════════════════════ -->
+  <div class="slide" id="s5">
+    <div class="slide-inner">
+      <div class="eyebrow">Standout Features</div>
+      <h2>Intelligence built<br><span class="hi">into the conversation.</span></h2>
+      <div class="feat-grid">
+
+        <div class="feat-card">
+          <span class="feat-icon">&#127807;</span>
+          <h3>Conditional Branching</h3>
+          <p>Questions unlock dynamically based on prior answers. Say &ldquo;yes&rdquo; to authentication
+             requirements, and the session reveals auth-specific follow-ups &mdash; automatically.</p>
+          <span class="feat-pill">ADAPTIVE FLOW</span>
+        </div>
+
+        <div class="feat-card">
+          <span class="feat-icon">&#128221;</span>
+          <h3>Freeform Notes</h3>
+          <p>Real conversations surface insights no template anticipates. The
+             <code>record_note</code> operation captures organic context alongside
+             structured answers &mdash; so nothing valuable is lost.</p>
+          <span class="feat-pill">NOTHING LEFT BEHIND</span>
+        </div>
+
+        <div class="feat-card">
+          <span class="feat-icon">&#9989;</span>
+          <h3>Type-Aware Validation</h3>
+          <p>Answers are validated against their expected type:
+             <code>yes_no</code>, <code>choice</code>, <code>multi_choice</code>,
+             <code>scale</code>, or <code>text</code>. No silent bad data.</p>
+          <span class="feat-pill">CLEAN DATA</span>
+        </div>
+
+        <div class="feat-card">
+          <span class="feat-icon">&#129517;</span>
+          <h3>Per-Section Coaching</h3>
+          <p>Each template section includes LLM coaching notes &mdash; guidance on tone,
+             depth, when to push back, and what signals to watch for. Context
+             for the agent, consistency for the conversation.</p>
+          <span class="feat-pill">GUIDED INTELLIGENCE</span>
+        </div>
+
+        <div class="feat-card">
+          <span class="feat-icon">&#9197;&#65039;</span>
+          <h3>Graceful Skip Support</h3>
+          <p>Optional questions can be skipped without breaking the session flow.
+             The agent acknowledges the skip and moves forward &mdash; no awkward dead ends.</p>
+          <span class="feat-pill">USER-FRIENDLY</span>
+        </div>
+
+        <div class="feat-card">
+          <span class="feat-icon">&#128202;</span>
+          <h3>Live Progress Tracking</h3>
+          <p>The <code>get_progress</code> operation returns section-by-section
+             completion status at any point. Users always know where they are
+             and what&rsquo;s left.</p>
+          <span class="feat-pill">ALWAYS ORIENTED</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SLIDE 6 — EXTEND & COMPOSE
+  ════════════════════════════════════════ -->
+  <div class="slide" id="s6">
+    <div class="slide-inner">
+      <div class="eyebrow">Extensibility &amp; Composability</div>
+      <h2>Zero code to extend.<br><span class="hi">One behavior to compose.</span></h2>
+      <div class="extend-layout">
+
+        <div class="extend-left">
+          <div class="extend-card">
+            <h3>&#128193; Custom Templates via YAML</h3>
+            <p>Drop a <code>.yaml</code> file into the <code>templates/</code> directory.
+               No code changes, no rebuilds. The system picks it up automatically.
+               Demonstrated out-of-the-box by <code>api-design-review.yaml</code>.</p>
+          </div>
+          <div class="extend-card">
+            <h3>&#129513; Composable Behavior</h3>
+            <p>The <code>qna</code> behavior is a standalone Amplifier module. Any bundle
+               can include it in a single line &mdash; adding structured Q&amp;A to workflows
+               that weren&rsquo;t designed for it from the start.</p>
+          </div>
+          <div class="output-row">
+            <div class="output-pill md">&#128196; Markdown &mdash; stakeholder-ready</div>
+            <div class="output-pill json">&#123;&#125; JSON &mdash; machine-readable</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="code-block"><span class="code-cmt"># A custom template &mdash; zero Python required</span>
+
+<span class="code-key">id</span>: <span class="code-str">api_design_review</span>
+<span class="code-key">name</span>: <span class="code-str">API Design Review</span>
+<span class="code-key">description</span>: <span class="code-str">Structured review for REST API proposals</span>
+
+<span class="code-key">sections</span>:
+  - <span class="code-key">id</span>: <span class="code-str">fundamentals</span>
+    <span class="code-key">title</span>: <span class="code-str">API Fundamentals</span>
+    <span class="code-key">coaching</span>: <span class="code-str">|</span>
+      <span class="code-str">  Focus on resource naming and HTTP semantics.</span>
+      <span class="code-str">  Push back on verbs in paths.</span>
+    <span class="code-key">questions</span>:
+      - <span class="code-key">id</span>: <span class="code-str">rest_maturity</span>
+        <span class="code-key">text</span>: <span class="code-str">What REST maturity level are you targeting?</span>
+        <span class="code-key">type</span>: <span class="code-str">choice</span>
+        <span class="code-key">options</span>: [<span class="code-str">Level 0</span>, <span class="code-str">Level 1</span>, <span class="code-str">Level 2</span>, <span class="code-str">Level 3</span>]
+        <span class="code-key">required</span>: <span class="code-str">true</span>
+
+      - <span class="code-key">id</span>: <span class="code-str">auth_scheme</span>
+        <span class="code-key">text</span>: <span class="code-str">What authentication scheme?</span>
+        <span class="code-key">type</span>: <span class="code-str">choice</span>
+        <span class="code-key">condition</span>:
+          <span class="code-key">question_id</span>: <span class="code-str">rest_maturity</span>
+          <span class="code-key">operator</span>: <span class="code-str">in</span>
+          <span class="code-key">value</span>: [<span class="code-str">Level 2</span>, <span class="code-str">Level 3</span>]
+          <span class="code-cmt"># Only shown for higher maturity levels</span></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SLIDE 7 — SOURCES & METHODOLOGY
+  ════════════════════════════════════════ -->
+  <div class="slide" id="s7">
+    <div class="slide-inner">
+      <div class="eyebrow">Sources &amp; Methodology</div>
+      <h2>What this deck<br><span class="hi">is built on.</span></h2>
+      <div class="sources-box">
+        <div class="sources-row">
+          <div class="sources-col">
+            <div class="source-item">
+              <div class="source-dot"></div>
+              <div class="source-text">
+                <strong>Primary source:</strong> Comprehensive bundle specification
+                provided by the bundle author, covering all components, operations,
+                templates, and design decisions.
+              </div>
+            </div>
+            <div class="source-item">
+              <div class="source-dot"></div>
+              <div class="source-text">
+                <strong>Bundle repository:</strong> <code>amplifier-qna-bundle</code>
+                &mdash; reviewed for architecture, component inventory, and template catalog.
+              </div>
+            </div>
+            <div class="source-item">
+              <div class="source-dot"></div>
+              <div class="source-text">
+                <strong>Template inventory:</strong> 4 built-in templates confirmed:
+                <code>software_requirements</code>, <code>user_story</code>,
+                <code>bug_report</code>, <code>project_kickoff</code>.
+                Plus example custom template: <code>api-design-review.yaml</code>.
+              </div>
+            </div>
+          </div>
+          <div class="sources-col">
+            <div class="source-item">
+              <div class="source-dot"></div>
+              <div class="source-text">
+                <strong>Operation inventory:</strong> 7 <code>tool-qna</code> operations
+                verified: <code>list_templates</code>, <code>start_session</code>,
+                <code>get_questions</code>, <code>record_answer</code>,
+                <code>record_note</code>, <code>get_progress</code>, <code>generate_report</code>.
+              </div>
+            </div>
+            <div class="source-item">
+              <div class="source-dot"></div>
+              <div class="source-text">
+                <strong>Question counts:</strong> Approximate (~) figures used as provided.
+                Exact counts may vary with conditional question expansion at runtime.
+              </div>
+            </div>
+            <div class="source-item">
+              <div class="source-dot"></div>
+              <div class="source-text">
+                <strong>Chat example on slide 3</strong> is illustrative &mdash; constructed
+                to demonstrate the conversational pacing pattern, not a recorded session.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="source-date">
+          Data as of: February 27, 2026 &middot; Feature status: Active &middot; Primary contributor: bundle author
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SLIDE 8 — CTA
+  ════════════════════════════════════════ -->
+  <div class="slide" id="s8">
+    <div class="glow-bg glow-1" style="opacity:0.12;"></div>
+    <div class="slide-inner cta-center">
+      <div class="eyebrow">Get Started</div>
+      <h2>Stop gathering requirements.<br><span class="hi">Start having conversations.</span></h2>
+      <p class="lead" style="max-width:560px; margin:0 auto;">
+        Clone the bundle, start a session, and have your first
+        stakeholder-ready document in one conversation.
+      </p>
+      <div class="cta-cards">
+
+        <div class="cta-card">
+          <div class="cta-card-icon">&#128230;</div>
+          <h3>Clone the Bundle</h3>
+          <p>Get the bundle and its four built-in templates.</p>
+          <span class="cta-url">amplifier-qna-bundle</span>
+        </div>
+
+        <div class="cta-card">
+          <div class="cta-card-icon">&#129513;</div>
+          <h3>Compose It</h3>
+          <p>Add the <code>qna</code> behavior to any Amplifier bundle you already own.</p>
+          <span class="cta-url">behaviors: [qna]</span>
+        </div>
+
+        <div class="cta-card">
+          <div class="cta-card-icon">&#9997;&#65039;</div>
+          <h3>Extend with YAML</h3>
+          <p>Write a custom template for your domain &mdash; no code, just YAML.</p>
+          <span class="cta-url">templates/my-template.yaml</span>
+        </div>
+
+      </div>
+      <p style="font-size:clamp(11px,1.1vw,14px); color:var(--text-3);">
+        amplifier-qna-bundle &middot; Active &middot; Amplifier Community
+      </p>
+    </div>
+  </div>
+
+</div><!-- /#deck -->
+
+<!-- ── Navigation ── -->
+<div id="nav-dots"></div>
+<div id="slide-counter"></div>
+<button id="nav-prev" aria-label="Previous slide">&#8249;</button>
+<button id="nav-next" aria-label="Next slide">&#8250;</button>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl  = document.getElementById('nav-dots');
+  const counter = document.getElementById('slide-counter');
+  let current = 0;
+
+  /* Build dots */
+  slides.forEach((_, i) => {
+    const b = document.createElement('button');
+    b.className = 'dot' + (i === 0 ? ' active' : '');
+    b.setAttribute('aria-label', 'Slide ' + (i + 1));
+    b.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(b);
+  });
+
+  function goTo(n, dir) {
+    dir = (dir === undefined) ? 1 : dir;
+    if (n < 0 || n >= slides.length || n === current) return;
+    var prev = current;
+    current = n;
+
+    slides[prev].classList.remove('active');
+    slides[prev].classList.add(dir > 0 ? 'out-up' : 'in-down');
+    setTimeout(function() { slides[prev].classList.remove('out-up', 'in-down'); }, 600);
+
+    slides[current].classList.remove('out-up', 'in-down');
+    slides[current].classList.add('active');
+
+    document.querySelectorAll('.dot').forEach(function(d, i) {
+      d.classList.toggle('active', i === current);
+    });
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+
+  /* Arrow keys */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ')  { e.preventDefault(); goTo(current + 1,  1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                      { e.preventDefault(); goTo(current - 1, -1); }
+  });
+  document.getElementById('nav-next').addEventListener('click', function() { goTo(current + 1,  1); });
+  document.getElementById('nav-prev').addEventListener('click', function() { goTo(current - 1, -1); });
+
+  /* Touch / swipe */
+  var tx = 0;
+  document.addEventListener('touchstart', function(e) { tx = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend',   function(e) {
+    var dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+  }, { passive: true });
+
+  /* Init counter */
+  counter.textContent = '1 / ' + slides.length;
+</script>
+</body>
+</html>
