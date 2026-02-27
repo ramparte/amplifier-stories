@@ -121,7 +121,7 @@ git tag v2.0.0-test
 
 # 3. Run the recipe
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/git-tag-to-changelog.yaml \
+  recipe_path=stories:recipes/git-tag-to-changelog.yaml \
   context='{"tag_name": "v2.0.0-test"}'
 
 # 4. Verify CHANGELOG.md was updated

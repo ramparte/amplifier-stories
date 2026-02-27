@@ -153,4 +153,4 @@ Technical documentation is complete when:
 
 ---
 
-@amplifier-module-stories:context/powerpoint-template.md
+@stories:context/powerpoint-template.md
