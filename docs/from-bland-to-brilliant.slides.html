@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From Bland to Brilliant</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a12;
+    --surface: #12121e;
+    --surface2: #1a1a2a;
+    --border: #2a2a40;
+    --text: #e4e4f0;
+    --muted: #7878a0;
+    --faint: #3a3a55;
+    --accent: #818cf8;
+    --accent2: #c084fc;
+    --green: #34d399;
+    --orange: #fb923c;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+    overflow: hidden;
+  }
+
+  /* ─── SLIDE ENGINE ─── */
+  .deck { width: 100vw; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    padding: 72px 96px;
+    opacity: 0; pointer-events: none;
+    transform: translateX(40px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .slide.active {
+    opacity: 1; pointer-events: all;
+    transform: translateX(0);
+  }
+  .slide.prev {
+    opacity: 0; transform: translateX(-40px);
+  }
+
+  /* ─── COUNTER + NAV ─── */
+  .counter {
+    position: fixed; bottom: 28px; right: 36px;
+    font-size: 11px; color: var(--faint);
+    font-weight: 600; letter-spacing: 1px;
+    z-index: 100;
+  }
+  .nav-hint {
+    position: fixed; bottom: 28px; left: 36px;
+    font-size: 11px; color: var(--faint);
+    z-index: 100;
+  }
+  .progress {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 2px; background: var(--border);
+    z-index: 100;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.4s ease;
+  }
+
+  /* ─── ATOMS ─── */
+  .eyebrow {
+    font-size: 11px; font-weight: 700; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 2.5px;
+    margin-bottom: 20px;
+  }
+  .h1 {
+    font-size: 52px; font-weight: 900; color: white;
+    letter-spacing: -2px; line-height: 1.05;
+  }
+  .h2 {
+    font-size: 38px; font-weight: 800; color: white;
+    letter-spacing: -1px; line-height: 1.1;
+  }
+  .h3 {
+    font-size: 26px; font-weight: 700; color: white;
+    letter-spacing: -0.5px; line-height: 1.2;
+  }
+  .body {
+    font-size: 16px; color: var(--muted); line-height: 1.8;
+    max-width: 640px;
+  }
+  .body strong { color: var(--text); }
+  .accent { color: var(--accent); }
+  .accent2 { color: var(--accent2); }
+  .green { color: var(--green); }
+  .spacer { flex: 1; }
+  .gap-sm { height: 16px; }
+  .gap-md { height: 32px; }
+  .gap-lg { height: 48px; }
+
+  em.hl {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ─── SLIDE SPECIFIC ─── */
+
+  /* Title */
+  .slide-title {
+    background: radial-gradient(ellipse at 30% 40%, #1a1040 0%, #0a0a12 60%);
+    justify-content: center;
+  }
+  .slide-title .tagline {
+    font-size: 18px; color: var(--muted); margin-top: 20px; max-width: 540px; line-height: 1.6;
+  }
+  .slide-title .meta {
+    margin-top: 40px; font-size: 12px; color: var(--faint);
+    display: flex; gap: 20px;
+  }
+  .slide-title .meta span { display: flex; align-items: center; gap: 6px; }
+
+  /* Section divider */
+  .slide-section {
+    justify-content: center; align-items: flex-start;
+    background: linear-gradient(135deg, #0f0f20 0%, #08080f 100%);
+  }
+  .section-num {
+    font-size: 96px; font-weight: 900; color: var(--faint);
+    letter-spacing: -4px; line-height: 1; margin-bottom: 20px;
+  }
+
+  /* Key insight callout */
+  .callout {
+    background: #1a1040;
+    border: 1px solid #818cf840;
+    border-left: 4px solid var(--accent);
+    border-radius: 12px;
+    padding: 24px 28px;
+    font-size: 17px;
+    color: var(--text);
+    line-height: 1.7;
+    font-style: italic;
+    max-width: 680px;
+  }
+
+  /* Two column */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+  .two-col-center { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+
+  /* Bullet list */
+  .bullets { display: flex; flex-direction: column; gap: 14px; }
+  .bullet { display: flex; gap: 14px; align-items: flex-start; }
+  .bullet-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 8px; flex-shrink: 0; opacity: 0.8; }
+  .bullet-text { font-size: 15px; color: var(--muted); line-height: 1.6; }
+  .bullet-text strong { color: var(--text); }
+
+  /* Number list */
+  .num-list { display: flex; flex-direction: column; gap: 16px; }
+  .num-item { display: flex; gap: 16px; align-items: flex-start; }
+  .num { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; margin-top: 1px; }
+  .num-body {}
+  .num-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .num-sub { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+
+  /* Stats grid */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .stat { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 24px 20px; text-align: center; }
+  .stat-val { font-size: 40px; font-weight: 900; color: var(--accent); letter-spacing: -1px; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+
+  /* Tag */
+  .tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; background: #818cf810; border: 1px solid #818cf830; padding: 4px 12px; border-radius: 999px; }
+  .tag-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+
+  /* Badge row */
+  .badge-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { padding: 8px 16px; border-radius: 9px; background: var(--surface2); border: 1px solid var(--border2); font-size: 13px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 7px; }
+  .badge-icon { font-size: 14px; color: var(--muted); }
+  .badge:first-child { border-color: #818cf840; background: #818cf808; }
+
+  /* Code snippet */
+  .code-tag {
+    font-family: 'SF Mono', Monaco, monospace;
+    font-size: 13px; color: var(--accent2);
+    background: #1a1040;
+    border: 1px solid #818cf820;
+    padding: 4px 10px; border-radius: 6px;
+    display: inline-block;
+  }
+
+  /* Before/after */
+  .ba-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .ba-box { border-radius: 12px; padding: 24px; }
+  .ba-before { background: #1a0a0a; border: 1px solid #5a2a2a; }
+  .ba-after { background: #0a1a0a; border: 1px solid #2a5a2a; }
+  .ba-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+  .ba-before .ba-label { color: #f87171; }
+  .ba-after .ba-label { color: var(--green); }
+  .ba-text { font-size: 13px; line-height: 1.7; color: var(--muted); }
+  .ba-text strong { color: var(--text); }
+
+  /* Visual noise bg */
+  .noise { position: absolute; inset: 0; opacity: 0.03; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E"); pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- 01: TITLE -->
+  <div class="slide slide-title active" data-index="0">
+    <div class="noise"></div>
+    <div class="spacer"></div>
+    <div class="tag"><span class="tag-dot"></span>Case Study · Canvas / Amplifier</div>
+    <div class="gap-md"></div>
+    <div class="h1">From Bland<br>to <em class="hl">Brilliant</em></div>
+    <div class="tagline">How AI-assisted product design shipped two features in one session — from <strong>"this feels wrong"</strong> to merged PR</div>
+    <div class="meta">
+      <span>📅 February 2026</span>
+      <span>⏱ One session</span>
+      <span>✅ 2 PRs merged</span>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- 02: THE PROBLEM -->
+  <div class="slide" data-index="1">
+    <div class="eyebrow">The Starting Point</div>
+    <div class="h2">A screen that worked.<br>And quietly <em class="hl">failed.</em></div>
+    <div class="gap-md"></div>
+    <div class="two-col">
+      <div>
+        <div class="body">The Summarizer specialist's empty state did everything right on paper. It greeted users. It offered suggestions. It explained the tool.</div>
+        <div class="gap-sm"></div>
+        <div class="body">But something was off. The developer's own words:</div>
+        <div class="gap-md"></div>
+        <div class="callout">"Bland and nerdy. Vast empty void, zero visual identity, greeting reads like API docs, boring pill buttons, no emotional hook."</div>
+      </div>
+      <div>
+        <div class="ba-box ba-before">
+          <div class="ba-label">Before</div>
+          <div class="ba-text">
+            <strong>Untitled</strong><br><br>
+            I'm a Summarizer. Paste a URL or text and I'll give you a clear, structured summary.<br><br>
+            <span style="opacity:0.5">[ Summarize a URL ] [ Paste text ] [ Try an example ]</span>
+          </div>
+        </div>
+        <div class="gap-sm"></div>
+        <div class="body" style="font-size:13px">Technically correct. Emotionally empty.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 03: THE REAL QUESTION -->
+  <div class="slide" data-index="2">
+    <div class="eyebrow">The Breakthrough</div>
+    <div class="h2">It wasn't a visual problem.<br>It was a <em class="hl">trust</em> problem.</div>
+    <div class="gap-lg"></div>
+    <div class="two-col-center">
+      <div>
+        <div class="body">The first step wasn't jumping to solutions. It was finding the right question.</div>
+        <div class="gap-md"></div>
+        <div class="bullets">
+          <div class="bullet"><div class="bullet-dot"></div><div class="bullet-text">❌ Wrong question: <strong>"How do we make this look better?"</strong></div></div>
+          <div class="bullet"><div class="bullet-dot"></div><div class="bullet-text">✅ Right question: <strong>"What is the user silently asking?"</strong></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="callout" style="font-size:20px; line-height:1.6">"Will this actually be better than just using the main chat?"</div>
+        <div class="gap-sm"></div>
+        <div class="body" style="font-size:13px">That reframing changed everything about the design direction.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 04: TEN CONCEPTS -->
+  <div class="slide" data-index="3">
+    <div class="eyebrow">The Design Process</div>
+    <div class="h2">10 concepts.<br>Interactive. In <em class="hl">minutes.</em></div>
+    <div class="gap-md"></div>
+    <div class="two-col">
+      <div>
+        <div class="body">Rather than iterating on the existing design, the session generated ten completely distinct design directions as <strong>interactive HTML mockups</strong> — not wireframes, not static images.</div>
+        <div class="gap-sm"></div>
+        <div class="body">Each one was a real design argument. Each one was immediately evaluable as an actual interface.</div>
+      </div>
+      <div>
+        <div class="bullets">
+          <div class="bullet"><div class="bullet-dot"></div><div class="bullet-text"><strong>Hero Illustration</strong> — identity + icon action cards</div></div>
+          <div class="bullet"><div class="bullet-dot"></div><div class="bullet-text"><strong>Rich Card Prompts</strong> — glassmorphism prompt cards</div></div>
+          <div class="bullet"><div class="bullet-dot"></div><div class="bullet-text"><strong>Animated Avatar</strong> — specialist personality + clean actions</div></div>
+          <div class="bullet"><div class="bullet-dot"></div><div class="bullet-text"><strong>Example First</strong> — show output before input</div></div>
+          <div class="bullet"><div class="bullet-dot"></div><div class="bullet-text"><strong>Magazine Editorial</strong> — bold typography, asymmetric</div></div>
+          <div class="bullet"><div class="bullet-dot" style="opacity:0.3"></div><div class="bullet-text" style="opacity:0.5">+ 5 more directions explored...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 05: CONCEPT A -->
+  <div class="slide" data-index="4">
+    <div class="eyebrow">The Winner</div>
+    <div class="h2">Concept A:<br><em class="hl">Credibility Signal</em></div>
+    <div class="gap-md"></div>
+    <div class="two-col">
+      <div>
+        <div class="body">Instead of explaining what the Summarizer <em>does</em>, the design demonstrates what it <em>produces</em>.</div>
+        <div class="gap-md"></div>
+        <div class="badge-row">
+          <div class="badge"><span class="badge-icon">⚡</span> TL;DR</div>
+          <div class="badge"><span class="badge-icon">·</span> Key points</div>
+          <div class="badge"><span class="badge-icon">→</span> Takeaways</div>
+          <div class="badge"><span class="badge-icon">🔗</span> Source cited</div>
+        </div>
+        <div class="gap-md"></div>
+        <div class="body">Output format badges made the value tangible <strong>before the user typed a single word.</strong></div>
+      </div>
+      <div>
+        <div class="ba-box ba-after" style="background:#0a0a1e; border-color:#818cf840;">
+          <div class="ba-label" style="color:var(--accent)">After — Concept A</div>
+          <div style="font-size:13px; color:var(--muted); line-height:1.8">
+            <span style="color:var(--accent); font-weight:700">✦ Specialist · Summarizer</span><br><br>
+            <strong style="color:white; font-size:16px;">Get the point. Every time.</strong><br><br>
+            Purpose-built to distill anything into a clear, structured summary — not a general chatbot.<br><br>
+            <span style="opacity:0.6">[ ⚡ TL;DR ] [ · Key points ] [ → Takeaways ] [ 🔗 Source cited ]</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 06: SHIPPED -->
+  <div class="slide" data-index="5">
+    <div class="eyebrow">Implementation</div>
+    <div class="h2">Test-first.<br>Reviewed. <em class="hl">Shipped.</em></div>
+    <div class="gap-lg"></div>
+    <div class="two-col">
+      <div class="num-list">
+        <div class="num-item"><div class="num">1</div><div class="num-body"><div class="num-title">4 unit tests written first</div><div class="num-sub">Headline, badges, chips, click behavior</div></div></div>
+        <div class="num-item"><div class="num">2</div><div class="num-body"><div class="num-title">Component built, tests pass</div><div class="num-sub">SummarizerEmptyState.tsx — minimal, clean</div></div></div>
+        <div class="num-item"><div class="num">3</div><div class="num-body"><div class="num-title">Wired into Terminal.tsx</div><div class="num-sub">Summarizer-specific branch, 2 integration tests</div></div></div>
+        <div class="num-item"><div class="num">4</div><div class="num-body"><div class="num-title">Code review catches 2 issues</div><div class="num-sub">Dead greeting field + missing aria-hidden — both fixed</div></div></div>
+        <div class="num-item"><div class="num">5</div><div class="num-body"><div class="num-title">PR merged</div><div class="num-sub">2,625 tests passing. Browser verified.</div></div></div>
+      </div>
+      <div>
+        <div class="stat" style="max-width:220px">
+          <div class="stat-val">2,625</div>
+          <div class="stat-label">Tests passing at merge</div>
+        </div>
+        <div class="gap-md"></div>
+        <div class="callout" style="font-size:14px">"Looks much better."</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 07: SECTION BREAK - SLIDES -->
+  <div class="slide slide-section" data-index="6">
+    <div class="spacer"></div>
+    <div class="section-num">02</div>
+    <div class="h2">The Slides<br>Specialist</div>
+    <div class="gap-md"></div>
+    <div class="body">Same problem. Different tool. Harder bug.</div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- 08: TWO PROBLEMS -->
+  <div class="slide" data-index="7">
+    <div class="eyebrow">The Slides Specialist</div>
+    <div class="h2">One visible problem.<br>One <em class="hl">hidden</em> one.</div>
+    <div class="gap-md"></div>
+    <div class="ba-grid">
+      <div class="ba-box ba-before">
+        <div class="ba-label">Problem A — Visible</div>
+        <div class="ba-text">Same generic empty state the Summarizer just escaped. No visual identity. No sense of what a "deck" actually looks like.</div>
+      </div>
+      <div class="ba-box ba-before" style="border-color:#92400e; background:#1a0e00;">
+        <div class="ba-label" style="color:#fb923c;">Problem C — Hidden</div>
+        <div class="ba-text"><strong style="color:white">The completion flow was broken.</strong><br><br>When a deck finished generating, nothing happened. No toast. No switch to preview. User sat in chat with no idea their presentation was ready.</div>
+      </div>
+    </div>
+    <div class="gap-md"></div>
+    <div class="body">The hidden problem was invisible to screenshots or user testing. It was only findable one way.</div>
+  </div>
+
+  <!-- 09: READING THE CODE -->
+  <div class="slide" data-index="8">
+    <div class="eyebrow">How We Found It</div>
+    <div class="h2">Debugging by<br><em class="hl">reading code.</em><br>Not guessing.</div>
+    <div class="gap-lg"></div>
+    <div class="two-col">
+      <div class="bullets">
+        <div class="bullet"><div class="bullet-dot"></div><div class="bullet-text">Toast fired only for <span class="code-tag">hasDualArtifact</span> — never for slides-only (the common case)</div></div>
+        <div class="bullet"><div class="bullet-dot"></div><div class="bullet-text"><span class="code-tag">autoSwitchToPreview</span> setting existed in UI, in settings, in the database schema</div></div>
+        <div class="bullet"><div class="bullet-dot"></div><div class="bullet-text">But <span class="code-tag">setProjectViewMode()</span> was <strong>never actually called</strong> when the event fired</div></div>
+        <div class="bullet"><div class="bullet-dot" style="background:var(--green)"></div><div class="bullet-text" style="color:var(--green)">Two bugs. Both diagnosed from hook inspection. Before a single line was written.</div></div>
+      </div>
+      <div>
+        <div class="callout">The feature had been scaffolded but never completed. The setting was wired up to the UI — but the behavior it controlled didn't exist.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10: TWO-STATE DESIGN -->
+  <div class="slide" data-index="9">
+    <div class="eyebrow">The Design Insight</div>
+    <div class="h2">Slides is a <em class="hl">creative</em> tool.<br>Not an analysis tool.</div>
+    <div class="gap-md"></div>
+    <div class="two-col">
+      <div>
+        <div class="body">That distinction changed the entire design direction.</div>
+        <div class="gap-md"></div>
+        <div class="ba-box ba-after" style="background:#0a0a1e; border-color:#818cf830; padding:20px;">
+          <div class="ba-label" style="color:var(--accent)">State 1 — First visit</div>
+          <div class="ba-text">Two-column. Identity left. <strong>Style picker right</strong> — Clean Light / Dark Keynote / Warm Minimal. Choose your visual style <em>before</em> you type. Creative ownership from the first interaction.</div>
+        </div>
+        <div class="gap-sm"></div>
+        <div class="ba-box" style="background:#0a0f0a; border:1px solid #2a402a; padding:20px; border-radius:12px;">
+          <div class="ba-label" style="color:var(--green)">State 2 — Returning user</div>
+          <div class="ba-text">"What are we presenting?" — Just the input, style toggles, done. <strong>Get out of the way.</strong></div>
+        </div>
+      </div>
+      <div>
+        <div class="callout">"It depends where the user is in their journey with using the tool."<br><br><span style="font-size:13px; opacity:0.7">— The insight that led to the adaptive two-state design</span></div>
+        <div class="gap-md"></div>
+        <div class="body" style="font-size:13px">State detection: does the project have any prior Slides sessions? Simple. Precise. No configuration needed.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11: WHAT MADE THIS WORK -->
+  <div class="slide" data-index="10">
+    <div class="eyebrow">The Methodology</div>
+    <div class="h2">5 things that<br>made it <em class="hl">work.</em></div>
+    <div class="gap-lg"></div>
+    <div class="num-list">
+      <div class="num-item"><div class="num">1</div><div class="num-body"><div class="num-title">Generate options, then reason about them</div><div class="num-sub">You can't evaluate tradeoffs you haven't seen. 10 concepts before committing to one.</div></div></div>
+      <div class="num-item"><div class="num">2</div><div class="num-body"><div class="num-title">Work backwards from user behavior</div><div class="num-sub">"Will this be better than main chat?" is a completely different brief than "help users get started."</div></div></div>
+      <div class="num-item"><div class="num">3</div><div class="num-body"><div class="num-title">Read the code to find the real problem</div><div class="num-sub">Two broken behaviors found in minutes. No reproduction steps. No guessing.</div></div></div>
+      <div class="num-item"><div class="num">4</div><div class="num-body"><div class="num-title">Pipeline design and implementation</div><div class="num-sub">Slides design ran while Summarizer implementation was executing in subagents.</div></div></div>
+      <div class="num-item"><div class="num">5</div><div class="num-body"><div class="num-title">Code review as a feature, not a formality</div><div class="num-sub">Dead field + missing aria-hidden caught before merge. Not after.</div></div></div>
+    </div>
+  </div>
+
+  <!-- 12: BY THE NUMBERS -->
+  <div class="slide" data-index="11">
+    <div class="eyebrow">Results</div>
+    <div class="h2">By the <em class="hl">numbers.</em></div>
+    <div class="gap-lg"></div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-val">20</div>
+        <div class="stat-label">Interactive HTML mockups generated</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">2</div>
+        <div class="stat-label">PRs merged to production</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" style="color:var(--green)">2,625</div>
+        <div class="stat-label">Tests passing at merge</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" style="color:var(--orange)">2</div>
+        <div class="stat-label">Hidden bugs caught via code inspection</div>
+      </div>
+    </div>
+    <div class="gap-lg"></div>
+    <div class="body" style="max-width:800px">All in one session. One developer. No separate design cycles, no design reviews, no debugging sessions.</div>
+  </div>
+
+  <!-- 13: CLOSER -->
+  <div class="slide slide-title" data-index="12">
+    <div class="noise"></div>
+    <div class="spacer"></div>
+    <div class="tag"><span class="tag-dot"></span>The Bigger Picture</div>
+    <div class="gap-md"></div>
+    <div class="h1">The bottleneck<br>was never<br><em class="hl">coding speed.</em></div>
+    <div class="gap-md"></div>
+    <div class="tagline">It's the distance between noticing a problem and understanding it well enough to fix it correctly.<br><br><strong>That distance got a lot shorter.</strong></div>
+    <div class="spacer"></div>
+    <div class="meta">
+      <span>🔧 Canvas / Workspaces</span>
+      <span>⚡ Amplifier</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- UI chrome -->
+<div class="counter"><span id="cur">1</span> / <span id="tot">13</span></div>
+<div class="nav-hint">← → to navigate · Esc to reset</div>
+<div class="progress"><div class="progress-fill" id="prog"></div></div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let cur = 0;
+  const total = slides.length;
+
+  document.getElementById('tot').textContent = total;
+
+  function go(n) {
+    slides[cur].classList.remove('active');
+    slides[cur].classList.add('prev');
+    setTimeout(() => slides[cur <= n ? cur : n + 1]?.classList.remove('prev'), 400);
+    cur = Math.max(0, Math.min(total - 1, n));
+    slides[cur].classList.add('active');
+    if (cur > 0) slides[cur - 1]?.classList.remove('prev');
+    document.getElementById('cur').textContent = cur + 1;
+    document.getElementById('prog').style.width = ((cur + 1) / total * 100) + '%';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(cur + 1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') go(cur - 1);
+    if (e.key === 'Escape') go(0);
+  });
+
+  document.querySelector('.deck').addEventListener('click', e => {
+    const x = e.clientX / window.innerWidth;
+    go(x > 0.5 ? cur + 1 : cur - 1);
+  });
+
+  go(0);
+</script>
+</body>
+</html>
