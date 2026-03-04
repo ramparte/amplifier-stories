@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mode Transition Control — Amplifier</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-dim: rgba(255, 55, 95, 0.2);
+            --accent-border: rgba(255, 55, 95, 0.4);
+            --green: #30D158;
+            --green-dim: rgba(48, 209, 88, 0.15);
+            --yellow: #FFD60A;
+            --blue: #0A84FF;
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            --font-headline: clamp(36px, 7vw, 68px);
+            --font-medium-headline: clamp(24px, 4.5vw, 46px);
+            --font-subhead: clamp(16px, 2.5vw, 28px);
+            --font-big-number: clamp(56px, 14vw, 140px);
+            --font-body: clamp(14px, 2vw, 17px);
+            --font-small: clamp(12px, 1.6vw, 14px);
+            --font-label: clamp(11px, 1.4vw, 13px);
+
+            --padding-slide: clamp(60px, 10vw, 120px) clamp(24px, 6vw, 100px) clamp(80px, 12vw, 100px);
+            --gap-grid: clamp(16px, 2.5vw, 32px);
+            --radius-card: clamp(12px, 2vw, 16px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100%; height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* ── SLIDES ── */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: var(--padding-slide);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(24px, 6vw, 100px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
+        /* ── TYPOGRAPHY ── */
+        .section-label {
+            font-size: var(--font-label);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: clamp(12px, 2vw, 20px);
+        }
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            color: var(--text-primary);
+        }
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            line-height: 1.1;
+            color: var(--text-primary);
+        }
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+        .body-text {
+            font-size: var(--font-body);
+            line-height: 1.65;
+            color: var(--text-secondary);
+        }
+        .small-text {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+        }
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            color: var(--accent);
+        }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-card);
+            padding: clamp(20px, 3.5vw, 32px);
+        }
+        .card h3, .card h4 { color: var(--text-primary); margin-bottom: 8px; font-size: clamp(15px, 2.2vw, 19px); font-weight: 600; }
+        .card p, .card li { color: var(--text-secondary); font-size: var(--font-body); line-height: 1.6; }
+        .card ul { padding-left: 1.2em; }
+        .card li { margin-bottom: 4px; }
+        .card .icon-card { font-size: clamp(28px, 5vw, 44px); margin-bottom: clamp(10px, 1.5vw, 16px); display: block; }
+
+        .card-accent {
+            background: var(--accent-dim);
+            border-color: var(--accent-border);
+        }
+        .card-green {
+            background: var(--green-dim);
+            border-color: rgba(48, 209, 88, 0.3);
+        }
+
+        /* ── GRIDS ── */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(24px, 4vw, 40px);
+        }
+        .split {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(24px, 4vw, 40px);
+        }
+        .two-thirds {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: var(--gap-grid);
+            margin-top: clamp(24px, 4vw, 40px);
+        }
+        @media (max-width: 680px) {
+            .two-thirds { grid-template-columns: 1fr; }
+        }
+
+        /* ── CODE BLOCKS ── */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-card);
+            padding: clamp(16px, 3vw, 24px) clamp(18px, 3.5vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.8vw, 15px);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: clamp(16px, 2.5vw, 24px);
+        }
+        .code-green { color: #57D16E; }
+        .code-accent { color: var(--accent); }
+        .code-yellow { color: var(--yellow); }
+        .code-blue { color: #64D2FF; }
+        .code-comment { color: rgba(255,255,255,0.4); }
+        .code-key { color: #64D2FF; }
+        .code-val { color: #57D16E; }
+        .code-bool { color: var(--accent); }
+
+        /* ── PIPELINE DIAGRAM ── */
+        .pipeline-wrapper {
+            margin-top: clamp(28px, 4vw, 44px);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .pipeline-row {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            min-width: 600px;
+        }
+        .pipeline-node {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: clamp(12px, 1.8vw, 14px);
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+            position: relative;
+        }
+        .pipeline-node.active-node {
+            background: var(--accent-dim);
+            border-color: var(--accent-border);
+            color: var(--text-primary);
+        }
+        .pipeline-node.exit-node {
+            background: var(--green-dim);
+            border-color: rgba(48,209,88,0.35);
+        }
+        .pipeline-node.debug-node {
+            background: rgba(255,214,10,0.12);
+            border-color: rgba(255,214,10,0.3);
+        }
+        .pipeline-arrow {
+            font-size: clamp(14px, 2vw, 18px);
+            color: var(--border-visible);
+            padding: 0 6px;
+            flex-shrink: 0;
+        }
+        .pipeline-legend {
+            margin-top: clamp(16px, 2.5vw, 24px);
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(12px, 2vw, 20px);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+        }
+        .legend-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ── VELOCITY GRID ── */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+            gap: var(--gap-grid);
+            margin-top: clamp(28px, 4vw, 44px);
+        }
+        .velocity-stat {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-card);
+            padding: clamp(20px, 3vw, 28px) clamp(16px, 2.5vw, 24px);
+            text-align: center;
+        }
+        .velocity-number {
+            font-size: clamp(40px, 8vw, 72px);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            color: var(--accent);
+        }
+        .velocity-label {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+        .velocity-sub {
+            font-size: clamp(10px, 1.3vw, 12px);
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        /* ── STATUS BADGE ── */
+        .status-badge {
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: var(--font-small);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: rgba(48,209,88,0.15);
+            border: 1px solid rgba(48,209,88,0.4);
+            color: #30D158;
+            margin-top: clamp(14px, 2vw, 20px);
+        }
+
+        /* ── BEFORE/AFTER TABLE ── */
+        .comparison-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: clamp(20px, 3vw, 32px);
+            font-size: var(--font-body);
+        }
+        .comparison-table th {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 18px);
+            border-bottom: 1px solid var(--border-visible);
+            text-align: left;
+        }
+        .comparison-table th.before-col { color: #FF6B6B; }
+        .comparison-table th.after-col { color: var(--green); }
+        .comparison-table th.what-col { color: var(--accent); }
+        .comparison-table td {
+            padding: clamp(10px, 1.5vw, 14px) clamp(12px, 2vw, 18px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            vertical-align: top;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .comparison-table tr:last-child td { border-bottom: none; }
+        .comparison-table td.before-td { color: rgba(255,107,107,0.85); }
+        .comparison-table td.after-td { color: rgba(48,209,88,0.85); }
+
+        /* ── TRANSITION MAP TABLE ── */
+        .transition-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: clamp(20px, 3vw, 32px);
+            font-size: var(--font-body);
+        }
+        .transition-table th {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: clamp(8px, 1.4vw, 12px) clamp(12px, 2vw, 18px);
+            border-bottom: 1px solid var(--border-visible);
+            color: var(--accent);
+            text-align: left;
+        }
+        .transition-table td {
+            padding: clamp(8px, 1.4vw, 12px) clamp(12px, 2vw, 18px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            color: var(--text-secondary);
+            font-size: var(--font-body);
+            vertical-align: top;
+        }
+        .transition-table tr:last-child td { border-bottom: none; }
+        .mode-tag {
+            display: inline-block;
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+        .exit-tag {
+            background: var(--green-dim);
+            border-color: rgba(48,209,88,0.3);
+            color: #30D158;
+        }
+        .allow-tag {
+            display: inline-block;
+            font-size: clamp(10px, 1.3vw, 12px);
+            color: var(--green);
+            margin-left: 6px;
+        }
+        .deny-tag {
+            display: inline-block;
+            font-size: clamp(10px, 1.3vw, 12px);
+            color: #FF6B6B;
+            margin-left: 6px;
+        }
+
+        /* ── CALLOUT BOX ── */
+        .callout {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-card);
+            padding: clamp(16px, 2.5vw, 24px) clamp(18px, 3vw, 28px);
+            margin-top: clamp(20px, 3vw, 32px);
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.65;
+        }
+        .callout strong { color: var(--text-primary); }
+
+        /* ── NAVIGATION ── */
+        .nav {
+            position: fixed;
+            bottom: clamp(20px, 3vw, 32px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: clamp(6px, 1vw, 8px);
+            height: clamp(6px, 1vw, 8px);
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+            min-width: 8px; min-height: 8px; /* touch target aid */
+        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .nav-dot:hover { background: rgba(255,255,255,0.6); }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(20px, 3vw, 32px);
+            right: clamp(20px, 3vw, 40px);
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            font-variant-numeric: tabular-nums;
+            z-index: 100;
+        }
+
+        /* ── MORE STORIES LINK ── */
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(10px, 1.4vw, 12px);
+            color: rgba(255,255,255,0.25);
+            text-decoration: none;
+            z-index: 99;
+            white-space: nowrap;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* ── UTILITY ── */
+        .mt-lg { margin-top: clamp(24px, 4vw, 40px); }
+        .mt-md { margin-top: clamp(14px, 2vw, 22px); }
+        .mt-sm { margin-top: clamp(8px, 1.2vw, 12px); }
+        .accent-text { color: var(--accent); }
+        .green-text { color: var(--green); }
+        .yellow-text { color: var(--yellow); }
+        .ul-clean { list-style: none; padding-left: 0; }
+        .ul-clean li { display: flex; gap: 10px; align-items: flex-start; color: var(--text-secondary); font-size: var(--font-body); line-height: 1.6; margin-bottom: 8px; }
+        .ul-clean li::before { content: "→"; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+        .divider { height: 1px; background: var(--border-subtle); margin: clamp(16px, 2.5vw, 28px) 0; }
+        .pill {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: clamp(10px, 1.3vw, 12px);
+            font-weight: 600;
+            letter-spacing: 0.4px;
+        }
+        .pill-red { background: rgba(255,107,107,0.15); border: 1px solid rgba(255,107,107,0.3); color: #FF6B6B; }
+        .pill-green { background: var(--green-dim); border: 1px solid rgba(48,209,88,0.3); color: #30D158; }
+        .pill-yellow { background: rgba(255,214,10,0.12); border: 1px solid rgba(255,214,10,0.3); color: var(--yellow); }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 1 — TITLE
+══════════════════════════════════════════════ -->
+<div class="slide active center">
+    <div class="section-label">Amplifier · Mode System</div>
+    <h1 class="headline">Mode Transition<br>Control</h1>
+    <p class="subhead mt-md" style="max-width: 620px;">
+        Structural enforcement of pipeline sequencing across<br>multi-stage agentic workflows
+    </p>
+    <div class="status-badge">● Active — Merged March 2026</div>
+    <div class="small-text mt-lg">amplifier-bundle-modes PR #6 &nbsp;·&nbsp; amplifier-bundle-superpowers PR #22</div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 2 — THE PROBLEM
+══════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">The Problem</div>
+    <h2 class="headline">Agents ignored<br>pipeline boundaries</h2>
+    <div class="thirds">
+        <div class="card">
+            <span class="icon-card">🚪</span>
+            <h3>Silent Exits</h3>
+            <p>Any agent could call <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code> at any time — zero gate policy, no friction, no log entry. Dropping all tool restrictions was a one-liner.</p>
+        </div>
+        <div class="card">
+            <span class="icon-card">⏭️</span>
+            <h3>Arbitrary Jumps</h3>
+            <p>Nothing prevented an agent in <em>brainstorm</em> from jumping directly to <em>finish</em>. Stage order was advisory at best — effectively ignored in practice.</p>
+        </div>
+        <div class="card">
+            <span class="icon-card">🔓</span>
+            <h3>Unrestricted Execution</h3>
+            <p>Execution agents had bash access with no prohibition against <code style="color:var(--accent);font-size:0.9em;">git push</code> or merge operations — even in stages where code should only be written, not shipped.</p>
+        </div>
+    </div>
+    <div class="callout">
+        <strong>Net result:</strong> The mode system enforced <em>tool-level</em> restrictions (blocking write_file, gating bash) but had <strong>zero enforcement on mode transitions or mode exits</strong>. The pipeline existed in documentation only.
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 3 — SPECIFIC GAPS
+══════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">The Gaps</div>
+    <h2 class="medium-headline">Six specific failure modes</h2>
+    <div class="split">
+        <div>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th class="what-col">Where</th>
+                        <th class="before-col">Gap Found</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="mode-tag">mode(clear)</span></td>
+                        <td class="before-td">Zero gate policy — instant, silent, no friction</td>
+                    </tr>
+                    <tr>
+                        <td><span class="mode-tag">mode(set)</span></td>
+                        <td class="before-td">No transition sequencing — any mode reachable from any mode</td>
+                    </tr>
+                    <tr>
+                        <td>All 5 non-finish modes</td>
+                        <td class="before-td">No "DO NOT push/merge/PR" instruction in any mode</td>
+                    </tr>
+                    <tr>
+                        <td>3 execution agents</td>
+                        <td class="before-td">Bash access with no prohibition against push/merge</td>
+                    </tr>
+                    <tr>
+                        <td><span class="mode-tag">execute-plan.md</span></td>
+                        <td class="before-td">Internal contradiction: said <code style="font-size:0.85em;color:var(--accent)">/mode off</code> but should have said <code style="font-size:0.85em;color:var(--accent)">/verify</code></td>
+                    </tr>
+                    <tr>
+                        <td><span class="mode-tag">brainstorm.md</span></td>
+                        <td class="before-td"><code style="font-size:0.85em;color:var(--accent)">mode(clear)</code> listed as a valid escape hatch</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card" style="align-self: start;">
+            <span class="icon-card">🔍</span>
+            <h3>Root Cause</h3>
+            <p>The modes infrastructure was built to control <strong>what agents can do inside a mode</strong>, but not <strong>how they move between modes</strong>.</p>
+            <div class="divider"></div>
+            <p>Mode exits were never treated as a transition requiring a gate. They bypassed all policy checks entirely — the same hooks that block unsafe tool calls simply weren't wired to mode(clear).</p>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 4 — THE SOLUTION OVERVIEW
+══════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">The Solution</div>
+    <h2 class="headline">Two layers of<br>enforcement</h2>
+    <div class="split">
+        <div class="card card-accent">
+            <span class="icon-card">⚙️</span>
+            <h3>Layer 1 — Infrastructure</h3>
+            <p style="font-weight:600;color:var(--text-primary);margin-bottom:8px;">amplifier-bundle-modes PR #6</p>
+            <ul class="ul-clean" style="margin-top:10px;">
+                <li><code style="color:var(--accent);font-size:0.9em;">allowed_transitions</code> field — restricts reachable modes</li>
+                <li><code style="color:var(--accent);font-size:0.9em;">allow_clear</code> field — locks or permits mode exit</li>
+                <li>Gate policy on <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code> — same warn/confirm/auto flow as <code style="color:var(--accent);font-size:0.9em;">mode(set)</code></li>
+                <li>Structured denial messages list what the agent <em>can</em> do</li>
+                <li>Fully backward-compatible — absent fields = permissive</li>
+            </ul>
+        </div>
+        <div class="card card-green">
+            <span class="icon-card">🗺️</span>
+            <h3>Layer 2 — Pipeline Policy</h3>
+            <p style="font-weight:600;color:var(--text-primary);margin-bottom:8px;">amplifier-bundle-superpowers PR #22</p>
+            <ul class="ul-clean" style="margin-top:10px;">
+                <li>All 6 Superpowers modes wired with explicit transition maps</li>
+                <li>"DO NOT push/merge/PR" added to all 5 non-finish modes</li>
+                <li>Scope Boundary section in 3 execution agents</li>
+                <li>Foundation context + philosophy added to all 5 agents</li>
+                <li>Fixed the <code style="color:var(--accent);font-size:0.9em;">/mode off</code> contradiction in execute-plan</li>
+            </ul>
+        </div>
+    </div>
+    <div class="callout">
+        <strong>Design principle:</strong> Mechanism, not policy. The infrastructure provides enforcement hooks — the policy (which transitions are valid) lives entirely in the mode <code>.md</code> files. Any bundle can define its own pipeline rules.
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 5 — LAYER 1: THE TWO NEW FIELDS
+══════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">Infrastructure · Layer 1</div>
+    <h2 class="medium-headline">Two new optional fields<br>in mode frontmatter</h2>
+    <div class="split">
+        <div>
+<div class="code-block"><span class="code-comment"># my-mode.md frontmatter</span>
+<span class="code-key">mode</span>:
+  <span class="code-key">name</span>: <span class="code-val">my-mode</span>
+
+  <span class="code-comment"># Only these modes are reachable</span>
+  <span class="code-key">allowed_transitions</span>: [<span class="code-val">next-step</span>, <span class="code-val">fallback</span>]
+
+  <span class="code-comment"># Agent cannot exit modes entirely</span>
+  <span class="code-key">allow_clear</span>: <span class="code-bool">false</span>
+</div>
+            <div class="callout" style="margin-top: clamp(14px,2vw,20px);">
+                <strong>Absent = permissive.</strong> Existing modes with neither field set are completely unaffected. Zero migration required.
+            </div>
+        </div>
+        <div>
+            <div class="card mt-md" style="margin-top: 0;">
+                <h4>allowed_transitions</h4>
+                <p>When set, <code style="color:var(--accent);font-size:0.9em;">_handle_set</code> checks the target mode against the list before applying gate policy. Denied transitions return a structured error showing the valid options.</p>
+                <p style="margin-top:8px;">When absent, any mode transition is permitted (legacy behavior).</p>
+            </div>
+            <div class="card" style="margin-top: var(--gap-grid);">
+                <h4>allow_clear</h4>
+                <p>When <code style="color:var(--accent);font-size:0.9em;">false</code>, <code style="color:var(--accent);font-size:0.9em;">_handle_clear</code> returns a denial. The agent stays in-mode. Only the designated exit mode can actually clear.</p>
+                <p style="margin-top:8px;">Gate policy on <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code> now mirrors <code style="color:var(--accent);font-size:0.9em;">mode(set)</code> — same warn/confirm/auto flow that was already proven for set operations.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 6 — LAYER 2: THE TRANSITION MAP
+══════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">Pipeline Policy · Layer 2</div>
+    <h2 class="medium-headline">Superpowers: all 6 modes<br>explicitly wired</h2>
+    <div class="split" style="align-items: start;">
+        <div>
+            <table class="transition-table">
+                <thead>
+                    <tr>
+                        <th>Mode</th>
+                        <th>Can transition to</th>
+                        <th>allow_clear</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="mode-tag">brainstorm</span></td>
+                        <td>
+                            <span class="mode-tag">write-plan</span>&nbsp;
+                            <span class="mode-tag">debug</span>
+                        </td>
+                        <td><span class="pill pill-red">false</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="mode-tag">write-plan</span></td>
+                        <td>
+                            <span class="mode-tag">execute-plan</span>&nbsp;
+                            <span class="mode-tag">brainstorm</span>&nbsp;
+                            <span class="mode-tag">debug</span>
+                        </td>
+                        <td><span class="pill pill-red">false</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="mode-tag">execute-plan</span></td>
+                        <td>
+                            <span class="mode-tag">verify</span>&nbsp;
+                            <span class="mode-tag">debug</span>&nbsp;
+                            <span class="mode-tag">brainstorm</span>&nbsp;
+                            <span class="mode-tag">write-plan</span>
+                        </td>
+                        <td><span class="pill pill-red">false</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="mode-tag">debug</span></td>
+                        <td>
+                            <span class="mode-tag">verify</span>&nbsp;
+                            <span class="mode-tag">brainstorm</span>&nbsp;
+                            <span class="mode-tag">execute-plan</span>
+                        </td>
+                        <td><span class="pill pill-red">false</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="mode-tag">verify</span></td>
+                        <td>
+                            <span class="mode-tag">finish</span>&nbsp;
+                            <span class="mode-tag">debug</span>&nbsp;
+                            <span class="mode-tag">execute-plan</span>&nbsp;
+                            <span class="mode-tag">brainstorm</span>&nbsp;
+                            <span class="mode-tag">write-plan</span>
+                        </td>
+                        <td><span class="pill pill-red">false</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="mode-tag exit-tag">finish</span></td>
+                        <td>
+                            <span class="mode-tag">execute-plan</span>&nbsp;
+                            <span class="mode-tag">brainstorm</span>
+                        </td>
+                        <td><span class="pill pill-green">true ← only exit</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <div class="card">
+                <span class="icon-card">🧭</span>
+                <h3>Lateral Escape Hatches</h3>
+                <p><span class="mode-tag">debug</span> is reachable from every stage — it's the universal lateral escape when something breaks. But agents cannot jump from debug straight to finish.</p>
+            </div>
+            <div class="card" style="margin-top: var(--gap-grid);">
+                <span class="icon-card">🔒</span>
+                <h3>Single Exit Point</h3>
+                <p>Only <span class="mode-tag exit-tag">finish</span> has <code style="color:var(--green);font-size:0.9em;">allow_clear: true</code>. Every other mode denies <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code>. Agents must traverse the pipeline to exit it.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 7 — PIPELINE FLOW DIAGRAM
+══════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">Pipeline Architecture</div>
+    <h2 class="medium-headline">The enforced flow</h2>
+
+    <div class="pipeline-wrapper">
+        <!-- Main forward path -->
+        <div style="margin-bottom: clamp(12px,2vw,20px);">
+            <div class="small-text" style="color:var(--text-tertiary);margin-bottom:10px;text-transform:uppercase;letter-spacing:1.5px;">Main pipeline</div>
+            <div class="pipeline-row">
+                <div class="pipeline-node">brainstorm</div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-node">write-plan</div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-node">execute-plan</div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-node">verify</div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-node exit-node">finish</div>
+                <div class="pipeline-arrow" style="color:var(--green);">→ clear()</div>
+            </div>
+        </div>
+
+        <!-- Debug lateral path -->
+        <div style="margin-bottom: clamp(12px,2vw,20px);">
+            <div class="small-text" style="color:var(--text-tertiary);margin-bottom:10px;text-transform:uppercase;letter-spacing:1.5px;">Lateral escape (available from every stage)</div>
+            <div class="pipeline-row">
+                <div class="pipeline-node debug-node">debug</div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-node" style="opacity:0.7;">verify</div>
+                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">or</span>
+                <div class="pipeline-node" style="opacity:0.7;">execute-plan</div>
+                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">or</span>
+                <div class="pipeline-node" style="opacity:0.7;">brainstorm</div>
+            </div>
+        </div>
+
+        <!-- Finish loop -->
+        <div>
+            <div class="small-text" style="color:var(--text-tertiary);margin-bottom:10px;text-transform:uppercase;letter-spacing:1.5px;">From finish ("what's next?")</div>
+            <div class="pipeline-row">
+                <div class="pipeline-node exit-node">finish</div>
+                <div class="pipeline-arrow" style="color:var(--green);">→</div>
+                <div class="pipeline-node" style="opacity:0.7;">execute-plan</div>
+                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">staged plan</span>
+                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">or</span>
+                <div class="pipeline-node" style="opacity:0.7;">brainstorm</div>
+                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">new feature</span>
+                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">or</span>
+                <div class="pipeline-node" style="background:var(--green-dim);border-color:rgba(48,209,88,0.3);color:var(--green);">truly done</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="pipeline-legend">
+        <div class="legend-item">
+            <div class="legend-dot" style="background:var(--surface-2);border:1px solid var(--border-visible);"></div>
+            <span>Standard mode (allow_clear: false)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:var(--green-dim);border:1px solid rgba(48,209,88,0.35);"></div>
+            <span>Finish — only exit point (allow_clear: true)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:rgba(255,214,10,0.12);border:1px solid rgba(255,214,10,0.3);"></div>
+            <span>Debug — lateral escape from any stage</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent-dim);border:1px solid var(--accent-border);"></div>
+            <span>All blocked from arbitrary forward jumps</span>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 8 — BEFORE / AFTER
+══════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">Impact</div>
+    <h2 class="medium-headline">Before vs. After</h2>
+    <table class="comparison-table" style="margin-top: clamp(20px,3vw,32px);">
+        <thead>
+            <tr>
+                <th class="what-col">Scenario</th>
+                <th class="before-col">Before</th>
+                <th class="after-col">After</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Agent calls <code style="font-size:0.85em;color:var(--accent)">mode(clear)</code> from brainstorm</td>
+                <td class="before-td">Instantly exits all mode restrictions</td>
+                <td class="after-td">Denied — brainstorm has allow_clear: false. Structured error lists valid options.</td>
+            </tr>
+            <tr>
+                <td>Agent jumps brainstorm → finish</td>
+                <td class="before-td">Allowed — no transition enforcement</td>
+                <td class="after-td">Denied — finish not in brainstorm's allowed_transitions list</td>
+            </tr>
+            <tr>
+                <td>Execute-plan agent runs <code style="font-size:0.85em;color:var(--accent)">git push</code></td>
+                <td class="before-td">No instruction preventing it</td>
+                <td class="after-td">Mode doc now says DO NOT push/merge/PR; scope boundary in agent context</td>
+            </tr>
+            <tr>
+                <td>Agent hits bug, needs to rethink</td>
+                <td class="before-td">Could silently exit to brainstorm or clear</td>
+                <td class="after-td">Must route through debug → brainstorm (explicit lateral path)</td>
+            </tr>
+            <tr>
+                <td>Mode author creates a new pipeline</td>
+                <td class="before-td">Pipeline was purely documentary — no enforcement</td>
+                <td class="after-td">Two-field declaration gives structural guarantee the pipeline will be followed</td>
+            </tr>
+            <tr>
+                <td>Existing mode without new fields</td>
+                <td class="before-td">—</td>
+                <td class="after-td">Zero change — backward-compatible defaults. No migration required.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 9 — FOR MODE AUTHORS
+══════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">For Mode Authors</div>
+    <h2 class="medium-headline">What you can build<br>with this</h2>
+    <div class="thirds">
+        <div class="card">
+            <span class="icon-card">🏗️</span>
+            <h3>Staged Workflows</h3>
+            <p>Define multi-stage pipelines where agents must follow your intended sequence. Agents stay in the pipeline until they reach the designated exit point.</p>
+        </div>
+        <div class="card">
+            <span class="icon-card">🔀</span>
+            <h3>Lateral Escapes</h3>
+            <p>Create escape-hatch modes (like debug) that are reachable from anywhere, while preventing arbitrary forward jumps that skip critical stages.</p>
+        </div>
+        <div class="card">
+            <span class="icon-card">🧩</span>
+            <h3>Mix Freely</h3>
+            <p>Restricted and unrestricted modes coexist freely in the same bundle. Only modes with the fields set are constrained — others remain fully open.</p>
+        </div>
+    </div>
+    <div class="split" style="margin-top: var(--gap-grid);">
+        <div class="card">
+            <span class="icon-card">🗣️</span>
+            <h3>Helpful Denials</h3>
+            <p>Structured denial messages tell the agent what it <strong>can</strong> do, not just what it can't. The agent is never left stuck — it always has a valid path forward.</p>
+        </div>
+        <div class="card">
+            <span class="icon-card">📋</span>
+            <h3>Pure Declaration</h3>
+            <p>No infrastructure code to write. Two optional YAML fields in your mode frontmatter, and the enforcement infrastructure handles the rest automatically.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 10 — DESIGN PRINCIPLE
+══════════════════════════════════════════════ -->
+<div class="slide center">
+    <div class="section-label">Design Principle</div>
+    <h2 class="headline" style="max-width: 800px;">Mechanism,<br>not policy.</h2>
+    <p class="subhead mt-md" style="max-width: 620px;">
+        The modes infrastructure provides the enforcement mechanism.
+        The policy lives entirely in the mode <code style="font-size:0.9em;color:var(--accent)">.md</code> files.
+    </p>
+    <div class="thirds" style="text-align: left; max-width: 900px;">
+        <div class="card">
+            <h3>Infrastructure owns</h3>
+            <ul class="ul-clean">
+                <li>allowed_transitions check</li>
+                <li>allow_clear enforcement</li>
+                <li>Gate policy on clear</li>
+                <li>Denial message format</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h3>Bundle owns</h3>
+            <ul class="ul-clean">
+                <li>Which transitions are valid</li>
+                <li>Which mode is the exit</li>
+                <li>Whether debug exists</li>
+                <li>Pipeline semantics</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h3>Neither side leaks into</h3>
+            <ul class="ul-clean">
+                <li>Hardcoded mode names in infra</li>
+                <li>Custom enforcement code in bundles</li>
+                <li>Policy assumptions at the core</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 11 — VELOCITY
+══════════════════════════════════════════════ -->
+<div class="slide center">
+    <div class="section-label">Development Velocity</div>
+    <h2 class="medium-headline">By the numbers</h2>
+    <div class="velocity-grid" style="max-width: 900px; width: 100%;">
+        <div class="velocity-stat">
+            <div class="velocity-number">9</div>
+            <div class="velocity-label">Total commits</div>
+            <div class="velocity-sub">5 modes + 4 superpowers</div>
+        </div>
+        <div class="velocity-stat">
+            <div class="velocity-number">2</div>
+            <div class="velocity-label">Repos touched</div>
+            <div class="velocity-sub">bundle-modes · bundle-superpowers</div>
+        </div>
+        <div class="velocity-stat">
+            <div class="velocity-number">2</div>
+            <div class="velocity-label">PRs merged</div>
+            <div class="velocity-sub">#6 and #22</div>
+        </div>
+        <div class="velocity-stat">
+            <div class="velocity-number">160</div>
+            <div class="velocity-label">Tests passing</div>
+            <div class="velocity-sub">across both repos</div>
+        </div>
+        <div class="velocity-stat">
+            <div class="velocity-number">12</div>
+            <div class="velocity-label">New infra tests</div>
+            <div class="velocity-sub">enforcement in modes</div>
+        </div>
+        <div class="velocity-stat">
+            <div class="velocity-number">14</div>
+            <div class="velocity-label">New pipeline tests</div>
+            <div class="velocity-sub">adherence in superpowers</div>
+        </div>
+    </div>
+    <div class="small-text mt-md" style="color:var(--text-tertiary);">
+        Test breakdown: 29 hooks-mode · 37 tool-mode · 94 superpowers
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 12 — SOURCES & METHODOLOGY
+══════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">Sources</div>
+    <h2 class="medium-headline">Research Methodology</h2>
+    <div class="split" style="align-items: start; margin-top: clamp(20px,3vw,32px);">
+        <div class="card">
+            <h3>Data Provenance</h3>
+            <p><strong style="color:var(--text-primary);">Data as of:</strong> March 4, 2026</p>
+            <p class="mt-sm"><strong style="color:var(--text-primary);">Feature status:</strong> <span class="pill pill-green">Active</span> — both PRs merged</p>
+            <p class="mt-sm"><strong style="color:var(--text-primary);">Data source:</strong> All metrics provided directly by the developer in the feature brief. No independent git research was performed for this deck.</p>
+            <p class="mt-sm"><strong style="color:var(--text-primary);">Repositories:</strong></p>
+            <ul style="padding-left:1.2em;margin-top:4px;">
+                <li class="body-text">amplifier-bundle-modes (PR #6)</li>
+                <li class="body-text">amplifier-bundle-superpowers (PR #22)</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h3>Metrics Sourcing</h3>
+            <ul class="ul-clean">
+                <li><strong style="color:var(--text-primary);">9 commits</strong> — stated as "9 commits across 2 repos" in brief</li>
+                <li><strong style="color:var(--text-primary);">5 + 4 commit split</strong> — stated explicitly (5 modes, 4 superpowers)</li>
+                <li><strong style="color:var(--text-primary);">160 tests passing</strong> — stated with breakdown: 29 + 37 + 94</li>
+                <li><strong style="color:var(--text-primary);">12 + 14 new tests</strong> — stated explicitly in brief</li>
+                <li><strong style="color:var(--text-primary);">6 modes configured</strong> — named explicitly: brainstorm, write-plan, execute-plan, debug, verify, finish</li>
+            </ul>
+            <div class="divider"></div>
+            <p><strong style="color:var(--text-primary);">Gaps:</strong> Primary author attribution, exact PR merge dates, and lines of code changed were not provided in the brief and are not stated in this deck.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 13 — CTA
+══════════════════════════════════════════════ -->
+<div class="slide center">
+    <div class="section-label">Get Started</div>
+    <h2 class="headline">Add pipeline enforcement<br>to your bundle</h2>
+    <p class="subhead mt-md" style="max-width: 580px;">
+        Two optional fields. Zero migration. Any bundle can define its own enforced workflow.
+    </p>
+    <div class="thirds" style="text-align: left; max-width: 900px; margin-top: clamp(28px,4vw,44px);">
+        <div class="card">
+            <span class="icon-card">📖</span>
+            <h3>Read the PR</h3>
+            <p>Infrastructure changes in amplifier-bundle-modes PR #6. Field definitions, gate policy wiring, and test coverage.</p>
+        </div>
+        <div class="card">
+            <span class="icon-card">🗺️</span>
+            <h3>See it in action</h3>
+            <p>Superpowers pipeline reference implementation in amplifier-bundle-superpowers PR #22. All 6 modes fully annotated.</p>
+        </div>
+        <div class="card">
+            <span class="icon-card">🔧</span>
+            <h3>Try it yourself</h3>
+            <p>Add <code style="color:var(--accent);font-size:0.9em;">allowed_transitions</code> to any mode and watch the enforcement kick in — no other code changes needed.</p>
+        </div>
+    </div>
+    <div class="callout" style="max-width: 800px; margin-top: clamp(20px,3vw,36px);">
+        <strong>The modes system now enforces the pipeline, not just the tools.</strong> Agents in multi-stage workflows stay in the sequence you define — from first brainstorm commit to final ship.
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     NAVIGATION
+══════════════════════════════════════════════ -->
+<div class="nav" id="nav"></div>
+<div class="slide-counter" id="counter"></div>
+<a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+<script>
+    const slides = document.querySelectorAll('.slide');
+    let currentSlide = 0;
+
+    function showSlide(n) {
+        slides[currentSlide].classList.remove('active');
+        currentSlide = (n + slides.length) % slides.length;
+        slides[currentSlide].classList.add('active');
+        // Scroll to top when changing slides
+        slides[currentSlide].scrollTop = 0;
+        updateNav();
+    }
+
+    function updateNav() {
+        const nav = document.getElementById('nav');
+        const counter = document.getElementById('counter');
+        nav.innerHTML = '';
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+            dot.onclick = () => showSlide(i);
+            nav.appendChild(dot);
+        });
+        counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+    });
+
+    // Click navigation (avoid nav dots and links)
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.nav')) return;
+        if (e.target.closest('a')) return;
+        if (e.target.closest('table')) return;
+        if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+        else showSlide(currentSlide - 1);
+    });
+
+    // Touch / swipe navigation
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const SWIPE_THRESHOLD = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > SWIPE_THRESHOLD) {
+            if (diff > 0) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        }
+    }, { passive: true });
+
+    updateNav();
+</script>
+
+</body>
+</html>
