@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>AmpliVerse Comics: Building a Creative AI Pipeline</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-dim: rgba(255, 55, 95, 0.15);
+            --accent-glow: rgba(255, 55, 95, 0.25);
+
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            --font-headline: clamp(36px, 7vw, 68px);
+            --font-medium-headline: clamp(24px, 5vw, 44px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 17px);
+            --font-small: clamp(12px, 1.8vw, 14px);
+            --font-label: clamp(11px, 1.5vw, 13px);
+
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(12px, 2.5vw, 24px);
+            --radius: clamp(12px, 2vw, 16px);
+            --radius-sm: clamp(8px, 1vw, 12px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(50px, 8vw, 100px) var(--padding-slide) clamp(70px, 10vw, 90px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            gap: clamp(16px, 3vw, 32px);
+        }
+
+        .slide.active { display: flex; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .section-label {
+            font-size: var(--font-label);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            color: var(--text-primary);
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            color: var(--text-primary);
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: 700px;
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .small-text {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+        }
+
+        /* Grid layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius);
+            padding: clamp(16px, 3vw, 24px);
+        }
+
+        .card h3 {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(6px, 1vw, 10px);
+        }
+
+        .card p, .card li {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .card-accent {
+            border-left: 3px solid var(--accent);
+        }
+
+        .card-elevated {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+        }
+
+        /* Icon treatment */
+        .card-icon {
+            font-size: clamp(28px, 5vw, 40px);
+            margin-bottom: clamp(8px, 1.5vw, 12px);
+            display: block;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            font-size: var(--font-label);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: clamp(3px, 0.5vw, 5px) clamp(8px, 1.5vw, 14px);
+            border-radius: 100px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            border: 1px solid rgba(255, 55, 95, 0.3);
+        }
+
+        .badge-green {
+            background: rgba(48, 209, 88, 0.15);
+            color: #30D158;
+            border-color: rgba(48, 209, 88, 0.3);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: clamp(12px, 2.5vw, 20px) clamp(14px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.8vw, 15px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: var(--text-secondary);
+        }
+
+        .code-accent { color: var(--accent); }
+        .code-green { color: #30D158; }
+        .code-blue { color: #64D2FF; }
+        .code-comment { color: var(--text-tertiary); }
+
+        /* Callout box */
+        .callout {
+            background: var(--accent-dim);
+            border: 1px solid rgba(255, 55, 95, 0.25);
+            border-radius: var(--radius-sm);
+            padding: clamp(14px, 2.5vw, 20px) clamp(16px, 3vw, 24px);
+            width: 100%;
+        }
+
+        .callout-label {
+            font-size: var(--font-label);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent);
+            margin-bottom: clamp(4px, 0.8vw, 8px);
+        }
+
+        .callout p {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Routing table */
+        .route-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .route-table th {
+            color: var(--accent);
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-align: left;
+            padding: clamp(8px, 1.5vw, 12px);
+            border-bottom: 1px solid var(--border-visible);
+        }
+
+        .route-table td {
+            color: var(--text-secondary);
+            font-size: var(--font-body);
+            padding: clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            vertical-align: middle;
+        }
+
+        .route-table td:first-child {
+            color: var(--text-primary);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .role-tag {
+            display: inline-block;
+            font-size: clamp(10px, 1.4vw, 12px);
+            font-weight: 600;
+            padding: 2px clamp(6px, 1vw, 10px);
+            border-radius: 4px;
+            margin: 2px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+        }
+
+        .role-tag.highlight {
+            background: var(--accent-dim);
+            border-color: rgba(255, 55, 95, 0.3);
+            color: var(--accent);
+        }
+
+        .role-tag.vision {
+            background: rgba(100, 210, 255, 0.12);
+            border-color: rgba(100, 210, 255, 0.25);
+            color: #64D2FF;
+        }
+
+        .role-tag.imggen {
+            background: rgba(48, 209, 88, 0.12);
+            border-color: rgba(48, 209, 88, 0.25);
+            color: #30D158;
+        }
+
+        /* Flow steps */
+        .flow-pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(4px, 0.8vw, 8px);
+            align-items: center;
+            width: 100%;
+        }
+
+        .flow-step {
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: clamp(6px, 1vw, 10px) clamp(10px, 1.5vw, 14px);
+            font-size: clamp(11px, 1.6vw, 13px);
+            font-weight: 500;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .flow-arrow {
+            font-size: clamp(14px, 2vw, 18px);
+            color: var(--text-tertiary);
+        }
+
+        /* Timeline */
+        .timeline {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+            gap: clamp(8px, 1.5vw, 16px);
+            width: 100%;
+        }
+
+        .era {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: clamp(14px, 2.5vw, 20px);
+            border-top: 3px solid var(--accent);
+            position: relative;
+        }
+
+        .era-label {
+            font-size: clamp(10px, 1.3vw, 12px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent);
+            margin-bottom: clamp(4px, 0.8vw, 6px);
+        }
+
+        .era h4 {
+            font-size: clamp(14px, 2vw, 17px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(6px, 1vw, 8px);
+        }
+
+        .era p {
+            font-size: clamp(12px, 1.6vw, 14px);
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        /* Takeaway items */
+        .takeaway {
+            display: flex;
+            gap: clamp(12px, 2vw, 20px);
+            align-items: flex-start;
+            padding: clamp(10px, 2vw, 16px) 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .takeaway:last-child { border-bottom: none; }
+
+        .takeaway-num {
+            font-size: clamp(20px, 4vw, 32px);
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1;
+            flex-shrink: 0;
+            min-width: clamp(28px, 4vw, 40px);
+        }
+
+        .takeaway h4 {
+            font-size: clamp(15px, 2.2vw, 18px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(2px, 0.5vw, 4px);
+        }
+
+        .takeaway p {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        /* Stage pipeline */
+        .stage-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(8px, 1.5vw, 16px);
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .stage-box {
+            flex: 1;
+            min-width: min(200px, 100%);
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: clamp(12px, 2vw, 18px);
+        }
+
+        .stage-box h4 {
+            font-size: clamp(13px, 1.8vw, 16px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(4px, 0.8vw, 6px);
+        }
+
+        .stage-box p, .stage-box li {
+            font-size: clamp(12px, 1.6vw, 14px);
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .gate-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: clamp(36px, 5vw, 48px);
+            min-height: 60px;
+        }
+
+        .gate-icon {
+            writing-mode: vertical-lr;
+            text-orientation: mixed;
+            font-size: clamp(10px, 1.4vw, 12px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #FFD60A;
+            background: rgba(255, 214, 10, 0.12);
+            border: 1px solid rgba(255, 214, 10, 0.25);
+            border-radius: 4px;
+            padding: clamp(8px, 1.5vw, 12px) clamp(4px, 0.7vw, 6px);
+        }
+
+        /* Stats row */
+        .stat-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(16px, 3vw, 32px);
+            justify-content: center;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-num {
+            font-size: clamp(36px, 8vw, 64px);
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            margin-top: clamp(4px, 0.8vw, 8px);
+        }
+
+        /* Compact list */
+        .compact-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .compact-list li {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            padding: clamp(3px, 0.5vw, 5px) 0;
+            padding-left: clamp(14px, 2vw, 18px);
+            position: relative;
+        }
+
+        .compact-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: clamp(10px, 1.5vw, 13px);
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: clamp(24px, 4vw, 36px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: clamp(6px, 1vw, 8px);
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: clamp(8px, 1.2vw, 10px);
+            height: clamp(8px, 1.2vw, 10px);
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+            min-width: 8px;
+            min-height: 8px;
+        }
+
+        .nav-dot:hover { background: rgba(255,255,255,0.4); }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.2);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(24px, 4vw, 36px);
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--font-label);
+            color: var(--text-tertiary);
+            z-index: 100;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(10px, 1.3vw, 11px);
+            color: rgba(255,255,255,0.25);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.45); }
+
+        /* Responsive overrides */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px var(--padding-slide) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .route-table { font-size: clamp(11px, 2.5vw, 13px); }
+            .gate-marker { width: 100%; min-height: auto; }
+            .gate-icon {
+                writing-mode: horizontal-tb;
+                text-orientation: initial;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: TITLE                                               -->
+<!-- ============================================================ -->
+<div class="slide active center">
+    <div class="section-label">Amplifier Ecosystem</div>
+    <h1 class="headline" style="max-width: 900px;">AmpliVerse Comics</h1>
+    <p class="subhead" style="margin-top: -8px;">Building a Creative AI Pipeline</p>
+    <p class="body-text" style="max-width: 560px; margin-top: clamp(8px, 1.5vw, 16px);">From session transcripts to multi-issue comic sagas</p>
+    <div style="display: flex; gap: clamp(8px, 1.5vw, 14px); align-items: center; margin-top: clamp(12px, 2vw, 24px); flex-wrap: wrap; justify-content: center;">
+        <span class="badge badge-green">Active</span>
+        <span class="small-text">amplifier-bundle-comic-strips &middot; v8.1.0</span>
+    </div>
+    <div class="small-text" style="margin-top: clamp(8px, 1.5vw, 12px);">March 2026</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: THE VISION                                          -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="section-label">The Vision</div>
+    <h2 class="medium-headline">Turn Amplifier sessions into visual stories</h2>
+    <div class="grid-2">
+        <div class="card">
+            <span class="card-icon">&#x1F4AC;</span>
+            <h3>Session &#x2192; Story</h3>
+            <p>Transform raw Amplifier session transcripts into multi-page comic narratives with character arcs, dramatic pacing, and visual continuity.</p>
+        </div>
+        <div class="card">
+            <span class="card-icon">&#x1F3AD;</span>
+            <h3>6 Specialist Agents</h3>
+            <p>Style curator, storyboard writer, character designer, panel artist, cover artist, and strip compositor — each carrying only the context it needs.</p>
+        </div>
+        <div class="card">
+            <span class="card-icon">&#x1F3A8;</span>
+            <h3>29 Visual Styles</h3>
+            <p>From manga and watercolor to retro-americana and cyberpunk noir. Each style is a self-contained <code>.md</code> file with palette, panel conventions, and character rendering directives.</p>
+        </div>
+        <div class="card card-accent">
+            <span class="card-icon">&#x26A1;</span>
+            <h3>The Core Challenge</h3>
+            <p>Keep massive binary image data completely out of agent context while coordinating complex multi-agent creative workflows across multiple issues.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 3: THIN BUNDLE PATTERN                                 -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="section-label">Architecture</div>
+    <h2 class="medium-headline">The Thin Bundle Pattern</h2>
+    <p class="body-text" style="max-width: 640px;"><code>bundle.md</code> is only <strong style="color: var(--accent);">70 lines</strong> — a composition manifest, not a monolith. Three bundles compose to form the full pipeline:</p>
+
+    <div class="grid-3">
+        <div class="card card-elevated">
+            <h3 style="color: #64D2FF;">amplifier-bundle-stories</h3>
+            <p>Narrative creation capability. The storyboard-writer delegates into this bundle for story arc construction and pacing.</p>
+        </div>
+        <div class="card card-elevated">
+            <h3 style="color: #BF5AF2;">amplifier-bundle-browser-tester</h3>
+            <p>QA screenshot capability. The compositor delegates to the visual-documenter for validating final HTML output.</p>
+        </div>
+        <div class="card card-elevated">
+            <h3 style="color: var(--accent);">comic-strips:behaviors</h3>
+            <p>The actual pipeline — 6 agents, 3 tool modules, recipes. This is the behavior file that enumerates the wiring.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Key Insight</div>
+        <p>Cross-bundle delegation means each agent carries only the context it needs. The stories bundle handles narrative. Browser-tester handles QA. Comic-strips handles visual creation. No single agent carries all three concerns.</p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4: ROUTING MATRIX                                      -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="section-label">Routing</div>
+    <h2 class="medium-headline">Leveraging the Routing Matrix</h2>
+    <p class="body-text">Each agent declares exactly the model capabilities it needs via <code>model_role</code> arrays. The routing matrix selects the best available model for each role.</p>
+
+    <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;">
+        <table class="route-table">
+            <thead>
+                <tr>
+                    <th>Agent</th>
+                    <th>Model Roles</th>
+                    <th>Why</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>style-curator</td>
+                    <td>
+                        <span class="role-tag">creative</span>
+                        <span class="role-tag">general</span>
+                    </td>
+                    <td>Pure creative text work — style selection and guide generation</td>
+                </tr>
+                <tr>
+                    <td>storyboard-writer</td>
+                    <td>
+                        <span class="role-tag">creative</span>
+                        <span class="role-tag">general</span>
+                    </td>
+                    <td>Narrative structure, panel breakdowns, dialogue</td>
+                </tr>
+                <tr>
+                    <td>character-designer</td>
+                    <td>
+                        <span class="role-tag">creative</span>
+                        <span class="role-tag">general</span>
+                        <span class="role-tag vision">vision</span>
+                    </td>
+                    <td>Creates <em>and reviews</em> character reference sheets</td>
+                </tr>
+                <tr>
+                    <td>panel-artist</td>
+                    <td>
+                        <span class="role-tag imggen">image-gen</span>
+                        <span class="role-tag vision">vision</span>
+                        <span class="role-tag">creative</span>
+                        <span class="role-tag">general</span>
+                    </td>
+                    <td>Full quad — generate, review, prompt-craft, fallback</td>
+                </tr>
+                <tr>
+                    <td>cover-artist</td>
+                    <td>
+                        <span class="role-tag imggen">image-gen</span>
+                        <span class="role-tag vision">vision</span>
+                        <span class="role-tag">creative</span>
+                        <span class="role-tag">general</span>
+                    </td>
+                    <td>Same full quad — cover composition and typography</td>
+                </tr>
+                <tr>
+                    <td>strip-compositor</td>
+                    <td>
+                        <span class="role-tag vision">vision</span>
+                        <span class="role-tag">creative</span>
+                        <span class="role-tag">general</span>
+                    </td>
+                    <td>Analyzes images for overlay placement — no generation</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Design Principle</div>
+        <p><code>image-gen</code> only on agents that actually generate images. <code>vision</code> on all agents that inspect images. Swap providers, add new models — agents don't change.</p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5: IMAGE GENERATION TOOL                               -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="section-label">Image Generation</div>
+    <h2 class="medium-headline">The Dynamic <code style="color: var(--accent);">generate_image</code> Tool</h2>
+    <p class="body-text">A bridge module (Issue #90) with its own internal routing matrix — inspired by how the platform routes agent capabilities.</p>
+
+    <div class="stat-row">
+        <div class="stat-item">
+            <div class="stat-num">12</div>
+            <div class="stat-label">Models registered</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">3</div>
+            <div class="stat-label">API surfaces</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">8</div>
+            <div class="stat-label">Selection steps</div>
+        </div>
+    </div>
+
+    <div>
+        <p class="body-text" style="margin-bottom: clamp(8px, 1.5vw, 12px);"><strong style="color: var(--text-primary);">Selection algorithm:</strong></p>
+        <div class="flow-pipeline">
+            <span class="flow-step">Override?</span><span class="flow-arrow">&#x2192;</span>
+            <span class="flow-step">Provider</span><span class="flow-arrow">&#x2192;</span>
+            <span class="flow-step">Ref images</span><span class="flow-arrow">&#x2192;</span>
+            <span class="flow-step">Style match</span><span class="flow-arrow">&#x2192;</span>
+            <span class="flow-step">Detail level</span><span class="flow-arrow">&#x2192;</span>
+            <span class="flow-step">Task hint</span><span class="flow-arrow">&#x2192;</span>
+            <span class="flow-step">Cost sort</span><span class="flow-arrow">&#x2192;</span>
+            <span class="flow-step" style="border-color: var(--accent); color: var(--accent);">Cheapest viable</span>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <h3>Composition Awareness</h3>
+            <p><code>task_hint="composition"</code> biases toward models with strong spatial reasoning (e.g. gemini-3-pro, gpt-image-1.5) for multi-character scenes and panel framing.</p>
+        </div>
+        <div class="card">
+            <h3>Moderation Circuit Breaker</h3>
+            <p>If one provider blocks content, try the next. If all block, return structured guidance telling agents to <em>reimagine the scene</em> — not just soften wording.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6: RECIPES & ASSET MANAGEMENT                          -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="section-label">Context Pressure</div>
+    <h2 class="medium-headline">Recipes, URIs, and the Binary Data Problem</h2>
+
+    <div class="callout" style="background: rgba(255, 107, 107, 0.1); border-color: rgba(255, 107, 107, 0.25);">
+        <div class="callout-label" style="color: #FF6B6B;">The Problem</div>
+        <p>A 10-panel comic with characters = 50+ MB of image data. In v7.3.0, <code>{{research_data}}</code> was carrying 500K+ tokens through every recipe step. By panel 4, context hit 1.9M tokens.</p>
+    </div>
+
+    <div class="grid-2">
+        <div class="card card-accent">
+            <h3>The <code>comic://</code> Protocol</h3>
+            <div class="code-block"><span class="code-comment"># Project-scoped (shared across issues)</span>
+<span class="code-accent">comic://</span>project/characters/name
+
+<span class="code-comment"># Issue-scoped (per-issue assets)</span>
+<span class="code-accent">comic://</span>project/issues/issue-001/panels/panel_01
+
+<span class="code-comment"># Total recipe context: ~1 KB</span>
+<span class="code-green">URIs + storyboard JSON + metadata strings</span></div>
+        </div>
+        <div class="card">
+            <h3>3-Stage Architecture</h3>
+            <div class="stage-row" style="flex-direction: column;">
+                <div class="stage-box" style="border-left: 3px solid #64D2FF;">
+                    <h4>Stage 1 &mdash; Text Only (~$0.50)</h4>
+                    <p>Research &#x2192; style &#x2192; storyboard &#x2192; validate layouts</p>
+                </div>
+                <div style="text-align: center; padding: clamp(2px, 0.5vw, 4px) 0;">
+                    <span style="font-size: var(--font-small); font-weight: 700; color: #FFD60A; letter-spacing: 1px;">&#x1F6E1; APPROVAL GATE</span>
+                </div>
+                <div class="stage-box" style="border-left: 3px solid #BF5AF2;">
+                    <h4>Stage 2 &mdash; Characters (shared)</h4>
+                    <p>Character design with cross-project reuse</p>
+                </div>
+                <div class="stage-box" style="border-left: 3px solid var(--accent);">
+                    <h4>Stage 3 &mdash; Per-Issue Art</h4>
+                    <p>Sub-recipe per issue: panels + cover in parallel</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p class="body-text">Binary data is fully encapsulated in the <code>comic_create</code> tool. Agents never see file paths, base64 blobs, or raw bytes. Sub-recipes (<code>issue-art.yaml</code>, <code>issue-retry.yaml</code>) enable surgical recovery without full pipeline re-runs.</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7: STYLE SYSTEM                                        -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="section-label">Style System</div>
+    <h2 class="medium-headline">How Agents Discover and Learn New Styles</h2>
+
+    <div class="grid-2">
+        <div class="card">
+            <span class="card-icon">&#x1F50D;</span>
+            <h3>Dynamic Style Discovery</h3>
+            <p>The style-curator reads <code>context/styles/</code> directory listing at runtime — no hardcoded style names. Adding a new style = dropping a <code>.md</code> file. Zero code changes.</p>
+        </div>
+        <div class="card">
+            <span class="card-icon">&#x1F4D0;</span>
+            <h3>Canonical Sections</h3>
+            <p>Every style pack includes: Image Prompt Template, Color Palette, Panel Conventions, Panel Shapes, Text Treatment, Character Rendering, AmpliVerse Branding.</p>
+        </div>
+        <div class="card card-accent">
+            <span class="card-icon">&#x1F9EC;</span>
+            <h3>Character Rendering Coherence</h3>
+            <p>The Character Rendering section is quoted verbatim into every character-designer prompt as a "STYLE COHESION" directive, ensuring all characters share the same visual DNA.</p>
+        </div>
+        <div class="card">
+            <span class="card-icon">&#x1F504;</span>
+            <h3>Cross-Project Reuse</h3>
+            <p>Characters designed in project A can be reused in project B if the style matches, with a <code>needs_redesign</code> flag for style-mismatch adaptation. Skills load on demand, keeping base agent context lean.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Extensibility Scorecard</div>
+        <p><strong style="color: var(--text-primary);">New style:</strong> drop a <code>.md</code> file &nbsp;&#x2022;&nbsp; <strong style="color: var(--text-primary);">New model:</strong> add a <code>ModelEntry</code> dataclass &nbsp;&#x2022;&nbsp; <strong style="color: var(--text-primary);">Custom style:</strong> user description generates a complete guide following the same template. Zero agent code changes. Zero recipe changes. Zero bundle updates.</p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 8: ROAD BUMPS                                          -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="section-label">Lessons Learned</div>
+    <h2 class="medium-headline">Road Bumps Along the Way</h2>
+
+    <div class="grid-2">
+        <div class="card card-elevated" style="grid-column: 1 / -1;">
+            <h3 style="color: var(--accent);">Shadow-Operator's 43-Minute Container Gauntlet</h3>
+            <p style="margin-bottom: clamp(6px, 1vw, 10px);">First shadow test of the comic pipeline. Container refused to build — dependencies tangled, config paths missing inside the sealed environment. Second attempt: another collapse. Third try: switched to general-purpose container, manually configured from scratch.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: clamp(12px, 2.5vw, 24px); margin-top: clamp(6px, 1vw, 10px);">
+                <div class="stat-item">
+                    <div class="stat-num" style="font-size: clamp(24px, 5vw, 40px);">36</div>
+                    <div class="stat-label">Container ops</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num" style="font-size: clamp(24px, 5vw, 40px);">43</div>
+                    <div class="stat-label">Minutes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num" style="font-size: clamp(24px, 5vw, 40px);">79</div>
+                    <div class="stat-label">Tool calls</div>
+                </div>
+            </div>
+            <p style="margin-top: clamp(8px, 1.5vw, 12px); font-style: italic;">"Prove it in isolation first. Shadow-operator's gauntlet was not wasted time. It was the foundation that made everything after it possible."</p>
+        </div>
+
+        <div class="card">
+            <h3>The Caching Productivity Trap</h3>
+            <p>The <code>install-state.json</code> vs <code>cache/</code> mismatch bug — reset cleared the cache but not the state file, creating a "phantom installed" condition. ModuleActivator thought modules were installed but the code was gone.</p>
+            <p style="margin-top: clamp(6px, 1vw, 10px);"><strong style="color: var(--text-primary);">Lesson:</strong> State tracking files should live in <code>cache/</code> if they track cached data.</p>
+        </div>
+
+        <div class="card">
+            <h3>Forcing Functions</h3>
+            <p>Shadow testing failed TWICE on premature fixes — forced the team to actually understand root causes (session creation flow bypassing AppModuleResolver) before declaring success.</p>
+            <p style="margin-top: clamp(6px, 1vw, 10px);"><strong style="color: var(--text-primary);">Also:</strong> <code>rm -rf ~/.amplifier/cache/</code> breaks the CLI entirely — site-packages contain links to cache files. Prescribed: <code>amplifier reset --remove cache,registry -y</code></p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 9: DEVELOPMENT ARC                                     -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="section-label">Evolution</div>
+    <h2 class="medium-headline">The Development Arc</h2>
+    <p class="body-text">From "generate one comic" to "orchestrate a narrative arc with character continuity and human oversight."</p>
+
+    <div class="timeline">
+        <div class="era">
+            <div class="era-label">Era 1 &mdash; Foundation</div>
+            <h4>Single-Issue Pipeline</h4>
+            <p>Style system, speech bubbles, HTML assembly. One session in, one comic out.</p>
+        </div>
+        <div class="era">
+            <div class="era-label">Era 2 &mdash; v7.0 – v7.5</div>
+            <h4>Quality</h4>
+            <p>Composition-aware model selection. Content policy as first-class concern. Vision model roles added.</p>
+        </div>
+        <div class="era">
+            <div class="era-label">Era 3 &mdash; v7.6 – v7.7</div>
+            <h4>Validation</h4>
+            <p>Layout validation feedback loops. Flexible session input. Pipeline became stateful and resumable.</p>
+        </div>
+        <div class="era" style="border-top-color: var(--accent);">
+            <div class="era-label" style="color: var(--accent);">Era 4 &mdash; v8.0</div>
+            <h4>Saga System</h4>
+            <p>Multi-issue pipeline, cross-project character discovery, per-issue variant creation, 3-stage orchestration with approval gates.</p>
+        </div>
+        <div class="era" style="border-top-color: #30D158;">
+            <div class="era-label" style="color: #30D158;">Era 5 &mdash; v8.1</div>
+            <h4>Composability</h4>
+            <p>Sub-recipe patterns, deterministic character lookup, composable pipeline architecture.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 10: KEY TAKEAWAYS                                      -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="section-label">Takeaways</div>
+    <h2 class="medium-headline">What We Learned</h2>
+
+    <div style="max-width: 800px; width: 100%;">
+        <div class="takeaway">
+            <div class="takeaway-num">1</div>
+            <div>
+                <h4>Composition over monoliths</h4>
+                <p>Thin bundle + behavior file + cross-bundle delegation = each agent carries only what it needs.</p>
+            </div>
+        </div>
+        <div class="takeaway">
+            <div class="takeaway-num">2</div>
+            <div>
+                <h4>Route capabilities, not providers</h4>
+                <p>The routing matrix (and its image-gen sibling) let you swap models without touching agent code.</p>
+            </div>
+        </div>
+        <div class="takeaway">
+            <div class="takeaway-num">3</div>
+            <div>
+                <h4>URIs, not bytes</h4>
+                <p>The <code>comic://</code> protocol keeps recipe context at ~1 KB while managing 50+ MB of images.</p>
+            </div>
+        </div>
+        <div class="takeaway">
+            <div class="takeaway-num">4</div>
+            <div>
+                <h4>Extensibility through convention</h4>
+                <p>New styles are <code>.md</code> files. New models are <code>ModelEntry</code> entries. No code changes required.</p>
+            </div>
+        </div>
+        <div class="takeaway">
+            <div class="takeaway-num">5</div>
+            <div>
+                <h4>Shadow testing is painful but essential</h4>
+                <p>43 minutes of container gauntlet prevented weeks of "works on my machine" bugs.</p>
+            </div>
+        </div>
+        <div class="takeaway">
+            <div class="takeaway-num">6</div>
+            <div>
+                <h4>Cache coherence matters</h4>
+                <p>State tracking must co-locate with the data it tracks — or you get phantom-installed conditions.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 11: WHAT'S NEXT / CTA                                  -->
+<!-- ============================================================ -->
+<div class="slide center">
+    <div class="section-label">Roadmap</div>
+    <h2 class="headline">What's Next</h2>
+    <p class="subhead" style="margin-bottom: clamp(16px, 3vw, 32px);">The pipeline is live. Here's where it's headed.</p>
+
+    <div class="grid-2" style="max-width: 700px;">
+        <div class="card">
+            <h3>Native Image Generation</h3>
+            <p>Replace the Issue #90 bridge with kernel-native image generation support.</p>
+        </div>
+        <div class="card">
+            <h3>Style Gallery</h3>
+            <p>Visual discovery UI for browsing the full 29-style library with previews.</p>
+        </div>
+        <div class="card">
+            <h3>Automated Saga Continuation</h3>
+            <p>Continue story arcs across sessions with persistent character state.</p>
+        </div>
+        <div class="card">
+            <h3>CI/CD Integration</h3>
+            <p>Comic generation pipelines triggered by commits, PRs, or scheduled runs.</p>
+        </div>
+    </div>
+
+    <div style="margin-top: clamp(16px, 3vw, 32px);">
+        <div class="code-block" style="max-width: 500px; text-align: left; display: inline-block;"><span class="code-comment"># Try it now</span>
+<span class="code-accent">amplifier</span> activate comic-strips
+<span class="code-accent">amplifier</span> create comic <span class="code-blue">--style manga</span></div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 12: SOURCES & METHODOLOGY                              -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="section-label">Sources</div>
+    <h2 class="medium-headline">Sources &amp; Methodology</h2>
+    <div class="body-text" style="line-height: 1.7; max-width: 800px;">
+        <p><strong style="color: var(--text-primary);">Data as of:</strong> March 7, 2026</p>
+        <p><strong style="color: var(--text-primary);">Feature status:</strong> <span class="badge badge-green" style="vertical-align: middle;">Active</span></p>
+        <p style="margin-top: clamp(10px, 1.5vw, 16px);"><strong style="color: var(--text-primary);">Content source:</strong></p>
+        <ul class="compact-list">
+            <li>All architecture details, agent configurations, and version history provided directly by the bundle author from the <code>amplifier-bundle-comic-strips</code> repository</li>
+            <li>Git commit history: v7.0.0 through v8.1.0 visible in repository log (<code>git log --oneline</code>)</li>
+            <li>Version tags confirmed via submodule updates in parent repo (commits 86a170d through a28eca3)</li>
+            <li>Shadow testing narrative sourced from documented session transcripts</li>
+            <li>Model count (12 models / 3 API surfaces) from <code>generate_image</code> tool module source</li>
+            <li>Style count (29 styles) from <code>context/styles/</code> directory listing</li>
+        </ul>
+        <p style="margin-top: clamp(10px, 1.5vw, 16px);"><strong style="color: var(--text-primary);">Gaps &amp; caveats:</strong></p>
+        <ul class="compact-list">
+            <li>Exact line counts, commit counts, and contributor percentages were not independently verified via automated git analysis — figures are author-reported</li>
+            <li>Cost estimate (~$0.50 for Stage 1) is approximate and depends on model pricing at time of run</li>
+            <li>Shadow testing metrics (36 ops, 43 min, 79 tool calls) are from a single documented session</li>
+            <li>Context token figure (1.9M tokens at panel 4) is from a specific v7.3.0 debugging session</li>
+        </ul>
+        <p style="margin-top: clamp(10px, 1.5vw, 16px);"><strong style="color: var(--text-primary);">Primary contributor:</strong> Bundle author (single-author project based on commit history)</p>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav" id="nav"></div>
+<div class="slide-counter" id="counter"></div>
+<a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let currentSlide = 0;
+
+function showSlide(n) {
+    slides[currentSlide].classList.remove('active');
+    currentSlide = (n + slides.length) % slides.length;
+    slides[currentSlide].classList.add('active');
+    slides[currentSlide].scrollTop = 0;
+    updateNav();
+}
+
+function updateNav() {
+    const nav = document.getElementById('nav');
+    const counter = document.getElementById('counter');
+    nav.innerHTML = '';
+    slides.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+        dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+        nav.appendChild(dot);
+    });
+    counter.textContent = (currentSlide + 1) + ' / ' + slides.length;
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+});
+
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+    if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+    else showSlide(currentSlide - 1);
+});
+
+let touchStartX = 0;
+let touchEndX = 0;
+const SWIPE_THRESHOLD = 50;
+
+document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    const diff = touchStartX - touchEndX;
+    if (Math.abs(diff) > SWIPE_THRESHOLD) {
+        if (diff > 0) showSlide(currentSlide + 1);
+        else showSlide(currentSlide - 1);
+    }
+}, { passive: true });
+
+updateNav();
+</script>
+</body>
+</html>
