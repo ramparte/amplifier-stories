@@ -127,48 +127,79 @@ You can tell stories in multiple formats, each suited to different audiences and
 
 **PowerPoint Creation Workflow:**
 
-When creating a PowerPoint presentation (not HTML):
+There are two paths to PPTX: converting an existing HTML deck, or building
+one from scratch. Both use `tools/html2pptx_v2.py` (v2 uses native PowerPoint
+tables and `MSO_AUTO_SIZE` instead of v1's hand-rolled font metrics).
+
+**IMPORTANT:** Do NOT use `tools/html2pptx.py` (v1) — it is superseded by v2.
+
+#### Path A: Convert an existing HTML deck to PPTX
+
+This is the common case — a deck already exists as HTML and the user wants
+a PPTX copy.
+
+1. **Pre-flight CSS fix** (optional but recommended):
+   ```bash
+   uv run --with beautifulsoup4,lxml python tools/deck-style-fix.py docs/my-deck.html
+   ```
+   Fixes WCAG contrast, font-size minimums, and opacity issues before conversion.
+
+2. **Convert with v2**:
+   ```bash
+   uv run --with python-pptx,beautifulsoup4,lxml python tools/html2pptx_v2.py docs/my-deck.html docs/my-deck.pptx
+   ```
+
+3. **MANDATORY — Verify the PPTX** (do NOT skip):
+   ```bash
+   uv run --with python-pptx python tools/pptx_verify.py docs/my-deck.pptx
+   ```
+   This checks every text shape for overflow and every slide for shape overlap.
+   If it reports SEVERE issues, fix the HTML source and re-convert before
+   presenting to the user.
+
+4. **Present to user**: `open docs/my-deck.pptx`
+
+#### Path B: Build a new PPTX presentation from scratch
 
 1. **Use slide templates** from `workspace/pptx/templates/`:
-   - **slide-title.html** - Opening/section covers (centered, large headline)
-   - **slide-content.html** - Standard content with bullets
-   - **slide-code.html** - Code examples (green text, preserved whitespace)
-   - **slide-comparison.html** - Before/After two-column layouts
-   - **slide-metrics.html** - Big gradient numbers in 3-column grid
-   - **slide-cards.html** - Feature grid with card backgrounds
-   - **slide-section.html** - Section dividers with large numbers
-   
-   Copy templates, rename to slide-01.html, slide-02.html, etc., modify content only
+   - **slide-title.html** — Opening/section covers (centered, large headline)
+   - **slide-content.html** — Standard content with bullets
+   - **slide-code.html** — Code examples (green text, preserved whitespace)
+   - **slide-comparison.html** — Before/After two-column layouts
+   - **slide-metrics.html** — Big gradient numbers in 3-column grid
+   - **slide-cards.html** — Feature grid with card backgrounds
+   - **slide-section.html** — Section dividers with large numbers
 
-2. **MANDATORY** - Read style specification and html2pptx guide:
+   Copy templates, rename to slide-01.html, slide-02.html, etc., modify content only.
+
+2. **Read style specification**:
    - Template reference: `@amplifier-module-stories:context/powerpoint-template.md`
-   - html2pptx guide: `~/dev/anthropic-skills/skills/pptx/html2pptx.md` (625 lines, read ENTIRE file)
 
 3. **Create HTML slides** in `workspace/pptx/html-slides/`:
    - Copy appropriate template from `workspace/pptx/templates/`
    - Rename to sequential numbers: `slide-01.html`, `slide-02.html`
    - Modify ONLY the content (headings, text, lists), preserve ALL CSS
-   - **CRITICAL:** Do NOT change styling - templates are pre-styled correctly
+   - **CRITICAL:** Do NOT change styling — templates are pre-styled correctly
    - **CRITICAL:** Use `white-space: pre` in code blocks to preserve formatting
 
 4. **Rasterize assets** to `workspace/pptx/assets/` (if needed):
-   - Convert gradients/icons to PNG using Sharp
+   - Convert gradients/icons to PNG
    - Save charts as PNG images
    - Reference: `<img src="../assets/filename.png">`
 
-5. **Create conversion script** in `workspace/pptx/`:
-   - Import html2pptx library
-   - Process each HTML slide with `html2pptx()`
-   - Add charts/tables using PptxGenJS API to placeholders
-   - Save to `workspace/pptx/output/presentation-name.pptx`
+5. **Convert with v2**:
+   ```bash
+   uv run --with python-pptx,beautifulsoup4,lxml python tools/html2pptx_v2.py workspace/pptx/html-slides/slide-01.html workspace/pptx/output/presentation-name.pptx
+   ```
 
-6. **Visual validation**:
-   - Generate thumbnails: `python ~/dev/anthropic-skills/skills/pptx/scripts/thumbnail.py workspace/pptx/output/filename.pptx workspace/pptx/thumbnails/preview --cols 4`
-   - Review for text cutoff, overlap, positioning issues
-   - Fix and regenerate if needed
+6. **MANDATORY — Verify the PPTX** (do NOT skip):
+   ```bash
+   uv run --with python-pptx python tools/pptx_verify.py workspace/pptx/output/presentation-name.pptx
+   ```
+   Fix any SEVERE overflow or overlap issues before proceeding.
 
 7. **Present to user**:
-   - **Auto-open**: Run `open workspace/pptx/output/filename.pptx`
+   - **Auto-open**: Run `open workspace/pptx/output/presentation-name.pptx`
    - Confirm it can be copied to `docs/` for deployment
 
 **Template Documentation:** `workspace/pptx/templates/README.md`

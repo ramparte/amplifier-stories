@@ -4,40 +4,121 @@ Utility scripts for creating presentations, analyzing Amplifier usage, and gener
 
 ## Available Tools
 
-### html2pptx.py
+### html2pptx_v2.py (recommended)
 
-Converts Amplifier Stories HTML decks to PowerPoint presentations.
-
-**Purpose:** Generate native PowerPoint files from HTML story decks, enabling easy sharing and editing in corporate environments.
+Converts Amplifier Stories HTML decks to PowerPoint presentations. Uses native
+PowerPoint tables and `MSO_AUTO_SIZE` for reliable text sizing — replaces v1's
+hand-rolled font metrics.
 
 **Usage:**
 ```bash
-# Using uv (recommended)
-uv run --with python-pptx,beautifulsoup4,lxml python tools/html2pptx.py <input.html> [output.pptx]
+# Convert a single deck
+uv run --with python-pptx,beautifulsoup4,lxml python tools/html2pptx_v2.py <input.html> [output.pptx]
 
 # Examples
-uv run --with python-pptx,beautifulsoup4,lxml python tools/html2pptx.py docs/my-deck.html
-uv run --with python-pptx,beautifulsoup4,lxml python tools/html2pptx.py docs/my-deck.html output/presentation.pptx
+uv run --with python-pptx,beautifulsoup4,lxml python tools/html2pptx_v2.py docs/my-deck.html
+uv run --with python-pptx,beautifulsoup4,lxml python tools/html2pptx_v2.py docs/my-deck.html output/presentation.pptx
 ```
 
+**Key improvements over v1:**
+- Cards rendered as native table cells (not absolute-positioned shapes)
+- Header zone uses combined text frame (eliminates header-overlap bugs)
+- `MSO_AUTO_SIZE` delegates height decisions to PowerPoint's engine
+- Dynamic font sizing based on content length
+
 **Supported Elements:**
-- Slide structure (`.slide` divs)
+- Slide structure (`.slide` divs and sections)
 - Section labels (`.section-label`)
 - Headlines and subheads (`.headline`, `.subhead`, `.medium-headline`)
 - Cards with titles and text (`.card`, `.card-title`, `.card-text`)
+- Card grids (`.thirds`, `.halves`, `.fourths`, `.grid-2` through `.grid-5`)
 - Tenet boxes with accent colors (`.tenet`, `.tenet.green`, `.tenet.orange`)
 - Feature lists with check/x marks (`.feature-list`)
-- Data tables (`.data-table`)
+- Data tables (`.data-table`) — rendered as native PowerPoint tables
 - Highlight/callout boxes (`.highlight-box`)
-- Big numbers and stats (`.stat-grid`, `.card-number`)
+- Big numbers and stats (`.stat-grid`, `.card-number`, `.big-stat`)
 - Versus comparisons (`.versus`)
+- Code blocks with syntax highlighting (`.code-block`)
+- Flow diagrams (`.flow-diagram`, `.workflow`)
 - Quotes (`.quote`)
 
 **Output:**
-- 16:9 widescreen format (10" × 5.625")
+- 16:9 widescreen format (10" x 5.625")
 - Black backgrounds with Amplifier Stories color palette
 - Editable text in PowerPoint
-- Matching visual hierarchy and styling
+- CSS `--accent` variable extracted for per-deck theming
+
+---
+
+### pptx_verify.py
+
+Checks every text shape in a .pptx for text overflow and shape overlap. Run
+this after every html2pptx conversion.
+
+**Usage:**
+```bash
+# Verify a single file
+uv run --with python-pptx python tools/pptx_verify.py path/to/file.pptx
+
+# Verify all .pptx files in a directory
+uv run --with python-pptx python tools/pptx_verify.py path/to/directory/
+
+# Verbose output (shape-level detail)
+uv run --with python-pptx python tools/pptx_verify.py path/to/file.pptx --verbose
+```
+
+**What it checks:**
+- `TextOverflow` — compares estimated text height vs shape height (MINOR/MODERATE/SEVERE)
+- `ShapeOverlap` — detects bounding-box intersections between shapes on the same slide
+
+**Output:** Per-slide issue list + summary: "N overflow issues, N overlaps across N slides. Clean slides: X/Y"
+
+---
+
+### deck-style-fix.py
+
+Deterministic CSS accessibility fixer — zero LLM tokens, pure regex/DOM
+transforms. Run this before converting to PPTX to ensure clean input.
+
+**Usage:**
+```bash
+uv run --with beautifulsoup4,lxml python tools/deck-style-fix.py <input.html>
+```
+
+**Four phases:**
+1. CSS variable value fixes (contrast, surface brightness, border visibility)
+2. CSS rule font-size minimums (context-dependent)
+3. Inline style fixes (font-size, color, opacity)
+4. Inject missing surface hierarchy variables
+
+Computes WCAG 2.1 contrast ratios. Tracks every change with structured logging.
+
+---
+
+### patch_progressive_enhancement.py
+
+Patches HTML decks so they degrade gracefully without JavaScript (e.g., in
+Teams/SharePoint which strip JS).
+
+**Usage:**
+```bash
+uv run --with beautifulsoup4 python tools/patch_progressive_enhancement.py [docs_directory]
+```
+
+**Changes per file:**
+- Adds `html.js` class toggle (`<script>` in `<head>`)
+- Restores `.slide { display: flex }` for no-JS (all slides visible)
+- Removes `overflow: hidden` and `overscroll-behavior: none` from body
+- Adds `html.js`-scoped rules to restore JS-mode slide navigation
+
+Returns per-file status: `patched` / `already_patched` / `not_a_deck` / `no_changes`.
+
+---
+
+### html2pptx.py (v1 — superseded)
+
+Original HTML-to-PPTX converter. Uses hand-rolled font metrics for absolute
+shape positioning. **Superseded by html2pptx_v2.py** — kept for reference only.
 
 ---
 
@@ -45,26 +126,16 @@ uv run --with python-pptx,beautifulsoup4,lxml python tools/html2pptx.py docs/my-
 
 Analyzes Amplifier session data from `events.jsonl` files to extract usage patterns, agent interactions, and performance metrics.
 
-**Purpose:** Understand how Amplifier is being used across sessions to inform storytelling and identify interesting patterns.
-
 **Usage:**
 ```bash
 python tools/analyze_sessions.py <path-to-events.jsonl>
 ```
 
-**Output:**
-- Session duration and turn count
-- Agent invocations and types
-- Tool usage patterns
-- Provider/model statistics
-- Error tracking
-- Performance metrics
+**Output:** Session duration, turn count, agent invocations, tool usage, provider/model stats, error tracking, performance metrics.
 
 ### create_dashboard.py
 
-Generates Excel dashboards from analyzed session data, creating visual insights about Amplifier usage.
-
-**Purpose:** Create data-driven stories showing Amplifier adoption, performance, and impact.
+Generates Excel dashboards from analyzed session data.
 
 **Usage:**
 ```bash
@@ -75,48 +146,35 @@ python tools/analyze_sessions.py sessions/*.jsonl > analysis.json
 python tools/create_dashboard.py analysis.json output-dashboard.xlsx
 ```
 
-**Output:**
-- Multi-sheet Excel workbook
-- Charts showing usage trends
-- Metrics tables with formulas
-- Formatted with professional styling
+**Output:** Multi-sheet Excel workbook with charts, metrics tables, and professional styling.
 
 ## Data Flow
 
 ```
-events.jsonl → analyze_sessions.py → analysis.json → create_dashboard.py → dashboard.xlsx
+events.jsonl -> analyze_sessions.py -> analysis.json -> create_dashboard.py -> dashboard.xlsx
+```
+
+## PPTX Conversion Pipeline
+
+The recommended pipeline for converting an HTML deck to PPTX:
+
+```
+deck.html -> deck-style-fix.py -> html2pptx_v2.py -> pptx_verify.py -> deck.pptx
+             (fix accessibility)   (convert)          (verify quality)
 ```
 
 ## Dependencies
 
 ```bash
-# Python packages
+# For html2pptx_v2
+uv run --with python-pptx,beautifulsoup4,lxml python tools/html2pptx_v2.py ...
+
+# For pptx_verify
+uv run --with python-pptx python tools/pptx_verify.py ...
+
+# For deck-style-fix
+uv run --with beautifulsoup4,lxml python tools/deck-style-fix.py ...
+
+# For analyze/dashboard
 pip install openpyxl pandas
-
-# For recalculating Excel formulas (if used)
-brew install libreoffice  # macOS
-# or
-sudo apt-get install libreoffice  # Linux
 ```
-
-## Use Cases
-
-1. **Monthly reporting** - Track Amplifier adoption and usage metrics
-2. **Story research** - Find interesting patterns to showcase in presentations
-3. **Performance analysis** - Identify bottlenecks or inefficiencies
-4. **Feature validation** - See which features are actually being used
-
-## Integration with Storyteller
-
-These tools help gather data that can be turned into compelling stories:
-
-- Excel dashboards → Metrics slides in presentations
-- Usage patterns → Real-world example slides
-- Performance data → Impact and velocity slides
-- Agent interactions → Technical architecture slides
-
-## Notes
-
-- Output files (*.csv, *.json) are gitignored by default
-- Scripts are version controlled in tools/ directory
-- Generated dashboards can be moved to `workspace/xlsx/output/` for inclusion in presentations
