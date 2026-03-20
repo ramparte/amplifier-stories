@@ -10,7 +10,11 @@ agents:
   # Legacy agent (maintained for backward compatibility)
   storyteller:
     path: amplifier-module-stories:agents/storyteller.md
-  
+
+  # Story2: YAML-first deck creation via deck engine
+  storyteller2:
+    path: amplifier-module-stories:agents/storyteller2.md
+
   # Specialist agents for autonomous storytelling
   story-researcher:
     path: amplifier-module-stories:agents/story-researcher.md
