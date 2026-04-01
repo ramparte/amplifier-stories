@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Over Noise — Amplifier as Communication Infrastructure</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #07070d;
+  --surface: rgba(255,255,255,0.042);
+  --surface-2: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.08);
+  --border-bright: rgba(255,255,255,0.16);
+  --cyan: #22d3ee;
+  --cyan-dim: rgba(34,211,238,0.15);
+  --amber: #f59e0b;
+  --amber-dim: rgba(245,158,11,0.14);
+  --violet: #a78bfa;
+  --violet-dim: rgba(167,139,250,0.14);
+  --green: #10b981;
+  --green-dim: rgba(16,185,129,0.14);
+  --text: #f1f5f9;
+  --muted: #64748b;
+  --muted-bright: #94a3b8;
+  --red: #f87171;
+}
+
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px; line-height: 1.5;
+}
+
+/* ─── PRESENTATION FRAME ─── */
+.presentation {
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+}
+
+.slide {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.5s ease;
+  overflow: hidden;
+  padding: 0;
+}
+.slide.active {
+  opacity: 1; pointer-events: all;
+}
+
+/* ─── PROGRESS BAR ─── */
+#progress-bar {
+  position: fixed; top: 0; left: 0;
+  height: 2px; background: var(--cyan);
+  transition: width 0.4s ease;
+  z-index: 100;
+  box-shadow: 0 0 8px var(--cyan);
+}
+
+/* ─── SLIDE COUNTER ─── */
+#slide-counter {
+  position: fixed; top: 20px; right: 28px;
+  font-size: 11px; letter-spacing: 0.12em;
+  color: var(--muted); font-weight: 500;
+  z-index: 100; text-transform: uppercase;
+}
+
+/* ─── NAV DOTS ─── */
+#nav-dots {
+  position: fixed; bottom: 22px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 7px;
+  z-index: 100;
+}
+.dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.dot.active {
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+  width: 18px; border-radius: 3px;
+}
+
+/* ─── ARROW KEYS HINT ─── */
+#nav-hint {
+  position: fixed; bottom: 22px; right: 28px;
+  font-size: 11px; color: var(--muted);
+  letter-spacing: 0.08em; z-index: 100;
+}
+
+/* ─── COMMON LAYOUT HELPERS ─── */
+.full-bleed { padding: 0; margin: 0; }
+
+.padded { padding: 64px 80px; }
+.padded-v { padding: 52px 80px; }
+
+.label {
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--cyan); margin-bottom: 16px;
+}
+.label-amber { color: var(--amber); }
+.label-violet { color: var(--violet); }
+.label-green { color: var(--green); }
+
+h1.display {
+  font-size: clamp(56px, 7vw, 96px);
+  font-weight: 800; line-height: 1;
+  letter-spacing: -0.03em;
+}
+h2.title {
+  font-size: clamp(36px, 4.5vw, 60px);
+  font-weight: 700; line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+h3.section {
+  font-size: clamp(22px, 2.8vw, 38px);
+  font-weight: 700; line-height: 1.2;
+}
+p.body { font-size: clamp(14px, 1.6vw, 20px); line-height: 1.65; }
+p.lead { font-size: clamp(16px, 2vw, 24px); line-height: 1.6; color: var(--muted-bright); }
+small.sub { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+.cyan { color: var(--cyan); }
+.amber { color: var(--amber); }
+.violet { color: var(--violet); }
+.green { color: var(--green); }
+.muted { color: var(--muted); }
+
+/* ─── CARD ─── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 32px;
+}
+.card.cyan-tint { border-color: rgba(34,211,238,0.25); background: var(--cyan-dim); }
+.card.amber-tint { border-color: rgba(245,158,11,0.25); background: var(--amber-dim); }
+.card.violet-tint { border-color: rgba(167,139,250,0.25); background: var(--violet-dim); }
+.card.green-tint { border-color: rgba(16,185,129,0.25); background: var(--green-dim); }
+
+/* ─── GRID HELPERS ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+
+/* ─── QUOTE ─── */
+.quote-block {
+  border-left: 3px solid var(--cyan);
+  padding: 16px 24px;
+  background: var(--surface);
+  border-radius: 0 8px 8px 0;
+  font-size: clamp(15px, 1.8vw, 22px);
+  line-height: 1.6;
+  font-style: italic;
+}
+.quote-block.amber { border-color: var(--amber); }
+.quote-block.violet { border-color: var(--violet); }
+
+/* ─── BADGE ─── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 4px 12px; border-radius: 100px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em;
+  border: 1px solid;
+}
+.badge.cyan { color: var(--cyan); border-color: rgba(34,211,238,0.35); background: var(--cyan-dim); }
+.badge.amber { color: var(--amber); border-color: rgba(245,158,11,0.35); background: var(--amber-dim); }
+.badge.green { color: var(--green); border-color: rgba(16,185,129,0.35); background: var(--green-dim); }
+
+/* ─── ANIMATION KEYFRAMES ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fadeLeft {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+@keyframes waveMove {
+  0% { stroke-dashoffset: 1200; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes barGrow {
+  from { width: 0; }
+  to   { width: var(--target-w); }
+}
+@keyframes messagePop {
+  from { opacity: 0; transform: translateX(-16px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes arrowPulse {
+  0%, 100% { opacity: 0.4; transform: scaleX(0.95); }
+  50% { opacity: 1; transform: scaleX(1.05); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes floatUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* ─── REUSABLE ANIMATION CLASSES ─── */
+.anim-fadeup { opacity: 0; animation: fadeUp 0.6s ease forwards; }
+.anim-fadein { opacity: 0; animation: fadeIn 0.6s ease forwards; }
+.anim-scalein { opacity: 0; animation: scaleIn 0.5s ease forwards; }
+
+.delay-0  { animation-delay: 0s; }
+.delay-1  { animation-delay: 0.12s; }
+.delay-2  { animation-delay: 0.24s; }
+.delay-3  { animation-delay: 0.38s; }
+.delay-4  { animation-delay: 0.52s; }
+.delay-5  { animation-delay: 0.68s; }
+.delay-6  { animation-delay: 0.86s; }
+.delay-7  { animation-delay: 1.06s; }
+.delay-8  { animation-delay: 1.28s; }
+.delay-9  { animation-delay: 1.52s; }
+.delay-10 { animation-delay: 1.78s; }
+
+/* ─── WAVEFORM (TITLE) ─── */
+.waveform-container {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 200px; pointer-events: none;
+  overflow: hidden;
+}
+.wave-svg { width: 100%; height: 100%; }
+.wave-line {
+  fill: none;
+  stroke-dasharray: 1400;
+  stroke-dashoffset: 1400;
+}
+.wave-1 {
+  stroke: rgba(34,211,238,0.5); stroke-width: 2;
+  animation: waveMove 2.5s ease forwards 0.4s;
+}
+.wave-2 {
+  stroke: rgba(34,211,238,0.2); stroke-width: 1.5;
+  animation: waveMove 2.8s ease forwards 0.7s;
+}
+.wave-3 {
+  stroke: rgba(245,158,11,0.3); stroke-width: 1;
+  animation: waveMove 3s ease forwards 1s;
+}
+
+/* ─── GRID BG ─── */
+.grid-bg {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  pointer-events: none;
+}
+
+/* ─── GLOW ORBS ─── */
+.glow-orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(80px); pointer-events: none;
+}
+.glow-cyan { background: rgba(34,211,238,0.12); }
+.glow-amber { background: rgba(245,158,11,0.1); }
+.glow-violet { background: rgba(167,139,250,0.1); }
+
+/* ─── MESSAGE BUBBLES ─── */
+.msg-stream { display: flex; flex-direction: column; gap: 10px; }
+.msg {
+  display: flex; align-items: flex-start; gap: 12px;
+  opacity: 0;
+}
+.msg.visible { animation: messagePop 0.5s ease forwards; }
+.msg-time {
+  font-size: 11px; color: var(--muted);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  min-width: 38px; padding-top: 10px;
+  letter-spacing: 0.04em;
+}
+.msg-bubble {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px 12px 12px 12px;
+  padding: 10px 16px;
+  font-size: clamp(13px, 1.4vw, 17px);
+  line-height: 1.55;
+  max-width: 85%;
+}
+.msg-bubble.final {
+  border-color: rgba(34,211,238,0.4);
+  background: var(--cyan-dim);
+  box-shadow: 0 0 16px rgba(34,211,238,0.08);
+}
+.msg-bubble.em {
+  border-color: rgba(245,158,11,0.35);
+  background: var(--amber-dim);
+  align-self: flex-end;
+}
+.msg-em { flex-direction: row-reverse; }
+.msg-em .msg-bubble {
+  border-radius: 12px 4px 12px 12px;
+}
+.msg-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; margin-bottom: 4px;
+}
+
+/* ─── PIPELINE FLOW ─── */
+.pipeline {
+  display: flex; align-items: center;
+  gap: 0; width: 100%;
+}
+.pipeline-step {
+  flex: 1; text-align: center;
+  opacity: 0; animation: fadeUp 0.5s ease forwards;
+}
+.pipeline-box {
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: clamp(12px, 1.3vw, 16px);
+  font-weight: 600;
+  margin: 0 6px;
+  transition: all 0.3s;
+}
+.pipeline-box:hover { border-color: var(--cyan); background: var(--cyan-dim); }
+.pipeline-arrow {
+  font-size: 18px; color: var(--muted);
+  animation: arrowPulse 2s ease infinite;
+  flex-shrink: 0;
+}
+
+/* ─── STAT CALLOUT ─── */
+.stat-callout {
+  text-align: center;
+  padding: 32px;
+}
+.stat-number {
+  font-size: clamp(52px, 7vw, 88px);
+  font-weight: 800; line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.stat-label {
+  font-size: clamp(13px, 1.5vw, 17px);
+  color: var(--muted-bright);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* ─── BUCKET VISUALIZATION ─── */
+.bucket {
+  flex: 1;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.bucket-header {
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.bucket-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%; flex-shrink: 0;
+}
+.bucket-items {
+  padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 8px;
+  flex: 1;
+}
+.bucket-item {
+  font-size: clamp(11px, 1.2vw, 14px);
+  color: var(--muted-bright);
+  padding: 8px 12px;
+  background: var(--surface);
+  border-radius: 6px;
+  line-height: 1.4;
+  opacity: 0;
+  animation: floatUp 0.4s ease forwards;
+}
+
+/* ─── TAG STRIP ─── */
+.tag-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag {
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: clamp(11px, 1.1vw, 14px);
+  font-weight: 500;
+  border: 1px solid var(--border);
+  color: var(--muted-bright);
+  background: var(--surface);
+}
+.tag.active {
+  border-color: rgba(34,211,238,0.4);
+  color: var(--cyan);
+  background: var(--cyan-dim);
+}
+
+/* ─── BEFORE/AFTER ─── */
+.before-after {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 2px; height: 100%;
+}
+.ba-side {
+  padding: 48px 52px;
+  display: flex; flex-direction: column;
+  justify-content: center;
+}
+.ba-label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  margin-bottom: 24px;
+}
+.ba-divider {
+  width: 2px; background: var(--border);
+  align-self: stretch;
+}
+.noise-block {
+  font-size: clamp(12px, 1.3vw, 15px);
+  color: var(--muted);
+  line-height: 2.2;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.noise-block span { 
+  display: inline-block;
+  opacity: 0.3;
+}
+.noise-block .highlight { opacity: 1; color: var(--text); }
+
+/* ─── CLOSING GRID ─── */
+.closing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 16px;
+  padding: 0 72px 60px;
+  flex: 1;
+}
+.closing-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  display: flex; flex-direction: column;
+  justify-content: flex-end;
+  opacity: 0;
+  animation: scaleIn 0.5s ease forwards;
+}
+.closing-cell:nth-child(1) { animation-delay: 0.1s; }
+.closing-cell:nth-child(2) { animation-delay: 0.2s; }
+.closing-cell:nth-child(3) { animation-delay: 0.3s; }
+.closing-cell:nth-child(4) { animation-delay: 0.4s; }
+.closing-cell:nth-child(5) { animation-delay: 0.5s; grid-column: span 2; }
+.closing-cell:nth-child(6) { display: none; }
+
+/* ─── STEP NUMBER ─── */
+.step-num {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700;
+  border: 2px solid;
+  flex-shrink: 0;
+}
+
+/* ─── HORIZONTAL DIVIDER ─── */
+hr.div {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+}
+
+/* ─── LAYER STACK ─── */
+.layer-stack { display: flex; flex-direction: column; gap: 4px; }
+.layer {
+  padding: 14px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: flex; align-items: center;
+  justify-content: space-between;
+  font-size: clamp(13px, 1.4vw, 17px);
+  opacity: 0;
+  animation: fadeLeft 0.5s ease forwards;
+}
+
+/* ─── TAG HIGHLIGHT ─── */
+.hl {
+  background: rgba(34,211,238,0.15);
+  border-radius: 4px;
+  padding: 0 4px;
+  color: var(--cyan);
+}
+.hl.amber {
+  background: rgba(245,158,11,0.15);
+  color: var(--amber);
+}
+.hl.violet {
+  background: rgba(167,139,250,0.15);
+  color: var(--violet);
+}
+
+/* ─── NO ANIMATION STATE (when disabled) ─── */
+.slide:not(.active) .anim-fadeup,
+.slide:not(.active) .anim-fadein,
+.slide:not(.active) .anim-scalein {
+  animation: none !important;
+  opacity: 0 !important;
+}
+
+</style>
+</head>
+<body>
+
+<!-- Progress bar -->
+<div id="progress-bar" style="width: 8.33%"></div>
+<div id="slide-counter">1 / 12</div>
+
+<!-- Nav dots -->
+<div id="nav-dots"></div>
+<div id="nav-hint">← → to navigate</div>
+
+<div class="presentation" id="presentation">
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 1 — TITLE
+═══════════════════════════════════════════════════════════ -->
+<div class="slide active" id="s1">
+  <!-- Background -->
+  <div class="grid-bg"></div>
+  <div class="glow-orb glow-cyan" style="width:700px;height:700px;top:-200px;left:-200px;"></div>
+  <div class="glow-orb glow-amber" style="width:500px;height:500px;bottom:-150px;right:-100px;"></div>
+
+  <!-- Content -->
+  <div style="display:flex;flex-direction:column;justify-content:center;flex:1;padding:64px 88px 180px;">
+    <div class="label anim-fadeup delay-0">Amplifier · Communication Intelligence</div>
+    <h1 class="display anim-fadeup delay-2" style="margin-bottom:28px;max-width:900px;">
+      Signal<br>Over<br><span class="cyan">Noise</span>
+    </h1>
+    <p class="lead anim-fadeup delay-4" style="max-width:580px;">
+      How Amplifier became communication infrastructure — 
+      transforming feedback, planning, and team visibility 
+      through context-aware AI that retains your voice.
+    </p>
+    <div class="anim-fadeup delay-6" style="margin-top:40px;">
+      <div class="tag-strip">
+        <span class="tag active">Voice Profiles</span>
+        <span class="tag active">Decoder Rings</span>
+        <span class="tag active">Plan Management</span>
+        <span class="tag active">Context Transfer</span>
+        <span class="tag active">amplifier-bundle-my-voice</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Waveform -->
+  <div class="waveform-container">
+    <svg class="wave-svg" viewBox="0 0 1440 200" preserveAspectRatio="none">
+      <path class="wave-line wave-1"
+        d="M0,100 C80,60 160,140 240,100 C320,60 400,140 480,100 C560,60 640,140 720,100 C800,60 880,140 960,100 C1040,60 1120,140 1200,100 C1280,60 1360,140 1440,100"/>
+      <path class="wave-line wave-2"
+        d="M0,120 C100,80 200,160 300,120 C400,80 500,160 600,120 C700,80 800,160 900,120 C1000,80 1100,160 1200,120 C1300,80 1400,160 1440,120"/>
+      <path class="wave-line wave-3"
+        d="M0,80 C120,40 240,120 360,80 C480,40 600,120 720,80 C840,40 960,120 1080,80 C1200,40 1320,120 1440,80"/>
+    </svg>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 2 — THE PROBLEM
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="glow-orb glow-amber" style="width:500px;height:500px;top:-100px;right:-100px;"></div>
+
+  <div style="padding:56px 80px 80px;flex:1;display:flex;flex-direction:column;">
+    <div class="label anim-fadeup delay-0">The Problem</div>
+    <h2 class="title anim-fadeup delay-1" style="margin-bottom:44px;">
+      Two failure modes<br>degrading team signal
+    </h2>
+
+    <div class="grid-2 anim-fadeup delay-2" style="flex:1;align-items:stretch;">
+      <!-- Card 1 -->
+      <div class="card amber-tint" style="display:flex;flex-direction:column;gap:20px;padding:36px 40px;">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:48px;height:48px;border-radius:12px;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.3);display:flex;align-items:center;justify-content:center;font-size:22px;">🌀</div>
+          <span class="label label-amber" style="margin-bottom:0;">Failure Mode 1</span>
+        </div>
+        <h3 class="section">Collapsed<br>Sessions</h3>
+        <p class="body" style="color:var(--muted-bright);">
+          Brainstorm → design → plan → execute all happen in one session. 
+          The output is <span class="amber">muddled</span>. Priorities aren't visible. 
+          the manager can't tell what's happening this week.
+        </p>
+        <hr class="div">
+        <p class="body" style="color:var(--muted);">
+          The work becomes the conversation. The conversation becomes the plan. 
+          Nobody knows what's A versus what's just noise.
+        </p>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="card cyan-tint" style="display:flex;flex-direction:column;gap:20px;padding:36px 40px;">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:48px;height:48px;border-radius:12px;background:rgba(34,211,238,0.2);border:1px solid rgba(34,211,238,0.3);display:flex;align-items:center;justify-content:center;font-size:22px;">🔁</div>
+          <span class="label" style="margin-bottom:0;">Failure Mode 2</span>
+        </div>
+        <h3 class="section">Lost<br>Continuity</h3>
+        <p class="body" style="color:var(--muted-bright);">
+          The same problem gets re-solved. Prior work isn't imported. 
+          <span class="cyan">Pet projects</span> exist outside the official record — 
+          invisible to the team even when they've already solved the problem.
+        </p>
+        <hr class="div">
+        <p class="body" style="color:var(--muted);">
+          Institutional knowledge lives in private repos and late-night observations 
+          that never get surfaced. Signal becomes noise through omission.
+        </p>
+      </div>
+    </div>
+
+    <div class="anim-fadeup delay-5" style="margin-top:28px;">
+      <div class="quote-block amber">
+        "I think this is an indication that pause / reconnect is not being performed correctly. 
+        I am still jumping into building without providing a solid set of findings and a plan — 
+        meaning plans are too weak to be a foundation for good deliverables."
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 3 — THE ANXIETY STREAM
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s3">
+  <div class="glow-orb glow-violet" style="width:600px;height:600px;top:-200px;left:-200px;"></div>
+
+  <div style="padding:52px 80px 72px;flex:1;display:flex;flex-direction:column;">
+    <div class="label anim-fadeup delay-0">Real Pattern · Transcript 23 March</div>
+    <h2 class="title anim-fadeup delay-1" style="margin-bottom:8px;">A pattern that self-diagnoses</h2>
+    <p class="lead anim-fadeup delay-2" style="margin-bottom:32px;font-size:clamp(14px,1.5vw,19px);">
+      Under pressure, messages arrive 1–2 minutes apart. Each is more precise than the last.
+    </p>
+
+    <div class="grid-2" style="flex:1;gap:32px;">
+      <!-- Left: stream -->
+      <div class="msg-stream" id="msg-stream">
+        <div class="msg" data-delay="200">
+          <span class="msg-time">22:38</span>
+          <div class="msg-bubble">
+            <div class="msg-label muted">Engineer</div>
+            "I am unraveling plans... The more I dig, the more it seems weak. 
+            How do you usually scope explorations for a first deliverable?"
+          </div>
+        </div>
+        <div class="msg" data-delay="800">
+          <span class="msg-time">22:39</span>
+          <div class="msg-bubble">
+            <div class="msg-label muted">Engineer</div>
+            "I am progressively growing quite upset with not finding the right balance 
+            between good depth and scope creep."
+          </div>
+        </div>
+        <div class="msg" data-delay="1400">
+          <span class="msg-time">22:40</span>
+          <div class="msg-bubble">
+            <div class="msg-label muted">Engineer</div>
+            "And not feeling I am making the right progress in the direction you'd like me to go."
+          </div>
+        </div>
+        <div class="msg" data-delay="2100">
+          <span class="msg-time">22:42</span>
+          <div class="msg-bubble">
+            <div class="msg-label muted">Engineer</div>
+            "To flip the question around: the part I am struggling to judge is 
+            how much is expected to be derived from current observability 
+            versus how much should come from altering modules."
+          </div>
+        </div>
+        <div class="msg" data-delay="2900">
+          <span class="msg-time">22:44</span>
+          <div class="msg-bubble final">
+            <div class="msg-label cyan">Engineer — Self Diagnosis</div>
+            "I think this is also an indication that pause / reconnect is not being 
+            performed correctly. I am still jumping into building without providing a 
+            solid set of findings and a plan — meaning plans are too weak 
+            to be a foundation for good deliverables."
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: what the decoder knows -->
+      <div style="display:flex;flex-direction:column;gap:20px;justify-content:center;">
+        <div class="card" style="padding:24px 28px;">
+          <div class="label" style="margin-bottom:12px;">What the decoder knows</div>
+          <p class="body" style="color:var(--muted-bright);margin-bottom:16px;">
+            The stream is a <span class="cyan">self-diagnosis mechanism</span>. 
+            The author is thinking out loud, arriving at the root cause in real time.
+          </p>
+          <div style="background:var(--surface);border-radius:8px;padding:14px 18px;border:1px solid rgba(34,211,238,0.2);">
+            <p style="font-size:13px;color:var(--cyan);font-weight:600;margin-bottom:6px;">Decoder Rule</p>
+            <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);line-height:1.6;">
+              Wait for the final message — that's the self-diagnosis and the actionable part. 
+              <strong class="cyan">Do NOT compress the stream.</strong>
+            </p>
+          </div>
+        </div>
+
+        <div class="card" style="padding:24px 28px;">
+          <div class="label" style="margin-bottom:12px;">The correct protocol</div>
+          <div class="quote-block amber" style="font-size:clamp(13px,1.4vw,17px);font-style:normal;">
+            "Give yourself a planning session — <strong>you</strong>, not Amplifier. 
+            Fresh in the morning."
+          </div>
+          <p style="margin-top:12px;font-size:12px;color:var(--muted);">
+            Engineering Manager, 23:15 — Redirect to action. Not to the emotion.
+          </p>
+        </div>
+
+        <div style="display:flex;gap:12px;">
+          <span class="badge cyan">Anxiety Stream</span>
+          <span class="badge amber">Self-Catch Pattern</span>
+          <span class="badge green">Root Cause Found</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 4 — THE FOUNDATION LAYER
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s4">
+  <div class="glow-orb glow-green" style="background:rgba(16,185,129,0.1);width:600px;height:600px;bottom:-100px;right:-100px;"></div>
+  <div class="grid-bg"></div>
+
+  <div style="padding:52px 80px;flex:1;display:flex;flex-direction:column;">
+    <div class="label label-green anim-fadeup delay-0">Foundation · Pre-Built Capability</div>
+    <h2 class="title anim-fadeup delay-1" style="margin-bottom:8px;">
+      Don't reinvent the foundation.<br><span class="green">Build on it.</span>
+    </h2>
+    <p class="lead anim-fadeup delay-2" style="margin-bottom:44px;">
+      <code style="font-family:monospace;color:var(--green);">amplifier-bundle-my-voice</code> 
+      already existed — voice profile storage, a git sync hook, and a read API. 
+      The platform provides the mechanism; the bundle provides the policy.
+    </p>
+
+    <div class="grid-2 anim-fadeup delay-3" style="flex:1;gap:32px;align-items:start;">
+      <!-- Layer stack -->
+      <div>
+        <p style="font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;">Dependency Chain</p>
+        <div class="layer-stack">
+          <div class="layer" style="background:var(--violet-dim);border-color:rgba(167,139,250,0.3);animation-delay:0.3s;">
+            <span style="font-weight:700;">amplifier-bundle-diego-decoder</span>
+            <span class="badge violet" style="font-size:11px;">Private · New Work</span>
+          </div>
+          <div style="text-align:center;padding:4px 0;color:var(--muted);font-size:18px;opacity:0.6;">↑ includes</div>
+          <div class="layer" style="background:var(--green-dim);border-color:rgba(16,185,129,0.3);animation-delay:0.5s;">
+            <span style="font-weight:700;">amplifier-bundle-my-voice</span>
+            <span class="badge green" style="font-size:11px;">Public · Pre-Built</span>
+          </div>
+          <div style="text-align:center;padding:4px 0;color:var(--muted);font-size:18px;opacity:0.6;">↑ syncs from</div>
+          <div class="layer" style="background:var(--surface-2);animation-delay:0.7s;">
+            <span style="font-weight:700;">private profile repository</span>
+            <span class="badge" style="font-size:11px;color:var(--muted);">Git · Auto-Sync</span>
+          </div>
+          <div style="text-align:center;padding:4px 0;color:var(--muted);font-size:18px;opacity:0.6;">↑ inherited by</div>
+          <div class="layer" style="background:rgba(34,211,238,0.08);border-color:rgba(34,211,238,0.3);animation-delay:0.9s;">
+            <span style="font-weight:700;">amplifier-foundation</span>
+            <span class="badge cyan" style="font-size:11px;">Ecosystem</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- What the bundle provides -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <p style="font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0;">What came for free</p>
+
+        <div class="card green-tint" style="padding:20px 24px;">
+          <div style="font-weight:700;margin-bottom:6px;">hook-my-voice-sync</div>
+          <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+            Fires on <code>session_start</code>. Silent <code>git pull --rebase</code>. 
+            Profile is always fresh without manual sync.
+          </p>
+        </div>
+
+        <div class="card" style="padding:20px 24px;">
+          <div style="font-weight:700;margin-bottom:6px;">tool-my-voice-profiles</div>
+          <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+            Six operations: configure, status, read, write, save, sync. 
+            Agents never hardcode a path — they call the tool.
+          </p>
+          <div class="tag-strip" style="margin-top:10px;">
+            <span class="tag" style="font-size:10px;">configure</span>
+            <span class="tag" style="font-size:10px;">status</span>
+            <span class="tag active" style="font-size:10px;">read</span>
+            <span class="tag active" style="font-size:10px;">read_decoder_ring*</span>
+            <span class="tag" style="font-size:10px;">save</span>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin-top:8px;">* PR contribution back to the public bundle</p>
+        </div>
+
+        <div class="card amber-tint" style="padding:20px 24px;">
+          <div style="font-weight:700;margin-bottom:6px;color:var(--amber);">The platform principle</div>
+          <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+            Profile management is <em>delegated</em> to my-voice. 
+            The decoder bundle depends on it and inherits everything. 
+            No profile duplication across bundles.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 5 — VOICE AS KNOWLEDGE TRANSFER
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="glow-orb glow-cyan" style="width:700px;height:700px;top:-300px;right:-200px;"></div>
+
+  <div style="padding:52px 80px;flex:1;display:flex;flex-direction:column;">
+    <div class="label anim-fadeup delay-0">Voice Profiles · Knowledge Transfer</div>
+    <h2 class="title anim-fadeup delay-1" style="margin-bottom:8px;">
+      This is not autocomplete.<br>It's <span class="cyan">knowledge transfer.</span>
+    </h2>
+    <p class="lead anim-fadeup delay-2" style="margin-bottom:36px;">
+      Systematic understanding of HOW someone communicates — and WHY — built from 
+      real session transcripts, team chat history, and one-on-ones over a month.
+    </p>
+
+    <div class="grid-2 anim-fadeup delay-3" style="flex:1;gap:24px;">
+      <!-- Profile A: Engineer -->
+      <div class="card cyan-tint" style="padding:32px 36px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:start;">
+          <div>
+            <div class="label" style="margin-bottom:6px;">Voice Profile A</div>
+            <h3 class="section" style="font-size:clamp(20px,2.5vw,32px);">The Engineer</h3>
+          </div>
+          <div class="stat-callout" style="padding:0;text-align:right;">
+            <div class="stat-number cyan" id="lines-a" style="font-size:clamp(40px,4.5vw,60px);">0</div>
+            <div class="stat-label" style="font-size:12px;">lines of voice profile</div>
+          </div>
+        </div>
+        <hr class="div">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:start;gap:10px;">
+            <span style="color:var(--cyan);font-size:16px;flex-shrink:0;">◈</span>
+            <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+              <strong>Anxiety stream</strong> — 5 escalating messages, self-diagnosis at the end
+            </p>
+          </div>
+          <div style="display:flex;align-items:start;gap:10px;">
+            <span style="color:var(--cyan);font-size:16px;flex-shrink:0;">◈</span>
+            <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+              <strong>Clean-processed mode</strong> — "boiled it down" signals reliable, deliberate output
+            </p>
+          </div>
+          <div style="display:flex;align-items:start;gap:10px;">
+            <span style="color:var(--cyan);font-size:16px;flex-shrink:0;">◈</span>
+            <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+              <strong>Live wire and leave</strong> — precise technical question + cultural exit = real finding
+            </p>
+          </div>
+          <div style="display:flex;align-items:start;gap:10px;">
+            <span style="color:var(--cyan);font-size:16px;flex-shrink:0;">◈</span>
+            <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+              <strong>Graph-first thinker</strong> — L1/L2/L3 is precision, not jargon. Never flatten layers.
+            </p>
+          </div>
+          <div style="display:flex;align-items:start;gap:10px;">
+            <span style="color:var(--cyan);font-size:16px;flex-shrink:0;">◈</span>
+            <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+              <strong>"Pet project" framing</strong> — a real category with engineering weight, not self-deprecation
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile B: Colleague Blueprint -->
+      <div class="card amber-tint" style="padding:32px 36px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:start;">
+          <div>
+            <div class="label label-amber" style="margin-bottom:6px;">Voice Profile B</div>
+            <h3 class="section" style="font-size:clamp(20px,2.5vw,32px);">The Colleague Blueprint</h3>
+          </div>
+          <div class="stat-callout" style="padding:0;text-align:right;">
+            <div class="stat-number amber" id="lines-b" style="font-size:clamp(40px,4.5vw,60px);">0</div>
+            <div class="stat-label" style="font-size:12px;">lines of decoder ring</div>
+          </div>
+        </div>
+        <div style="background:var(--surface);border-radius:8px;padding:12px 16px;border:1px solid rgba(245,158,11,0.2);">
+          <p style="font-size:12px;color:var(--amber);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Origin</p>
+          <p style="font-size:clamp(12px,1.3vw,14px);color:var(--muted-bright);">
+            A colleague's well-documented voice profile served as the structural blueprint. 
+            One month of real conversation history was layered over that template 
+            to surface the patterns specific to this working relationship.
+          </p>
+        </div>
+        <hr class="div">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:start;gap:10px;">
+            <span style="color:var(--amber);font-size:16px;flex-shrink:0;">◈</span>
+            <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+              <strong>Verbosity as context</strong> — dense messages carry deliberate background; extraction is the job, not judgment
+            </p>
+          </div>
+          <div style="display:flex;align-items:start;gap:10px;">
+            <span style="color:var(--amber);font-size:16px;flex-shrink:0;">◈</span>
+            <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+              <strong>Nested delivery</strong> — ideas branch in real time; the real ask typically surfaces at the end
+            </p>
+          </div>
+          <div style="display:flex;align-items:start;gap:10px;">
+            <span style="color:var(--amber);font-size:16px;flex-shrink:0;">◈</span>
+            <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+              <strong>Transformation by recipient</strong> — Executive: 3–5 sentences. Peer: full technical density. Direct report: clear task.
+            </p>
+          </div>
+          <div style="display:flex;align-items:start;gap:10px;">
+            <span style="color:var(--amber);font-size:16px;flex-shrink:0;">◈</span>
+            <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+              <strong>500 words → 3–5 sentences</strong> for leadership. Voice and intent preserved. Signal extracted.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 6 — PET PROJECTS ARE REAL THINGS
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s6">
+  <div class="glow-orb glow-violet" style="width:800px;height:800px;top:50%;left:50%;transform:translate(-50%,-50%);"></div>
+  <div class="grid-bg"></div>
+
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:64px 10vw;">
+    <div class="label label-violet anim-fadeup delay-0" style="text-align:center;margin-bottom:24px;">
+      The Decoder Ring · Highest-Value Insight
+    </div>
+    
+    <div class="anim-scalein delay-1" style="text-align:center;margin-bottom:48px;">
+      <h2 style="font-size:clamp(44px,6vw,82px);font-weight:800;line-height:1;letter-spacing:-0.03em;color:var(--violet);">
+        Pet projects are<br>real things.
+      </h2>
+    </div>
+
+    <div class="anim-fadeup delay-3" style="max-width:700px;margin:0 auto;text-align:center;margin-bottom:44px;">
+      <p style="font-size:clamp(16px,2vw,24px);color:var(--muted-bright);line-height:1.7;">
+        Prior art that the team doesn't know about yet — but that 
+        <span class="violet">already solved the problem.</span>
+      </p>
+    </div>
+
+    <div class="grid-2 anim-fadeup delay-4" style="max-width:860px;margin:0 auto;gap:20px;width:100%;">
+      <div class="card violet-tint" style="padding:24px 28px;">
+        <p style="font-size:13px;font-weight:600;color:var(--violet);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;">The Pattern</p>
+        <p style="font-size:clamp(13px,1.4vw,17px);color:var(--muted-bright);line-height:1.6;">
+          "There's a private repo where I already worked through this architecture. 
+          The decisions I made there are exactly what we need here — 
+          I just never surfaced it as official work."
+        </p>
+      </div>
+      <div class="card" style="padding:24px 28px;">
+        <p style="font-size:13px;font-weight:600;color:var(--cyan);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;">What the Decoder Does</p>
+        <p style="font-size:clamp(13px,1.4vw,17px);color:var(--muted-bright);line-height:1.6;">
+          Prior art exists. The question is whether to import the design 
+          rather than re-derive it from scratch. 
+          Ask: <em>what did that work already solve?</em>
+        </p>
+      </div>
+    </div>
+
+    <div class="anim-fadeup delay-6" style="max-width:700px;margin:36px auto 0;text-align:center;">
+      <div class="quote-block violet" style="text-align:left;">
+        "A tool I built for myself six months ago just became the foundation for a team initiative." 
+        — a casual observation that is a team win waiting to be told.
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 7 — THE ARCHITECTURE
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s7">
+  <div class="glow-orb glow-cyan" style="width:500px;height:500px;bottom:-100px;left:-100px;"></div>
+
+  <div style="padding:52px 80px;flex:1;display:flex;flex-direction:column;">
+    <div class="label anim-fadeup delay-0">Bundle Architecture · amplifier-bundle-diego-decoder</div>
+    <h2 class="title anim-fadeup delay-1" style="margin-bottom:12px;">
+      Three modes. Three agents.<br>One root session that <span class="cyan">only routes.</span>
+    </h2>
+    <p class="lead anim-fadeup delay-2" style="margin-bottom:36px;font-size:clamp(14px,1.5vw,19px);">
+      Each mode loads <em>only</em> the context it needs. No noise bleeding between planning, communication, and review.
+    </p>
+
+    <div class="grid-3 anim-fadeup delay-3" style="flex:1;align-items:stretch;">
+      <!-- Mode 1 -->
+      <div class="card" style="padding:28px 32px;display:flex;flex-direction:column;gap:14px;border-top:3px solid var(--green);">
+        <div class="badge green" style="align-self:flex-start;">update-work-plan</div>
+        <h3 style="font-size:clamp(18px,2vw,26px);font-weight:700;">Plan Keeper</h3>
+        <div class="tag-strip">
+          <span class="tag" style="font-size:10px;color:var(--muted);">model: general</span>
+        </div>
+        <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);flex:1;">
+          Three daily operations: <strong>add</strong> (to B or C), <strong>shift</strong> (between buckets), 
+          <strong>descope</strong> (completed work). Opens with current plan in context. Decisive, not conversational.
+        </p>
+        <hr class="div">
+        <div style="font-size:11px;color:var(--muted);">
+          <span class="green">●</span> Loads: PLAN_CONSTRUCTION.md only
+        </div>
+        <div class="card green-tint" style="padding:12px 16px;">
+          <p style="font-size:11px;color:var(--green);font-weight:600;margin-bottom:4px;">Tools</p>
+          <p style="font-size:11px;color:var(--muted-bright);">filesystem ✓ &nbsp; bash ⚠ &nbsp; web ✗</p>
+        </div>
+      </div>
+
+      <!-- Mode 2 -->
+      <div class="card" style="padding:28px 32px;display:flex;flex-direction:column;gap:14px;border-top:3px solid var(--cyan);">
+        <div class="badge cyan" style="align-self:flex-start;">decode-message</div>
+        <h3 style="font-size:clamp(18px,2vw,26px);font-weight:700;">Message Crafter</h3>
+        <div class="tag-strip">
+          <span class="tag" style="font-size:10px;color:var(--muted);">model: writing</span>
+        </div>
+        <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);flex:1;">
+          First question: <em>who receives this, what channel?</em> Then applies voice profile 
+          + decoder ring transformation. Output: the message, nothing else.
+        </p>
+        <hr class="div">
+        <div style="font-size:11px;color:var(--muted);">
+          <span class="cyan">●</span> Loads: VOICE_PROFILE + DECODER_RING (runtime)
+        </div>
+        <div class="card cyan-tint" style="padding:12px 16px;">
+          <p style="font-size:11px;color:var(--cyan);font-weight:600;margin-bottom:4px;">Tools</p>
+          <p style="font-size:11px;color:var(--muted-bright);">filesystem ✓ &nbsp; bash ✗ &nbsp; web ✗</p>
+        </div>
+      </div>
+
+      <!-- Mode 3 -->
+      <div class="card" style="padding:28px 32px;display:flex;flex-direction:column;gap:14px;border-top:3px solid var(--amber);">
+        <div class="badge amber" style="align-self:flex-start;">review-and-revise</div>
+        <h3 style="font-size:clamp(18px,2vw,26px);font-weight:700;">Plan Reviewer</h3>
+        <div class="tag-strip">
+          <span class="tag" style="font-size:10px;color:var(--muted);">model: reasoning</span>
+        </div>
+        <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);flex:1;">
+          For when something has shifted. Reviews plan against new context. 
+          Evaluates priority tradeoffs. Proposes revisions. The heavier thinking mode.
+        </p>
+        <hr class="div">
+        <div style="font-size:11px;color:var(--muted);">
+          <span class="amber">●</span> Loads: all three context files
+        </div>
+        <div class="card amber-tint" style="padding:12px 16px;">
+          <p style="font-size:11px;color:var(--amber);font-weight:600;margin-bottom:4px;">Tools</p>
+          <p style="font-size:11px;color:var(--muted-bright);">filesystem ✓ &nbsp; bash ⚠ &nbsp; web ✗</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 8 — MODE DISCIPLINE
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s8">
+  <div class="glow-orb glow-amber" style="width:600px;height:600px;top:50%;left:50%;transform:translate(-50%,-50%);"></div>
+
+  <div style="padding:56px 80px;flex:1;display:flex;flex-direction:column;justify-content:center;">
+    <div class="label label-amber anim-fadeup delay-0" style="margin-bottom:20px;">Mode Discipline · Session Architecture</div>
+    <h2 class="title anim-fadeup delay-1" style="margin-bottom:16px;">
+      Different work.<br><span class="amber">Different sessions.</span>
+    </h2>
+    <p class="lead anim-fadeup delay-2" style="margin-bottom:52px;">
+      The root session is a <strong>router</strong>, never a worker. 
+      These are not different parts of the same conversation.
+    </p>
+
+    <!-- Pipeline -->
+    <div class="pipeline anim-fadeup delay-3">
+      <div class="pipeline-step" style="animation-delay:0.3s;">
+        <div class="pipeline-box" style="border-color:rgba(167,139,250,0.4);background:var(--violet-dim);">
+          <div style="font-size:20px;margin-bottom:6px;">🌱</div>
+          <div style="font-size:clamp(13px,1.4vw,17px);font-weight:700;color:var(--violet);">EXPLORE</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Brainstorm, discover</div>
+        </div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step" style="animation-delay:0.45s;">
+        <div class="pipeline-box" style="border-color:rgba(34,211,238,0.4);background:var(--cyan-dim);">
+          <div style="font-size:20px;margin-bottom:6px;">🏗</div>
+          <div style="font-size:clamp(13px,1.4vw,17px);font-weight:700;color:var(--cyan);">DESIGN</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Outcome document</div>
+        </div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step" style="animation-delay:0.6s;">
+        <div class="pipeline-box" style="border-color:rgba(16,185,129,0.4);background:var(--green-dim);">
+          <div style="font-size:20px;margin-bottom:6px;">🤝</div>
+          <div style="font-size:clamp(13px,1.4vw,17px);font-weight:700;color:var(--green);">ALIGN</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Sync with manager</div>
+        </div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step" style="animation-delay:0.75s;">
+        <div class="pipeline-box" style="border-color:rgba(245,158,11,0.4);background:var(--amber-dim);">
+          <div style="font-size:20px;margin-bottom:6px;">📋</div>
+          <div style="font-size:clamp(13px,1.4vw,17px);font-weight:700;color:var(--amber);">PLAN</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">A/B/C write-plan</div>
+        </div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step" style="animation-delay:0.9s;">
+        <div class="pipeline-box" style="border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.08);">
+          <div style="font-size:20px;margin-bottom:6px;">⚡</div>
+          <div style="font-size:clamp(13px,1.4vw,17px);font-weight:700;color:var(--red);">EXECUTE</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Superpowers + TDD</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="anim-fadeup delay-6" style="margin-top:52px;display:flex;gap:24px;">
+      <div class="card" style="flex:1;padding:24px 28px;">
+        <p style="font-size:13px;font-weight:600;color:var(--red);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">Anti-Pattern (before)</p>
+        <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted);">
+          "I want to build X" → 4 hours later: the conversation is the design is the plan is the code is the PR.
+          Nobody knows what was decided.
+        </p>
+      </div>
+      <div class="card cyan-tint" style="flex:1;padding:24px 28px;">
+        <p style="font-size:13px;font-weight:600;color:var(--cyan);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">Pattern (after)</p>
+        <p style="font-size:clamp(12px,1.3vw,15px);color:var(--muted-bright);">
+          Explore → stop. Read it. Share it. Align. <strong>THEN</strong> plan. 
+          <strong>THEN</strong> execute. Separate sessions. Clean signal at each handoff.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 9 — A/B/C FRAMEWORK
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s9">
+  <div class="glow-orb glow-cyan" style="width:400px;height:400px;top:-100px;right:0;"></div>
+
+  <div style="padding:52px 80px;flex:1;display:flex;flex-direction:column;">
+    <div class="label anim-fadeup delay-0">Plan Framework · Shared Language</div>
+    <h2 class="title anim-fadeup delay-1" style="margin-bottom:8px;">
+      The A/B/C framework as<br><span class="cyan">shared language</span> with the manager
+    </h2>
+    <p class="lead anim-fadeup delay-2" style="margin-bottom:36px;font-size:clamp(14px,1.5vw,19px);">
+      Derived from real 1:1 conversations. Encoded into the bundle. Enforced by the plan-keeper agent.
+    </p>
+
+    <div class="anim-fadeup delay-3" style="flex:1;display:flex;gap:16px;align-items:stretch;">
+      <!-- Bucket A -->
+      <div class="bucket" style="border-color:rgba(34,211,238,0.25);background:rgba(34,211,238,0.03);">
+        <div class="bucket-header">
+          <div class="bucket-dot" style="background:var(--cyan);"></div>
+          <div>
+            <div style="font-weight:700;font-size:clamp(16px,1.8vw,22px);">A — This Week</div>
+            <div style="font-size:11px;color:var(--muted);">Priority list, not a commitment</div>
+          </div>
+        </div>
+        <div class="bucket-items" id="bucket-a">
+          <div class="bucket-item" style="animation-delay:0.5s;border-left:2px solid var(--cyan);">
+            Auth service migrated — all API endpoints using token-based auth with silent refresh
+          </div>
+          <div class="bucket-item" style="animation-delay:0.7s;border-left:2px solid var(--cyan);">
+            Observability instrumented — latency, error rate, and saturation tracked per service boundary
+          </div>
+          <div class="bucket-item" style="animation-delay:0.9s;border-left:2px solid var(--cyan);">
+            Contributor setup verified — new dev environment provisioned under 15 minutes end-to-end
+          </div>
+          <div class="bucket-item" style="animation-delay:1.1s;border-left:2px solid var(--cyan);">
+            API contract tests written — all public endpoints covered with schema validation on every PR
+          </div>
+        </div>
+        <div style="padding:12px 20px;font-size:12px;color:var(--cyan);border-top:1px solid var(--border);">
+          Start at top. Go as far as you get.
+        </div>
+      </div>
+
+      <!-- Bucket B -->
+      <div class="bucket" style="border-color:rgba(245,158,11,0.2);background:rgba(245,158,11,0.02);">
+        <div class="bucket-header">
+          <div class="bucket-dot" style="background:var(--amber);"></div>
+          <div>
+            <div style="font-weight:700;font-size:clamp(16px,1.8vw,22px);">B — Next Month</div>
+            <div style="font-size:11px;color:var(--muted);">~30 day horizon, loosely ordered</div>
+          </div>
+        </div>
+        <div class="bucket-items" id="bucket-b">
+          <div class="bucket-item" style="animation-delay:1.2s;border-left:2px solid var(--amber);">
+            Feature flag system adopted — all experimental changes behind toggles, rollback in minutes
+          </div>
+          <div class="bucket-item" style="animation-delay:1.4s;border-left:2px solid var(--amber);">
+            Cross-service integration tests — automated on every PR, blocking on regression
+          </div>
+          <div class="bucket-item" style="animation-delay:1.6s;border-left:2px solid var(--amber);">
+            On-call runbooks updated — top 5 incident patterns have documented resolution paths
+          </div>
+        </div>
+        <div style="padding:12px 20px;font-size:12px;color:var(--amber);border-top:1px solid var(--border);">
+          Shift to A requires a manager check-in.
+        </div>
+      </div>
+
+      <!-- Bucket C -->
+      <div class="bucket" style="border-color:rgba(100,116,139,0.2);">
+        <div class="bucket-header">
+          <div class="bucket-dot" style="background:var(--muted);"></div>
+          <div>
+            <div style="font-weight:700;font-size:clamp(16px,1.8vw,22px);">C — Parking Lot</div>
+            <div style="font-size:11px;color:var(--muted);">Everything else. Not organized.</div>
+          </div>
+        </div>
+        <div class="bucket-items">
+          <div class="bucket-item" style="animation-delay:1.7s;">
+            Cost visibility dashboard — per-team cloud spend visible without asking finance
+          </div>
+          <div class="bucket-item" style="animation-delay:1.9s;">
+            Blue-green deployment pipeline for stateful services
+          </div>
+          <div class="bucket-item" style="animation-delay:2.1s;">
+            Event schema documentation — canonical types published as shared team reference
+          </div>
+        </div>
+        <div style="padding:12px 20px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);">
+          Graduate to B when priorities shift.
+        </div>
+      </div>
+    </div>
+
+    <div class="anim-fadeup delay-7" style="margin-top:20px;">
+      <div class="quote-block" style="font-size:clamp(12px,1.3vw,16px);">
+        "A bucket is a priority list. The more you're interrupted, the less of A you complete. That's expected — it's not a failure."
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 10 — REAL MOMENTS
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s10">
+  <div class="glow-orb glow-violet" style="width:500px;height:500px;top:-50px;right:-100px;"></div>
+  <div class="glow-orb glow-cyan" style="width:400px;height:400px;bottom:-50px;left:-50px;"></div>
+
+  <div style="padding:52px 80px;flex:1;display:flex;flex-direction:column;">
+    <div class="label anim-fadeup delay-0">Recognised Patterns · Composite Examples</div>
+    <h2 class="title anim-fadeup delay-1" style="margin-bottom:40px;">
+      Patterns the system<br>learns to recognise.
+    </h2>
+
+    <div style="flex:1;display:flex;flex-direction:column;gap:20px;">
+      <!-- Moment 1: Emotional floor + pivot -->
+      <div class="anim-fadeup delay-2" style="display:flex;gap:20px;align-items:start;">
+        <div style="min-width:160px;">
+          <span class="badge violet" style="font-size:10px;">Emotional Floor<br>+ Pivot</span>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex;gap:10px;align-items:start;margin-bottom:8px;">
+            <div class="card" style="padding:10px 16px;font-size:clamp(12px,1.4vw,16px);flex:1;">
+              "I think I’ve been solving the wrong problem for two days."
+              <span style="color:var(--muted);margin:0 8px;">·</span>
+              "Which is itself useful data about where the spec was unclear."
+            </div>
+          </div>
+          <p style="font-size:clamp(11px,1.2vw,14px);color:var(--muted);">
+            The pivot to an architecture metaphor <em>is</em> the processing. They are one move, not two. 
+            The decoder knows: respond with a redirect, not reassurance.
+          </p>
+        </div>
+      </div>
+
+      <!-- Moment 2: The correct protocol -->
+      <div class="anim-fadeup delay-3" style="display:flex;gap:20px;align-items:start;">
+        <div style="min-width:160px;">
+          <span class="badge amber" style="font-size:10px;">Correct Protocol<br>Identified</span>
+        </div>
+        <div style="flex:1;">
+          <div class="quote-block amber" style="font-size:clamp(13px,1.5vw,18px);margin-bottom:8px;">
+            "Close the laptop. Write the plan yourself — no AI, no IDE. Ship nothing until morning."
+          </div>
+          <p style="font-size:clamp(11px,1.2vw,14px);color:var(--muted);">
+            The system encodes this as the redirect protocol for anxiety stream resolution. Direct. Practical. Not cushioned.
+          </p>
+        </div>
+      </div>
+
+      <!-- Moment 3: Live wire and leave -->
+      <div class="anim-fadeup delay-4" style="display:flex;gap:20px;align-items:start;">
+        <div style="min-width:160px;">
+          <span class="badge cyan" style="font-size:10px;">Live Wire<br>and Leave</span>
+        </div>
+        <div style="flex:1;">
+          <div class="card" style="padding:14px 18px;font-size:clamp(12px,1.4vw,16px);margin-bottom:8px;">
+            "The connection pool re-initialises on every request but the auth token doesn't refresh with it.
+            Gap or intentional?" &nbsp;
+            <em style="color:var(--muted);">"Done for the night — catch up in the morning."</em>
+          </div>
+          <p style="font-size:clamp(11px,1.2vw,14px);color:var(--muted);">
+            The casual sign-off doesn't make the question casual. Late-night observations 
+            are often the most architecturally precise output. They need a morning answer.
+          </p>
+        </div>
+      </div>
+
+      <!-- Moment 4: Channel hygiene -->
+      <div class="anim-fadeup delay-5" style="display:flex;gap:20px;align-items:start;">
+        <div style="min-width:160px;">
+          <span class="badge green" style="font-size:10px;">Channel<br>Hygiene</span>
+        </div>
+        <div style="flex:1;">
+          <div class="card" style="padding:14px 18px;font-size:clamp(12px,1.4vw,16px);margin-bottom:8px;">
+            "Posting in this thread to keep the main channel clean."
+          </div>
+          <p style="font-size:clamp(11px,1.2vw,14px);color:var(--muted);">
+            Deliberate channel selection, stated explicitly. Not incidental. 
+            Signal-to-noise management across channels — preserve the explanation, it's the signal.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 11 — THE TRANSFORMATION
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s11">
+  <div style="flex:1;display:flex;flex-direction:column;">
+    <!-- Header -->
+    <div style="padding:40px 80px 24px;flex-shrink:0;">
+      <div class="label anim-fadeup delay-0">Output Transformation · Voice Preserved</div>
+      <h2 class="title anim-fadeup delay-1">From wall of text<br>to <span class="cyan">calibrated signal</span></h2>
+    </div>
+
+    <!-- Before/After -->
+    <div class="before-after anim-fadein delay-2" style="flex:1;">
+      <!-- BEFORE -->
+      <div class="ba-side" style="background:rgba(248,113,113,0.03);border-right:1px solid var(--border);">
+        <div class="ba-label" style="color:var(--red);">✗ BEFORE — Wall of Text</div>
+        <div class="noise-block">
+          <span class="highlight">"Hmmm, I think what we might want to do here is add a way to pass state 
+          into spawned sessions.</span> <span>Then, what I'd rather do than selectively choose 
+          which agents we allow,</span> <span>is have the agent sessions be aware that we're in plan mode</span>
+          <span>and their available tools should be included or excluded accordingly</span>
+          <span>— this may actually be something we can achieve by just adjusting the config of the task tool at the top level,</span>
+          <span>but I'm not sure if that's the right approach</span>
+          <span>or if there's a cleaner way to handle it,</span>
+          <span>and also we might want to think about whether this should apply to all spawned agents</span>
+          <span>or just specific ones, because there are cases where we might want some agents to have full tool access</span>
+          <span>even in plan mode, like the spec-reviewer or similar agents..."</span>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:10px;">
+          <span class="badge" style="color:var(--red);border-color:rgba(248,113,113,0.3);">~280 words</span>
+          <span class="badge" style="color:var(--muted);border-color:var(--border);">2 nested tangents</span>
+          <span class="badge" style="color:var(--muted);border-color:var(--border);">1 buried ask</span>
+        </div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="ba-side" style="background:rgba(34,211,238,0.03);">
+        <div class="ba-label" style="color:var(--cyan);">✓ AFTER — Calibrated by Recipient</div>
+        
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div>
+            <p style="font-size:11px;font-weight:600;color:var(--amber);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">For Executive</p>
+            <div class="card amber-tint" style="padding:14px 18px;font-size:clamp(13px,1.4vw,16px);">
+              "Proposal: pass plan-mode state into spawned agent sessions so they auto-adjust available tools. 
+              Achievable via task tool config. Needs 30-min design call."
+            </div>
+          </div>
+          <div>
+            <p style="font-size:11px;font-weight:600;color:var(--cyan);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">For Technical Peer</p>
+            <div class="card cyan-tint" style="padding:14px 18px;font-size:clamp(13px,1.4vw,16px);">
+              "Hmmm, I think we want to pass state into spawned sessions so they're aware of plan mode and adjust 
+              their available tools accordingly — rather than us selectively choosing which agents to allow. 
+              Might be achievable by adjusting the task tool config at top level, but not sure if that's cleanest."
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;display:flex;gap:10px;">
+          <span class="badge cyan">Voice preserved</span>
+          <span class="badge green">Signal extracted</span>
+          <span class="badge amber">Recipient calibrated</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 12 — BEYOND CODE
+═══════════════════════════════════════════════════════════ -->
+<div class="slide" id="s12">
+  <div class="glow-orb glow-cyan" style="width:800px;height:800px;top:50%;left:20%;transform:translate(-50%,-50%);"></div>
+  <div class="glow-orb glow-amber" style="width:600px;height:600px;top:50%;right:-10%;transform:translateY(-50%);"></div>
+  <div class="grid-bg"></div>
+
+  <div style="padding:52px 80px 72px;flex:1;display:flex;flex-direction:column;">
+    <div class="label anim-fadeup delay-0" style="margin-bottom:20px;">Amplifier · Beyond Code</div>
+    <h2 class="title anim-fadeup delay-1" style="margin-bottom:36px;">
+      Agentic systems that<br>maximize <span class="cyan">context transfer</span><br>between individuals.
+    </h2>
+
+    <div class="closing-grid" style="padding:0;gap:16px;flex:1;">
+      <div class="closing-cell" style="background:var(--cyan-dim);border-color:rgba(34,211,238,0.25);">
+        <div style="font-size:32px;margin-bottom:8px;">🎙</div>
+        <div style="font-weight:700;font-size:clamp(15px,1.6vw,19px);margin-bottom:8px;">Voice retained</div>
+        <p style="font-size:clamp(11px,1.2vw,14px);color:var(--muted-bright);">
+          298 lines of voice profile. 347 lines of decoder ring. 
+          AI transforms without losing who you are.
+        </p>
+      </div>
+      <div class="closing-cell" style="background:var(--amber-dim);border-color:rgba(245,158,11,0.25);">
+        <div style="font-size:32px;margin-bottom:8px;">🗺</div>
+        <div style="font-weight:700;font-size:clamp(15px,1.6vw,19px);margin-bottom:8px;">Plans as language</div>
+        <p style="font-size:clamp(11px,1.2vw,14px);color:var(--muted-bright);">
+          A/B/C framework becomes shared vocabulary. 
+          A bucket is where you start, not what you promised.
+        </p>
+      </div>
+      <div class="closing-cell" style="background:var(--violet-dim);border-color:rgba(167,139,250,0.25);">
+        <div style="font-size:32px;margin-bottom:8px;">🔬</div>
+        <div style="font-weight:700;font-size:clamp(15px,1.6vw,19px);margin-bottom:8px;">Prior art surfaced</div>
+        <p style="font-size:clamp(11px,1.2vw,14px);color:var(--muted-bright);">
+          Pet projects become real prior art. 
+          The decoder asks "what did that solve?" before re-deriving.
+        </p>
+      </div>
+      <div class="closing-cell" style="background:var(--green-dim);border-color:rgba(16,185,129,0.25);">
+        <div style="font-size:32px;margin-bottom:8px;">⚡</div>
+        <div style="font-weight:700;font-size:clamp(15px,1.6vw,19px);margin-bottom:8px;">Signal to the right person</div>
+        <p style="font-size:clamp(11px,1.2vw,14px);color:var(--muted-bright);">
+          Executive gets 3–5 sentences. Technical peer gets precision. 
+          Direct report gets a clear task. Same source, three signals.
+        </p>
+      </div>
+      <div class="closing-cell" style="background:var(--surface-2);border-color:var(--border-bright);">
+        <div style="font-size:32px;margin-bottom:8px;">🌐</div>
+        <div style="font-weight:700;font-size:clamp(15px,1.6vw,19px);margin-bottom:8px;">Platform, not a tool</div>
+        <p style="font-size:clamp(11px,1.2vw,14px);color:var(--muted-bright);">
+          amplifier-bundle-my-voice already existed. The decoder bundle depends on it. 
+          Institutional patterns compound — each bundle standing on the last.
+          <br><br>
+          <span class="cyan">This is what agentic infrastructure looks like.</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /presentation -->
+
+<script>
+const TOTAL = 12;
+let current = 1;
+
+// Build nav dots
+const dotsEl = document.getElementById('nav-dots');
+for (let i = 1; i <= TOTAL; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 1 ? ' active' : '');
+  d.addEventListener('click', () => goTo(i));
+  dotsEl.appendChild(d);
+}
+
+function goTo(n) {
+  if (n < 1 || n > TOTAL) return;
+  const prev = document.getElementById('s' + current);
+  const next = document.getElementById('s' + n);
+  if (!next) return;
+
+  prev.classList.remove('active');
+  next.classList.add('active');
+
+  // Reset animations on leaving slide
+  resetAnimations(prev);
+  // Trigger animations on entering slide
+  triggerAnimations(next);
+
+  current = n;
+
+  // Update UI
+  document.getElementById('slide-counter').textContent = `${n} / ${TOTAL}`;
+  document.getElementById('progress-bar').style.width = `${(n / TOTAL) * 100}%`;
+  document.querySelectorAll('.dot').forEach((d, i) => {
+    d.classList.toggle('active', i + 1 === n);
+  });
+}
+
+function next() { goTo(current + 1); }
+function prev() { goTo(current - 1); }
+
+function resetAnimations(slide) {
+  // Reset CSS animation elements
+  slide.querySelectorAll('.anim-fadeup, .anim-fadein, .anim-scalein').forEach(el => {
+    el.style.animation = 'none';
+    el.style.opacity = '0';
+  });
+  // Reset pipeline steps
+  slide.querySelectorAll('.pipeline-step').forEach(el => {
+    el.style.animation = 'none';
+    el.style.opacity = '0';
+  });
+  // Reset messages
+  slide.querySelectorAll('.msg').forEach(m => {
+    m.style.opacity = '0';
+    m.classList.remove('visible');
+  });
+  // Reset bucket items
+  slide.querySelectorAll('.bucket-item').forEach(el => {
+    el.style.animation = 'none';
+    el.style.opacity = '0';
+  });
+  // Reset layers
+  slide.querySelectorAll('.layer').forEach(el => {
+    el.style.animation = 'none';
+    el.style.opacity = '0';
+  });
+  // Reset closing cells
+  slide.querySelectorAll('.closing-cell').forEach(el => {
+    el.style.animation = 'none';
+    el.style.opacity = '0';
+  });
+}
+
+function triggerAnimations(slide) {
+  // Force reflow
+  void slide.offsetHeight;
+
+  // Re-enable CSS animations
+  slide.querySelectorAll('.anim-fadeup').forEach(el => {
+    el.style.animation = '';
+    el.style.opacity = '';
+  });
+  slide.querySelectorAll('.anim-fadein').forEach(el => {
+    el.style.animation = '';
+    el.style.opacity = '';
+  });
+  slide.querySelectorAll('.anim-scalein').forEach(el => {
+    el.style.animation = '';
+    el.style.opacity = '';
+  });
+  slide.querySelectorAll('.pipeline-step').forEach(el => {
+    el.style.animation = '';
+    el.style.opacity = '';
+  });
+  slide.querySelectorAll('.bucket-item').forEach(el => {
+    el.style.animation = '';
+    el.style.opacity = '';
+  });
+  slide.querySelectorAll('.layer').forEach(el => {
+    el.style.animation = '';
+    el.style.opacity = '';
+  });
+  slide.querySelectorAll('.closing-cell').forEach(el => {
+    el.style.animation = '';
+    el.style.opacity = '';
+  });
+
+  // Special: message stream (slide 3)
+  if (slide.id === 's3') {
+    triggerMessageStream();
+  }
+
+  // Special: counter animation (slide 5)
+  if (slide.id === 's5') {
+    animateCounter('lines-a', 298, 800);
+    animateCounter('lines-b', 347, 1000);
+  }
+}
+
+// Animate counter
+function animateCounter(id, target, duration) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const start = Date.now();
+  function tick() {
+    const elapsed = Date.now() - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(eased * target);
+    if (progress < 1) requestAnimationFrame(tick);
+    else el.textContent = target;
+  }
+  setTimeout(() => requestAnimationFrame(tick), 400);
+}
+
+// Message stream
+function triggerMessageStream() {
+  const msgs = document.querySelectorAll('#msg-stream .msg');
+  msgs.forEach(msg => {
+    msg.style.opacity = '0';
+    msg.classList.remove('visible');
+  });
+  msgs.forEach(msg => {
+    const delay = parseInt(msg.dataset.delay || 0);
+    setTimeout(() => {
+      msg.classList.add('visible');
+    }, delay);
+  });
+}
+
+// Initial animation for slide 1
+setTimeout(() => triggerAnimations(document.getElementById('s1')), 100);
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+    e.preventDefault(); next();
+  }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault(); prev();
+  }
+});
+
+// Touch / swipe
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 60) { dx < 0 ? next() : prev(); }
+}, { passive: true });
+</script>
+</body>
+</html>
