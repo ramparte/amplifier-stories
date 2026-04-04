@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Twin Universe — Amplifier</title>
+<style>
+  :root {
+    --accent: #FF375F;
+    --accent-dim: rgba(255, 55, 95, 0.15);
+    --accent-glow: rgba(255, 55, 95, 0.3);
+    --surface-1: rgba(255,255,255,0.06);
+    --surface-2: rgba(255,255,255,0.10);
+    --surface-3: rgba(255,255,255,0.15);
+    --border-subtle: rgba(255,255,255,0.12);
+    --border-visible: rgba(255,255,255,0.20);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255,255,255,0.7);
+    --text-tertiary: rgba(255,255,255,0.5);
+    --font-headline: clamp(36px, 8vw, 72px);
+    --font-medium-headline: clamp(24px, 5vw, 48px);
+    --font-subhead: clamp(16px, 3vw, 32px);
+    --font-big-number: clamp(60px, 20vw, 180px);
+    --padding-slide: clamp(20px, 5vw, 80px);
+    --gap-grid: clamp(16px, 3vw, 40px);
+    --fs-body: clamp(14px, 2vw, 18px);
+    --fs-small: clamp(12px, 1.8vw, 14px);
+    --code-green: #30D158;
+    --code-comment: rgba(255,255,255,0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .deck { position: relative; width: 100vw; height: 100vh; height: 100dvh; }
+
+  .slide {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    padding: var(--padding-slide);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  .section-label {
+    font-size: clamp(12px, 1.5vw, 14px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: clamp(8px, 2vw, 16px);
+  }
+
+  .headline {
+    font-size: var(--font-headline);
+    font-weight: 700;
+    letter-spacing: clamp(-1px, -0.03em, -2px);
+    line-height: 1.1;
+    margin-bottom: clamp(12px, 3vw, 24px);
+  }
+
+  .subhead {
+    font-size: var(--font-subhead);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    max-width: 800px;
+  }
+
+  .medium-headline {
+    font-size: var(--font-medium-headline);
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    margin-bottom: clamp(12px, 3vw, 24px);
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+    gap: var(--gap-grid);
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+    gap: var(--gap-grid);
+  }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: clamp(12px, 2vw, 16px);
+    padding: clamp(16px, 4vw, 28px);
+  }
+
+  .card h3 {
+    color: var(--text-primary);
+    font-size: clamp(16px, 2.5vw, 22px);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .card p, .card li {
+    color: var(--text-secondary);
+    font-size: var(--fs-body);
+    line-height: 1.6;
+  }
+
+  .card .icon {
+    font-size: clamp(28px, 5vw, 48px);
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .code-block {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: clamp(12px, 1.8vw, 15px);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .code-block .kw { color: var(--accent); }
+  .code-block .str { color: var(--code-green); }
+  .code-block .cmt { color: var(--code-comment); }
+  .code-block .val { color: #64D2FF; }
+
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: clamp(11px, 1.5vw, 13px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .badge-alpha {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+
+  .flow-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2vw, 20px);
+    flex-wrap: wrap;
+    margin-top: clamp(16px, 4vw, 32px);
+  }
+
+  .flow-step {
+    background: var(--surface-2);
+    border: 1px solid var(--border-visible);
+    border-radius: 12px;
+    padding: clamp(12px, 2vw, 20px) clamp(16px, 3vw, 24px);
+    text-align: center;
+    min-width: 140px;
+  }
+
+  .flow-step .step-icon {
+    font-size: clamp(28px, 5vw, 40px);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .flow-step .step-label {
+    font-size: clamp(13px, 2vw, 16px);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .flow-step .step-desc {
+    font-size: clamp(11px, 1.5vw, 13px);
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  .flow-arrow {
+    font-size: clamp(20px, 3vw, 32px);
+    color: var(--accent);
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: var(--gap-grid);
+    margin-top: clamp(16px, 4vw, 32px);
+  }
+
+  .stat-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: clamp(12px, 2vw, 16px);
+    padding: clamp(16px, 3vw, 28px);
+    text-align: center;
+  }
+
+  .stat-number {
+    font-size: clamp(36px, 8vw, 72px);
+    font-weight: 700;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, var(--accent), #FF9F0A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+
+  .stat-label {
+    font-size: clamp(13px, 2vw, 16px);
+    color: var(--text-secondary);
+    margin-top: 8px;
+    font-weight: 500;
+  }
+
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: clamp(16px, 3vw, 32px);
+    align-items: start;
+    margin-top: clamp(16px, 3vw, 24px);
+  }
+
+  .comparison-side {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: clamp(16px, 3vw, 24px);
+  }
+
+  .comparison-side h3 {
+    font-size: clamp(14px, 2vw, 18px);
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-tertiary);
+  }
+
+  .comparison-side.after h3 { color: var(--accent); }
+
+  .comparison-side ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .comparison-side li {
+    font-size: var(--fs-body);
+    color: var(--text-secondary);
+    line-height: 1.8;
+    padding-left: 24px;
+    position: relative;
+  }
+
+  .comparison-side li::before {
+    position: absolute;
+    left: 0;
+  }
+
+  .comparison-side.before li::before { content: '\2717'; color: var(--text-tertiary); }
+  .comparison-side.after li::before { content: '\2713'; color: var(--accent); }
+
+  .comparison-divider {
+    width: 1px;
+    background: var(--border-visible);
+    align-self: stretch;
+    min-height: 100px;
+  }
+
+  .bullet-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .bullet-list li {
+    font-size: var(--fs-body);
+    color: var(--text-secondary);
+    line-height: 1.8;
+    padding-left: 20px;
+    position: relative;
+  }
+
+  .bullet-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.7em;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* Navigation */
+  .nav-dots {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    padding: 0;
+  }
+
+  .nav-dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+    transform: scale(1.3);
+  }
+
+  .slide-counter {
+    position: fixed;
+    bottom: 24px;
+    right: 32px;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    z-index: 100;
+  }
+
+  /* Click zones */
+  .click-left, .click-right {
+    position: fixed;
+    top: 0;
+    width: 25%;
+    height: 100%;
+    z-index: 50;
+    cursor: pointer;
+  }
+  .click-left { left: 0; }
+  .click-right { right: 0; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .comparison {
+      grid-template-columns: 1fr;
+    }
+    .comparison-divider { display: none; }
+    .flow-container { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+  }
+
+  /* Subtle accent underline */
+  .accent-underline {
+    text-decoration: none;
+    background-image: linear-gradient(var(--accent), var(--accent));
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 100% 2px;
+    padding-bottom: 2px;
+  }
+
+  .highlight { color: var(--accent); }
+
+  .tag-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: clamp(11px, 1.3vw, 12px);
+    font-weight: 500;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .sources-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: clamp(12px, 2vw, 20px);
+  }
+
+  .sources-table th {
+    color: var(--accent);
+    font-size: var(--fs-small);
+    font-weight: 600;
+    text-align: left;
+    padding: clamp(6px, 1vw, 10px);
+    border-bottom: 1px solid var(--border-visible);
+  }
+
+  .sources-table td {
+    color: var(--text-secondary);
+    font-size: var(--fs-small);
+    padding: clamp(6px, 1vw, 10px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  .sources-table td:first-child {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- =============================== SLIDE 1: TITLE =============================== -->
+  <div class="slide active" id="slide-1">
+    <div class="section-label">Weekly Recap &middot; March 27 &ndash; April 2, 2026</div>
+    <h1 class="headline">Digital Twin<br>Universe</h1>
+    <p class="subhead">
+      What we built this week: a CLI, declarative profiles, two agents,
+      and an end-to-end pipeline that answers "does this actually work when deployed?"
+    </p>
+    <div style="margin-top: clamp(16px, 3vw, 28px); display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+      <span class="badge badge-alpha">Alpha</span>
+      <span style="color: var(--text-tertiary); font-size: var(--fs-small);">
+        microsoft/amplifier-bundle-digital-twin-universe &middot; April 2026
+      </span>
+    </div>
+  </div>
+
+  <!-- =============================== SLIDE 2: THE PROBLEM =============================== -->
+  <div class="slide" id="slide-2">
+    <div class="section-label">The Problem</div>
+    <h2 class="medium-headline">"Tests pass" is not<br>"this actually works"</h2>
+    <div class="comparison">
+      <div class="comparison-side before">
+        <h3>What agents verify today</h3>
+        <ul>
+          <li>Code compiles</li>
+          <li>Unit tests pass</li>
+          <li>API tests return 200</li>
+          <li>Agent says "it works"</li>
+        </ul>
+      </div>
+      <div class="comparison-divider"></div>
+      <div class="comparison-side after">
+        <h3>What nobody checks</h3>
+        <ul>
+          <li>Can a real user install it?</li>
+          <li>Does the UI actually render?</li>
+          <li>Do all the dependencies resolve?</li>
+          <li>Does it work outside the dev machine?</li>
+        </ul>
+      </div>
+    </div>
+    <p style="color: var(--text-secondary); font-size: var(--fs-body); margin-top: clamp(16px, 3vw, 28px); max-width: 700px;">
+      AI-generated software is verified in the environment it was built in. Context poisoning, dev-machine-specific setup,
+      and skipped deployment details mean the gap between "tests pass" and "a human can use this" stays open.
+    </p>
+  </div>
+
+  <!-- =============================== SLIDE 3: THE SOLUTION =============================== -->
+  <div class="slide" id="slide-3">
+    <div class="section-label">The Solution</div>
+    <h2 class="headline">One profile.<br>One command.<br><span class="highlight">A complete world.</span></h2>
+    <p class="subhead">
+      A single YAML profile declares everything needed: base image, source overrides, networking,
+      port forwarding, provisioning steps, and readiness checks. Profiles are self-contained and shareable &mdash;
+      anyone can launch an identical environment with one command.
+    </p>
+    <div style="margin-top: clamp(16px, 3vw, 24px);">
+      <div class="code-block"><span class="cmt"># Launch an environment</span>
+<span class="kw">$</span> <span class="str">amplifier-digital-twin launch amplifier-chat</span>
+<span class="cmt"># => {"access": [{"label": "Chat UI", "url": "http://localhost:8410/chat/"}], ...}</span>
+
+<span class="cmt"># Open in browser, interact immediately</span>
+<span class="kw">$</span> <span class="str">open http://localhost:8410/chat/</span></div>
+    </div>
+  </div>
+
+  <!-- =============================== SLIDE 4: PROFILE ANATOMY =============================== -->
+  <div class="slide" id="slide-4">
+    <div class="section-label">Profile Anatomy</div>
+    <h2 class="medium-headline">Declarative, self-contained, shareable</h2>
+    <div class="grid-2">
+      <div class="code-block"><span class="cmt"># profiles/amplifier-chat.yaml</span>
+<span class="kw">name:</span> <span class="str">amplifier-chat</span>
+<span class="kw">base:</span>
+  <span class="kw">image:</span> <span class="str">ubuntu:24.04</span>
+
+<span class="kw">access:</span>
+  <span class="kw">ports:</span>
+    - <span class="kw">host:</span> <span class="val">8410</span>
+      <span class="kw">container:</span> <span class="val">8410</span>
+      <span class="kw">label:</span> <span class="str">Chat UI</span>
+      <span class="kw">path:</span> <span class="str">/chat/</span>
+
+<span class="kw">passthrough:</span>
+  <span class="kw">allow_external:</span> <span class="val">true</span>
+  <span class="kw">services:</span>
+    - <span class="kw">name:</span> <span class="str">anthropic</span>
+      <span class="kw">key_env:</span> <span class="str">ANTHROPIC_API_KEY</span>
+
+<span class="kw">provision:</span>
+  <span class="kw">setup_cmds:</span>
+    - <span class="str">apt-get update && ...</span>
+    - <span class="str">uv tool install ...</span>
+
+<span class="kw">readiness:</span>
+  - <span class="kw">name:</span> <span class="str">amplifierd-ready</span>
+    <span class="kw">http:</span>
+      <span class="kw">url:</span> <span class="str">http://localhost:8410/ready</span></div>
+      <div>
+        <div class="card" style="margin-bottom: 12px; padding: 12px 16px;">
+          <span class="icon" style="font-size: 20px;">&#x1F4E6;</span>
+          <h3>Base Image</h3>
+          <p>Any container image. Ubuntu 24.04 default.</p>
+        </div>
+        <div class="card" style="margin-bottom: 12px; padding: 12px 16px;">
+          <span class="icon" style="font-size: 20px;">&#x1F310;</span>
+          <h3>Port Forwarding</h3>
+          <p>Incus proxy devices to localhost. WSL2-seamless.</p>
+        </div>
+        <div class="card" style="margin-bottom: 12px; padding: 12px 16px;">
+          <span class="icon" style="font-size: 20px;">&#x1F512;</span>
+          <h3>API Passthrough</h3>
+          <p>Real APIs proxied with forwarded credentials.</p>
+        </div>
+        <div class="card" style="padding: 12px 16px;">
+          <span class="icon" style="font-size: 20px;">&#x2705;</span>
+          <h3>Readiness Checks</h3>
+          <p>Launch blocks until the environment is usable.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== SLIDE 5: THE PIPELINE =============================== -->
+  <div class="slide" id="slide-5">
+    <div class="section-label">Automated Verification Pipeline</div>
+    <h2 class="medium-headline">From repo to verified UI &mdash; fully automated or hands-on</h2>
+    <p style="color: var(--text-secondary); font-size: var(--fs-body); max-width: 700px;">
+      Three components form a pipeline: the profile-builder generates and launches an environment,
+      readiness checks ensure it's actually up, and the browser-tester verifies the UI works.
+      All without user intervention.
+    </p>
+    <div class="flow-container">
+      <div class="flow-step">
+        <span class="step-icon">&#x1F527;</span>
+        <span class="step-label">Profile Builder</span>
+        <span class="step-desc">Explores repo, generates<br>YAML, launches env</span>
+      </div>
+      <span class="flow-arrow">&#x2192;</span>
+      <div class="flow-step">
+        <span class="step-icon">&#x1F49A;</span>
+        <span class="step-label">Readiness Checks</span>
+        <span class="step-desc">Health probes block<br>until env is live</span>
+      </div>
+      <span class="flow-arrow">&#x2192;</span>
+      <div class="flow-step">
+        <span class="step-icon">&#x1F310;</span>
+        <span class="step-label">Browser Tester</span>
+        <span class="step-desc">Real Chromium verifies<br>UI end-to-end</span>
+      </div>
+      <span class="flow-arrow">&#x2192;</span>
+      <div class="flow-step" style="border-color: var(--accent);">
+        <span class="step-icon">&#x2705;</span>
+        <span class="step-label" style="color: var(--accent);">Verified</span>
+        <span class="step-desc">"This actually works<br>when deployed"</span>
+      </div>
+    </div>
+    <p style="color: var(--text-tertiary); font-size: var(--fs-small); margin-top: clamp(12px, 2vw, 20px); text-align: center;">
+      Or a user can open a browser and try it themselves. Either way, the question answered is
+      "does this actually work when deployed" &mdash; not "do the tests pass."
+    </p>
+  </div>
+
+  <!-- =============================== SLIDE 6: PROFILE BUILDER AGENT =============================== -->
+  <div class="slide" id="slide-6">
+    <div class="section-label">Agent: Profile Builder</div>
+    <h2 class="medium-headline">Point at a repo. Get a running environment.</h2>
+    <div class="grid-2" style="margin-top: clamp(12px, 2vw, 20px);">
+      <div>
+        <p style="color: var(--text-secondary); font-size: var(--fs-body); line-height: 1.7; margin-bottom: clamp(12px, 2vw, 20px);">
+          The <strong style="color: var(--text-primary);">dtu-profile-builder</strong> agent takes a repository, explores
+          its structure &mdash; ports, dependencies, environment variables, services &mdash; generates a complete
+          profile, launches it, and hands back access details.
+        </p>
+        <p style="color: var(--text-secondary); font-size: var(--fs-body); line-height: 1.7; margin-bottom: clamp(12px, 2vw, 20px);">
+          The developer never writes YAML or thinks about container configuration.
+          The agent does the translation from <em>"here's my code"</em> to <em>"here's your running environment."</em>
+        </p>
+        <div class="tag-row">
+          <span class="tag">434 lines of agent instructions</span>
+          <span class="tag">Repo analysis</span>
+          <span class="tag">YAML generation</span>
+          <span class="tag">Auto-launch</span>
+        </div>
+      </div>
+      <div class="code-block"><span class="cmt"># User's perspective:</span>
+
+<span class="str">"I built a FastAPI app at ~/my-api.</span>
+<span class="str"> Help me test it in a real environment."</span>
+
+<span class="cmt"># Agent:</span>
+<span class="cmt"># 1. Explores the project structure</span>
+<span class="cmt"># 2. Identifies ports, deps, env vars</span>
+<span class="cmt"># 3. Generates a DTU profile</span>
+<span class="cmt"># 4. Launches the environment</span>
+<span class="cmt"># 5. Waits for readiness</span>
+<span class="cmt"># 6. Returns access URL</span>
+
+<span class="kw">Result:</span>
+  <span class="str">http://localhost:8000</span> <span class="val">&#x2713; ready</span></div>
+    </div>
+  </div>
+
+  <!-- =============================== SLIDE 7: BROWSER TESTER AGENT =============================== -->
+  <div class="slide" id="slide-7">
+    <div class="section-label">Agent: Browser Tester</div>
+    <h2 class="medium-headline">Real browser. Real clicks.<br>Real verification.</h2>
+    <div class="grid-2" style="margin-top: clamp(12px, 2vw, 20px);">
+      <div>
+        <p style="color: var(--text-secondary); font-size: var(--fs-body); line-height: 1.7; margin-bottom: clamp(12px, 2vw, 20px);">
+          The <strong style="color: var(--text-primary);">dtu-browser-tester</strong> agent drives a real Chromium browser against
+          web UIs inside the environment &mdash; navigating, clicking, filling forms, taking screenshots.
+        </p>
+        <p style="color: var(--text-secondary); font-size: var(--fs-body); line-height: 1.7; margin-bottom: clamp(12px, 2vw, 20px);">
+          This isn't unit testing or API testing. It's verifying that a human user would see a working app.
+          Launch a digital twin of amplifier-chat and have an agent verify the entire UI works end-to-end &mdash;
+          without a human ever opening a browser.
+        </p>
+        <div class="tag-row">
+          <span class="tag">330 lines of agent instructions</span>
+          <span class="tag">Chromium automation</span>
+          <span class="tag">Screenshots</span>
+          <span class="tag">E2E UI verification</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: var(--gap-grid);">
+        <div class="card">
+          <span class="icon">&#x1F4F7;</span>
+          <h3>Visual Verification</h3>
+          <p>Takes screenshots at each step. The agent sees what a user would see.</p>
+        </div>
+        <div class="card">
+          <span class="icon">&#x1F5B1;</span>
+          <h3>Full Interaction</h3>
+          <p>Navigates pages, clicks buttons, fills forms &mdash; exercises the real user workflow.</p>
+        </div>
+        <div class="card">
+          <span class="icon">&#x1F6AB;</span>
+          <h3>No Retry Loops</h3>
+          <p>Readiness checks guarantee the environment is up before the browser ever connects.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== SLIDE 8: HUMAN ACCESS =============================== -->
+  <div class="slide" id="slide-8">
+    <div class="section-label">Human Access</div>
+    <h2 class="medium-headline">Open a browser. Use the app.<br>It's running in a twin.</h2>
+    <div class="grid-2" style="margin-top: clamp(12px, 2vw, 20px);">
+      <div>
+        <p style="color: var(--text-secondary); font-size: var(--fs-body); line-height: 1.7; margin-bottom: clamp(16px, 2vw, 24px);">
+          Profiles forward ports from the Incus container to localhost, so users can interact with apps
+          running inside the environment as if they were local.
+        </p>
+        <ul class="bullet-list">
+          <li>The amplifier-chat profile forwards port 8410 to localhost</li>
+          <li>On WSL2, Windows auto-forwards WSL2 localhost ports to the Windows host</li>
+          <li>No tunneling, no SSH, no manual port mapping required</li>
+        </ul>
+      </div>
+      <div>
+        <div class="code-block"><span class="cmt"># Launch the digital twin</span>
+<span class="kw">$</span> <span class="str">amplifier-digital-twin launch amplifier-chat</span>
+
+<span class="cmt"># Access returned in JSON output:</span>
+{
+  <span class="kw">"access"</span>: [{
+    <span class="kw">"label"</span>: <span class="str">"Chat UI"</span>,
+    <span class="kw">"url"</span>: <span class="str">"http://localhost:8410/chat/"</span>
+  }]
+}
+
+<span class="cmt"># Open in your browser - it just works</span>
+<span class="kw">$</span> <span class="str">open http://localhost:8410/chat/</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== SLIDE 9: BUNDLE INTEGRATION =============================== -->
+  <div class="slide" id="slide-9">
+    <div class="section-label">Amplifier Bundle</div>
+    <h2 class="medium-headline">Not just a CLI &mdash; a composable bundle</h2>
+    <p style="color: var(--text-secondary); font-size: var(--fs-body); max-width: 740px; margin-bottom: clamp(16px, 3vw, 24px);">
+      Digital Twin Universe is an Amplifier bundle. When composed into a session, it brings along a skill file,
+      context awareness, and two agents &mdash; so the model natively knows what digital twins are,
+      when to suggest them, and how to drive the CLI.
+    </p>
+    <div class="grid-3">
+      <div class="card">
+        <span class="icon">&#x1F9E0;</span>
+        <h3>Skill</h3>
+        <p>111-line skill provides installation help, profile authoring guidance, and troubleshooting &mdash; surfaced automatically when relevant.</p>
+      </div>
+      <div class="card">
+        <span class="icon">&#x1F916;</span>
+        <h3>Two Agents</h3>
+        <p>dtu-profile-builder and dtu-browser-tester can be delegated to within any Amplifier session. The model knows when to reach for them.</p>
+      </div>
+      <div class="card">
+        <span class="icon">&#x1F4AC;</span>
+        <h3>Natural Language</h3>
+        <p>"I built a web app, help me test it" &mdash; the model knows to reach for the profile-builder. No CLI knowledge needed.</p>
+      </div>
+    </div>
+    <div class="code-block" style="margin-top: clamp(16px, 3vw, 24px); max-width: 700px;">
+<span class="cmt"># Install as an Amplifier app bundle</span>
+<span class="kw">$</span> <span class="str">amplifier bundle add \</span>
+    <span class="str">git+https://github.com/microsoft/amplifier-bundle-digital-twin-universe@main \</span>
+    <span class="str">--app</span></div>
+  </div>
+
+  <!-- =============================== SLIDE 10: EXISTING PROFILES =============================== -->
+  <div class="slide" id="slide-10">
+    <div class="section-label">Profiles Shipping Today</div>
+    <h2 class="medium-headline">3 profiles &mdash; real environments, real verification</h2>
+    <div class="grid-2" style="margin-top: clamp(12px, 2vw, 20px);">
+      <div class="card">
+        <span class="icon">&#x1F4AC;</span>
+        <h3>amplifier-chat</h3>
+        <p>Full Amplifier Chat web UI backed by amplifierd. Port 8410 forwarded to localhost. Anthropic API passthrough. Readiness check on /ready endpoint.</p>
+        <div class="tag-row">
+          <span class="tag">58 lines</span>
+          <span class="tag">Port forwarding</span>
+          <span class="tag">Browser-accessible</span>
+        </div>
+      </div>
+      <div class="card">
+        <span class="icon">&#x1F468;&#x200D;&#x1F4BB;</span>
+        <h3>amplifier-user-sim</h3>
+        <p>Simulates an Amplifier user environment: LLM API passthrough, repos served from Gitea, Amplifier CLI installed, Anthropic provider pre-configured.</p>
+        <div class="tag-row">
+          <span class="tag">79 lines</span>
+          <span class="tag">Gitea integration</span>
+          <span class="tag">Full user simulation</span>
+        </div>
+      </div>
+      <div class="card">
+        <span class="icon">&#x1F9E9;</span>
+        <h3>amplifier-user-sim-single-module</h3>
+        <p>Lightweight variant for testing individual Amplifier modules in isolation without the full user environment.</p>
+        <div class="tag-row">
+          <span class="tag">49 lines</span>
+          <span class="tag">Module-focused</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =============================== SLIDE 11: CTA =============================== -->
+  <div class="slide" id="slide-13">
+    <div class="section-label">Get Started</div>
+    <h2 class="headline">Try it.</h2>
+    <div class="code-block" style="max-width: 700px; margin-bottom: clamp(16px, 3vw, 28px);">
+<span class="cmt"># Install the CLI</span>
+<span class="kw">$</span> <span class="str">uv tool install git+https://github.com/microsoft/amplifier-bundle-digital-twin-universe@main</span>
+
+<span class="cmt"># Install as Amplifier bundle</span>
+<span class="kw">$</span> <span class="str">amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-digital-twin-universe@main --app</span>
+
+<span class="cmt"># Launch your first digital twin</span>
+<span class="kw">$</span> <span class="str">amplifier-digital-twin launch amplifier-chat</span></div>
+    <p style="margin-top: clamp(16px, 3vw, 28px); font-size: var(--fs-body);">
+      <a href="https://github.com/microsoft/amplifier-bundle-digital-twin-universe" target="_blank" rel="noopener"
+         style="color: var(--accent); text-decoration: underline; text-underline-offset: 4px;">
+        github.com/microsoft/amplifier-bundle-digital-twin-universe
+      </a>
+    </p>
+  </div>
+
+</div>
+
+<!-- Navigation -->
+<div class="nav-dots" id="nav-dots"></div>
+<div class="slide-counter" id="slide-counter"></div>
+<div class="click-left" id="click-left"></div>
+<div class="click-right" id="click-right"></div>
+
+<script>
+(function() {
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let current = 0;
+
+  // Build nav dots
+  const dotsContainer = document.getElementById('nav-dots');
+  for (let i = 0; i < totalSlides; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.setAttribute('aria-label', 'Slide ' + (i + 1));
+    dot.addEventListener('click', () => goTo(i));
+    dotsContainer.appendChild(dot);
+  }
+
+  function updateCounter() {
+    document.getElementById('slide-counter').textContent = (current + 1) + ' / ' + totalSlides;
+  }
+
+  function goTo(n) {
+    if (n < 0 || n >= totalSlides) return;
+    slides[current].classList.remove('active');
+    dotsContainer.children[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    dotsContainer.children[current].classList.add('active');
+    updateCounter();
+  }
+
+  function next() { goTo(current + 1); }
+  function prev() { goTo(current - 1); }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+    if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+    if (e.key === 'End') { e.preventDefault(); goTo(totalSlides - 1); }
+  });
+
+  document.getElementById('click-left').addEventListener('click', prev);
+  document.getElementById('click-right').addEventListener('click', next);
+
+  // Touch support
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
+  });
+
+  updateCounter();
+})();
+</script>
+</body>
+</html>
