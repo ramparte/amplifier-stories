@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>amplifier-recipe-dashboard — See what your recipes are doing</title>
+<style>
+:root {
+    --accent: #00D4AA;
+    --accent-dim: rgba(0, 212, 170, 0.15);
+    --accent-glow: rgba(0, 212, 170, 0.3);
+    --surface-1: rgba(255,255,255,0.06);
+    --surface-2: rgba(255,255,255,0.10);
+    --surface-3: rgba(255,255,255,0.15);
+    --border-subtle: rgba(255,255,255,0.12);
+    --border-visible: rgba(255,255,255,0.20);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255,255,255,0.7);
+    --text-tertiary: rgba(255,255,255,0.5);
+    --font-headline: clamp(36px, 8vw, 72px);
+    --font-medium-headline: clamp(24px, 5vw, 48px);
+    --font-subhead: clamp(16px, 3vw, 28px);
+    --font-big-number: clamp(60px, 20vw, 180px);
+    --padding-slide: clamp(20px, 5vw, 80px);
+    --gap-grid: clamp(16px, 3vw, 40px);
+    --fs-body: clamp(14px, 2vw, 18px);
+    --fs-small: clamp(12px, 1.5vw, 14px);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+.deck { position: relative; width: 100%; height: 100vh; height: 100dvh; }
+
+.slide {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    height: 100vh;
+    height: 100dvh;
+    padding: var(--padding-slide);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.slide > * { flex-shrink: 0; }
+@supports (overflow: overlay) {
+    .slide { overflow-y: overlay; }
+}
+
+.slide.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Hero glow fix — prevent glow divs from taking layout space */
+.slide > *:not(.hero-glow) { position: relative; z-index: 1; }
+.slide > .hero-glow { position: absolute; z-index: 0; }
+
+.section-label {
+    font-size: clamp(12px, 1.5vw, 14px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: clamp(8px, 2vw, 16px);
+}
+
+.headline {
+    font-size: var(--font-headline);
+    font-weight: 700;
+    letter-spacing: clamp(-1px, -0.03em, -2px);
+    line-height: 1.1;
+    color: var(--text-primary);
+}
+
+.subhead {
+    font-size: var(--font-subhead);
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-top: clamp(12px, 2vw, 24px);
+    max-width: 42em;
+}
+
+.medium-headline {
+    font-size: var(--font-medium-headline);
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    color: var(--text-primary);
+    margin-bottom: clamp(16px, 3vw, 32px);
+}
+
+.card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: clamp(12px, 2vw, 16px);
+    padding: clamp(16px, 3vw, 28px);
+}
+
+.card h3 { color: var(--text-primary); font-size: clamp(16px, 2.5vw, 22px); font-weight: 600; }
+.card p { color: var(--text-secondary); font-size: var(--fs-body); line-height: 1.5; margin-top: 8px; }
+
+.card-accent {
+    border-left: 3px solid var(--accent);
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: var(--gap-grid);
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    gap: var(--gap-grid);
+}
+
+.grid-4 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: clamp(12px, 2vw, 24px);
+}
+
+.code-block {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: clamp(13px, 2vw, 16px);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+}
+
+.code-green { color: #30D158; }
+.code-gray { color: rgba(255,255,255,0.4); }
+.code-blue { color: #64D2FF; }
+.code-yellow { color: #FFD60A; }
+.code-accent { color: var(--accent); }
+.code-purple { color: #BF5AF2; }
+
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: clamp(11px, 1.5vw, 13px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.badge-active {
+    background: rgba(0, 212, 170, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(0, 212, 170, 0.3);
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: clamp(11px, 1.5vw, 13px);
+    font-weight: 500;
+}
+
+.status-pill .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.pill-running { background: rgba(48, 209, 88, 0.12); color: #30D158; }
+.pill-running .dot { background: #30D158; animation: pulse-dot 2s ease-in-out infinite; }
+.pill-waiting { background: rgba(255, 214, 10, 0.12); color: #FFD60A; }
+.pill-waiting .dot { background: #FFD60A; }
+.pill-stalled { background: rgba(255, 159, 10, 0.12); color: #FF9F0A; }
+.pill-stalled .dot { background: #FF9F0A; }
+.pill-done { background: rgba(255, 255, 255, 0.08); color: var(--text-tertiary); }
+.pill-done .dot { background: var(--text-tertiary); }
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* Feature list */
+.feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(10px, 2vw, 16px);
+    max-width: 800px;
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: clamp(12px, 2vw, 16px);
+}
+
+.feature-icon {
+    font-size: clamp(20px, 4vw, 32px);
+    flex-shrink: 0;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+.feature-text h3 {
+    font-size: clamp(16px, 2.5vw, 22px);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.feature-text p {
+    font-size: var(--fs-body);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-top: 4px;
+}
+
+/* Mockup browser chrome */
+.browser-chrome {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: clamp(10px, 2vw, 14px);
+    overflow: hidden;
+    max-width: 900px;
+}
+
+.browser-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.browser-dots {
+    display: flex;
+    gap: 6px;
+}
+
+.browser-dots span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.browser-url {
+    flex: 1;
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: clamp(11px, 1.4vw, 13px);
+    font-family: 'SF Mono', monospace;
+    color: var(--text-tertiary);
+}
+
+.browser-body {
+    padding: clamp(16px, 3vw, 28px);
+}
+
+/* Approval banner mockup */
+.approval-banner {
+    background: rgba(255, 214, 10, 0.08);
+    border: 1px solid rgba(255, 214, 10, 0.25);
+    border-radius: 10px;
+    padding: clamp(12px, 2vw, 18px) clamp(16px, 3vw, 24px);
+    display: flex;
+    align-items: center;
+    gap: clamp(10px, 2vw, 16px);
+}
+
+.approval-banner .icon {
+    font-size: clamp(24px, 4vw, 36px);
+    flex-shrink: 0;
+}
+
+.approval-banner .text {
+    flex: 1;
+}
+
+.approval-banner .text strong {
+    color: #FFD60A;
+    font-size: clamp(14px, 2vw, 18px);
+    display: block;
+}
+
+.approval-banner .text span {
+    color: var(--text-secondary);
+    font-size: var(--fs-body);
+}
+
+/* Navigation */
+.nav-dots {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+}
+
+.nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+}
+
+.nav-dot.active {
+    background: var(--accent);
+    transform: scale(1.3);
+}
+
+.slide-counter {
+    position: fixed;
+    bottom: 20px;
+    right: 30px;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-family: 'SF Mono', monospace;
+    z-index: 100;
+}
+
+.click-left, .click-right {
+    position: fixed;
+    top: 0;
+    bottom: 60px;
+    z-index: 50;
+    cursor: pointer;
+}
+.click-left { left: 0; width: 30%; }
+.click-right { right: 0; width: 70%; }
+
+.hero-glow {
+    width: clamp(300px, 60vw, 600px);
+    height: clamp(300px, 60vw, 600px);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 212, 170, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: TITLE                                                -->
+<!-- ============================================================ -->
+<div class="slide active" id="slide-0">
+    <div class="hero-glow" style="top: -20%; left: -10%;"></div>
+    <div class="section-label">amplifier tool</div>
+    <h1 class="headline">recipe-dashboard</h1>
+    <p class="subhead">See what your recipes are doing &mdash; without switching back to the terminal.</p>
+    <div style="display: flex; gap: 12px; margin-top: clamp(16px, 3vw, 32px); flex-wrap: wrap; align-items: center;">
+        <span class="badge badge-active">Active</span>
+        <span style="color: var(--text-tertiary); font-size: var(--fs-small);">github.com/samueljklee/amplifier-recipe-dashboard</span>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: THE PROBLEM                                          -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-1">
+    <div class="section-label">The Problem</div>
+    <h2 class="headline" style="font-size: var(--font-medium-headline); max-width: 18em;">Recipes run for minutes to hours. You have no idea what's happening.</h2>
+    <p class="subhead" style="margin-bottom: clamp(24px, 4vw, 40px);">You end up switching to the terminal, scrolling through logs, or just asking &ldquo;where is it at?&rdquo; over and over.</p>
+    <div class="grid-4" style="max-width: 900px;">
+        <div class="card" style="text-align: center; padding: clamp(14px, 2vw, 22px);">
+            <div style="font-size: clamp(28px, 5vw, 40px); margin-bottom: 8px;">🤷</div>
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">Is it still running?</h3>
+        </div>
+        <div class="card" style="text-align: center; padding: clamp(14px, 2vw, 22px);">
+            <div style="font-size: clamp(28px, 5vw, 40px); margin-bottom: 8px;">📍</div>
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">Which step is it on?</h3>
+        </div>
+        <div class="card" style="text-align: center; padding: clamp(14px, 2vw, 22px);">
+            <div style="font-size: clamp(28px, 5vw, 40px); margin-bottom: 8px;">🛑</div>
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">Did it stall?</h3>
+        </div>
+        <div class="card" style="text-align: center; padding: clamp(14px, 2vw, 22px);">
+            <div style="font-size: clamp(28px, 5vw, 40px); margin-bottom: 8px;">✋</div>
+            <h3 style="font-size: clamp(14px, 2vw, 17px);">Is it waiting for me?</h3>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 3: ONE COMMAND                                          -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-2">
+    <div class="hero-glow" style="top: 10%; right: -20%;"></div>
+    <div class="section-label">Get Started</div>
+    <h2 class="headline">One command.</h2>
+    <p class="subhead" style="margin-bottom: clamp(24px, 4vw, 40px);">Opens a browser. That's it.</p>
+    <div class="code-block" style="max-width: 850px; font-size: clamp(14px, 2.2vw, 18px);">
+<span class="code-accent">uvx</span> --from git+https://github.com/samueljklee/amplifier-recipe-dashboard \
+    <span class="code-green">amplifier-recipe-dashboard</span></div>
+    <div style="margin-top: clamp(20px, 3vw, 32px); display: flex; gap: clamp(16px, 3vw, 32px); flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--accent); font-size: clamp(16px, 2vw, 20px);">✓</span>
+            <span style="color: var(--text-secondary); font-size: var(--fs-body);">No API keys</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--accent); font-size: clamp(16px, 2vw, 20px);">✓</span>
+            <span style="color: var(--text-secondary); font-size: var(--fs-body);">No LLM calls</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--accent); font-size: clamp(16px, 2vw, 20px);">✓</span>
+            <span style="color: var(--text-secondary); font-size: var(--fs-body);">Just reads your local <code style="font-size: 0.9em; color: var(--text-primary);">~/.amplifier/</code> session files</span>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4: SEE EVERYTHING AT A GLANCE                           -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-3">
+    <div class="section-label">Discovery View</div>
+    <h2 class="medium-headline">See everything at a glance</h2>
+    <div class="browser-chrome">
+        <div class="browser-toolbar">
+            <div class="browser-dots">
+                <span style="background: #FF5F57;"></span>
+                <span style="background: #FEBC2E;"></span>
+                <span style="background: #28C840;"></span>
+            </div>
+            <div class="browser-url">localhost:8181</div>
+        </div>
+        <div class="browser-body">
+            <!-- Filter tabs -->
+            <div style="display: flex; gap: 4px; margin-bottom: clamp(12px, 2vw, 20px); flex-wrap: wrap;">
+                <span style="padding: 5px 14px; border-radius: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 600; background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-glow);">All <span style="opacity: 0.7; margin-left: 4px;">24</span></span>
+                <span style="padding: 5px 14px; border-radius: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 500; background: rgba(48, 209, 88, 0.08); color: #30D158;">Active <span style="opacity: 0.7; margin-left: 4px;">3</span></span>
+                <span style="padding: 5px 14px; border-radius: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 500; background: rgba(255, 214, 10, 0.08); color: #FFD60A;">Waiting <span style="opacity: 0.7; margin-left: 4px;">1</span></span>
+                <span style="padding: 5px 14px; border-radius: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 500; background: rgba(255, 159, 10, 0.08); color: #FF9F0A;">Stalled <span style="opacity: 0.7; margin-left: 4px;">2</span></span>
+                <span style="padding: 5px 14px; border-radius: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 500; background: rgba(255, 255, 255, 0.05); color: var(--text-tertiary);">Done <span style="opacity: 0.7; margin-left: 4px;">18</span></span>
+            </div>
+            <!-- Session rows -->
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(48, 209, 88, 0.05); border-radius: 8px; border: 1px solid rgba(48, 209, 88, 0.15);">
+                    <span class="status-pill pill-running" style="font-size: 11px;"><span class="dot"></span> running</span>
+                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-primary); font-weight: 500; flex: 1;">code-review &mdash; teamkb-workspace</span>
+                    <span style="font-size: clamp(11px, 1.4vw, 13px); color: var(--text-tertiary);">Step 4/7 &middot; 12m ago</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255, 214, 10, 0.04); border-radius: 8px; border: 1px solid rgba(255, 214, 10, 0.12);">
+                    <span class="status-pill pill-waiting" style="font-size: 11px;"><span class="dot"></span> waiting</span>
+                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-primary); font-weight: 500; flex: 1;">refactor-phase-2 &mdash; amplifier-core</span>
+                    <span style="font-size: clamp(11px, 1.4vw, 13px); color: #FFD60A;">Needs approval</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px solid var(--border-subtle);">
+                    <span class="status-pill pill-done" style="font-size: 11px;"><span class="dot"></span> done</span>
+                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-secondary); font-weight: 500; flex: 1;">generate-arch-diagram &mdash; made-support</span>
+                    <span style="font-size: clamp(11px, 1.4vw, 13px); color: var(--text-tertiary);">Completed 2h ago</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p style="color: var(--text-secondary); font-size: var(--fs-body); margin-top: clamp(12px, 2vw, 20px);">All recipe sessions across all projects. Filter by status, search by name, sort by time.</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5: KNOW WHAT'S HAPPENING RIGHT NOW                      -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-4">
+    <div class="section-label">Live Progress</div>
+    <h2 class="medium-headline">Know what's happening right now</h2>
+    <p class="subhead" style="margin-bottom: clamp(20px, 3vw, 32px);">Click into any running recipe &mdash; see step-by-step progress, what each step produced, and what variables resolved to.</p>
+    <div class="browser-chrome" style="max-width: 800px;">
+        <div class="browser-toolbar">
+            <div class="browser-dots">
+                <span style="background: #FF5F57;"></span>
+                <span style="background: #FEBC2E;"></span>
+                <span style="background: #28C840;"></span>
+            </div>
+            <div class="browser-url">localhost:8181/#/session/a79d93a5</div>
+        </div>
+        <div class="browser-body" style="padding: clamp(12px, 2vw, 20px);">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Completed step -->
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(48, 209, 88, 0.06); border: 1px solid rgba(48, 209, 88, 0.12);">
+                    <span style="color: #30D158; font-size: clamp(14px, 2vw, 18px);">✓</span>
+                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-secondary);">1. planning</span>
+                    <span style="margin-left: auto; font-size: clamp(11px, 1.2vw, 12px); color: var(--text-tertiary);">3m 22s</span>
+                </div>
+                <!-- Completed step -->
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(48, 209, 88, 0.06); border: 1px solid rgba(48, 209, 88, 0.12);">
+                    <span style="color: #30D158; font-size: clamp(14px, 2vw, 18px);">✓</span>
+                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-secondary);">2. implementation</span>
+                    <span style="margin-left: auto; font-size: clamp(11px, 1.2vw, 12px); color: var(--text-tertiary);">18m 47s</span>
+                </div>
+                <!-- Running step (highlighted) -->
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(0, 212, 170, 0.08); border: 1px solid var(--accent-glow);">
+                    <span class="status-pill pill-running" style="font-size: 11px; padding: 2px 6px;"><span class="dot"></span></span>
+                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--accent); font-weight: 600;">3. code-review</span>
+                    <span style="margin-left: auto; font-size: clamp(11px, 1.2vw, 12px); color: var(--accent);">running &middot; 4m 12s</span>
+                </div>
+                <!-- Pending steps -->
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; opacity: 0.4;">
+                    <span style="color: var(--text-tertiary); font-size: clamp(14px, 2vw, 18px);">○</span>
+                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-tertiary);">4. verification</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; opacity: 0.4;">
+                    <span style="color: var(--text-tertiary); font-size: clamp(14px, 2vw, 18px);">○</span>
+                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-tertiary);">5. completion</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p style="color: var(--text-tertiary); font-size: var(--fs-small); margin-top: clamp(12px, 2vw, 16px);">Auto-refreshes every 10 seconds. Preserves your scroll position and expanded panels.</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6: INTERACTIVE GRAPH PREVIEWS                           -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-5">
+    <div class="section-label">Graph Visualization</div>
+    <h2 class="medium-headline">DOT graphs become interactive diagrams</h2>
+    <div class="grid-2" style="max-width: 1000px;">
+        <div>
+            <div style="color: var(--text-tertiary); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">What the recipe outputs</div>
+            <div class="code-block" style="font-size: clamp(11px, 1.4vw, 13px); height: 220px; overflow: hidden;">
+<span class="code-gray">// raw DOT in step output</span>
+digraph architecture {
+  graph [ rankdir = TB ];
+  node [ shape = box ];
+  <span class="code-accent">"src/main.py"</span> -> <span class="code-blue">"src/router.py"</span>;
+  <span class="code-blue">"src/router.py"</span> -> <span class="code-yellow">"src/handlers/"</span>;
+  <span class="code-yellow">"src/handlers/"</span> -> <span class="code-green">"src/models/"</span>;
+  <span class="code-gray">... 200+ lines ...</span></div>
+        </div>
+        <div>
+            <div style="color: var(--accent); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">What you see in the dashboard</div>
+            <div style="background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: 12px; height: 220px; display: flex; flex-direction: column;">
+                <div style="display: flex; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); align-items: center;">
+                    <span style="background: var(--accent-dim); color: var(--accent); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">DOT</span>
+                    <span style="color: var(--text-tertiary); font-size: 12px; cursor: pointer;">Fit</span>
+                    <span style="color: var(--text-tertiary); font-size: 12px; cursor: pointer;">+</span>
+                    <span style="color: var(--text-tertiary); font-size: 12px; cursor: pointer;">&ndash;</span>
+                    <span style="color: var(--accent); font-size: 12px; margin-left: auto; cursor: pointer;">View Source</span>
+                </div>
+                <svg viewBox="0 0 300 160" style="flex: 1; padding: 8px;" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <marker id="arr" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+                            <polygon points="0 0, 6 2, 0 4" fill="rgba(255,255,255,0.3)" />
+                        </marker>
+                    </defs>
+                    <rect x="110" y="5" width="80" height="22" rx="5" fill="rgba(0,212,170,0.2)" stroke="rgba(0,212,170,0.5)" stroke-width="1"/>
+                    <text x="150" y="20" text-anchor="middle" fill="var(--accent)" font-size="9" font-family="monospace">main.py</text>
+                    <rect x="110" y="45" width="80" height="22" rx="5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+                    <text x="150" y="60" text-anchor="middle" fill="var(--text-secondary)" font-size="9" font-family="monospace">router.py</text>
+                    <rect x="30" y="90" width="70" height="22" rx="5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+                    <text x="65" y="105" text-anchor="middle" fill="var(--text-secondary)" font-size="8" font-family="monospace">handlers/</text>
+                    <rect x="115" y="90" width="70" height="22" rx="5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+                    <text x="150" y="105" text-anchor="middle" fill="var(--text-secondary)" font-size="8" font-family="monospace">models/</text>
+                    <rect x="200" y="90" width="70" height="22" rx="5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+                    <text x="235" y="105" text-anchor="middle" fill="var(--text-secondary)" font-size="8" font-family="monospace">utils/</text>
+                    <line x1="150" y1="27" x2="150" y2="45" stroke="rgba(255,255,255,0.2)" stroke-width="1" marker-end="url(#arr)"/>
+                    <line x1="130" y1="67" x2="75" y2="90" stroke="rgba(255,255,255,0.2)" stroke-width="1" marker-end="url(#arr)"/>
+                    <line x1="150" y1="67" x2="150" y2="90" stroke="rgba(255,255,255,0.2)" stroke-width="1" marker-end="url(#arr)"/>
+                    <line x1="170" y1="67" x2="225" y2="90" stroke="rgba(255,255,255,0.2)" stroke-width="1" marker-end="url(#arr)"/>
+                    <text x="150" y="140" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="8" font-family="sans-serif">scroll to zoom · drag to pan</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+    <p style="color: var(--text-tertiary); font-size: var(--fs-small); margin-top: clamp(12px, 2vw, 20px);">Powered by Viz.js (Graphviz compiled to WASM). Runs entirely in your browser &mdash; no install, no server processing.</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7: UNDERSTAND WHAT A RECIPE DID                         -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-6">
+    <div class="section-label">Completed Recipes</div>
+    <h2 class="medium-headline">Understand what a recipe actually did</h2>
+    <p class="subhead" style="margin-bottom: clamp(20px, 3vw, 32px);">Finished recipes are just as important. Read the full output &mdash; what was planned, what was implemented, what was verified.</p>
+    <div class="grid-2" style="max-width: 900px;">
+        <div class="card card-accent">
+            <h3>Outcome Tabs</h3>
+            <div style="display: flex; gap: 4px; margin-top: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                <span style="padding: 4px 10px; border-radius: 6px; font-size: 12px; background: var(--accent-dim); color: var(--accent); font-weight: 600;">Summary</span>
+                <span style="padding: 4px 10px; border-radius: 6px; font-size: 12px; background: var(--surface-2); color: var(--text-secondary);">Review</span>
+                <span style="padding: 4px 10px; border-radius: 6px; font-size: 12px; background: var(--surface-2); color: var(--text-secondary);">Verification</span>
+                <span style="padding: 4px 10px; border-radius: 6px; font-size: 12px; background: var(--surface-2); color: var(--text-secondary);">Approval</span>
+            </div>
+            <p>Full rendered markdown for each report section. Only tabs with data appear.</p>
+        </div>
+        <div class="card card-accent">
+            <h3>Task Reports</h3>
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 12px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: clamp(12px, 1.6vw, 14px);">
+                    <span style="color: #30D158;">✓</span>
+                    <span style="color: var(--text-secondary);">Task 1: Extract shared constants</span>
+                    <span style="color: var(--text-tertiary); font-size: 11px; margin-left: auto;">▸</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: clamp(12px, 1.6vw, 14px);">
+                    <span style="color: #30D158;">✓</span>
+                    <span style="color: var(--text-secondary);">Task 2: Migrate CLI to Click</span>
+                    <span style="color: var(--text-tertiary); font-size: 11px; margin-left: auto;">▸</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: clamp(12px, 1.6vw, 14px);">
+                    <span style="color: #30D158;">✓</span>
+                    <span style="color: var(--text-secondary);">Task 3: Add integration tests</span>
+                    <span style="color: var(--text-tertiary); font-size: 11px; margin-left: auto;">▸</span>
+                </div>
+            </div>
+            <p>Expand any task to see what it did, which files changed, and which tests were written.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 8: KNOW WHEN YOU'RE NEEDED                              -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-7">
+    <div class="section-label">Approvals</div>
+    <h2 class="medium-headline">Know when you're needed</h2>
+    <p class="subhead" style="margin-bottom: clamp(24px, 4vw, 40px);">Staged recipes pause and wait for human approval. The dashboard makes that unmissable.</p>
+    <div style="max-width: 700px;">
+        <div class="approval-banner" style="margin-bottom: clamp(16px, 3vw, 28px);">
+            <div class="icon">⏸️</div>
+            <div class="text">
+                <strong>Waiting for your approval</strong>
+                <span>Stage <code style="color: #FFD60A; font-size: 0.9em;">implementation</code> completed. Review the plan before continuing.</span>
+            </div>
+        </div>
+        <div class="card" style="margin-bottom: clamp(16px, 3vw, 28px);">
+            <h3>Approval Timeline</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; font-size: clamp(13px, 1.8vw, 15px);">
+                    <span style="color: #30D158; font-size: 14px;">●</span>
+                    <span style="color: var(--text-secondary);">planning</span>
+                    <span style="color: var(--text-tertiary); font-size: clamp(11px, 1.4vw, 13px); margin-left: auto;">approved &middot; 3:14 PM</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; font-size: clamp(13px, 1.8vw, 15px);">
+                    <span style="color: #FFD60A; font-size: 14px;">●</span>
+                    <span style="color: #FFD60A; font-weight: 500;">implementation</span>
+                    <span style="color: #FFD60A; font-size: clamp(11px, 1.4vw, 13px); margin-left: auto;">waiting &middot; since 3:42 PM</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; font-size: clamp(13px, 1.8vw, 15px); opacity: 0.4;">
+                    <span style="color: var(--text-tertiary); font-size: 14px;">○</span>
+                    <span style="color: var(--text-tertiary);">verification</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p style="color: var(--text-tertiary); font-size: var(--fs-small);">No more recipes silently waiting for 45 minutes because you didn't check the terminal.</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 9: SMART ABOUT DETAILS                                  -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-8">
+    <div class="section-label">Details</div>
+    <h2 class="medium-headline">Smart about the small things</h2>
+    <div class="grid-2" style="max-width: 900px;">
+        <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 8px;"><span style="font-size: clamp(18px, 3vw, 24px);">↷</span> Skipped Steps</h3>
+            <p>Conditional steps that didn't execute show clearly — expand to see the condition that was false. No guessing why a step was skipped.</p>
+        </div>
+        <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 8px;"><span style="font-size: clamp(18px, 3vw, 24px); color: var(--accent);">{}</span> Template Variables</h3>
+            <p>See what <code style="color: var(--accent); font-size: 0.9em;">{{repo_path}}</code> actually resolved to. Template variables shown alongside their real values.</p>
+        </div>
+        <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 8px;"><span style="font-size: clamp(18px, 3vw, 24px);">📄</span> Content Detection</h3>
+            <p>Step outputs auto-detected as DOT, Markdown, or JSON &mdash; each rendered with appropriate formatting. Toggle between preview and raw source.</p>
+        </div>
+        <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 8px;"><span style="font-size: clamp(18px, 3vw, 24px);">🌗</span> System Theme</h3>
+            <p>Follows your OS dark/light preference via <code style="color: var(--accent); font-size: 0.9em;">prefers-color-scheme</code>. No settings to configure.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 10: TRY IT                                              -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-9">
+    <div class="hero-glow" style="top: -10%; left: 20%;"></div>
+    <div class="section-label">Try It</div>
+    <h2 class="headline">Get started.</h2>
+    <div class="code-block" style="max-width: 850px; margin-top: clamp(20px, 3vw, 32px); margin-bottom: clamp(12px, 2vw, 20px); font-size: clamp(13px, 2vw, 17px);">
+<span class="code-gray"># Run it once (no install)</span>
+<span class="code-accent">uvx</span> --from git+https://github.com/samueljklee/amplifier-recipe-dashboard <span class="code-green">amplifier-recipe-dashboard</span>
+
+<span class="code-gray"># Or install it so it's always available</span>
+<span class="code-accent">uv tool install</span> git+https://github.com/samueljklee/amplifier-recipe-dashboard
+<span class="code-green">amplifier-recipe-dashboard</span></div>
+    <p class="subhead" style="max-width: 600px; margin-top: 0;">Opens at <code style="color: var(--accent); font-size: 0.9em;">localhost:8181</code>. Auto-refreshes every 10 seconds. Reads your local session files &mdash; nothing leaves your machine.</p>
+    <div style="margin-top: clamp(20px, 3vw, 32px); display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+        <a href="https://github.com/samueljklee/amplifier-recipe-dashboard" target="_blank" style="color: var(--accent); font-size: var(--fs-body); text-decoration: none; border-bottom: 1px solid var(--accent);">GitHub &rarr;</a>
+        <span style="color: var(--text-tertiary); font-size: var(--fs-small);">Feedback welcome 🙏</span>
+    </div>
+</div>
+
+</div><!-- end .deck -->
+
+<!-- Navigation -->
+<div class="nav-dots" id="nav-dots"></div>
+<div class="slide-counter" id="slide-counter"></div>
+<div class="click-left" id="click-left"></div>
+<div class="click-right" id="click-right"></div>
+
+<script>
+(function() {
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let currentSlide = 0;
+
+    // Build nav dots
+    const dotsContainer = document.getElementById('nav-dots');
+    for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+        dot.addEventListener('click', () => goTo(i));
+        dotsContainer.appendChild(dot);
+    }
+
+    function goTo(n) {
+        if (n < 0 || n >= totalSlides) return;
+        slides[currentSlide].classList.remove('active');
+        dotsContainer.children[currentSlide].classList.remove('active');
+        currentSlide = n;
+        slides[currentSlide].classList.add('active');
+        dotsContainer.children[currentSlide].classList.add('active');
+        document.getElementById('slide-counter').textContent = (currentSlide + 1) + ' / ' + totalSlides;
+    }
+
+    function next() { goTo(currentSlide + 1); }
+    function prev() { goTo(currentSlide - 1); }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); next(); }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+        if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+        if (e.key === 'End') { e.preventDefault(); goTo(totalSlides - 1); }
+    });
+
+    // Click navigation
+    document.getElementById('click-left').addEventListener('click', prev);
+    document.getElementById('click-right').addEventListener('click', next);
+
+    // Touch navigation
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    document.addEventListener('touchend', e => {
+        const diff = touchStartX - e.changedTouches[0].screenX;
+        if (Math.abs(diff) > 50) { diff > 0 ? next() : prev(); }
+    }, { passive: true });
+
+    // Initialize counter
+    document.getElementById('slide-counter').textContent = '1 / ' + totalSlides;
+})();
+</script>
+</body>
+</html>
