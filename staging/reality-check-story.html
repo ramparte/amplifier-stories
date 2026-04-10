@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reality Check - An Amplifier Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #080E1C;
+    --bg-primary: #0C1527;
+    --bg-card: #111B2E;
+    --bg-card-hover: #162035;
+    --border-subtle: #1E2D45;
+    --border-accent: #2A3F5F;
+
+    --text-primary: #E2E8F4;
+    --text-secondary: #8899B3;
+    --text-muted: #5A6E8A;
+
+    --accent: #3B82F6;
+    --accent-dim: #2563EB;
+    --accent-glow: rgba(59, 130, 246, 0.15);
+
+    --pass: #22C55E;
+    --pass-dim: #16A34A;
+    --pass-glow: rgba(34, 197, 94, 0.15);
+
+    --warn: #F59E0B;
+    --warn-dim: #D97706;
+    --warn-glow: rgba(245, 158, 11, 0.15);
+
+    --fail: #EF4444;
+    --fail-dim: #DC2626;
+    --fail-glow: rgba(239, 68, 68, 0.15);
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ---- SLIDE SYSTEM ---- */
+  .slide {
+    min-height: 100vh;
+    height: 100vh;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 4rem 2rem;
+    position: relative;
+    overflow-y: auto;
+  }
+  .slide.active {
+    display: flex;
+  }
+
+  /* ---- CLICK ZONES ---- */
+  .click-zone {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 25%;
+    z-index: 50;
+    cursor: pointer;
+  }
+  .click-zone--prev {
+    left: 0;
+  }
+  .click-zone--next {
+    right: 0;
+  }
+  .click-zone:hover {
+    background: rgba(255,255,255,0.02);
+  }
+
+  /* ---- SLIDE COUNTER ---- */
+  .slide-counter {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    z-index: 100;
+    letter-spacing: 0.05em;
+  }
+
+  .slide-inner {
+    max-width: 960px;
+    width: 100%;
+  }
+
+  /* ---- NAV DOTS ---- */
+  .nav-dots {
+    position: fixed;
+    right: 1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    z-index: 100;
+  }
+  .nav-dots a {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-accent);
+    transition: all 0.3s ease;
+    text-decoration: none;
+  }
+  .nav-dots a:hover,
+  .nav-dots a.active {
+    background: var(--accent);
+    transform: scale(1.4);
+  }
+
+  /* ---- TYPOGRAPHY ---- */
+  h1 {
+    font-size: 3.15rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin-bottom: 1rem;
+  }
+  h2 {
+    font-size: 2.37rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.25rem;
+  }
+  h3 {
+    font-size: 1.77rem;
+    font-weight: 600;
+    line-height: 1.25;
+    margin-bottom: 1rem;
+  }
+  .subtitle {
+    font-size: 1.33rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+  p { margin-bottom: 1rem; color: var(--text-secondary); }
+  strong { color: var(--text-primary); font-weight: 600; }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    background: var(--bg-card);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  /* ---- CARDS ---- */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 1.75rem;
+    margin-bottom: 1rem;
+    transition: border-color 0.3s ease;
+  }
+  .card:hover { border-color: var(--border-accent); }
+
+  .card--accent-left {
+    border-left: 3px solid var(--accent);
+    border-radius: 0 12px 12px 0;
+  }
+  .card--fail-left {
+    border-left: 3px solid var(--fail);
+    border-radius: 0 12px 12px 0;
+  }
+  .card--warn-left {
+    border-left: 3px solid var(--warn);
+    border-radius: 0 12px 12px 0;
+  }
+  .card--pass-left {
+    border-left: 3px solid var(--pass);
+    border-radius: 0 12px 12px 0;
+  }
+
+  /* ---- GRID ---- */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 1rem;
+  }
+
+  /* ---- BLOCKQUOTE ---- */
+  blockquote {
+    border-left: 3px solid var(--warn);
+    padding: 1.5rem 2rem;
+    margin: 2rem 0;
+    background: var(--warn-glow);
+    border-radius: 0 12px 12px 0;
+    font-style: italic;
+    font-size: 1.33rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+  }
+  blockquote cite {
+    display: block;
+    font-style: normal;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+    font-family: var(--font-mono);
+  }
+
+  /* ---- PIPELINE ---- */
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin: 2rem 0;
+  }
+  .pipeline-step {
+    flex: 1;
+    padding: 1.5rem 1.25rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    position: relative;
+    text-align: center;
+  }
+  .pipeline-step:first-child { border-radius: 12px 0 0 12px; }
+  .pipeline-step:last-child { border-radius: 0 12px 12px 0; }
+  .pipeline-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 12px solid transparent;
+    border-bottom: 12px solid transparent;
+    border-left: 12px solid var(--border-accent);
+    z-index: 1;
+  }
+  .pipeline-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    color: white;
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+  }
+  .pipeline-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+  }
+  .pipeline-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* ---- STATUS PILLS ---- */
+  .pill {
+    display: inline-block;
+    padding: 0.2em 0.65em;
+    border-radius: 100px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .pill--pass { background: var(--pass-glow); color: var(--pass); border: 1px solid rgba(34,197,94,0.3); }
+  .pill--fail { background: var(--fail-glow); color: var(--fail); border: 1px solid rgba(239,68,68,0.3); }
+  .pill--warn { background: var(--warn-glow); color: var(--warn); border: 1px solid rgba(245,158,11,0.3); }
+
+  /* ---- TABLE ---- */
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .results-table th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .results-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+  }
+  .results-table tr:hover td {
+    background: var(--bg-card);
+  }
+
+  /* ---- TIMELINE ---- */
+  .timeline {
+    position: relative;
+    padding-left: 2rem;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.4rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border-accent);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.65rem;
+    top: 0.5rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg-deep);
+  }
+  .timeline-item.highlight::before {
+    background: var(--warn);
+    box-shadow: 0 0 12px var(--warn-glow);
+  }
+  .timeline-time {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .timeline-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 0.15rem;
+  }
+  .timeline-desc {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+  }
+
+  /* ---- ARCHITECTURE SVG ---- */
+  .arch-container {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+    display: flex;
+    justify-content: center;
+  }
+  .arch-container svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* ---- ACCENT STRIPE ---- */
+  .stripe-fail {
+    background: linear-gradient(90deg, var(--fail-glow), transparent);
+    padding: 0.1rem 0;
+  }
+  .stripe-pass {
+    background: linear-gradient(90deg, var(--pass-glow), transparent);
+    padding: 0.1rem 0;
+  }
+
+  /* ---- STATS ---- */
+  .stat-value {
+    font-size: 3.15rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+  }
+
+  /* ---- SPECIAL SLIDES ---- */
+  .slide--title {
+    background: radial-gradient(ellipse at 30% 60%, rgba(59,130,246,0.08), transparent 60%);
+  }
+  .slide--problem {
+    background: radial-gradient(ellipse at 70% 40%, rgba(239,68,68,0.06), transparent 60%);
+  }
+  .slide--quote {
+    background: radial-gradient(ellipse at 50% 50%, rgba(245,158,11,0.05), transparent 50%);
+  }
+  .slide--solution {
+    background: radial-gradient(ellipse at 30% 50%, rgba(59,130,246,0.06), transparent 60%);
+  }
+  .slide--climax {
+    background: radial-gradient(ellipse at 50% 50%, rgba(245,158,11,0.06), transparent 50%),
+                radial-gradient(ellipse at 70% 70%, rgba(34,197,94,0.06), transparent 50%);
+  }
+  .slide--victory {
+    background: radial-gradient(ellipse at 50% 50%, rgba(34,197,94,0.08), transparent 60%);
+  }
+
+  /* ---- DIVIDER ---- */
+  .divider {
+    width: 60px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin: 1.5rem 0;
+  }
+
+  /* ---- BUG DIFF ---- */
+  .diff-block {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.7;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+  .diff-del {
+    color: var(--fail);
+    background: var(--fail-glow);
+    display: block;
+    padding: 0 0.5rem;
+    margin: 0 -0.5rem;
+    border-radius: 4px;
+  }
+  .diff-add {
+    color: var(--pass);
+    background: var(--pass-glow);
+    display: block;
+    padding: 0 0.5rem;
+    margin: 0 -0.5rem;
+    border-radius: 4px;
+  }
+  .diff-context { color: var(--text-muted); display: block; }
+
+  /* ---- FOOTER ---- */
+  .slide-footer {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 768px) {
+    h1 { font-size: 2.2rem; }
+    h2 { font-size: 1.6rem; }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .pipeline { flex-direction: column; }
+    .pipeline-step:first-child { border-radius: 12px 12px 0 0; }
+    .pipeline-step:last-child { border-radius: 0 0 12px 12px; }
+    .pipeline-step:not(:last-child)::after { display: none; }
+    .nav-dots { display: none; }
+    .slide { padding: 2rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV DOTS -->
+<nav class="nav-dots" aria-label="Slide navigation">
+  <a href="#title" title="Title"></a>
+  <a href="#problem" title="The Problem"></a>
+  <a href="#vision" title="The Vision"></a>
+  <a href="#sprint" title="The Build"></a>
+  <a href="#pipeline" title="The Pipeline"></a>
+  <a href="#agents" title="The Agents"></a>
+  <a href="#architecture" title="Architecture"></a>
+  <a href="#testing" title="Testing Infrastructure"></a>
+  <a href="#climax" title="The Moment"></a>
+  <a href="#results" title="Results"></a>
+  <a href="#decisions" title="Key Decisions"></a>
+  <a href="#close" title="Close"></a>
+</nav>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 1: TITLE                              -->
+<!-- =========================================== -->
+<section id="title" class="slide slide--title">
+  <div class="slide-inner" style="text-align: center;">
+    <div class="label">amplifier-bundle-reality-check</div>
+    <h1 style="font-size: 4rem; margin-bottom: 1.5rem;">
+      Reality Check
+    </h1>
+    <p class="subtitle" style="max-width: 640px; margin: 0 auto;">
+      When AI says "done," is it actually done?<br>
+      A verification pipeline that closes the gap between<br>
+      "tests pass" and "this actually works."
+    </p>
+  </div>
+  <div class="slide-footer">April 2026</div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 2: THE PROBLEM                        -->
+<!-- =========================================== -->
+<section id="problem" class="slide slide--problem">
+  <div class="slide-inner">
+    <div class="label" style="color: var(--fail);">The Problem</div>
+    <h2>AI-generated software gets verified<br>in the same context it was built in.</h2>
+    <div class="divider" style="background: var(--fail);"></div>
+    <div class="grid-2" style="margin-top: 2rem;">
+      <div class="card card--fail-left">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--fail);">Context Poisoning</h3>
+        <p style="margin: 0; font-size: 0.9rem;">Agents claim things work because the build conversation says so. They never test from a fresh perspective.</p>
+      </div>
+      <div class="card card--fail-left">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--fail);">Deployment Blind Spots</h3>
+        <p style="margin: 0; font-size: 0.9rem;">Issues go unsolved because agents never consider deployment details, dependencies, or real-world setup.</p>
+      </div>
+      <div class="card card--fail-left">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--fail);">Tests Pass != Works</h3>
+        <p style="margin: 0; font-size: 0.9rem;">"Tests pass" and "this actually works for a real user" are two very different statements.</p>
+      </div>
+      <div class="card card--fail-left">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--fail);">Manual Verification Still Required</h3>
+        <p style="margin: 0; font-size: 0.9rem;">The agent says it's done but verification still falls on you. "Done" becomes "please check this for me."</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 3: THE VISION                         -->
+<!-- =========================================== -->
+<section id="vision" class="slide slide--solution">
+  <div class="slide-inner">
+    <div class="label" style="color: var(--accent);">The Vision</div>
+    <h2>Five requirements for "done means done"</h2>
+    <div class="divider"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+      <div class="card card--accent-left" style="display: flex; align-items: center; gap: 1.25rem;">
+        <div class="pipeline-number">1</div>
+        <div>
+          <div style="font-weight: 600; color: var(--text-primary);">Understand user intention</div>
+          <div style="font-size: 0.875rem; color: var(--text-secondary);">The machine figures out what to test -- no manually written test plans.</div>
+        </div>
+      </div>
+      <div class="card card--accent-left" style="display: flex; align-items: center; gap: 1.25rem;">
+        <div class="pipeline-number">2</div>
+        <div>
+          <div style="font-weight: 600; color: var(--text-primary);">Build the environment itself</div>
+          <div style="font-size: 0.875rem; color: var(--text-secondary);">No manual configuration. Deploy into an isolated Digital Twin Universe automatically.</div>
+        </div>
+      </div>
+      <div class="card card--accent-left" style="display: flex; align-items: center; gap: 1.25rem;">
+        <div class="pipeline-number">3</div>
+        <div>
+          <div style="font-weight: 600; color: var(--text-primary);">Run validation autonomously</div>
+          <div style="font-size: 0.875rem; color: var(--text-secondary);">Real browser-based testing against the deployed app -- clicks, typing, screenshots.</div>
+        </div>
+      </div>
+      <div class="card card--accent-left" style="display: flex; align-items: center; gap: 1.25rem;">
+        <div class="pipeline-number">4</div>
+        <div>
+          <div style="font-weight: 600; color: var(--text-primary);">"Done" means done</div>
+          <div style="font-size: 0.875rem; color: var(--text-secondary);">You get a working demo and evidence report, not a checklist or a claim.</div>
+        </div>
+      </div>
+      <div class="card card--accent-left" style="display: flex; align-items: center; gap: 1.25rem;">
+        <div class="pipeline-number">5</div>
+        <div>
+          <div style="font-weight: 600; color: var(--text-primary);">General, not bespoke</div>
+          <div style="font-size: 0.875rem; color: var(--text-secondary);">A standard capability any agent can use. Not tied to a specific project or framework.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 5: THE SPRINT                         -->
+<!-- =========================================== -->
+<section id="sprint" class="slide">
+  <div class="slide-inner">
+    <div class="label" style="color: var(--accent);">The Build</div>
+    <h2>From vision to working pipeline</h2>
+    <div class="divider"></div>
+
+    <div class="timeline" style="margin-top: 2rem;">
+      <div class="timeline-item">
+        <div class="timeline-title">Synthesized the evidence-based testing vision</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-title">Scaffolded bundle, agents, and architecture</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-title">Built Intent Analyzer and Report agents</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-title">Created E2E test harness with injectable bugs</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-title">Assembled the 4-step pipeline recipe</div>
+      </div>
+      <div class="timeline-item highlight">
+        <div class="timeline-title" style="color: var(--warn);">Validated pipeline catches injected bugs</div>
+      </div>
+      <div class="timeline-item" style="margin-bottom: 0;">
+        <div class="timeline-title">Polish, cleanup, and fixture refinement</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 6: THE PIPELINE                       -->
+<!-- =========================================== -->
+<section id="pipeline" class="slide slide--solution">
+  <div class="slide-inner">
+    <div class="label" style="color: var(--accent);">The Pipeline</div>
+    <h2>Four steps from intent to evidence</h2>
+    <div class="divider"></div>
+
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="pipeline-number">1</div>
+        <div class="pipeline-title">Intent Analysis</div>
+        <div class="pipeline-desc">Reads specs, conversation history, and feedback to produce structured acceptance tests</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-number">2</div>
+        <div class="pipeline-title">DTU Launch</div>
+        <div class="pipeline-desc">Deploys the software in an isolated Digital Twin Universe environment</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-number">3</div>
+        <div class="pipeline-title">Browser Testing</div>
+        <div class="pipeline-desc">Drives real Chromium against the running app -- clicks, types, screenshots</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-number">4</div>
+        <div class="pipeline-title">Report</div>
+        <div class="pipeline-desc">Produces gap analysis YAML and self-contained HTML artifact with evidence</div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top: 1.5rem;">
+      <div class="card" style="border-color: var(--accent-dim);">
+        <div class="label">Input</div>
+        <p style="margin: 0; font-size: 0.9rem;">User spec, conversation history, the software repo -- the same artifacts that already exist from the build session. No additional setup required.</p>
+      </div>
+      <div class="card" style="border-color: var(--accent-dim);">
+        <div class="label">Output</div>
+        <p style="margin: 0; font-size: 0.9rem;">Structured <code>report.yaml</code>, self-contained <code>report.html</code> with embedded screenshots and verdict, and a <strong>running DTU environment</strong> you can open in a browser and explore.</p>
+      </div>
+    </div>
+    <div class="card" style="margin-top: 1rem; background: transparent; border-style: dashed; text-align: center;">
+      <p style="margin: 0; color: var(--text-muted); font-size: 0.85rem;">
+        Orchestrated as a flat <strong>Amplifier recipe</strong> -- each step's output flows into the next via templated variables. Runnable as a single command or step-by-step.
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 7: THE AGENTS                         -->
+<!-- =========================================== -->
+<section id="agents" class="slide">
+  <div class="slide-inner">
+    <div class="label" style="color: var(--accent);">The Agents</div>
+    <h2>Three specialists, one pipeline</h2>
+    <div class="divider"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+
+      <div class="card" style="border-left: 3px solid var(--accent); border-radius: 0 12px 12px 0;">
+        <div style="display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap;">Intent Analyzer</div>
+          <h3 style="font-size: 1.05rem; margin: 0;">"What does done mean?"</h3>
+        </div>
+        <p style="font-size: 0.85rem; margin: 0;">Reads specs, conversation history, and feedback to derive structured <strong>acceptance tests</strong> in YAML. Classifies software type (web app, CLI, API, library) and assigns <code>must</code>/<code>should</code>/<code>nice</code> priorities. Explicit requirements map to user statements; implicit requirements are inferred from context. Unknowns become documented assumptions.</p>
+      </div>
+
+      <div class="card" style="border-left: 3px solid var(--accent); border-radius: 0 12px 12px 0;">
+        <div style="display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap;">Browser Tester</div>
+          <h3 style="font-size: 1.05rem; margin: 0;">Real browser, real evidence</h3>
+        </div>
+        <p style="font-size: 0.85rem; margin: 0;">Drives Chromium via <code>agent-browser</code> CLI using accessibility-tree refs. Navigates, fills inputs, clicks buttons, waits for network idle, and takes <strong>screenshots at every checkpoint</strong>. Polls for interactive elements instead of fixed sleeps. One explicit PASS/FAIL/ERROR/SKIP per acceptance test -- no summarizing as "likely works."</p>
+      </div>
+
+      <div class="card" style="border-left: 3px solid var(--accent); border-radius: 0 12px 12px 0;">
+        <div style="display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap;">Report</div>
+          <h3 style="font-size: 1.05rem; margin: 0;">Gap analysis + self-contained HTML artifact</h3>
+        </div>
+        <p style="font-size: 0.85rem; margin: 0;">Fuzzy-matches validator results to acceptance tests. Produces <code>report.yaml</code> (structured data) and a <strong>self-contained <code>report.html</code></strong> with embedded base64 screenshots, color-coded verdict banner, test-by-test results table, and gap analysis. Verdict logic: any <code>must</code> failure = <span class="pill pill--fail">fail</span>, gaps remaining = <span class="pill pill--warn">partial</span>, all clear = <span class="pill pill--pass">pass</span>.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 8: ARCHITECTURE                       -->
+<!-- =========================================== -->
+<section id="architecture" class="slide slide--solution">
+  <div class="slide-inner">
+    <div class="label" style="color: var(--accent);">Architecture</div>
+    <h2>Data flow: from user intent to verification report</h2>
+    <div class="divider"></div>
+
+    <div class="arch-container">
+      <svg width="714pt" height="590pt" viewBox="0.00 0.00 714.00 590.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 586)">
+        <title>reality_check_architecture</title>
+        <polygon fill="white" stroke="transparent" points="-4,4 -4,-586 710,-586 710,4 -4,4"/>
+        <text text-anchor="middle" x="353" y="-566.8" font-family="Helvetica,sans-Serif" font-size="14.00">amplifier-bundle-reality-check</text>
+        <g id="clust1" class="cluster"><title>cluster_user_interactions</title><path fill="none" stroke="#666666" stroke-dasharray="5,2" d="M20,-477C20,-477 482,-477 482,-477 488,-477 494,-483 494,-489 494,-489 494,-539 494,-539 494,-545 488,-551 482,-551 482,-551 20,-551 20,-551 14,-551 8,-545 8,-539 8,-539 8,-489 8,-489 8,-483 14,-477 20,-477"/><text text-anchor="middle" x="251" y="-538.2" font-family="Helvetica,sans-Serif" font-size="11.00">User Interactions</text></g>
+        <g id="clust2" class="cluster"><title>cluster_reality_check</title><path fill="#f0f8f0" stroke="#2d7d46" d="M201,-92C201,-92 476,-92 476,-92 482,-92 488,-98 488,-104 488,-104 488,-425 488,-425 488,-431 482,-437 476,-437 476,-437 201,-437 201,-437 195,-437 189,-431 189,-425 189,-425 189,-104 189,-104 189,-98 195,-92 201,-92"/><text text-anchor="middle" x="338.5" y="-424.2" font-family="Helvetica,sans-Serif" font-size="11.00">amplifier-bundle-reality-check</text></g>
+        <g id="clust3" class="cluster"><title>cluster_validators</title><path fill="none" stroke="#999999" stroke-dasharray="5,2" d="M209,-177C209,-177 468,-177 468,-177 474,-177 480,-183 480,-189 480,-189 480,-237 480,-237 480,-243 474,-249 468,-249 468,-249 209,-249 209,-249 203,-249 197,-243 197,-237 197,-237 197,-189 197,-189 197,-183 203,-177 209,-177"/><text text-anchor="middle" x="338.5" y="-237.8" font-family="Helvetica,sans-Serif" font-size="9.00">Validators</text></g>
+        <g id="clust4" class="cluster"><title>cluster_dtu</title><path fill="none" stroke="#1a73e8" stroke-dasharray="5,2" d="M508,-278C508,-278 686,-278 686,-278 692,-278 698,-284 698,-290 698,-290 698,-424 698,-424 698,-430 692,-436 686,-436 686,-436 508,-436 508,-436 502,-436 496,-430 496,-424 496,-424 496,-290 496,-290 496,-284 502,-278 508,-278"/><text text-anchor="middle" x="597" y="-424" font-family="Helvetica,sans-Serif" font-size="10.00">amplifier-bundle-digital-twin-universe</text></g>
+        <g id="node1" class="node"><title>spec</title><polygon fill="#fff8e1" stroke="black" points="310,-522 160,-522 160,-486 316,-486 316,-516 310,-522"/><polyline fill="none" stroke="black" points="310,-522 310,-516 "/><polyline fill="none" stroke="black" points="316,-516 310,-516 "/><text text-anchor="middle" x="238" y="-500.3" font-family="Helvetica,sans-Serif" font-size="14.00">Spec / requirements</text></g>
+        <g id="node5" class="node"><title>intent</title><path fill="#c8e6c9" stroke="black" d="M311.5,-409C311.5,-409 212.5,-409 212.5,-409 206.5,-409 200.5,-403 200.5,-397 200.5,-397 200.5,-383 200.5,-383 200.5,-377 206.5,-371 212.5,-371 212.5,-371 311.5,-371 311.5,-371 317.5,-371 323.5,-377 323.5,-383 323.5,-383 323.5,-397 323.5,-397 323.5,-403 317.5,-409 311.5,-409"/><text text-anchor="middle" x="262" y="-393.8" font-family="Helvetica,sans-Serif" font-size="14.00">Intent Analyzer</text><text text-anchor="middle" x="262" y="-378.8" font-family="Helvetica,sans-Serif" font-size="14.00">agent</text></g>
+        <g id="edge3" class="edge"><title>spec-&gt;intent</title><path fill="none" stroke="black" d="M241.65,-485.99C243.92,-475.4 246.98,-461.11 250.04,-446.83"/><polygon fill="black" stroke="black" points="253.47,-447.51 252.14,-437 246.63,-446.04 253.47,-447.51"/></g>
+        <g id="node2" class="node"><title>conversation</title><polygon fill="#fff8e1" stroke="black" points="480,-523 334,-523 334,-485 486,-485 486,-517 480,-523"/><polyline fill="none" stroke="black" points="480,-523 480,-517 "/><polyline fill="none" stroke="black" points="486,-517 480,-517 "/><text text-anchor="middle" x="410" y="-507.8" font-family="Helvetica,sans-Serif" font-size="14.00">Agent conversation</text><text text-anchor="middle" x="410" y="-492.8" font-family="Helvetica,sans-Serif" font-size="14.00">history</text></g>
+        <g id="edge4" class="edge"><title>conversation-&gt;intent</title><path fill="none" stroke="black" d="M385.89,-484.76C370.84,-473.36 350.62,-458.07 330.89,-443.14"/><polygon fill="black" stroke="black" points="332.87,-440.24 322.78,-437 328.64,-445.82 332.87,-440.24"/></g>
+        <g id="node3" class="node"><title>feedback</title><polygon fill="#fff8e1" stroke="black" points="136,-523 16,-523 16,-485 142,-485 142,-517 136,-523"/><polyline fill="none" stroke="black" points="136,-523 136,-517 "/><polyline fill="none" stroke="black" points="142,-517 136,-517 "/><text text-anchor="middle" x="79" y="-507.8" font-family="Helvetica,sans-Serif" font-size="14.00">User feedback /</text><text text-anchor="middle" x="79" y="-492.8" font-family="Helvetica,sans-Serif" font-size="14.00">clarifications</text></g>
+        <g id="edge5" class="edge"><title>feedback-&gt;intent</title><path fill="none" stroke="black" d="M108.81,-484.76C128.34,-472.8 154.89,-456.55 180.4,-440.94"/><polygon fill="black" stroke="black" points="182.3,-443.88 189,-435.68 178.65,-437.91 182.3,-443.88"/></g>
+        <g id="node4" class="node"><title>software</title><polygon fill="#f5f5f5" stroke="black" points="668,-522 665,-526 644,-526 641,-522 504,-522 504,-486 668,-486 668,-522"/><text text-anchor="middle" x="586" y="-507.4" font-family="Helvetica,sans-Serif" font-size="12.00">Software</text><text text-anchor="middle" x="586" y="-494.4" font-family="Helvetica,sans-Serif" font-size="12.00">(repo, directory, artifact)</text></g>
+        <g id="node10" class="node"><title>profile_builder</title><path fill="#bbdefb" stroke="black" d="M643.5,-409C643.5,-409 520.5,-409 520.5,-409 514.5,-409 508.5,-403 508.5,-397 508.5,-397 508.5,-383 508.5,-383 508.5,-377 514.5,-371 520.5,-371 520.5,-371 643.5,-371 643.5,-371 649.5,-371 655.5,-377 655.5,-383 655.5,-383 655.5,-397 655.5,-397 655.5,-403 649.5,-409 643.5,-409"/><text text-anchor="middle" x="582" y="-393.8" font-family="Helvetica,sans-Serif" font-size="14.00">DTU Profile Builder</text><text text-anchor="middle" x="582" y="-378.8" font-family="Helvetica,sans-Serif" font-size="14.00">agent</text></g>
+        <g id="edge6" class="edge"><title>software-&gt;profile_builder</title><path fill="none" stroke="black" d="M585.39,-485.99C584.76,-468.38 583.77,-440.55 583.02,-419.55"/><polygon fill="black" stroke="black" points="586.51,-419.16 582.65,-409.29 579.51,-419.41 586.51,-419.16"/><text text-anchor="middle" x="616" y="-459" font-family="Helvetica,sans-Serif" font-size="10.00">builds profile</text><text text-anchor="middle" x="616" y="-448" font-family="Helvetica,sans-Serif" font-size="10.00">from</text></g>
+        <g id="node6" class="node"><title>criteria</title><polygon fill="#fff8e1" stroke="black" points="306,-324 218,-324 218,-286 312,-286 312,-318 306,-324"/><polyline fill="none" stroke="black" points="306,-324 306,-318 "/><polyline fill="none" stroke="black" points="312,-318 306,-318 "/><text text-anchor="middle" x="265" y="-308.8" font-family="Helvetica,sans-Serif" font-size="14.00">Verification</text><text text-anchor="middle" x="265" y="-293.8" font-family="Helvetica,sans-Serif" font-size="14.00">Criteria</text></g>
+        <g id="edge1" class="edge"><title>intent-&gt;criteria</title><path fill="none" stroke="black" d="M262.65,-370.99C263.04,-360.3 263.54,-346.5 263.97,-334.37"/><polygon fill="black" stroke="black" points="267.48,-334.38 264.34,-324.26 260.48,-334.13 267.48,-334.38"/><text text-anchor="middle" x="285.5" y="-345" font-family="Helvetica,sans-Serif" font-size="10.00">produces</text></g>
+        <g id="node7" class="node"><title>browser_tester</title><path fill="#c8e6c9" stroke="black" d="M312.5,-223C312.5,-223 217.5,-223 217.5,-223 211.5,-223 205.5,-217 205.5,-211 205.5,-211 205.5,-197 205.5,-197 205.5,-191 211.5,-185 217.5,-185 217.5,-185 312.5,-185 312.5,-185 318.5,-185 324.5,-191 324.5,-197 324.5,-197 324.5,-211 324.5,-211 324.5,-217 318.5,-223 312.5,-223"/><text text-anchor="middle" x="265" y="-207.8" font-family="Helvetica,sans-Serif" font-size="14.00">Browser Tester</text><text text-anchor="middle" x="265" y="-192.8" font-family="Helvetica,sans-Serif" font-size="14.00">agent</text></g>
+        <g id="edge7" class="edge"><title>criteria-&gt;browser_tester</title><path fill="none" stroke="black" d="M265,-285.84C265,-271.19 265,-250.31 265,-233.44"/><polygon fill="black" stroke="black" points="268.5,-233.04 265,-223.04 261.5,-233.04 268.5,-233.04"/></g>
+        <g id="node8" class="node"><title>other_validators</title><path fill="#c8e6c9" stroke="black" stroke-dasharray="5,2" d="M459.5,-223C459.5,-223 354.5,-223 354.5,-223 348.5,-223 342.5,-217 342.5,-211 342.5,-211 342.5,-197 342.5,-197 342.5,-191 348.5,-185 354.5,-185 354.5,-185 459.5,-185 459.5,-185 465.5,-185 471.5,-191 471.5,-197 471.5,-197 471.5,-211 471.5,-211 471.5,-217 465.5,-223 459.5,-223"/><text text-anchor="middle" x="407" y="-207.8" font-family="Helvetica,sans-Serif" font-size="14.00">Other validators</text><text text-anchor="middle" x="407" y="-192.8" font-family="Helvetica,sans-Serif" font-size="14.00">(CLI, API, ...)</text></g>
+        <g id="edge8" class="edge"><title>criteria-&gt;other_validators</title><path fill="none" stroke="black" d="M291.04,-285.84C313.96,-269.86 347.5,-246.48 372.62,-228.97"/><polygon fill="black" stroke="black" points="374.92,-231.63 381.12,-223.04 370.92,-225.89 374.92,-231.63"/></g>
+        <g id="node9" class="node"><title>reporter</title><path fill="#c8e6c9" stroke="black" d="M333,-138C333,-138 295,-138 295,-138 289,-138 283,-132 283,-126 283,-126 283,-112 283,-112 283,-106 289,-100 295,-100 295,-100 333,-100 333,-100 339,-100 345,-106 345,-112 345,-112 345,-126 345,-126 345,-132 339,-138 333,-138"/><text text-anchor="middle" x="314" y="-122.8" font-family="Helvetica,sans-Serif" font-size="14.00">Report</text><text text-anchor="middle" x="314" y="-107.8" font-family="Helvetica,sans-Serif" font-size="14.00">agent</text></g>
+        <g id="edge11" class="edge"><title>browser_tester-&gt;reporter</title><path fill="none" stroke="black" d="M275.63,-184.99C282.2,-173.86 290.75,-159.38 298.11,-146.91"/><polygon fill="black" stroke="black" points="301.15,-148.65 303.22,-138.26 295.12,-145.09 301.15,-148.65"/><text text-anchor="middle" x="309" y="-159" font-family="Helvetica,sans-Serif" font-size="10.00">results</text></g>
+        <g id="edge12" class="edge"><title>other_validators-&gt;reporter</title><path fill="none" stroke="black" stroke-dasharray="5,2" d="M386.82,-184.99C373.75,-173.32 356.54,-157.97 342.13,-145.11"/><polygon fill="black" stroke="black" points="344.25,-142.31 334.46,-138.26 339.59,-147.53 344.25,-142.31"/><text text-anchor="middle" x="383" y="-159" font-family="Helvetica,sans-Serif" font-size="10.00">results</text></g>
+        <g id="node12" class="node"><title>report</title><polygon fill="#ffcdd2" stroke="black" points="278,-44.5 192,-44.5 192,-8.5 284,-8.5 284,-38.5 278,-44.5"/><polyline fill="none" stroke="black" points="278,-44.5 278,-38.5 "/><polyline fill="none" stroke="black" points="284,-38.5 278,-38.5 "/><text text-anchor="middle" x="238" y="-29.7" font-family="Helvetica,sans-Serif" font-size="11.00">Reality Check</text><text text-anchor="middle" x="238" y="-17.7" font-family="Helvetica,sans-Serif" font-size="11.00">Report</text></g>
+        <g id="edge13" class="edge"><title>reporter-&gt;report</title><path fill="none" stroke="black" d="M298.62,-99.69C287.2,-86.09 271.5,-67.39 258.94,-52.43"/><polygon fill="black" stroke="black" points="261.44,-49.97 252.33,-44.56 256.08,-54.47 261.44,-49.97"/><text text-anchor="middle" x="304.5" y="-74" font-family="Helvetica,sans-Serif" font-size="10.00">produces</text></g>
+        <g id="node13" class="node"><title>visual</title><polygon fill="#ffcdd2" stroke="black" stroke-dasharray="5,2" points="469.5,-53 302.5,-53 302.5,0 475.5,0 475.5,-47 469.5,-53"/><polyline fill="none" stroke="black" stroke-dasharray="5,2" points="469.5,-53 469.5,-47 "/><polyline fill="none" stroke="black" stroke-dasharray="5,2" points="475.5,-47 469.5,-47 "/><text text-anchor="middle" x="389" y="-37.8" font-family="Helvetica,sans-Serif" font-size="14.00">User-facing</text><text text-anchor="middle" x="389" y="-22.8" font-family="Helvetica,sans-Serif" font-size="14.00">verification artifact</text><text text-anchor="middle" x="389" y="-7.8" font-family="Helvetica,sans-Serif" font-size="14.00">(visual, dashboard, ...)</text></g>
+        <g id="edge14" class="edge"><title>reporter-&gt;visual</title><path fill="none" stroke="black" stroke-dasharray="5,2" d="M329.18,-99.69C338.32,-88.65 350.25,-74.26 361.05,-61.23"/><polygon fill="black" stroke="black" points="363.91,-63.26 367.59,-53.33 358.52,-58.8 363.91,-63.26"/><text text-anchor="middle" x="375.5" y="-74" font-family="Helvetica,sans-Serif" font-size="10.00">generates</text></g>
+        <g id="node11" class="node"><title>dtu_env</title><path fill="#bbdefb" stroke="black" d="M597.5,-324C597.5,-324 516.5,-324 516.5,-324 510.5,-324 504.5,-318 504.5,-312 504.5,-312 504.5,-298 504.5,-298 504.5,-292 510.5,-286 516.5,-286 516.5,-286 597.5,-286 597.5,-286 603.5,-286 609.5,-292 609.5,-298 609.5,-298 609.5,-312 609.5,-312 609.5,-318 603.5,-324 597.5,-324"/><text text-anchor="middle" x="557" y="-308.8" font-family="Helvetica,sans-Serif" font-size="14.00">Digital Twin</text><text text-anchor="middle" x="557" y="-293.8" font-family="Helvetica,sans-Serif" font-size="14.00">Environment</text></g>
+        <g id="edge2" class="edge"><title>profile_builder-&gt;dtu_env</title><path fill="none" stroke="black" d="M576.58,-370.99C573.32,-360.19 569.11,-346.22 565.43,-334"/><polygon fill="black" stroke="black" points="568.74,-332.83 562.5,-324.26 562.03,-334.85 568.74,-332.83"/><text text-anchor="middle" x="592" y="-345" font-family="Helvetica,sans-Serif" font-size="10.00">launches</text></g>
+        <g id="edge9" class="edge"><title>dtu_env-&gt;browser_tester</title><path fill="none" stroke="black" d="M516.25,-285.93C508.33,-282.92 499.99,-280.1 492,-278 459.91,-269.55 450.66,-273.89 418,-268 399.17,-264.6 351.66,-256.37 334,-249 321.38,-243.74 308.49,-236.21 297.32,-228.87"/><polygon fill="black" stroke="black" points="299.01,-225.78 288.77,-223.06 295.08,-231.57 299.01,-225.78"/><text text-anchor="middle" x="450" y="-260" font-family="Helvetica,sans-Serif" font-size="10.00">tests against</text></g>
+        <g id="edge10" class="edge"><title>dtu_env-&gt;other_validators</title><path fill="none" stroke="black" stroke-dasharray="5,2" d="M529.49,-285.84C505.17,-269.79 469.54,-246.28 442.97,-228.74"/><polygon fill="black" stroke="black" points="444.61,-225.63 434.34,-223.04 440.76,-231.47 444.61,-225.63"/><text text-anchor="middle" x="531" y="-260" font-family="Helvetica,sans-Serif" font-size="10.00">tests against</text></g>
+        </g>
+      </svg>
+    </div>
+
+    <div style="text-align: center;">
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        Green = Reality Check agents &nbsp;&bull;&nbsp;
+        Blue = Digital Twin Universe &nbsp;&bull;&nbsp;
+        Yellow = Data artifacts &nbsp;&bull;&nbsp;
+        Red = Output artifacts &nbsp;&bull;&nbsp;
+        Dashed = Future/extensible
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 9: TESTING INFRASTRUCTURE             -->
+<!-- =========================================== -->
+<section id="testing" class="slide">
+  <div class="slide-inner">
+    <div class="label" style="color: var(--accent);">Testing Infrastructure</div>
+    <h2>Built to prove itself</h2>
+    <div class="divider"></div>
+    <p>A verification pipeline needs to be verifiable. The bundle ships with everything needed to test itself.</p>
+
+    <div class="grid-2" style="margin-top: 1.5rem;">
+      <div class="card card--accent-left">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Synthetic Test Fixtures</h3>
+        <p style="font-size: 0.85rem; margin-bottom: 0.5rem;">A <strong>79-line user spec</strong> and <strong>25-turn build conversation</strong> for Amplifier Chat -- realistic enough to stress-test intent analysis.</p>
+        <p style="font-size: 0.85rem; margin: 0; color: var(--text-muted);">Covers: chat interface, session history, pinning, slash commands, health endpoints, streaming, error handling.</p>
+      </div>
+      <div class="card card--accent-left">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Injectable Bug Patches</h3>
+        <p style="font-size: 0.85rem; margin-bottom: 0.5rem;">Two <strong>intentionally subtle</strong> bugs that can be injected with a <code>--with-bugs</code> flag:</p>
+        <p style="font-size: 0.85rem; margin: 0; color: var(--text-muted);"><strong>pin-persistence:</strong> wrong JSON key breaks save/load<br><strong>send-noop:</strong> <code>&&</code> to <code>||</code> silently blocks sending</p>
+      </div>
+      <div class="card card--accent-left">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">E2E Playground Script</h3>
+        <p style="font-size: 0.85rem; margin: 0;">One command sets up a self-contained test directory: clones a real app at a pinned commit, copies fixtures, optionally injects bugs. Ready to run the full pipeline against.</p>
+      </div>
+      <div class="card card--accent-left">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Step-by-Step Playground Guide</h3>
+        <p style="font-size: 0.85rem; margin: 0;">Documentation for manually testing each pipeline stage in isolation -- intent analysis, DTU launch, browser testing, report generation -- for development and debugging.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 10: VALIDATION                        -->
+<!-- =========================================== -->
+<section id="climax" class="slide slide--climax">
+  <div class="slide-inner">
+    <div class="label" style="color: var(--warn);">Validation</div>
+    <h2>The pipeline catches <span style="color: var(--warn);">intentionally injected bugs</span></h2>
+    <div class="divider" style="background: var(--warn);"></div>
+    <p>The bundle ships with an E2E playground that clones a real app and injects subtle bugs via <code>--with-bugs</code> to validate the full pipeline end to end.</p>
+
+    <div class="card" style="border: 1px solid rgba(245,158,11,0.3); background: var(--warn-glow); margin-top: 2rem;">
+      <div class="label" style="color: var(--warn);">Example: send-noop bug injection</div>
+      <p style="font-size: 0.95rem; margin-bottom: 1rem;">One of the injectable patches flips a guard condition from <code>&&</code> to <code>||</code>, silently blocking all text-only messages. The browser tester catches this because it actually types a message and clicks send.</p>
+
+      <div class="diff-block">
+        <span class="diff-context">  // Guard: don't send if no content AND no images</span>
+        <span class="diff-del">- if (!content && pendingImages.length === 0) return;</span>
+        <span class="diff-add">+ if (!content || pendingImages.length === 0) return;</span>
+      </div>
+
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">This is exactly the kind of subtle, silent regression that passes unit tests but fails real-world use.</p>
+    </div>
+
+    <div class="grid-3" style="margin-top: 1.5rem;">
+      <div class="card" style="text-align: center;">
+        <div class="stat-value" style="color: var(--fail);">FAIL</div>
+        <div class="stat-label">Pipeline detects the bug</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 1.2rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">Fix applied, DTU restarted</div>
+        <div class="stat-label">Pipeline re-run</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div class="stat-value" style="color: var(--pass);">PASS</div>
+        <div class="stat-label">All tests pass</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 11: RESULTS                           -->
+<!-- =========================================== -->
+<section id="results" class="slide slide--victory">
+  <div class="slide-inner">
+    <div class="label" style="color: var(--pass);">Results</div>
+    <h2>E2E validation run against Amplifier Chat</h2>
+    <div class="divider" style="background: var(--pass);"></div>
+    <p>Run against a version with intentionally injected bugs via <code>setup-e2e-playground.sh --with-bugs</code> to validate the pipeline catches real failures.</p>
+
+    <table class="results-table" style="margin-top: 1.5rem;">
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Evidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Chat page loads</strong></td>
+          <td>must</td>
+          <td><span class="pill pill--pass">pass</span></td>
+          <td>Title "Amplifier Chat", interactive in 6s</td>
+        </tr>
+        <tr>
+          <td><strong>Message input and send button visible</strong></td>
+          <td>must</td>
+          <td><span class="pill pill--pass">pass</span></td>
+          <td>Input @e5, button @e3 found via snapshot</td>
+        </tr>
+        <tr>
+          <td><strong>Send a message and get response</strong></td>
+          <td>must</td>
+          <td><span class="pill pill--fail">fail</span></td>
+          <td style="color: var(--fail);">doSend() guard blocks text-only sends</td>
+        </tr>
+        <tr>
+          <td><strong>Session history sidebar</strong></td>
+          <td>must</td>
+          <td><span class="pill pill--pass">pass</span></td>
+          <td>Sidebar renders with conversation list</td>
+        </tr>
+        <tr>
+          <td><strong>Pin a conversation</strong></td>
+          <td>should</td>
+          <td><span class="pill pill--pass">pass</span></td>
+          <td>Pin icon visible, toggles state</td>
+        </tr>
+        <tr>
+          <td><strong>Health endpoint returns 200</strong></td>
+          <td>must</td>
+          <td><span class="pill pill--pass">pass</span></td>
+          <td>GET /chat/health returns JSON</td>
+        </tr>
+        <tr>
+          <td><strong>Streaming response renders progressively</strong></td>
+          <td>should</td>
+          <td><span class="pill pill--pass">pass</span></td>
+          <td>SSE chunks arrive, DOM updates live</td>
+        </tr>
+        <tr>
+          <td><strong>Slash commands (/help, /clear)</strong></td>
+          <td>should</td>
+          <td><span class="pill pill--pass">pass</span></td>
+          <td>/help shows command list</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="grid-3" style="margin-top: 2rem;">
+      <div class="card card--pass-left" style="text-align: center;">
+        <div class="stat-value" style="color: var(--pass);">7/8</div>
+        <div class="stat-label">Tests passed (after fix: 8/8)</div>
+      </div>
+      <div class="card card--pass-left" style="text-align: center;">
+        <div class="stat-value" style="color: var(--pass);">24</div>
+        <div class="stat-label">Screenshots captured</div>
+      </div>
+      <div class="card card--warn-left" style="text-align: center;">
+        <div class="stat-value" style="color: var(--warn);">PARTIAL</div>
+        <div class="stat-label">Verdict (before fix)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 12: KEY DESIGN DECISIONS              -->
+<!-- =========================================== -->
+<section id="decisions" class="slide">
+  <div class="slide-inner">
+    <div class="label" style="color: var(--accent);">Key Decisions</div>
+    <h2>Design choices that shaped the bundle</h2>
+    <div class="divider"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem;">
+      <div class="card card--accent-left">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <strong>Separate bundle, not a DTU feature</strong>
+          <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">SEPARATION OF CONCERNS</span>
+        </div>
+        <p style="font-size: 0.85rem; margin: 0.5rem 0 0;">Reality Check depends on DTU but lives in its own bundle. Verification is a distinct capability -- any environment provider could back it.</p>
+      </div>
+      <div class="card card--accent-left">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <strong>"Acceptance tests" not "contracts"</strong>
+          <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">SIMPLICITY</span>
+        </div>
+        <p style="font-size: 0.85rem; margin: 0.5rem 0 0;">The initial "contract" abstraction was too unfamiliar. Mapping to acceptance tests -- a known software engineering concept -- made the pipeline legible.</p>
+      </div>
+      <div class="card card--accent-left">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <strong>DTU left running after pipeline</strong>
+          <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">USER EXPERIENCE</span>
+        </div>
+        <p style="font-size: 0.85rem; margin: 0.5rem 0 0;">The environment stays up so the user can explore the deployed app themselves -- a working demo, not just a report.</p>
+      </div>
+      <div class="card card--accent-left">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <strong>One result row per acceptance test</strong>
+          <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">EXHAUSTIVENESS</span>
+        </div>
+        <p style="font-size: 0.85rem; margin: 0.5rem 0 0;">Early runs showed the browser tester skipping criteria. Now every acceptance test must have an explicit PASS, FAIL, ERROR, or SKIP -- no summarizing as "likely works."</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- =========================================== -->
+<!-- SLIDE 13: CLOSING                           -->
+<!-- =========================================== -->
+<section id="close" class="slide slide--title">
+  <div class="slide-inner" style="text-align: center;">
+    <h1 style="font-size: 3.15rem; margin-bottom: 1rem;">
+      "Done" should mean done.
+    </h1>
+    <div class="divider" style="margin: 1.5rem auto;"></div>
+    <p class="subtitle" style="max-width: 600px; margin: 0 auto 2.5rem;">
+      Reality Check turns "I think it works" into "here's the evidence."
+      <br><br>
+      A verification pipeline that autonomously validates what was built<br>against what was asked for.
+    </p>
+
+    <div class="grid-3" style="max-width: 600px; margin: 2rem auto 0;">
+      <div>
+        <div style="font-weight: 700; color: var(--accent); font-size: 1.1rem;">Intent</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">What does done mean?</div>
+      </div>
+      <div>
+        <div style="font-weight: 700; color: var(--accent); font-size: 1.1rem;">Environment</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Deploy it for real</div>
+      </div>
+      <div>
+        <div style="font-weight: 700; color: var(--accent); font-size: 1.1rem;">Evidence</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Prove it works</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 3rem;">
+      <code style="font-size: 0.8rem; padding: 0.5em 1em;">amplifier-bundle-reality-check v0.1.0</code>
+    </div>
+  </div>
+  <div class="slide-footer">Built with Amplifier</div>
+</section>
+
+
+<!-- CLICK ZONES -->
+<div class="click-zone click-zone--prev" id="prevZone" title="Previous slide"></div>
+<div class="click-zone click-zone--next" id="nextZone" title="Next slide"></div>
+
+<!-- SLIDE COUNTER -->
+<div class="slide-counter" id="slideCounter"></div>
+
+<script>
+(function() {
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dots = Array.from(document.querySelectorAll('.nav-dots a'));
+  const counter = document.getElementById('slideCounter');
+  let current = 0;
+
+  function show(index) {
+    if (index < 0 || index >= slides.length) return;
+    slides[current].classList.remove('active');
+    slides[index].classList.add('active');
+    dots.forEach((d, i) => d.classList.toggle('active', i === index));
+    counter.textContent = (index + 1) + ' / ' + slides.length;
+    current = index;
+  }
+
+  // Initialize first slide
+  slides[0].classList.add('active');
+  show(0);
+
+  // Click zones
+  document.getElementById('prevZone').addEventListener('click', () => show(current - 1));
+  document.getElementById('nextZone').addEventListener('click', () => show(current + 1));
+
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault();
+      show(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      show(current - 1);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      show(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      show(slides.length - 1);
+    }
+  });
+
+  // Nav dots click
+  dots.forEach((dot, i) => {
+    dot.addEventListener('click', (e) => {
+      e.preventDefault();
+      show(i);
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
