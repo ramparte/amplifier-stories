@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lookbook: A Dataset for UI Convergence</title>
+<style>
+  :root {
+    --accent: #6366F1;
+    --accent-dim: rgba(99, 102, 241, 0.14);
+    --accent-border: rgba(99, 102, 241, 0.32);
+    --accent-light: #818CF8;
+    --surface-1: rgba(255,255,255,0.06);
+    --surface-2: rgba(255,255,255,0.10);
+    --surface-3: rgba(255,255,255,0.15);
+    --border-subtle: rgba(255,255,255,0.12);
+    --border-visible: rgba(255,255,255,0.18);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255,255,255,0.72);
+    --text-tertiary: rgba(255,255,255,0.50);
+    --font-headline: clamp(36px, 7vw, 68px);
+    --font-medium-headline: clamp(24px, 4.5vw, 46px);
+    --font-subhead: clamp(16px, 2.5vw, 28px);
+    --font-big-number: clamp(56px, 16vw, 160px);
+    --padding-slide: clamp(32px, 6vw, 80px);
+    --gap-grid: clamp(14px, 2.5vw, 28px);
+    --radius-card: clamp(12px, 1.5vw, 16px);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+    overscroll-behavior: none;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* ─── Slide Container ─── */
+  .deck {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    padding: var(--padding-slide);
+    overflow-y: auto;
+    overflow-x: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* ─── Typography ─── */
+  .label {
+    font-size: clamp(11px, 1.4vw, 13px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--accent-light);
+    margin-bottom: clamp(10px, 2vw, 18px);
+  }
+
+  .headline {
+    font-size: var(--font-headline);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    color: var(--text-primary);
+  }
+
+  .subhead {
+    font-size: var(--font-subhead);
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--text-secondary);
+  }
+
+  .medium-headline {
+    font-size: var(--font-medium-headline);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    color: var(--text-primary);
+  }
+
+  .big-number {
+    font-size: var(--font-big-number);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  /* ─── Cards ─── */
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: clamp(16px, 3vw, 26px);
+  }
+  .card h3 { color: var(--text-primary); font-size: clamp(14px, 2vw, 18px); font-weight: 600; margin-bottom: 8px; }
+  .card h4 { color: var(--text-primary); font-size: clamp(13px, 1.8vw, 16px); font-weight: 600; margin-bottom: 6px; }
+  .card p, .card li { color: var(--text-secondary); font-size: clamp(13px, 1.6vw, 15px); line-height: 1.55; }
+  .card ul { padding-left: 18px; }
+  .card ul li { margin-bottom: 5px; }
+
+  .card-accent {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+  }
+
+  /* ─── Grid Layouts ─── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+    gap: var(--gap-grid);
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    gap: var(--gap-grid);
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+    gap: var(--gap-grid);
+  }
+
+  /* ─── Code / Schema Blocks ─── */
+  .code-block {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: clamp(10px, 2vw, 16px) clamp(14px, 3vw, 22px);
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: clamp(11px, 1.5vw, 13px);
+    line-height: 1.7;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  .schema-block {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: clamp(12px, 2vw, 18px) clamp(16px, 3vw, 22px);
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: clamp(11px, 1.4vw, 12.5px);
+    line-height: 1.75;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  /* Syntax colors */
+  .c-root   { color: var(--accent-light); }
+  .c-struct  { color: #93C5FD; }
+  .c-leaf   { color: #4ADE80; }
+  .c-new    { color: #34D399; font-weight: 600; }
+  .c-dim    { color: var(--text-tertiary); }
+  .c-prompt { color: #FCD34D; }
+  .c-result { color: #4ADE80; }
+  .c-fn     { color: var(--accent-light); }
+  .c-key    { color: #818CF8; }
+  .c-str    { color: #FCD34D; }
+  .c-num    { color: #4ADE80; }
+  .c-comment{ color: var(--text-tertiary); }
+  .c-obj    { color: var(--text-secondary); }
+
+  /* ─── Spacers ─── */
+  .spacer-sm { height: clamp(10px, 2vw, 20px); }
+  .spacer-md { height: clamp(18px, 3.5vw, 36px); }
+  .spacer-lg { height: clamp(28px, 5vw, 56px); }
+
+  /* ─── Status Badges ─── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 9999px;
+    font-size: clamp(11px, 1.3vw, 13px);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .badge-experimental {
+    background: rgba(99, 102, 241, 0.14);
+    border: 1px solid rgba(99, 102, 241, 0.32);
+    color: #818CF8;
+  }
+  .badge-active {
+    background: rgba(74, 222, 128, 0.12);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    color: #4ADE80;
+  }
+  .badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* ─── Pipeline Flow ─── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: clamp(6px, 1.5vw, 12px);
+    flex-wrap: wrap;
+  }
+  .pipeline-step {
+    background: var(--surface-2);
+    border: 1px solid var(--border-visible);
+    border-radius: 8px;
+    padding: clamp(8px, 1.5vw, 12px) clamp(12px, 2.5vw, 20px);
+    font-size: clamp(12px, 1.6vw, 14px);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  .pipeline-step.accent {
+    background: var(--accent-dim);
+    border-color: var(--accent-border);
+    color: var(--accent-light);
+  }
+  .pipeline-arrow {
+    color: var(--text-tertiary);
+    font-size: clamp(14px, 2vw, 18px);
+  }
+
+  /* ─── Equation Block ─── */
+  .equation-block {
+    background: rgba(99, 102, 241, 0.07);
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    border-radius: var(--radius-card);
+    padding: clamp(20px, 4vw, 40px) clamp(24px, 5vw, 48px);
+  }
+  .eq-line {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: clamp(13px, 2vw, 18px);
+    line-height: 1.75;
+    color: var(--text-secondary);
+  }
+  .eq-line + .eq-line {
+    margin-top: 6px;
+  }
+  .eq-divider {
+    border-top: 1px solid rgba(255,255,255,0.07);
+    margin: clamp(14px, 2.5vw, 22px) 0;
+  }
+
+  /* ─── Title Meta ─── */
+  .title-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .title-meta-item {
+    font-size: clamp(12px, 1.6vw, 14px);
+    color: var(--text-tertiary);
+  }
+  .title-meta-sep { color: rgba(255,255,255,0.2); }
+
+  /* ─── Highlight Box ─── */
+  .highlight-box {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: var(--radius-card);
+    padding: clamp(14px, 2.5vw, 22px) clamp(18px, 3vw, 28px);
+  }
+
+  /* ─── Stat Row ─── */
+  .stat-row {
+    display: flex;
+    align-items: baseline;
+    gap: clamp(8px, 1.5vw, 14px);
+    flex-wrap: wrap;
+  }
+  .stat-number {
+    font-size: clamp(52px, 12vw, 120px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: clamp(14px, 2vw, 18px);
+    color: var(--text-secondary);
+    font-weight: 500;
+    line-height: 1.45;
+  }
+
+  /* ─── Tree Split Layout ─── */
+  .tree-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gap-grid);
+    align-items: start;
+  }
+  @media (max-width: 800px) {
+    .tree-split { grid-template-columns: 1fr; }
+  }
+
+  /* ─── Convergence Columns ─── */
+  .conv-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--gap-grid);
+  }
+  @media (max-width: 800px) {
+    .conv-grid { grid-template-columns: 1fr; }
+  }
+
+  .conv-col {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: clamp(14px, 2.5vw, 22px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .conv-col.converged {
+    border-color: var(--accent-border);
+    background: var(--accent-dim);
+  }
+
+  .conv-col-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .version-tag {
+    display: inline-block;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: clamp(11px, 1.3vw, 13px);
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+  }
+  .version-tag.accent {
+    background: var(--accent-dim);
+    border-color: var(--accent-border);
+    color: var(--accent-light);
+  }
+  .conv-col-title {
+    font-size: clamp(12px, 1.6vw, 14px);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .mini-tree {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: clamp(10px, 1.25vw, 11.5px);
+    line-height: 1.65;
+    white-space: pre;
+    color: var(--text-secondary);
+  }
+
+  .conv-delta {
+    font-size: clamp(11px, 1.4vw, 12px);
+    color: var(--text-tertiary);
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    line-height: 1.55;
+  }
+  .conv-delta strong { color: #34D399; }
+
+  /* ─── Mini Stat Pills ─── */
+  .mini-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: clamp(12px, 1.5vw, 13px);
+    color: var(--text-secondary);
+  }
+  .mini-pill strong { color: var(--text-primary); }
+
+  /* ─── Sources List ─── */
+  .sources-item {
+    display: flex;
+    gap: 14px;
+    padding: clamp(10px, 1.8vw, 14px) 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    align-items: flex-start;
+  }
+  .sources-bullet {
+    color: var(--accent-light);
+    font-size: 18px;
+    line-height: 1.3;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .sources-text {
+    font-size: clamp(13px, 1.7vw, 15px);
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .sources-text code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.88em;
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+  .sources-text em {
+    color: var(--accent-light);
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  /* ─── CTA Grid ─── */
+  .cta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: var(--gap-grid);
+  }
+  .cta-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: clamp(18px, 3vw, 26px);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .cta-card .icon { font-size: clamp(28px, 5vw, 40px); }
+  .cta-card h4 { font-size: clamp(14px, 2vw, 17px); font-weight: 600; color: var(--text-primary); }
+  .cta-card p  { font-size: clamp(12px, 1.6vw, 14px); color: var(--text-secondary); line-height: 1.5; }
+  .cta-card code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.88em;
+    color: var(--accent-light);
+    background: var(--accent-dim);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  /* ─── Column label ─── */
+  .col-label {
+    font-size: clamp(11px, 1.3vw, 12px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+  }
+
+  /* ─── Navigation ─── */
+  .nav-dots {
+    position: fixed;
+    bottom: clamp(16px, 2.5vw, 24px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+    border: none;
+  }
+  .nav-dot.active {
+    background: var(--accent);
+    transform: scale(1.3);
+  }
+
+  .slide-counter {
+    position: fixed;
+    bottom: clamp(16px, 2.5vw, 24px);
+    right: clamp(20px, 3vw, 32px);
+    font-size: clamp(11px, 1.3vw, 13px);
+    color: var(--text-tertiary);
+    font-weight: 500;
+    letter-spacing: 1px;
+    z-index: 100;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .click-prev {
+    position: fixed;
+    left: 0; top: 0;
+    width: 30%; height: 100%;
+    z-index: 50;
+    cursor: w-resize;
+  }
+  .click-next {
+    position: fixed;
+    right: 0; top: 0;
+    width: 30%; height: 100%;
+    z-index: 50;
+    cursor: e-resize;
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 1 — TITLE                     ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide active" id="slide-1">
+    <div class="label">Lookbook · Amplifier Research</div>
+    <div class="headline">Lookbook</div>
+    <div class="spacer-sm"></div>
+    <div style="font-size: clamp(18px, 3.5vw, 36px); font-weight: 400; color: var(--text-secondary); line-height: 1.35; max-width: 760px;">
+      A dataset for UI convergence.<br>
+      Collecting <span style="color:var(--text-primary);font-weight:500;">(prompt → component tree)</span> pairs<br>
+      to make AI-assisted UI generation predictable.
+    </div>
+    <div class="spacer-md"></div>
+    <div class="title-meta">
+      <span class="badge badge-experimental"><span class="badge-dot"></span>Experimental</span>
+      <span class="title-meta-sep">·</span>
+      <span class="title-meta-item">April 2, 2026</span>
+      <span class="title-meta-sep">·</span>
+      <span class="title-meta-item">kenotron-ms/lookbook</span>
+      <span class="title-meta-sep">·</span>
+      <span class="title-meta-item">Ken Chau</span>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 2 — THE PROBLEM               ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide" id="slide-2">
+    <div class="label">The Problem</div>
+    <div class="medium-headline">UI generation is powerful.<br>But it's unpredictable.</div>
+    <div class="spacer-md"></div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>No structural preview</h3>
+        <p>You can't know what components will be generated before running generation. The output — the tree, the depth, the node count — is a surprise every time, even from the same prompt.</p>
+      </div>
+      <div class="card">
+        <h3>The topology is invisible</h3>
+        <p>You see the rendered UI. You don't see the component hierarchy that produced it. There's no intermediate representation between "prompt" and "compiled pixels" to reason about.</p>
+      </div>
+      <div class="card">
+        <h3>Reuse is hard to predict</h3>
+        <p>Without knowing which components will appear, you can't predict cross-app reusability or check design system coverage before generating. You discover the architecture after the fact.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>The pattern exists — it's just uncaptured</h3>
+        <p>AI-assisted UI generation isn't random. Similar prompts tend to produce similar component topologies. This convergence pattern has never been systematically collected or studied.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 3 — THE HYPOTHESIS            ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide" id="slide-3">
+    <div class="label">The Hypothesis</div>
+    <div class="medium-headline">prompt → component tree<br>is a learnable function.</div>
+    <div class="spacer-md"></div>
+
+    <div class="equation-block">
+      <div class="eq-line">
+        <span class="c-fn">f</span> <span class="c-obj">:</span> <span class="c-prompt">PromptSpace</span>  <span class="c-dim">→</span>  <span class="c-result">ComponentTreeSpace</span>
+      </div>
+      <div class="eq-line" style="color:var(--text-tertiary); font-size: clamp(11px,1.5vw,13px); margin-top:4px;">
+        Given enough (prompt, tree) pairs, derive the mapping between them.
+      </div>
+      <div class="eq-divider"></div>
+      <div class="eq-line">
+        <span class="c-fn">f</span>(<span class="c-prompt">"Build Claude.ai chat with artifacts, thinking blocks, Projects sidebar"</span>)
+      </div>
+      <div class="eq-line" style="padding-left: clamp(16px,2vw,22px);">
+        <span class="c-dim">→</span>  <span class="c-result">{ root: SageLayout, nodes: 9, depth: 3, loc: 1665 }</span>
+      </div>
+      <div class="eq-divider"></div>
+      <div class="eq-line">
+        <span class="c-fn">g</span> <span class="c-obj">:</span> <span class="c-result">ComponentTreeSpace</span>  <span class="c-dim">→</span>  <span class="c-prompt">PromptSpace</span>   <span class="c-dim" style="font-size:0.85em;">(the reverse)</span>
+      </div>
+      <div class="eq-line">
+        <span class="c-fn">g</span>(<span class="c-result">{ root: SageLayout, children: [Sidebar, ChatArea, ArtifactsPanel] }</span>)
+      </div>
+      <div class="eq-line" style="padding-left: clamp(16px,2vw,22px);">
+        <span class="c-dim">→</span>  <span class="c-prompt">"Build a Claude.ai-style agentic chat interface with..."</span>
+      </div>
+    </div>
+
+    <div class="spacer-md"></div>
+    <div class="grid-3">
+      <div class="card">
+        <h3>Forward: f(prompt) → tree</h3>
+        <p>Predict the component hierarchy before any code is generated. Use for prompt engineering, complexity estimation, and design system planning.</p>
+      </div>
+      <div class="card">
+        <h3>Reverse: g(tree) → prompt</h3>
+        <p>Given an existing component hierarchy, reconstruct the prompt space it belongs to. Enables reverse-engineering of existing apps and identifying shared architectures.</p>
+      </div>
+      <div class="card card-accent">
+        <h3>The prerequisite: data</h3>
+        <p>Neither function can be derived without a corpus of (prompt, component_tree) pairs. Lookbook is the collection infrastructure for that corpus.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 4 — THE METHOD                ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide" id="slide-4">
+    <div class="label">The Method</div>
+    <div class="medium-headline">Build a corpus of<br>(prompt, component_tree) pairs.</div>
+    <div class="spacer-md"></div>
+
+    <div class="pipeline">
+      <div class="pipeline-step accent">Take a prompt</div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step">Generate iteratively<br><span style="font-size:0.85em;color:var(--text-tertiary);">via UI Studio</span></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step accent">Capture component hierarchy</div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step">Store the pair<br><span style="font-size:0.85em;color:var(--text-tertiary);">as a dataset entry</span></div>
+    </div>
+
+    <div class="spacer-md"></div>
+
+    <div class="grid-2">
+      <div>
+        <div class="col-label">Each dataset entry records:</div>
+        <div class="schema-block"><span class="c-obj">{</span>
+  <span class="c-key">"id"</span>          <span class="c-obj">:</span> <span class="c-str">"sage"</span>                    <span class="c-comment">// app slug</span>
+  <span class="c-key">"prompt"</span>      <span class="c-obj">:</span> <span class="c-str">"Build Claude.ai chat with
+                   artifacts, thinking, Projects"</span>
+  <span class="c-key">"component_tree"</span> <span class="c-obj">:</span> <span class="c-obj">{</span>
+    <span class="c-key">"root"</span>     <span class="c-obj">:</span> <span class="c-str">"SageLayout"</span>             <span class="c-comment">// entry component</span>
+    <span class="c-key">"nodes"</span>    <span class="c-obj">:</span> <span class="c-num">9</span>                        <span class="c-comment">// .jsx file count</span>
+    <span class="c-key">"depth"</span>    <span class="c-obj">:</span> <span class="c-num">3</span>                        <span class="c-comment">// nesting levels</span>
+    <span class="c-key">"loc_total"</span><span class="c-obj">:</span> <span class="c-num">1665</span>                     <span class="c-comment">// lines of code</span>
+  <span class="c-obj">}</span>
+  <span class="c-key">"iterations"</span> <span class="c-obj">:</span> <span class="c-num">3</span>                        <span class="c-comment">// v1, v2, v3</span>
+  <span class="c-key">"pipeline"</span>   <span class="c-obj">:</span> <span class="c-str">"amplifier-ui-studio"</span>
+  <span class="c-key">"author"</span>     <span class="c-obj">:</span> <span class="c-str">"Ken Chau"</span>
+  <span class="c-key">"date"</span>       <span class="c-obj">:</span> <span class="c-str">"2026-03-29"</span>
+<span class="c-obj">}</span></div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom: var(--gap-grid);">
+          <h3>What makes this a dataset, not a gallery</h3>
+          <p>A typical lookbook is a visual showcase. This one captures the <strong style="color:var(--text-primary);">structure behind the visuals</strong> — the component tree with nesting depth, node count, and iteration history.</p>
+          <br>
+          <p>The goal isn't to demonstrate quality. It's to record <strong style="color:var(--text-primary);">what topology a given prompt produces</strong>, so we can study the mapping over many examples.</p>
+        </div>
+        <div class="card card-accent">
+          <h3>Iteration snapshots are first-class data</h3>
+          <p>Capturing v1, v2, and v3 of each app isn't just documentation — it shows how the component tree evolves as prompts become more specific. That evolution path is itself a data signal.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 5 — ONE DATA POINT: SAGE      ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide" id="slide-5">
+    <div class="label">Data Point #001 · Sage</div>
+    <div class="medium-headline">The prompt. The tree.</div>
+    <div class="spacer-md"></div>
+
+    <div class="tree-split">
+      <div>
+        <div class="col-label">Source prompt</div>
+        <div class="code-block" style="font-size:clamp(12px,1.6vw,14px);"><span class="c-prompt">"Build a Claude.ai-style chat interface
+ with artifacts panel, thinking blocks,
+ tool call displays, Projects sidebar."</span></div>
+        <div class="spacer-sm"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="mini-pill"><strong>9</strong> components (.jsx files)</div>
+          <div class="mini-pill"><strong>1,665</strong> LOC (total)</div>
+          <div class="mini-pill"><strong>3</strong> iterations</div>
+          <div class="mini-pill">depth <strong>3</strong></div>
+        </div>
+        <div class="spacer-sm"></div>
+        <div class="highlight-box">
+          <div style="font-size:clamp(12px,1.6vw,14px);color:var(--text-secondary);line-height:1.6;">
+            <strong style="color:var(--accent-light);">9 .jsx files verified:</strong> Layout, Sidebar, ChatArea, MessageBubble, ThinkingBlock, ToolCallCard, ArtifactsPanel, InputBar, ComposeModal.
+            LOC: 358 + 341 + 312 + 237 + 203 + 113 + 63 + 33 + 5 = <strong style="color:var(--text-primary);">1,665</strong>.
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-label">Resultant component hierarchy</div>
+        <div class="code-block"><span class="c-root">&lt;SageLayout&gt;</span>              <span class="c-dim">← Layout.jsx</span>
+ ├── <span class="c-struct">&lt;Sidebar&gt;</span>             <span class="c-dim">← Sidebar.jsx (358 LOC)</span>
+ │    ├── <span class="c-leaf">ProjectsList</span>
+ │    └── <span class="c-leaf">NewConversation</span>
+ ├── <span class="c-struct">&lt;ChatArea&gt;</span>            <span class="c-dim">← ChatArea.jsx (113 LOC)</span>
+ │    ├── <span class="c-struct">&lt;MessageBubble&gt;</span>     <span class="c-dim">← MessageBubble.jsx</span>
+ │    │    ├── <span class="c-leaf">ThinkingBlock</span>  <span class="c-dim">← ThinkingBlock.jsx</span>
+ │    │    └── <span class="c-leaf">ToolCallCard</span>   <span class="c-dim">← ToolCallCard.jsx</span>
+ │    ├── <span class="c-struct">&lt;ArtifactsPanel&gt;</span>    <span class="c-dim">← ArtifactsPanel.jsx</span>
+ │    │    ├── <span class="c-leaf">ArtifactViewer</span>
+ │    │    └── <span class="c-leaf">ArtifactTabs</span>
+ │    └── <span class="c-struct">&lt;InputBar&gt;</span>          <span class="c-dim">← InputBar.jsx (341 LOC)</span>
+ │         ├── <span class="c-leaf">TextArea</span>
+ │         ├── <span class="c-leaf">AttachButton</span>
+ │         └── <span class="c-leaf">SendButton</span>
+<span class="c-dim">└── &lt;ComposeModal&gt;          ← ComposeModal.jsx (5 LOC)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 6 — CONVERGENCE               ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide" id="slide-6">
+    <div class="label">Convergence · Sage v1 → v2 → v3</div>
+    <div class="medium-headline">How the tree stabilizes with iteration.</div>
+    <div class="spacer-md"></div>
+
+    <div class="conv-grid">
+      <div class="conv-col">
+        <div class="conv-col-header">
+          <span class="version-tag">v1</span>
+          <span class="conv-col-title">First interpretation</span>
+        </div>
+        <div class="mini-tree"><span class="c-root">App</span>
+├── <span class="c-struct">Sidebar</span>
+│    └── <span class="c-leaf">ConversationList</span>
+├── <span class="c-struct">ChatArea</span>
+│    ├── <span class="c-leaf">Messages</span>
+│    ├── <span class="c-leaf">Artifacts</span>
+│    └── <span class="c-leaf">InputBar</span>
+└── <span class="c-dim">...</span></div>
+        <div class="conv-delta">
+          ~6 regions · shallow structure · no agentic nodes · visual-reference only · 7,566 lines added (26 files)
+        </div>
+      </div>
+
+      <div class="conv-col">
+        <div class="conv-col-header">
+          <span class="version-tag">v2</span>
+          <span class="conv-col-title">Agentic layer added</span>
+        </div>
+        <div class="mini-tree"><span class="c-root">SageLayout</span>
+├── <span class="c-struct">Sidebar</span>
+│    ├── <span class="c-leaf">ProjectsList</span>
+│    └── <span class="c-leaf">ConversationList</span>
+├── <span class="c-struct">ChatWindow</span>
+│    ├── <span class="c-struct">MessageList</span>
+│    │    ├── <span class="c-leaf">MessageBubble</span>
+│    │    ├── <span class="c-new">ThinkingBlock ←</span>
+│    │    └── <span class="c-new">ToolCallCard ←</span>
+│    ├── <span class="c-leaf">ArtifactsPanel</span>
+│    └── <span class="c-leaf">InputBar</span></div>
+        <div class="conv-delta">
+          <strong>+ThinkingBlock, +ToolCallCard</strong> · hierarchy deepens · Projects sidebar added · +2,924 ins / −1,964 del
+        </div>
+      </div>
+
+      <div class="conv-col converged">
+        <div class="conv-col-header">
+          <span class="version-tag accent">v3</span>
+          <span class="conv-col-title" style="color:var(--accent-light);">Converged (pixel-accurate)</span>
+        </div>
+        <div class="mini-tree"><span class="c-root">SageLayout</span>
+├── <span class="c-struct">Sidebar</span>
+│    ├── <span class="c-leaf">ProjectsList</span>
+│    └── <span class="c-new">NewConversation ←</span>
+├── <span class="c-struct">ChatArea</span>
+│    ├── <span class="c-struct">MessageBubble</span>
+│    │    ├── <span class="c-leaf">ThinkingBlock</span>
+│    │    └── <span class="c-leaf">ToolCallCard</span>
+│    ├── <span class="c-struct">ArtifactsPanel</span>
+│    │    ├── <span class="c-new">ArtifactViewer ←</span>
+│    │    └── <span class="c-new">ArtifactTabs ←</span>
+│    └── <span class="c-leaf">InputBar</span></div>
+        <div class="conv-delta">
+          <strong>Structure stable</strong> · leaf nodes specified · 9 .jsx files · 1,665 LOC · +2,355 ins / −2,319 del (visual corrections only)
+        </div>
+      </div>
+    </div>
+
+    <div class="spacer-sm"></div>
+    <div class="highlight-box">
+      <div style="font-size:clamp(13px,1.7vw,15px);color:var(--text-secondary);line-height:1.6;">
+        <strong style="color:var(--text-primary);">The convergence signal:</strong>
+        By v2, the structural skeleton is established — the major nodes are all present. v3 doesn't restructure; it
+        <em style="color:var(--accent-light);">specifies</em>. The topology converges before the visual fidelity does.
+        This ordering — structure first, pixels second — may be a generalizable pattern.
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 7 — THE DATASET SO FAR        ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide" id="slide-7">
+    <div class="label">The Dataset</div>
+    <div class="medium-headline">Early stage.<br>One confirmed data point.</div>
+    <div class="spacer-md"></div>
+
+    <div class="grid-2">
+      <div>
+        <div class="stat-row" style="margin-bottom:16px;">
+          <div class="stat-number">1</div>
+          <div class="stat-label">confirmed<br>data point<br>(Sage · 2026-03-29)</div>
+        </div>
+
+        <div class="card" style="margin-bottom: var(--gap-grid);">
+          <h3>What Sage contributes to the corpus</h3>
+          <ul>
+            <li>1 source prompt → 1 component tree mapping</li>
+            <li>3 iteration snapshots showing the convergence path</li>
+            <li>9 named components with exact LOC per file</li>
+            <li>Full git provenance: 4 commits over 1h 54min</li>
+            <li>Convergence observation: structure stable by v2</li>
+          </ul>
+        </div>
+
+        <div class="highlight-box">
+          <div style="font-size:clamp(12px,1.6vw,14px);color:var(--text-secondary);line-height:1.6;">
+            <strong style="color:var(--accent-light);">Status: collection phase.</strong>
+            The convergence function is not yet derived. One data point establishes the schema and proves the collection workflow — it does not validate the hypothesis.
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-label">Sage — dataset entry (proposed format)</div>
+        <div class="schema-block"><span class="c-obj">{</span>
+  <span class="c-key">"id"</span>             <span class="c-obj">:</span> <span class="c-str">"sage"</span>
+  <span class="c-key">"prompt"</span>         <span class="c-obj">:</span> <span class="c-str">"Build Claude.ai chat with
+                    artifacts, thinking, tools,
+                    Projects sidebar"</span>
+  <span class="c-key">"component_tree"</span> <span class="c-obj">:</span> <span class="c-obj">{</span>
+    <span class="c-key">"root"</span>           <span class="c-obj">:</span> <span class="c-str">"SageLayout"</span>
+    <span class="c-key">"nodes"</span>          <span class="c-obj">:</span> <span class="c-num">9</span>     <span class="c-comment">// .jsx file count</span>
+    <span class="c-key">"depth"</span>          <span class="c-obj">:</span> <span class="c-num">3</span>
+    <span class="c-key">"loc_total"</span>      <span class="c-obj">:</span> <span class="c-num">1665</span>
+    <span class="c-key">"components"</span>     <span class="c-obj">:</span> [<span class="c-str">"SageLayout"</span>, <span class="c-str">"Sidebar"</span>,
+                       <span class="c-str">"ChatArea"</span>, <span class="c-str">"MessageBubble"</span>,
+                       <span class="c-str">"ThinkingBlock"</span>, <span class="c-str">"ToolCallCard"</span>,
+                       <span class="c-str">"ArtifactsPanel"</span>, <span class="c-str">"InputBar"</span>,
+                       <span class="c-str">"ComposeModal"</span>]
+  <span class="c-obj">}</span>
+  <span class="c-key">"iterations"</span>     <span class="c-obj">:</span> <span class="c-num">3</span>
+  <span class="c-key">"convergence_at"</span> <span class="c-obj">:</span> <span class="c-str">"v2"</span>   <span class="c-comment">// qualitative observation</span>
+  <span class="c-key">"pipeline"</span>       <span class="c-obj">:</span> <span class="c-str">"amplifier-ui-studio"</span>
+  <span class="c-key">"date"</span>           <span class="c-obj">:</span> <span class="c-str">"2026-03-29"</span>
+  <span class="c-key">"author"</span>         <span class="c-obj">:</span> <span class="c-str">"Ken Chau"</span>
+<span class="c-obj">}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 8 — THE CONVERGENCE FUNCTION  ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide" id="slide-8">
+    <div class="label">The Convergence Function</div>
+    <div class="medium-headline">What f(prompt) → component_tree<br>would enable.</div>
+    <div class="spacer-md"></div>
+
+    <div class="grid-2">
+      <div>
+        <div class="col-label" style="margin-bottom:12px;">Forward function · f(prompt) → tree</div>
+        <div class="card" style="margin-bottom:var(--gap-grid);">
+          <h4>🔍 Pre-generation topology preview</h4>
+          <p>Know the component tree before generating code. Predict complexity, node count, and nesting depth from the prompt alone. Use to flag over-engineering before it happens.</p>
+        </div>
+        <div class="card" style="margin-bottom:var(--gap-grid);">
+          <h4>🧭 Prompt engineering feedback loop</h4>
+          <p>Modify your prompt → see the predicted tree change → iterate on the prompt until the topology matches intent. Iterate on the map, not the territory.</p>
+        </div>
+        <div class="card">
+          <h4>📐 Design system coverage analysis</h4>
+          <p>Given a set of prompts you plan to run, predict which component nodes will be needed. Check design system coverage before generation, not after.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-label" style="margin-bottom:12px;">Reverse function · g(tree) → prompt</div>
+        <div class="card" style="margin-bottom:var(--gap-grid);">
+          <h4>🔄 Tree → prompt reconstruction</h4>
+          <p>Given an existing component hierarchy (from any codebase), reconstruct the prompt space it belongs to. Useful for understanding legacy apps built with AI generation.</p>
+        </div>
+        <div class="card" style="margin-bottom:var(--gap-grid);">
+          <h4>🧩 Component reuse prediction</h4>
+          <p>Identify when two different prompts would produce the same component topology — and therefore which components could be shared across apps without duplication.</p>
+        </div>
+        <div class="card card-accent">
+          <h4>⚠️ None of this exists yet</h4>
+          <p>All applications above require a trained or derived function. That function requires a corpus. We have 1 data point. The collection phase must precede the analysis phase.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 9 — NEXT STEPS                ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide" id="slide-9">
+    <div class="label">Next Steps</div>
+    <div class="medium-headline">How to grow the dataset.</div>
+    <div class="spacer-md"></div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>1. Contribute data points</h3>
+        <p>Build an app with Amplifier's UI Studio pipeline. Capture the component hierarchy. Add the (prompt, tree) pair to lookbook. The workflow takes one afternoon.</p>
+        <br>
+        <p style="color:var(--text-tertiary);font-size:clamp(12px,1.5vw,13px);">No minimum LOC. No minimum quality. Any generated app with a documented prompt and captured tree structure counts as a valid data point.</p>
+      </div>
+      <div class="card">
+        <h3>2. Canonicalize the schema</h3>
+        <p>The dataset entry format above is a draft. It needs: formal JSON Schema, a standard component tree serialization format, and a convention for iteration snapshots.</p>
+        <br>
+        <p style="color:var(--text-tertiary);font-size:clamp(12px,1.5vw,13px);">Open question: what's the right representation for a component tree that enables topology comparison across apps built with different frameworks?</p>
+      </div>
+      <div class="card">
+        <h3>3. Analyze at 10+ entries</h3>
+        <p>With 10 or more data points, begin asking: which nodes appear most frequently? What tree structures cluster together? Do prompt patterns predict topologies?</p>
+        <br>
+        <p style="color:var(--text-tertiary);font-size:clamp(12px,1.5vw,13px);">Target milestone: 10 apps before any function derivation attempt. Patterns need minimum density before they're visible.</p>
+      </div>
+    </div>
+
+    <div class="spacer-sm"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Planned tooling</h3>
+        <ul>
+          <li>Automated tree extractor — parse .jsx source → JSON tree</li>
+          <li>Iteration diff tool — compare tree snapshots across v1/v2/v3</li>
+          <li>Topology similarity metric — edit distance between component trees</li>
+          <li>Prompt cluster visualizer — group prompts by the trees they produce</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Open research questions</h3>
+        <ul>
+          <li>How many data points before convergence patterns emerge?</li>
+          <li>Does tree depth correlate with prompt specificity?</li>
+          <li>Are there universal "attractor" topologies for common UI patterns?</li>
+          <li>Is the structure-before-pixels ordering consistent across apps?</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 10 — SOURCES & METHODOLOGY   ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide" id="slide-10">
+    <div class="label">Sources &amp; Methodology</div>
+    <div class="medium-headline">How this data was gathered.</div>
+    <div class="spacer-md"></div>
+
+    <div class="sources-item">
+      <div class="sources-bullet">⬡</div>
+      <div class="sources-text">
+        <strong style="color:var(--text-primary);">Component inventory (Sage)</strong> —
+        Verified via <code>wc -l apps/sage/src/components/*.jsx</code>. All 9 files confirmed: Layout.jsx (33), Sidebar.jsx (358), ChatArea.jsx (113), MessageBubble.jsx (203), ThinkingBlock.jsx (63), ToolCallCard.jsx (237), ArtifactsPanel.jsx (312), InputBar.jsx (341), ComposeModal.jsx (5). Sum: <strong style="color:var(--text-primary);">1,665 LOC</strong>.
+      </div>
+    </div>
+    <div class="sources-item">
+      <div class="sources-bullet">⬡</div>
+      <div class="sources-text">
+        <strong style="color:var(--text-primary);">Iteration evidence</strong> —
+        v1/v2/v3 story sourced from git history: <code>git log --oneline apps/sage/</code>. Four commits on 2026-03-29 (98cd7ea, e1eca21, 1a16e15, 5ce6877). Timestamps from <code>git log --format="%h %ai %s"</code>. Build duration (1h 54min 22s) is the exact diff between commits 98cd7ea (20:22:35) and 5ce6877 (22:16:57).
+      </div>
+    </div>
+    <div class="sources-item">
+      <div class="sources-bullet">⬡</div>
+      <div class="sources-text">
+        <strong style="color:var(--text-primary);">Convergence observation</strong> —
+        The claim <em>"topology converges by v2"</em> is a qualitative observation from comparing v2 and v3 commit messages, not a computed result. The v3 commit (5ce6877) records ~2,355 insertions and ~2,319 deletions — but these are pixel-level visual corrections, not structural changes. No automated tool currently measures this. The <code>"convergence_at": "v2"</code> field in the dataset schema is inferred, not derived.
+      </div>
+    </div>
+    <div class="sources-item">
+      <div class="sources-bullet">⬡</div>
+      <div class="sources-text">
+        <strong style="color:var(--text-primary);">Convergence function hypothesis</strong> —
+        f(prompt) → component_tree and g(component_tree) → prompt are <em>hypotheses</em>. No function has been trained, derived, or validated. All described applications are potential applications, not demonstrated capabilities. The lookbook project is in the data collection phase only.
+      </div>
+    </div>
+    <div class="sources-item">
+      <div class="sources-bullet">⬡</div>
+      <div class="sources-text">
+        <strong style="color:var(--text-primary);">Dataset schema</strong> —
+        The JSON schema shown is a proposed draft format, not a finalized specification. The component tree naming in slides follows the conceptual hierarchy from the project brief; actual .jsx filenames differ slightly (e.g., the brief uses "SageLayout" and "ChatWindow" where the files are "Layout.jsx" and "ChatArea.jsx").
+      </div>
+    </div>
+
+    <div class="spacer-sm"></div>
+    <div style="font-size:clamp(11px,1.4vw,13px);color:var(--text-tertiary);">
+      Data as of: April 2, 2026 · Repository: kenotron-ms/lookbook (/Users/ken/workspace/ms/lookbook) · Status: Experimental · Single author: Ken Chau
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════╗
+       ║  SLIDE 11 — CTA                      ║
+       ╚══════════════════════════════════════╝ -->
+  <div class="slide" id="slide-11">
+    <div class="label">Contribute</div>
+    <div class="medium-headline">Add your app to the dataset.</div>
+    <div class="spacer-md"></div>
+
+    <div class="cta-grid">
+      <div class="cta-card">
+        <div class="icon">⚗️</div>
+        <h4>Build with UI Studio</h4>
+        <p>Take any prompt and run it through Amplifier's iterative generation pipeline. Three iterations — v1 to v3 — is the target format for each data point.</p>
+      </div>
+      <div class="cta-card">
+        <div class="icon">🌳</div>
+        <h4>Capture the component tree</h4>
+        <p>Document the hierarchy: root node, nesting, leaf components. <code>wc -l src/components/*.jsx</code> gives you LOC per node. Record the tree at each iteration.</p>
+      </div>
+      <div class="cta-card">
+        <div class="icon">📦</div>
+        <h4>Add to lookbook</h4>
+        <p>Create a new app directory under <code>apps/</code>. Add a <code>dataset.json</code> entry with your (prompt, component_tree) pair using the schema from Sage.</p>
+      </div>
+      <div class="cta-card">
+        <div class="icon">📖</div>
+        <h4>Tell the story</h4>
+        <p>Use Amplifier's storyteller to create a deck for your app. Each story documents the pipeline run, adds a data point to the corpus, and makes the convergence pattern visible.</p>
+      </div>
+    </div>
+
+    <div class="spacer-md"></div>
+    <div style="font-size:clamp(13px,1.8vw,15px);color:var(--text-tertiary);">
+      Repository: <span style="color:var(--text-secondary);">kenotron-ms/lookbook</span> ·
+      Status: <span style="color:#818CF8;">Experimental</span> ·
+      Dataset entries: <span style="color:var(--text-secondary);">1 (Sage · March 2026)</span> ·
+      Goal: <span style="color:var(--text-secondary);">10 entries before analysis</span>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- ─── Navigation ─── -->
+<div class="nav-dots" id="navDots"></div>
+<div class="slide-counter" id="slideCounter"></div>
+<div class="click-prev" id="clickPrev"></div>
+<div class="click-next" id="clickNext"></div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let current = 0;
+
+  // Build nav dots
+  const dotsEl = document.getElementById('navDots');
+  slides.forEach((_, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    btn.setAttribute('aria-label', `Slide ${i+1}`);
+    btn.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(btn);
+  });
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, total - 1));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('slideCounter').textContent = `${current + 1} / ${total}`;
+    slides[current].scrollTop = 0;
+  }
+
+  function next() { if (current < total - 1) goTo(current + 1); }
+  function prev() { if (current > 0) goTo(current - 1); }
+
+  document.getElementById('clickNext').addEventListener('click', next);
+  document.getElementById('clickPrev').addEventListener('click', prev);
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); prev(); }
+  });
+
+  // Touch / swipe
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+  document.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].screenX - touchStartX;
+    if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
+  }, { passive: true });
+
+  // Init
+  goTo(0);
+</script>
+</body>
+</html>
