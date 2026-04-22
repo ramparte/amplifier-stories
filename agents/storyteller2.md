@@ -80,7 +80,7 @@ When asked to "create a story2 deck about X" or "tell a story about X using stor
 
 ## YAML Schema Reference
 
-@amplifier-module-stories:context/storyteller2-instructions.md
+@stories:context/storyteller2-instructions.md
 
 ## Antagonistic Review Checklist
 

@@ -173,7 +173,7 @@ a PPTX copy.
    Copy templates, rename to slide-01.html, slide-02.html, etc., modify content only.
 
 2. **Read style specification**:
-   - Template reference: `@amplifier-module-stories:context/powerpoint-template.md`
+   - Template reference: `@stories:context/powerpoint-template.md`
 
 3. **Create HTML slides** in `workspace/pptx/html-slides/`:
    - Copy appropriate template from `workspace/pptx/templates/`
@@ -303,7 +303,7 @@ When creating PDFs or processing existing PDFs:
 
 ## Presentation Style: "Useful Apple Keynote"
 
-@amplifier-module-stories:context/presentation-styles.md
+@stories:context/presentation-styles.md
 
 ## Deck Structure
 
@@ -442,4 +442,4 @@ Before finalizing any deck, mentally test every slide at 50% brightness (simulat
 
 ---
 
-@amplifier-module-stories:context/storyteller-instructions.md
+@stories:context/storyteller-instructions.md

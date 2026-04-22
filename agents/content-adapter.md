@@ -213,4 +213,4 @@ Adaptation is successful when:
 
 ---
 
-@amplifier-module-stories:context/storyteller-instructions.md
+@stories:context/storyteller-instructions.md

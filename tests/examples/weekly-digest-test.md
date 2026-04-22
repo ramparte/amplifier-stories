@@ -113,7 +113,7 @@ Blog post opens in default markdown editor for review.
 ```bash
 # 1. Run the recipe
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/weekly-digest.yaml
+  recipe_path=stories:recipes/weekly-digest.yaml
 
 # 2. Check outputs
 ls -lh workspace/blog/
@@ -157,7 +157,7 @@ Can this be run automatically every Monday?
 **Cron example:**
 ```cron
 # Every Monday at 9am
-0 9 * * 1 cd /path/to/amplifier-module-stories && amplifier tool invoke recipes operation=execute recipe_path=./recipes/weekly-digest.yaml
+0 9 * * 1 cd /path/to/stories && amplifier tool invoke recipes operation=execute recipe_path=./recipes/weekly-digest.yaml
 ```
 
 **GitHub Actions example:**

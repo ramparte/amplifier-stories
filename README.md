@@ -64,7 +64,7 @@ Update your `~/.amplifier/settings.yaml` to use this bundle:
 
 ```yaml
 bundle:
-  active: amplifier-module-stories
+  active: stories
 ```
 
 **Note:** Despite "module" in the name, this is an Amplifier **bundle** (not a module). Bundles provide agents, recipes, and behaviors. The name reflects its role as a storytelling capability for the module ecosystem.
@@ -103,13 +103,13 @@ Once the bundle is active, test in a new Amplifier session with these prompts:
 
 ### Test 2: Manual Content Creation
 ```
-"Use storyteller to create a PowerPoint slide using the title template about testing amplifier-module-stories"
+"Use storyteller to create a PowerPoint slide using the title template about testing stories"
 ```
 **Expected:** Single PowerPoint slide created and auto-opened
 
 ### Test 3: Story Research
 ```
-"Use story-researcher to gather data about the amplifier-module-stories repository"
+"Use story-researcher to gather data about the stories repository"
 ```
 **Expected:** Structured JSON with repository metrics, commits, timeline
 
@@ -127,12 +127,12 @@ Once the bundle is active, test in a new Amplifier session with these prompts:
 
 > **Note:** When running recipes via CLI, use the `@` prefix for bundle paths:
 > ```bash
-> amplifier tool invoke recipes operation=execute recipe_path="@amplifier-module-stories:recipes/blog-post-generator.yaml"
+> amplifier tool invoke recipes operation=execute recipe_path="@stories:recipes/blog-post-generator.yaml"
 > ```
 
 ### Test 6: Multi-Format Storytelling
 ```
-"Create a PowerPoint, Excel dashboard, and PDF one-pager about amplifier-module-stories capabilities"
+"Create a PowerPoint, Excel dashboard, and PDF one-pager about stories capabilities"
 ```
 **Expected:** Three files created in parallel, all auto-opened
 
@@ -426,20 +426,20 @@ When invoking recipes programmatically (via CLI or tool calls), use the `@` pref
 ```bash
 # Correct - with @ prefix
 amplifier tool invoke recipes operation=execute \
-  recipe_path="@amplifier-module-stories:recipes/blog-post-generator.yaml"
+  recipe_path="@stories:recipes/blog-post-generator.yaml"
 
 # Wrong - won't work (missing @ prefix)
 amplifier tool invoke recipes operation=execute \
-  recipe_path="amplifier-module-stories:recipes/blog-post-generator.yaml"
+  recipe_path="stories:recipes/blog-post-generator.yaml"
 ```
 
 **Available recipes:**
 | Recipe | Path |
 |--------|------|
-| Session to Case Study | `@amplifier-module-stories:recipes/session-to-case-study.yaml` |
-| Git Tag to Changelog | `@amplifier-module-stories:recipes/git-tag-to-changelog.yaml` |
-| Weekly Digest | `@amplifier-module-stories:recipes/weekly-digest.yaml` |
-| Blog Post Generator | `@amplifier-module-stories:recipes/blog-post-generator.yaml` |
+| Session to Case Study | `@stories:recipes/session-to-case-study.yaml` |
+| Git Tag to Changelog | `@stories:recipes/git-tag-to-changelog.yaml` |
+| Weekly Digest | `@stories:recipes/weekly-digest.yaml` |
+| Blog Post Generator | `@stories:recipes/blog-post-generator.yaml` |
 
 **In conversational mode**, you can use natural language and the `@` prefix is handled automatically:
 ```
@@ -451,7 +451,7 @@ amplifier tool invoke recipes operation=execute \
 
 ### Recipe Path Not Found
 If you get "Recipe file not found" errors:
-1. Ensure you're using the `@` prefix: `@amplifier-module-stories:recipes/...`
+1. Ensure you're using the `@` prefix: `@stories:recipes/...`
 2. Use absolute paths if bundle resolution fails: `$(pwd)/recipes/recipe-name.yaml`
 3. Verify the bundle is active: `amplifier bundle list`
 
