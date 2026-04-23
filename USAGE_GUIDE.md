@@ -4,7 +4,7 @@ Complete guide to using the autonomous storytelling engine.
 
 ## Overview
 
-**amplifier-module-stories** transforms Amplifier development activity into professional content across multiple formats and audiences - automatically.
+**stories** transforms Amplifier development activity into professional content across multiple formats and audiences - automatically.
 
 ## Quick Start
 
@@ -25,21 +25,21 @@ Run workflows that generate content automatically:
 ```bash
 # Weekly ecosystem digest (every Monday)
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/weekly-digest.yaml
+  recipe_path=stories:recipes/weekly-digest.yaml
 
 # Generate case study from session
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/session-to-case-study.yaml \
+  recipe_path=stories:recipes/session-to-case-study.yaml \
   context='{"session_file": "~/.amplifier/sessions/2026-01-17/events.jsonl"}'
 
 # Release documentation from git tag
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/git-tag-to-changelog.yaml \
+  recipe_path=stories:recipes/git-tag-to-changelog.yaml \
   context='{"tag_name": "v2.0.0"}'
 
 # Blog post from feature development
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/blog-post-generator.yaml \
+  recipe_path=stories:recipes/blog-post-generator.yaml \
   context='{"feature_name": "shadow environments"}'
 ```
 
@@ -229,7 +229,7 @@ amplifier tool invoke recipes operation=execute \
 **Example:**
 ```bash
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/session-to-case-study.yaml \
+  recipe_path=stories:recipes/session-to-case-study.yaml \
   context='{"session_file": "~/.amplifier/sessions/2026-01-17/events.jsonl"}'
 ```
 
@@ -259,7 +259,7 @@ amplifier tool invoke recipes operation=execute \
 **Example:**
 ```bash
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/git-tag-to-changelog.yaml \
+  recipe_path=stories:recipes/git-tag-to-changelog.yaml \
   context='{"tag_name": "v2.0.0"}'
 ```
 
@@ -289,18 +289,18 @@ amplifier tool invoke recipes operation=execute \
 ```bash
 # Standard weekly digest
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/weekly-digest.yaml
+  recipe_path=stories:recipes/weekly-digest.yaml
 
 # Last 2 weeks
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/weekly-digest.yaml \
+  recipe_path=stories:recipes/weekly-digest.yaml \
   context='{"date_range": "last 14 days"}'
 ```
 
 **Automation:**
 ```cron
 # Every Monday at 9am
-0 9 * * 1 cd ~/dev/amplifier-module-stories && amplifier tool invoke recipes operation=execute recipe_path=./recipes/weekly-digest.yaml
+0 9 * * 1 cd ~/dev/stories && amplifier tool invoke recipes operation=execute recipe_path=./recipes/weekly-digest.yaml
 ```
 
 ---
@@ -330,12 +330,12 @@ amplifier tool invoke recipes operation=execute \
 ```bash
 # Community-focused blog post
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/blog-post-generator.yaml \
+  recipe_path=stories:recipes/blog-post-generator.yaml \
   context='{"feature_name": "shadow environments"}'
 
 # Technical deep-dive with appendix
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/blog-post-generator.yaml \
+  recipe_path=stories:recipes/blog-post-generator.yaml \
   context='{"feature_name": "recipe workflows", "include_technical_appendix": true, "target_audience": "technical"}'
 ```
 
@@ -520,7 +520,7 @@ Start with one format, adapt to others:
 ## File Organization
 
 ```
-amplifier-module-stories/
+stories/
 ├── agents/                   # 10 specialist agents + storyteller
 ├── recipes/                  # 4 automated workflows
 ├── context/
@@ -584,7 +584,7 @@ Should create a single slide, auto-open in PowerPoint.
 ```bash
 # Test with a real session
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/session-to-case-study.yaml \
+  recipe_path=stories:recipes/session-to-case-study.yaml \
   context='{"session_file": "~/.amplifier/sessions/LATEST/events.jsonl"}'
 ```
 

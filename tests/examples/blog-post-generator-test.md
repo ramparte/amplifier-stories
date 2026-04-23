@@ -153,7 +153,7 @@ Blog post opens in default markdown editor.
 ```bash
 # 1. Run the recipe
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/blog-post-generator.yaml \
+  recipe_path=stories:recipes/blog-post-generator.yaml \
   context='{"feature_name": "shadow environments", "target_audience": "community"}'
 
 # 2. Check blog post (should auto-open)

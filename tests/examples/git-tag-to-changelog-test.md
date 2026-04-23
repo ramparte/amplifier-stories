@@ -15,7 +15,7 @@ Repository must have:
 
 ## Test Data
 
-**Tag to test:** Latest tag in amplifier-module-stories repository
+**Tag to test:** Latest tag in stories repository
 
 ```bash
 # Check existing tags
@@ -50,7 +50,7 @@ git tag -a v2.0.0-test -m "Test release"
 - Professional templates for all formats
 
 ### Changed
-- Bundle renamed to amplifier-module-stories
+- Bundle renamed to stories
 - Workspace structure consolidated
 
 ### Fixed
@@ -121,7 +121,7 @@ git tag v2.0.0-test
 
 # 3. Run the recipe
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/git-tag-to-changelog.yaml \
+  recipe_path=stories:recipes/git-tag-to-changelog.yaml \
   context='{"tag_name": "v2.0.0-test"}'
 
 # 4. Verify CHANGELOG.md was updated
