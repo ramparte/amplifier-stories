@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Your Teammates Already Solved Half Your Problem</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-dim: rgba(255, 55, 95, 0.15);
+            --accent-glow: rgba(255, 55, 95, 0.3);
+            --verdict-use: #30D158;
+            --verdict-adapt: #FFD60A;
+            --verdict-skip: rgba(255,255,255,0.4);
+
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 32px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 16px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-big-number: clamp(60px, 18vw, 140px);
+
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Slide structure */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            color: var(--text-primary);
+        }
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            color: var(--text-primary);
+        }
+        .subhead {
+            font-size: var(--fs-h2);
+            font-weight: 400;
+            line-height: 1.4;
+            color: var(--text-secondary);
+            margin-top: var(--space-sm);
+        }
+        .body-text {
+            font-size: var(--fs-body);
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+        }
+        .code-name {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-body);
+            color: var(--accent);
+            background: var(--accent-dim);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        /* Layout */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .spacer { margin-top: var(--space-lg); }
+        .spacer-sm { margin-top: var(--space-md); }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: clamp(16px, 4vw, 28px);
+        }
+        .card h3 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .card p {
+            font-size: var(--fs-body);
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        /* Discovery card — the person slides */
+        .discovery-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-md);
+            padding: clamp(24px, 5vw, 40px);
+            max-width: min(720px, 100%);
+        }
+        .discovery-person {
+            font-size: var(--fs-h2);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .discovery-tool {
+            margin-bottom: var(--space-md);
+        }
+        .discovery-description {
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-md);
+        }
+
+        /* Verdict badges */
+        .verdict {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
+        .verdict-use {
+            background: rgba(48, 209, 88, 0.15);
+            color: var(--verdict-use);
+            border: 1px solid rgba(48, 209, 88, 0.3);
+        }
+        .verdict-adapt {
+            background: rgba(255, 214, 10, 0.12);
+            color: var(--verdict-adapt);
+            border: 1px solid rgba(255, 214, 10, 0.25);
+        }
+        .verdict-skip {
+            background: rgba(255,255,255,0.06);
+            color: var(--text-tertiary);
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .stat {
+            text-align: center;
+            padding: var(--space-md);
+        }
+        .stat-number {
+            font-size: clamp(48px, 12vw, 100px);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            color: var(--accent);
+        }
+        .stat-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+            line-height: 1.4;
+        }
+
+        /* Zero stats — bigger, more dramatic */
+        .zero-number {
+            font-size: var(--fs-big-number);
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            color: var(--accent);
+        }
+
+        /* Shift slide — two contrasting questions */
+        .shift-old {
+            font-size: var(--fs-h1);
+            font-weight: 500;
+            color: var(--text-tertiary);
+            line-height: 1.3;
+            text-decoration: line-through;
+            text-decoration-color: rgba(255,255,255,0.2);
+        }
+        .shift-divider {
+            width: 60px;
+            height: 2px;
+            background: var(--accent);
+            margin: var(--space-lg) 0;
+        }
+        .shift-new {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1.3;
+        }
+
+        /* Composed design — flow */
+        .compose-sources {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-sm);
+            margin-top: var(--space-md);
+        }
+        .compose-card {
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: clamp(12px, 3vw, 20px);
+        }
+        .compose-card .compose-person {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .compose-card .compose-role {
+            font-size: var(--fs-body);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .compose-card .compose-detail {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+        }
+        .compose-arrow {
+            text-align: center;
+            font-size: var(--fs-h2);
+            color: var(--accent);
+            padding: var(--space-sm) 0;
+        }
+        .compose-result {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-glow);
+            border-radius: var(--radius-md);
+            padding: clamp(16px, 4vw, 28px);
+        }
+        .compose-result h3 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .compose-result p {
+            font-size: var(--fs-body);
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+        .compose-verdicts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-xs);
+            margin-top: var(--space-sm);
+        }
+        .compose-verdict-tag {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+        .tag-helped {
+            background: rgba(48, 209, 88, 0.15);
+            color: var(--verdict-use);
+        }
+        .tag-neutral {
+            background: rgba(255, 214, 10, 0.12);
+            color: var(--verdict-adapt);
+        }
+        .tag-hurt {
+            background: rgba(255, 55, 95, 0.15);
+            color: var(--accent);
+        }
+
+        /* The Point — two perspective cards */
+        .perspective-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: clamp(20px, 4vw, 32px);
+        }
+        .perspective-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+        .perspective-card h3 {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+        .perspective-card p {
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        /* Quote styling */
+        .big-quote {
+            font-size: var(--fs-h1);
+            font-weight: 500;
+            line-height: 1.4;
+            color: var(--text-primary);
+            max-width: min(800px, 100%);
+        }
+        .big-quote em {
+            font-style: normal;
+            color: var(--accent);
+        }
+
+        /* Honest No — callout box */
+        .callout {
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            padding: clamp(12px, 3vw, 20px);
+            margin-top: var(--space-md);
+        }
+        .callout p {
+            font-size: var(--fs-body);
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        /* Sources slide */
+        .sources-content {
+            max-width: min(700px, 100%);
+        }
+        .sources-content p {
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-xs);
+        }
+        .sources-content strong {
+            color: var(--text-primary);
+        }
+        .sources-content ul {
+            list-style: none;
+            padding: 0;
+            margin: var(--space-xs) 0 var(--space-md) 0;
+        }
+        .sources-content li {
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            color: var(--text-secondary);
+            padding-left: 16px;
+            position: relative;
+        }
+        .sources-content li::before {
+            content: '—';
+            position: absolute;
+            left: 0;
+            color: var(--text-tertiary);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .nav-dot:hover {
+            background: rgba(255,255,255,0.4);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 24px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover {
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Responsive */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Title -->
+    <div class="slide active center">
+        <div class="section-label">A Real Story</div>
+        <h1 class="headline">Your Teammates Already<br>Solved Half Your Problem</h1>
+        <p class="subhead">You just didn't know it yet.</p>
+        <div class="small-text spacer-sm">Team Knowledge &mdash; April 2026</div>
+    </div>
+
+    <!-- Slide 2: The Goal -->
+    <div class="slide">
+        <div class="section-label">The Starting Point</div>
+        <div class="spacer"></div>
+        <p class="big-quote">&ldquo;I need to build an <em>eval system</em> that measures whether team-knowledge actually helps people work.&rdquo;</p>
+        <p class="body-text spacer-sm">Clear goal. Specific scope. Before designing anything from scratch&nbsp;&mdash; search what the team already has.</p>
+    </div>
+
+    <!-- Slide 3: The Old Way (Problem) -->
+    <div class="slide">
+        <div class="section-label">What Usually Happens</div>
+        <h2 class="medium-headline">The default workflow is expensive</h2>
+        <div class="thirds">
+            <div class="card">
+                <h3>Design from scratch</h3>
+                <p>You don't know what exists, so you build everything yourself. Weeks of work that might duplicate a teammate's.</p>
+            </div>
+            <div class="card">
+                <h3>Ask around</h3>
+                <p>&ldquo;Hey, does anyone have anything for eval?&rdquo;&nbsp;&mdash; Post in Teams. Hope the right person sees it before it scrolls away.</p>
+            </div>
+            <div class="card">
+                <h3>Schedule a sync</h3>
+                <p>Book time with 3&ndash;4 people to compare approaches. Wait for calendars to align. Context-switch everyone involved.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: The Search -->
+    <div class="slide">
+        <div class="section-label">What Happened Instead</div>
+        <h2 class="medium-headline">Search first. Design second.</h2>
+        <div class="stats-grid">
+            <div class="stat">
+                <div class="stat-number">1,300+</div>
+                <div class="stat-label">capabilities indexed<br>across the team</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">16</div>
+                <div class="stat-label">teammates' work<br>searchable</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">5</div>
+                <div class="stat-label">eval-related tools<br>surfaced</div>
+            </div>
+        </div>
+        <p class="body-text spacer" style="max-width: min(600px, 100%);">Three targeted searches surfaced existing work from multiple teammates. The design conversation started with what already exists&nbsp;&mdash; not what to build from zero.</p>
+    </div>
+
+    <!-- Slide 5: The Shift -->
+    <div class="slide">
+        <div class="section-label">The Turning Point</div>
+        <div class="spacer"></div>
+        <p class="shift-old">&ldquo;How do I build an eval system?&rdquo;</p>
+        <div class="shift-divider"></div>
+        <p class="shift-new">&ldquo;Which of my teammates' work<br>do I compose?&rdquo;</p>
+    </div>
+
+    <!-- Slide 6: MJ's Scoring Engine -->
+    <div class="slide">
+        <div class="section-label">Discovery 1</div>
+        <div class="spacer-sm"></div>
+        <div class="discovery-card">
+            <div class="discovery-person">MJ</div>
+            <div class="discovery-tool">
+                <span class="code-name">sage-eval</span>
+            </div>
+            <p class="discovery-description">Rubric-based LLM scoring with exactly the right interface. Takes a session, applies scoring criteria, returns structured results. Built for a different project&nbsp;&mdash; but the scoring engine is general-purpose.</p>
+            <div class="verdict verdict-use">&#10003; Use directly</div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Manojp99's Pattern -->
+    <div class="slide">
+        <div class="section-label">Discovery 2</div>
+        <div class="spacer-sm"></div>
+        <div class="discovery-card">
+            <div class="discovery-person">Manoj</div>
+            <div class="discovery-tool">
+                <span class="code-name">session-drift-report</span>
+            </div>
+            <p class="discovery-description">A two-phase prompt pattern: gather evidence first, then score. Prevents the LLM judge from deciding a verdict and backfilling justification. The recipe itself was wrong scope for eval&nbsp;&mdash; but the prompt architecture is gold.</p>
+            <div class="verdict verdict-adapt">&#10003; Steal the pattern</div>
+        </div>
+    </div>
+
+    <!-- Slide 8: Testing Team's Infrastructure -->
+    <div class="slide">
+        <div class="section-label">Discovery 3</div>
+        <div class="spacer-sm"></div>
+        <div class="discovery-card">
+            <div class="discovery-person">David</div>
+            <div class="discovery-tool">
+                <span class="code-name">amplifier-tester</span>
+            </div>
+            <p class="discovery-description">Digital Twin Universe (DTU)&nbsp;&mdash; isolated containers that spin up a complete Amplifier environment for testing. The hardest infrastructure problem for eval&nbsp;&mdash; running truly isolated A/B sessions with no filesystem bleed-through&nbsp;&mdash; was already solved.</p>
+            <div class="verdict verdict-use">&#10003; Use directly</div>
+        </div>
+    </div>
+
+    <!-- Slide 9: The Honest No -->
+    <div class="slide">
+        <div class="section-label">Discovery 4</div>
+        <div class="spacer-sm"></div>
+        <div class="discovery-card">
+            <div class="discovery-person">David</div>
+            <div class="discovery-tool">
+                <span class="code-name">reality-check-pipeline</span>
+            </div>
+            <p class="discovery-description">Looked relevant at first glance&nbsp;&mdash; &ldquo;reality check&rdquo; sounds like evaluation. After investigation: wrong use case entirely. It validates prompt outputs against known ground truth, not session-level quality.</p>
+            <div class="verdict verdict-skip">&#10007; Don't use</div>
+        </div>
+        <div class="callout">
+            <p>An honest &ldquo;no&rdquo; is just as valuable. It saved days that would have been wasted trying to adapt an incompatible tool.</p>
+        </div>
+    </div>
+
+    <!-- Slide 10: The Composed Design -->
+    <div class="slide">
+        <div class="section-label">The Result</div>
+        <h2 class="medium-headline">Three teammates' work. One eval system.</h2>
+        <div class="compose-sources">
+            <div class="compose-card">
+                <div class="compose-person">MJ</div>
+                <div class="compose-role">Scoring engine</div>
+                <div class="compose-detail">Grades each session on 5 dimensions</div>
+            </div>
+            <div class="compose-card">
+                <div class="compose-person">Manoj</div>
+                <div class="compose-role">Prompt pattern</div>
+                <div class="compose-detail">Evidence first, prevents rationalization</div>
+            </div>
+            <div class="compose-card">
+                <div class="compose-person">David</div>
+                <div class="compose-role">Isolation infrastructure</div>
+                <div class="compose-detail">Clean A/B environments via DTU</div>
+            </div>
+        </div>
+        <div class="compose-arrow">&#8595;</div>
+        <div class="compose-result">
+            <h3>The Eval System</h3>
+            <p>Run paired sessions&nbsp;&mdash; with KB vs. without&nbsp;&mdash; score on 5 dimensions, and produce a clear verdict.</p>
+            <div class="compose-verdicts">
+                <span class="compose-verdict-tag tag-helped">KB_HELPED</span>
+                <span class="compose-verdict-tag tag-neutral">KB_NEUTRAL</span>
+                <span class="compose-verdict-tag tag-hurt">KB_HURT</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 11: What Didn't Happen -->
+    <div class="slide center">
+        <div class="section-label">The Real Metric</div>
+        <div style="display: flex; justify-content: center; gap: var(--space-xl); flex-wrap: wrap; margin-top: var(--space-lg);">
+            <div class="stat">
+                <div class="stat-number" style="font-size: clamp(48px, 10vw, 80px);">0</div>
+                <div class="stat-label">meetings<br>scheduled</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" style="font-size: clamp(48px, 10vw, 80px);">0</div>
+                <div class="stat-label">Teams threads asking<br>&ldquo;does anyone have&hellip;&rdquo;</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" style="font-size: clamp(48px, 10vw, 80px);">0</div>
+                <div class="stat-label">interruptions to<br>contributors</div>
+            </div>
+        </div>
+        <p class="body-text spacer-sm" style="max-width: min(600px, 100%);">MJ, Manoj, and David weren't context-switched. Their work was discovered and composed without interrupting anyone's day.</p>
+    </div>
+
+    <!-- Slide 12: The Point -->
+    <div class="slide">
+        <div class="section-label">Why This Matters</div>
+        <h2 class="medium-headline">Two audiences. One insight.</h2>
+        <div class="halves">
+            <div class="perspective-card">
+                <h3>Work compounds instead of being reinvented.</h3>
+                <p>Three teammates' prior work was leveraged into a new design&nbsp;&mdash; no duplication, no wasted effort. When a team's knowledge is searchable, every investment in tooling pays dividends beyond the original project.</p>
+            </div>
+            <div class="perspective-card">
+                <h3>Your work gets found.</h3>
+                <p>Build something good and your teammates will build on it&nbsp;&mdash; even when you don't know it's happening. You don't need to memorize everyone's repos. The knowledge base knows them for you.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 13: The Meta Moment -->
+    <div class="slide center">
+        <div class="section-label">The Recursive Proof</div>
+        <h2 class="medium-headline">This brainstorming session proved<br>the very thing it set out to measure.</h2>
+        <p class="subhead" style="max-width: min(640px, 100%);">The eval system design measures whether team knowledge changes how people work. In this session, team knowledge surfaced 3 teammates' work and turned a build-from-scratch design into a composition. The question was already answered before any code was written.</p>
+    </div>
+
+    <!-- Slide 14: Sources & Methodology -->
+    <div class="slide">
+        <div class="section-label">Sources &amp; Methodology</div>
+        <h2 class="medium-headline">How we got these numbers</h2>
+        <div class="sources-content spacer-sm">
+            <p><strong>Data as of:</strong> April 2026</p>
+            <p><strong>Feature status:</strong> Active</p>
+            <p><strong>Basis:</strong> A real brainstorming session conducted using team-knowledge search capabilities.</p>
+            <p><strong>Data sources:</strong></p>
+            <ul>
+                <li>1,300+ capabilities and 16 teammates from the team-knowledge index at time of session</li>
+                <li>5 eval-related tools surfaced from 3 targeted searches across the knowledge base</li>
+                <li>Tool names, contributor names, and verdict decisions are from the actual session record</li>
+            </ul>
+            <p><strong>Gaps:</strong> Exact capability count varies as teams publish new work. The 1,300+ figure is approximate, reflecting the index state during the session.</p>
+        </div>
+    </div>
+
+    <!-- Slide 15: CTA -->
+    <div class="slide center">
+        <div class="section-label">Get Started</div>
+        <h2 class="headline">Build on what your<br>teammates built.</h2>
+        <p class="subhead">Search before you design from scratch.<br>The next breakthrough might already exist in a teammate's repo.</p>
+        <div class="spacer-sm"></div>
+        <p class="body-text" style="max-width: min(500px, 100%);"><span class="code-name">team_knowledge(operation="search", query="...")</span></p>
+        <p class="small-text spacer-sm">MADE team: <a href="https://github.com/microsoft/amplifier-bundle-team-knowledge-base" style="color: var(--accent); text-decoration: none;">microsoft/amplifier-bundle-team-knowledge-base</a></p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            slides[currentSlide].scrollTop = 0;
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = (currentSlide + 1) + ' / ' + slides.length;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>
