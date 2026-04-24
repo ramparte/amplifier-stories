@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Amplifier-Tester · In Practice</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap');
+
+  :root {
+    --bg: #F4F5F9;
+    --surface: #FFFFFF;
+    --surface-recessed: #EDEDF2;
+    --text-primary: #1C1E2B;
+    --text-secondary: #5C5E6E;
+    --text-tertiary: #8B8D9C;
+    --accent: #3E5C8A;
+    --accent-soft: #E4E9F2;
+    --code-bg: #F0F0F5;
+    --border: #D8D9E3;
+    --border-light: #E8E9EF;
+
+    --kernel: #9B7B3E;
+    --kernel-soft: #F5F0E4;
+    --modules: #3E7D8A;
+    --modules-soft: #E4F0F2;
+    --bundles: #5C6B9E;
+    --bundles-soft: #ECEEF5;
+    --foundation: #5A7D5A;
+    --foundation-soft: #E8F0E8;
+    --boundary: #8A5A4A;
+    --boundary-soft: #F2EAE6;
+    --apps: #7B6B8A;
+    --apps-soft: #F0ECF2;
+    --ecosystem: #8A7B8A;
+    --ecosystem-soft: #F2EEF2;
+
+    --accent-green: #3D7A4A;
+    --accent-green-soft: #E8F0E8;
+    --accent-red: #8A4A3E;
+    --accent-red-soft: #F2EAE6;
+
+    --font-heading: 'Inter', system-ui, sans-serif;
+    --font-body: 'Source Serif 4', Georgia, serif;
+    --font-code: 'JetBrains Mono', 'SF Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .deck { position: relative; width: 100%; height: 100%; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: clamp(32px, 5vw, 80px) clamp(32px, 8vw, 120px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 400ms ease;
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .slide-inner {
+    max-width: 1100px;
+    width: 100%;
+  }
+
+  .slide-label {
+    font-family: var(--font-heading);
+    font-size: clamp(10px, 1.2vw, 13px);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .slide-title {
+    font-family: var(--font-heading);
+    font-size: clamp(28px, 4.5vw, 56px);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    margin-bottom: 20px;
+  }
+
+  .slide-subtitle {
+    font-family: var(--font-body);
+    font-size: clamp(16px, 2vw, 24px);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    max-width: 800px;
+  }
+
+  h2 {
+    font-family: var(--font-heading);
+    font-size: clamp(24px, 3.5vw, 44px);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+  }
+
+  h3 {
+    font-family: var(--font-heading);
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 12px;
+  }
+
+  p, li {
+    font-family: var(--font-body);
+    font-size: clamp(14px, 1.5vw, 18px);
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+
+  strong { color: var(--text-primary); font-weight: 600; }
+
+  code {
+    font-family: var(--font-code);
+    font-size: 0.88em;
+    background: var(--code-bg);
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
+  a:hover { border-bottom-color: var(--accent); }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(16px, 3vw, 40px);
+    margin-top: 24px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(12px, 2vw, 24px);
+    margin-top: 24px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    padding: clamp(16px, 2vw, 28px);
+    box-shadow: 0 1px 2px rgba(28,30,43,0.04);
+  }
+
+  .card h3 {
+    font-size: clamp(14px, 1.5vw, 18px);
+    margin-bottom: 8px;
+  }
+
+  .card p {
+    font-size: clamp(13px, 1.3vw, 16px);
+  }
+
+  /* Code block */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    padding: clamp(16px, 2vw, 24px);
+    font-family: var(--font-code);
+    font-size: clamp(12px, 1.2vw, 14px);
+    line-height: 1.7;
+    color: var(--text-secondary);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .code-block .kw { color: var(--accent); }
+  .code-block .val { color: var(--foundation); }
+  .code-block .cmt { color: var(--text-tertiary); font-style: italic; }
+  .code-block .str { color: var(--kernel); }
+
+  .pull-quote {
+    font-family: var(--font-heading);
+    font-size: clamp(20px, 2.8vw, 36px);
+    font-weight: 500;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    border-left: 4px solid;
+    padding-left: clamp(16px, 2vw, 28px);
+    margin: 24px 0;
+  }
+
+  /* Dramatic / quote-only slide */
+  .dramatic .slide-inner { text-align: center; }
+  .dramatic .dramatic-text {
+    font-family: var(--font-heading);
+    font-size: clamp(30px, 5vw, 60px);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  /* Diagram slide */
+  .diagram-slide .slide-inner {
+    max-width: 1400px;
+    text-align: center;
+  }
+
+  .diagram-slide img {
+    max-width: 100%;
+    max-height: 72vh;
+    height: auto;
+    width: auto;
+    border-radius: 6px;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    box-shadow: 0 2px 8px rgba(28,30,43,0.06);
+  }
+
+  .diagram-caption {
+    font-family: var(--font-heading);
+    font-size: clamp(13px, 1.4vw, 16px);
+    color: var(--text-tertiary);
+    margin-top: 16px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Messages list (user prompts) */
+  .msg-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+    counter-reset: msg var(--msg-start, 0);
+  }
+
+  .msg {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: clamp(12px, 1.5vw, 18px) clamp(14px, 1.8vw, 22px);
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    counter-increment: msg;
+  }
+
+  .msg::before {
+    content: counter(msg);
+    font-family: var(--font-heading);
+    font-size: clamp(12px, 1.2vw, 14px);
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    min-width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .msg p {
+    font-family: var(--font-body);
+    font-size: clamp(13px, 1.4vw, 17px);
+    line-height: 1.55;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .msg.tester { border-left-color: var(--kernel); }
+  .msg.tester::before { color: var(--kernel); background: var(--kernel-soft); }
+
+  /* 2x2 screenshot grid with callouts */
+  .shot-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(10px, 1.5vw, 18px) clamp(12px, 1.8vw, 22px);
+    margin-top: 14px;
+    align-items: start;
+  }
+
+  .shot {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+  }
+
+  .shot-wrap { position: relative; }
+
+  .shot img {
+    width: 100%;
+    height: auto;
+    max-height: 32vh;
+    object-fit: contain;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    display: block;
+  }
+
+  .shot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .shot-label {
+    font-family: var(--font-heading);
+    font-size: clamp(11px, 1.1vw, 13px);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  .shot-label.before { color: var(--accent-red); }
+  .shot-label.after  { color: var(--foundation); }
+
+  /* Token / highlight badge */
+  .badge {
+    font-family: var(--font-heading);
+    font-size: clamp(12px, 1.4vw, 16px);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 4px 12px;
+    border-radius: 999px;
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  .badge.red    { background: var(--accent-red-soft);   color: var(--accent-red); border: 1px solid rgba(138,74,62,0.2); }
+  .badge.green  { background: var(--accent-green-soft); color: var(--accent-green); border: 1px solid rgba(61,122,74,0.2); }
+  .badge.muted  { background: var(--code-bg);           color: var(--text-secondary); border: 1px solid var(--border-light); }
+
+  .shot-note {
+    font-family: var(--font-body);
+    font-size: clamp(12px, 1.2vw, 14px);
+    line-height: 1.4;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  /* Finally-slide — split layout with image */
+  .split-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(20px, 3vw, 40px);
+    align-items: center;
+    margin-top: 16px;
+  }
+
+  .split-2 img {
+    width: 100%;
+    height: auto;
+    max-height: 62vh;
+    object-fit: contain;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+  }
+
+  /* Navigation */
+  .nav-dots {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    border: none;
+    cursor: pointer;
+    transition: background 200ms;
+    padding: 0;
+  }
+
+  .nav-dot.active { background: var(--accent); }
+  .nav-dot:hover { background: var(--text-tertiary); }
+
+  .slide-counter {
+    position: fixed;
+    bottom: 24px;
+    right: 32px;
+    font-family: var(--font-heading);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    z-index: 100;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ctrl-btn {
+    position: fixed;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 150ms, border-color 150ms, background 150ms;
+    touch-action: manipulation;
+  }
+  .ctrl-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+    background: var(--surface);
+  }
+
+  .ctrl-prev { top: 50%; left: 20px; transform: translateY(-50%); }
+  .ctrl-next { top: 50%; right: 20px; transform: translateY(-50%); }
+
+  .click-zone {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 20%;
+    z-index: 50;
+    cursor: pointer;
+  }
+  .click-zone.left { left: 0; }
+  .click-zone.right { right: 0; }
+
+  /* Title slide */
+  .title-slide .slide-inner { text-align: center; }
+  .title-slide .slide-title {
+    font-size: clamp(36px, 6vw, 80px);
+    font-weight: 600;
+    margin-bottom: 0;
+    letter-spacing: -0.03em;
+  }
+
+  .title-meta {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    margin-top: 40px;
+  }
+
+  .title-meta span {
+    font-family: var(--font-heading);
+    font-size: clamp(12px, 1.2vw, 14px);
+    color: var(--text-tertiary);
+  }
+
+  .title-meta strong { color: var(--text-secondary); }
+
+  /* CTA / closing slide */
+  .cta-slide .slide-inner { text-align: center; }
+
+  /* Section transition slide */
+  .section-slide .slide-inner { text-align: center; }
+
+  .section-slide .section-num {
+    font-family: var(--font-heading);
+    font-size: clamp(12px, 1.3vw, 15px);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .section-slide .section-title {
+    font-family: var(--font-heading);
+    font-size: clamp(32px, 5vw, 64px);
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    margin-bottom: 24px;
+  }
+
+  .section-slide .section-rule {
+    width: 80px;
+    height: 4px;
+    border-radius: 2px;
+    margin: 0 auto 24px;
+  }
+
+  .section-slide .section-tagline {
+    font-family: var(--font-body);
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .grid-2, .split-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+    .shot-grid { grid-template-columns: 1fr; }
+    html, body { overscroll-behavior: none; }
+    .slide {
+      padding: 24px 20px calc(64px + env(safe-area-inset-bottom, 0px)) 20px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      justify-content: flex-start;
+      touch-action: pan-y;
+    }
+    .slide-inner { margin-top: auto; margin-bottom: auto; }
+    .click-zone { display: none; }
+    .nav-dots { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+    .slide-counter {
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      right: 12px;
+      font-size: 11px;
+    }
+    .diagram-slide img { max-height: 55vh; }
+    .shot img { max-height: 40vh; }
+    .split-2 img { max-height: 45vh; }
+  }
+
+  @media (max-width: 480px) {
+    .nav-dots { gap: 0; }
+    .nav-dot {
+      width: 16px; height: 36px; background: transparent; border-radius: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-dot::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--border); flex-shrink: 0; transition: background 200ms, transform 200ms;
+    }
+    .nav-dot.active { background: transparent; }
+    .nav-dot.active::before { background: var(--accent); transform: scale(1.3); }
+    .nav-dot:hover::before { background: var(--text-tertiary); }
+    .grid-3 { grid-template-columns: 1fr; }
+    .title-meta { gap: 8px 16px; flex-wrap: wrap; }
+    h2 { margin-bottom: 14px; }
+    .slide-label { margin-bottom: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+<!-- ================================================================
+     SLIDE 1 — TITLE
+     ================================================================ -->
+<div class="slide title-slide active" data-slide="0">
+  <div class="slide-inner">
+    <h1 class="slide-title">Amplifier-Tester · In Practice</h1>
+    <div class="title-meta">
+      <span><strong>Author</strong> David Koleczek</span>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE 2 — THE ANXIETY (dramatic, no image)
+     ================================================================ -->
+<div class="slide dramatic" data-slide="1">
+  <div class="slide-inner">
+    <div class="dramatic-text">
+      Since Opus 4.7 came out,<br>Amplifier has been giving me anxiety.
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE 3 — OVER 100K TOKENS TO SAY HELLO
+     ================================================================ -->
+<div class="slide diagram-slide" data-slide="2">
+  <div class="slide-inner">
+    <h2 style="margin-bottom: 20px;">Over 100k tokens to say hello.</h2>
+    <img src="digital_twin_universe_framing_rev2_images/amplifier-local-1.png" alt="Amplifier local session — over 100k tokens at startup">
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE 4 — THE OPPORTUNITY
+     ================================================================ -->
+<div class="slide" data-slide="3">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--foundation);">The opportunity</div>
+    <h2>A perfect opportunity for a DTU.</h2>
+    <div class="grid-2">
+      <div class="card" style="border-top: 3px solid var(--kernel);">
+        <h3 style="color: var(--kernel);">What I want</h3>
+        <p>Use the <strong>lean bundle</strong> to help get that token count down.</p>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--boundary);">
+        <h3 style="color: var(--boundary);">What I don't want</h3>
+        <p>To impede the other work I'm doing by messing with my global Amplifier.</p>
+      </div>
+    </div>
+    <div class="pull-quote" style="border-color: var(--foundation); margin-top: 28px; font-size: clamp(18px, 2.4vw, 30px);">
+      This is a <em>perfect</em> opportunity to use DTUs.
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SECTION TRANSITION — LET'S LOOK AT ALL IT TOOK
+     ================================================================ -->
+<div class="slide section-slide" data-slide="4">
+  <div class="slide-inner">
+    <div class="section-num" style="color: var(--accent);">From "I want to try this" → a launched DTU</div>
+    <div class="section-rule" style="background: var(--accent);"></div>
+    <h1 class="section-title">Let's look at all it took.</h1>
+    <p class="section-tagline">About 30 minutes end-to-end, wall clock.</p>
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE — STEP 1 · TEAM KNOWLEDGE BASE
+     ================================================================ -->
+<div class="slide" data-slide="5">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--accent);">Step 1 · Team Knowledge Base</div>
+    <h2>Find the lean bundle.</h2>
+    <div class="msg-list">
+      <div class="msg"><p>Can you look through the amplifier knowledge base for info about the lean bundles?</p></div>
+      <div class="msg"><p>1 and 2 seem relevant. I am looking for something that is a more minimal amplifier configuration.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE — STEP 2a · AMPLIFIER-TESTER · CREATE THE PROFILE
+     ================================================================ -->
+<div class="slide" data-slide="6">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--kernel);">Step 2a · amplifier-tester</div>
+    <h2>Create the profile.</h2>
+    <div class="msg-list" style="--msg-start: 3;">
+      <div class="msg tester"><p>Can you use the amplifier-tester bundle to spin up a DTU with the <code>exp-lean-amplifier-dev</code> bundle configured with <code>claude-opus-4.7</code> as the default model? Put the profile in <code>.amplifier/digital-twin-universe/profiles</code>.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE — STEP 2b · AMPLIFIER-TESTER · COMPOSE BUNDLES
+     ================================================================ -->
+<div class="slide" data-slide="7">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--kernel);">Step 2b · amplifier-tester</div>
+    <h2>Compose the bundles I need.</h2>
+    <div class="msg-list" style="--msg-start: 4;">
+      <div class="msg tester"><p>Can you now add the <code>amplifier-tester</code>, <code>amplifier-reality-check</code>, <code>digital-twin-universe</code>, and <code>gitea</code> bundles (they are all this workspace as a reference, but use the actual urls) to that DTU? Use <code>amplifier bundle add &lt;github url&gt; --app</code>.</p></div>
+      <div class="msg tester"><p>You should be using this syntax to add the bundles: <code>amplifier bundle add "git+https://github.com/microsoft/amplifier-bundle-gitea@main#subdirectory=behaviors/gitea.yaml" --app</code>.</p></div>
+      <div class="msg tester"><p>Yeah it's fine if the CLIs are not installed for now. Please update the profile.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE — STEP 2c · AMPLIFIER-TESTER · LAUNCH
+     ================================================================ -->
+<div class="slide" data-slide="8">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--kernel);">Step 2c · amplifier-tester</div>
+    <h2>Launch.</h2>
+    <div class="msg-list" style="--msg-start: 7;">
+      <div class="msg tester"><p>Great, can you now launch this DTU?</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE — TRYING IT
+     ================================================================ -->
+<div class="slide" data-slide="9">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--foundation);">Trying it</div>
+    <h2>Exec into an interactive shell.</h2>
+<div class="code-block" style="margin-top: 8px;"><span class="kw">amplifier-digital-twin</span> exec <span class="val">&lt;dtu-id&gt;</span></div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE — BEFORE / AFTER SCREENSHOTS WITH ANNOTATIONS
+     ================================================================ -->
+<div class="slide" data-slide="10">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--foundation);">Before · After</div>
+    <h2 style="margin-bottom: 6px;">Local Amplifier vs. lean bundle in a DTU.</h2>
+    <div class="shot-grid">
+      <div class="shot">
+        <div class="shot-header">
+          <span class="shot-label before">Before · Local</span>
+          <span class="badge red">~105k tokens</span>
+        </div>
+        <img src="digital_twin_universe_framing_rev2_images/amplifier-local-1.png" alt="Local Amplifier — ~105k tokens at startup">
+      </div>
+      <div class="shot">
+        <div class="shot-header">
+          <span class="shot-label after">After · Lean bundle in DTU</span>
+          <span class="badge green">~53k tokens</span>
+        </div>
+        <img src="digital_twin_universe_framing_rev2_images/amplifier-dtu-1.png" alt="Lean bundle in DTU — ~53k tokens at startup">
+      </div>
+      <div class="shot">
+        <div class="shot-header">
+          <span class="shot-label before">Before · Local</span>
+          <span class="badge muted">Full toolset</span>
+        </div>
+        <img src="digital_twin_universe_framing_rev2_images/amplifier-local-2.png" alt="Local Amplifier — full tools and bundles">
+      </div>
+      <div class="shot">
+        <div class="shot-header">
+          <span class="shot-label after">After · Lean bundle in DTU</span>
+          <span class="badge green">Key tools &amp; bundles still there</span>
+        </div>
+        <img src="digital_twin_universe_framing_rev2_images/amplifier-dtu-2.png" alt="Lean bundle in DTU — most of the key tools and bundles I need still there">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE — FINALLY (indistinguishable from WSL2 terminal)
+     ================================================================ -->
+<div class="slide" data-slide="11">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--foundation);">Finally</div>
+    <h2>It's just a terminal.</h2>
+    <div class="split-2">
+      <div>
+        <div class="pull-quote" style="border-color: var(--foundation); margin: 0;">
+          A DTU is a terminal that, for my setup, is indistinguishable from one in WSL2.
+        </div>
+      </div>
+      <img src="digital_twin_universe_framing_rev2_images/amplifier-dtu-2.png" alt="Lean bundle running in a DTU terminal — looks the same as a local WSL2 terminal">
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SLIDE — CLOSING
+     ================================================================ -->
+<div class="slide cta-slide" data-slide="12">
+  <div class="slide-inner">
+    <div class="pull-quote" style="border-color: var(--foundation); text-align: center; border-left: none; border-bottom: 4px solid var(--foundation); padding-bottom: 32px; padding-left: 0; font-size: clamp(24px, 3.5vw, 48px);">
+      A lean Amplifier tested in its own universe.
+    </div>
+    <div class="title-meta" style="margin-top: 32px;">
+      <span><strong>Author</strong> David Koleczek</span>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- Presentation controls -->
+<button class="ctrl-btn ctrl-prev" onclick="prevSlide()" title="Previous slide">
+  <svg width="18" height="18" viewBox="0 0 18 18"><path d="M11 14L6 9l5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</button>
+<button class="ctrl-btn ctrl-next" onclick="nextSlide()" title="Next slide">
+  <svg width="18" height="18" viewBox="0 0 18 18"><path d="M7 4l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</button>
+
+<div class="nav-dots" id="navDots"></div>
+<div class="slide-counter" id="slideCounter">1 / 13</div>
+
+<!-- Click zones for desktop -->
+<div class="click-zone left" onclick="prevSlide()"></div>
+<div class="click-zone right" onclick="nextSlide()"></div>
+
+<script>
+(function() {
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let currentSlide = 0;
+
+  const dotsContainer = document.getElementById('navDots');
+  slides.forEach((_, i) => {
+    const dot = document.createElement('button');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.onclick = () => goToSlide(i);
+    dotsContainer.appendChild(dot);
+  });
+
+  function goToSlide(n) {
+    if (n < 0 || n >= totalSlides) return;
+    slides[currentSlide].classList.remove('active');
+    dotsContainer.children[currentSlide].classList.remove('active');
+    currentSlide = n;
+    slides[currentSlide].classList.add('active');
+    dotsContainer.children[currentSlide].classList.add('active');
+    document.getElementById('slideCounter').textContent = (currentSlide + 1) + ' / ' + totalSlides;
+  }
+
+  window.nextSlide = () => goToSlide(currentSlide + 1);
+  window.prevSlide = () => goToSlide(currentSlide - 1);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); nextSlide();
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); prevSlide();
+    }
+  });
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  document.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      dx < 0 ? nextSlide() : prevSlide();
+    }
+  }, { passive: true });
+})();
+</script>
+
+</body></html>
