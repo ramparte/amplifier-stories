@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Born Ready — on_session_ready() · Amplifier Core 1.4</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #79c0ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --purple: #bc8cff;
+    --orange: #ffa657;
+    --teal: #39d353;
+    --code-bg: #1c2128;
+    --slide-w: 1100px;
+    --slide-h: 660px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Progress Bar ─────────────────────── */
+  #progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    transition: width 0.4s ease;
+    z-index: 100;
+  }
+
+  /* ── Slide Viewport ───────────────────── */
+  #deck {
+    width: var(--slide-w);
+    height: var(--slide-h);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 52px 60px;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .slide.active { display: flex; }
+
+  /* ── Navigation ───────────────────────── */
+  #nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 14px;
+    user-select: none;
+  }
+
+  .nav-btn {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .nav-btn:hover { background: var(--bg3); border-color: var(--accent); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+  #slide-counter {
+    color: var(--muted);
+    font-size: 13px;
+    min-width: 80px;
+    text-align: center;
+  }
+
+  /* ── Shared Typography ────────────────── */
+  .kicker {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: 46px;
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -.03em;
+  }
+
+  h2 {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--accent2);
+    margin-bottom: 8px;
+  }
+
+  p, li { font-size: 15px; line-height: 1.65; color: var(--muted); }
+  p b, li b { color: var(--text); }
+  ul { list-style: none; padding: 0; }
+  ul li::before { content: "→ "; color: var(--accent); font-weight: 700; }
+  ul li { margin-bottom: 6px; }
+
+  .subtitle {
+    font-size: 18px;
+    color: var(--muted);
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+
+  .label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+  }
+  .label-red    { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.3); }
+  .label-green  { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+  .label-blue   { background: rgba(88,166,255,.15); color: var(--accent); border: 1px solid rgba(88,166,255,.3); }
+  .label-purple { background: rgba(188,140,255,.15); color: var(--purple); border: 1px solid rgba(188,140,255,.3); }
+  .label-orange { background: rgba(255,166,87,.15); color: var(--orange); border: 1px solid rgba(255,166,87,.3); }
+  .label-teal   { background: rgba(57,211,83,.15); color: var(--teal); border: 1px solid rgba(57,211,83,.3); }
+
+  /* ── Code Blocks ──────────────────────── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    overflow: hidden;
+    position: relative;
+  }
+  pre .fn    { color: #79c0ff; }
+  pre .kw    { color: #ff7b72; }
+  pre .str   { color: #a5d6ff; }
+  pre .cm    { color: #8b949e; font-style: italic; }
+  pre .num   { color: #f2cc60; }
+  pre .cls   { color: #ffa657; }
+  pre .ok    { color: var(--green); }
+  pre .bad   { color: var(--red); }
+  pre .hl    { background: rgba(88,166,255,.12); display: block; margin: 0 -20px; padding: 0 20px; border-left: 3px solid var(--accent); }
+
+  .pre-label {
+    position: absolute; top: 8px; right: 12px;
+    font-size: 10px; font-weight: 600;
+    color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
+  }
+
+  /* ── Two-column ───────────────────────── */
+  .cols { display: flex; gap: 20px; flex: 1; }
+  .col  { flex: 1; display: flex; flex-direction: column; }
+
+  /* ── Separator ────────────────────────── */
+  .sep {
+    width: 48px; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    border-radius: 2px;
+    margin: 14px 0;
+  }
+
+  /* ── Phase Pill ───────────────────────── */
+  .phases {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .phase {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .phase-num {
+    background: var(--accent);
+    color: #000;
+    font-weight: 800;
+    font-size: 11px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .phase-num.new { background: var(--green); }
+  .phase-body small { color: var(--muted); font-size: 11px; display: block; }
+
+  /* ── Callout ──────────────────────────── */
+  .callout {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.6;
+    margin: 10px 0;
+  }
+  .callout.warn  { border-left-color: var(--yellow); }
+  .callout.ok    { border-left-color: var(--green); }
+  .callout.bad   { border-left-color: var(--red); }
+  .callout.purple { border-left-color: var(--purple); }
+
+  /* ── Stat Cards ───────────────────────── */
+  .stats { display: flex; gap: 14px; margin: 14px 0; }
+  .stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    flex: 1;
+    text-align: center;
+  }
+  .stat-num  { font-size: 32px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .stat-num.green  { color: var(--green); }
+  .stat-num.red    { color: var(--red); }
+  .stat-num.purple { color: var(--purple); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .06em; }
+
+  /* ── Table ────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+       padding: 6px 12px; border-bottom: 1px solid var(--border); text-align: left; font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid rgba(48,54,61,.5); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  td.red   { color: var(--red); }
+  td.green { color: var(--green); }
+
+  /* ── Timeline ─────────────────────────── */
+  .timeline { display: flex; flex-direction: column; gap: 10px; }
+  .tl-item { display: flex; gap: 14px; align-items: flex-start; }
+  .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-top: 4px; flex-shrink: 0; }
+  .tl-dot.green { background: var(--green); }
+  .tl-dot.purple { background: var(--purple); }
+  .tl-date { font-size: 12px; color: var(--muted); width: 80px; flex-shrink: 0; padding-top: 1px; }
+  .tl-body { font-size: 14px; color: var(--text); line-height: 1.5; }
+  .tl-body small { color: var(--muted); font-size: 12px; }
+
+  /* ── DTU Box ──────────────────────────── */
+  .dtu-box {
+    background: var(--bg2);
+    border: 1px solid rgba(188,140,255,.3);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  .dtu-badge {
+    position: absolute; top: -10px; left: 16px;
+    background: var(--purple);
+    color: #000;
+    font-size: 10px; font-weight: 800;
+    letter-spacing: .1em; text-transform: uppercase;
+    padding: 2px 10px; border-radius: 4px;
+  }
+
+  /* ── Highlight text ───────────────────── */
+  .hl-text { color: var(--accent); font-weight: 700; }
+  .green-text { color: var(--green); font-weight: 700; }
+  .red-text { color: var(--red); font-weight: 700; }
+  .purple-text { color: var(--purple); }
+
+  /* ── Slide-specific ───────────────────── */
+  .title-slide h1 { font-size: 52px; }
+  .title-slide .tag-line {
+    margin-top: 20px;
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+
+  /* ── Diagram ──────────────────────────── */
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+  .diagram .hi { color: var(--accent2); }
+  .diagram .ok { color: var(--green); }
+  .diagram .bad { color: var(--red); }
+  .diagram .warn { color: var(--yellow); }
+
+  /* ── "How to" checklist ───────────────── */
+  .checklist { display: flex; flex-direction: column; gap: 10px; }
+  .check-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .check-icon {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(63,185,80,.2); border: 1px solid var(--green);
+    color: var(--green); font-size: 13px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .check-text { font-size: 14px; line-height: 1.5; }
+  .check-text b { color: var(--text); }
+  .check-text span { color: var(--muted); }
+
+  /* scroll within slide if needed */
+  .slide-scroll { overflow-y: auto; flex: 1; }
+  .slide-scroll::-webkit-scrollbar { width: 4px; }
+  .slide-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Click-zone navigation ─────────────────────── */
+  .click-zone {
+    position: fixed; top: 0; bottom: 0; width: 50%;
+    z-index: 10; pointer-events: none;
+    display: flex; align-items: center;
+    opacity: 0; transition: opacity 0.2s;
+    font-size: 40px; color: rgba(230,237,243,0.22);
+    user-select: none;
+  }
+  #click-prev { left: 0; background: linear-gradient(90deg, rgba(255,255,255,0.05), transparent); padding-left: 20px; }
+  #click-next { right: 0; background: linear-gradient(-90deg, rgba(255,255,255,0.05), transparent); justify-content: flex-end; padding-right: 20px; }
+  body.hover-left  #click-prev { opacity: 1; }
+  body.hover-right #click-next { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<div id="deck">
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 1 — TITLE
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide active title-slide">
+    <div class="kicker">Amplifier Core 1.4 · Engineering Story</div>
+    <h1>Born Ready</h1>
+    <p class="subtitle" style="font-size:22px; color: var(--text); margin-top:6px;">
+      How <span class="hl-text">on_session_ready()</span> ended module blindness<br>
+      and made the logging hook the first to benefit
+    </p>
+    <div class="sep" style="margin-top:24px;"></div>
+    <p style="font-size:15px; color: var(--muted); margin-top:6px; line-height:1.7;">
+      A new post-composition lifecycle hook that gives every module a guaranteed moment<br>
+      when the full coordinator is assembled — with real-world verification via<br>
+      <span class="purple-text">Digital Twin Universe</span>.
+    </p>
+    <div class="tag-line">
+      <span class="label label-blue">amplifier-core 1.4</span>
+      <span class="label label-green">hooks-logging</span>
+      <span class="label label-purple">Digital Twin Universe</span>
+      <span class="label label-orange">Phase 6 Lifecycle</span>
+    </div>
+    <div style="position:absolute; bottom:40px; right:60px; text-align:right;">
+      <p style="font-size:12px; color: var(--muted);">April 2026</p>
+      <p style="font-size:12px; color: var(--muted);">Use ← → or click to navigate</p>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 2 — THE PROBLEM
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">The Problem</div>
+    <h2>Modules Mount in the Dark</h2>
+    <div class="sep"></div>
+    <p style="margin-bottom:14px;">When a module's <code style="color:var(--accent)">mount()</code> runs, the coordinator is only <b>partially assembled</b>. Each phase completes before the next even begins:</p>
+    <div class="diagram">
+<span class="bad">Phase 1</span>  Orchestrator  — coordinator is empty
+<span class="bad">Phase 2</span>  Context       — sees orchestrator only
+<span class="bad">Phase 3</span>  Providers     — sees orch + context
+<span class="bad">Phase 4</span>  Tools         — sees orch + context + all providers
+<span class="bad">Phase 5</span>  Hooks         — sees everything EXCEPT later hooks
+<span class="warn">          [return]      — no "done" signal</span>
+    </div>
+    <div class="callout bad" style="margin-top:14px;">
+      After phase 5, <code>_session_init.py</code> simply returns.
+      There is <b>no "all-modules-ready" signal.</b> A hook that wanted to know whether a tool was already mounted
+      had to guess — and defend against both orderings.
+    </div>
+    <p style="margin-top:10px; font-size:14px;">
+      Result: every cross-module interaction required <b>defensive dual-path initialization</b>.
+      And one bug slipped through undetected for months.
+    </p>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 3 — THE TAX
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">The Defensive Pattern Tax</div>
+    <h2>Code Written to Survive Mount Order</h2>
+    <div class="sep"></div>
+    <div class="cols">
+      <div class="col">
+        <div class="label label-red">Pattern 1 — Dual-path init</div>
+        <pre style="font-size:11.5px; flex:1;">
+<span class="cm"># mount() registers the event handler AND</span>
+<span class="cm"># immediately runs setup if the tool is</span>
+<span class="cm"># already there — because it might not be.</span>
+coordinator.hooks.register(
+  <span class="str">"skills:discovered"</span>, on_skills_discovered
+)
+<span class="kw">if</span> coordinator.get_capability(
+    TOOL_SKILLS_DISCOVERY_CAPABILITY
+) <span class="kw">is not</span> None:
+    <span class="cm"># duplicate path — tool mounted first</span>
+    <span class="bad">await _refresh_watched_skills(...)</span>
+        </pre>
+      </div>
+      <div class="col">
+        <div class="label label-red">Pattern 2 — Triple-path event discovery</div>
+        <pre style="font-size:11.5px; flex:1;">
+<span class="kw">async def</span> <span class="fn">_discover_events</span>(coordinator):
+    <span class="cm"># Path 1: core canonical list</span>
+    discovered = set(ALL_EVENTS)
+    <span class="cm"># Path 2: contribution channels</span>
+    contributions = <span class="kw">await</span> coordinator
+        .collect_contributions(<span class="str">"obs.events"</span>)
+    <span class="kw">for</span> ev <span class="kw">in</span> contributions:
+        discovered.update(ev)
+    <span class="cm"># Path 3: legacy capability fallback</span>
+    cap = coordinator.get_capability(
+        <span class="str">"observability.events"</span>)
+    <span class="kw">if</span> cap <span class="kw">is not</span> None:
+        discovered.update(cap() <span class="kw">if</span> callable(cap)
+                           <span class="kw">else</span> cap)
+    <span class="bad">return discovered  # 3 paths for 1 answer</span>
+        </pre>
+      </div>
+    </div>
+    <div class="stats" style="margin-top:10px;">
+      <div class="stat"><div class="stat-num red">4</div><div class="stat-label">dual-path inits</div></div>
+      <div class="stat"><div class="stat-num red">9</div><div class="stat-label">defensive get_capability()</div></div>
+      <div class="stat"><div class="stat-num red">3</div><div class="stat-label">mount-order comments</div></div>
+      <div class="stat"><div class="stat-num red">2</div><div class="stat-label">event fallback chains</div></div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 4 — THE BUG
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">The Concrete Bug</div>
+    <h2>7% of the Graph Was Missing</h2>
+    <div class="sep"></div>
+    <p style="margin-bottom:14px;">
+      The context-intelligence hook used <code style="color:var(--accent)">collect_contributions()</code> to discover observable events.
+      <code style="color:var(--orange)">tool-delegate</code> registered its 5 delegation events using the <b>wrong API</b>:
+    </p>
+    <div class="cols">
+      <div class="col">
+        <div class="label label-red">Before — invisible to collect_contributions</div>
+        <pre style="font-size:12px;">
+<span class="cm"># tool-delegate/src/__init__.py</span>
+obs_events = coordinator.get_capability(
+    <span class="str">"observability.events"</span>) <span class="kw">or</span> []
+obs_events.extend([
+    <span class="bad">"delegate:agent_spawned"</span>,
+    <span class="bad">"delegate:agent_completed"</span>,
+    <span class="cm">...3 more...</span>
+])
+coordinator.register_capability(
+    <span class="str">"observability.events"</span>, obs_events
+)
+<span class="cm"># register_capability ≠ register_contributor</span>
+<span class="cm"># collect_contributions() never sees this</span>
+        </pre>
+      </div>
+      <div class="col">
+        <div class="label label-green">After — correct contribution channel</div>
+        <pre style="font-size:12px;">
+<span class="cm"># tool-delegate/src/__init__.py</span>
+coordinator.register_contributor(
+    <span class="str">"observability.events"</span>,
+    <span class="str">"tool-delegate"</span>,
+    <span class="kw">lambda</span>: [
+        <span class="ok">"delegate:agent_spawned"</span>,
+        <span class="ok">"delegate:agent_resumed"</span>,
+        <span class="ok">"delegate:agent_completed"</span>,
+        <span class="ok">"delegate:agent_cancelled"</span>,
+        <span class="ok">"delegate:error"</span>,
+    ],
+)
+<span class="cm"># now visible to collect_contributions()</span>
+        </pre>
+      </div>
+    </div>
+    <div class="callout bad" style="margin-top:10px;">
+      <b>Impact:</b> the entire delegation tree — every spawned sub-agent, every completed delegation — was
+      absent from the context-intelligence graph. A 7% event coverage gap, silently present for months.
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 5 — THE INVESTIGATION
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Before Writing Code</div>
+    <h2>Parallax Discovery First</h2>
+    <div class="sep"></div>
+    <p style="margin-bottom:16px;">
+      Before touching the kernel, a <b>multi-agent Parallax Discovery investigation</b> mapped the full scope.
+      Four dedicated sessions, ~1,400 JSONL events each. Three independent agent perspectives per topic.
+    </p>
+    <div class="cols">
+      <div class="col">
+        <div class="callout purple" style="margin-bottom:10px;">
+          <b>code-tracer</b> confirmed: <code>grep -r "did_mount|post_mount|modules_ready" amplifier-core/</code>
+          → zero results. No lifecycle exists.
+        </div>
+        <div class="callout purple">
+          <b>behavior-observer</b> catalogued all 41 canonical events in <code>events.rs</code>.
+          None were mount-lifecycle events.
+        </div>
+      </div>
+      <div class="col">
+        <table>
+          <tr>
+            <th>Pattern</th>
+            <th>Instances</th>
+            <th>Fixable</th>
+          </tr>
+          <tr><td>Dual-path init</td><td>4</td><td class="green">100%</td></tr>
+          <tr><td>Mount-order comments</td><td>3+</td><td class="green">100%</td></tr>
+          <tr><td>Event fallback chains</td><td>2</td><td class="green">100%</td></tr>
+          <tr><td>Defensive get_capability</td><td>9</td><td class="red">33%</td></tr>
+          <tr><td>App-level post-mount rewiring</td><td>~6</td><td>~67%</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="callout ok" style="margin-top:12px;">
+      Verdict: the problem is systemic. The fix is a <b>single new lifecycle hook</b>.
+      A 672-line design proposal was written before any implementation began.
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 6 — THE SOLUTION
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">The Solution</div>
+    <h2>One Function. One Guarantee.</h2>
+    <div class="sep"></div>
+    <div class="cols" style="gap:24px;">
+      <div class="col" style="flex:1.1;">
+        <pre style="font-size:13px;">
+<span class="kw">async def</span> <span class="fn">on_session_ready</span>(coordinator) <span class="kw">-></span> <span class="cls">None</span>:
+    <span class="str">"""Called after ALL modules have completed
+    their mount() calls. The coordinator is
+    fully composed. Return value is ignored.
+    Exceptions are non-fatal and isolated.
+    """</span>
+    <span class="cm"># Tools are here. Providers are here.</span>
+    <span class="cm"># Every hook is here. No guessing.</span>
+    contributions = <span class="kw">await</span> coordinator
+        .collect_contributions(<span class="str">"obs.events"</span>)
+        </pre>
+        <div class="callout ok" style="margin-top:10px; font-size:13px;">
+          Auto-discovered by the loader via <code>__on_session_ready__</code> attribute — <b>no new entry point needed</b>.
+        </div>
+      </div>
+      <div class="col" style="flex:0.9;">
+        <h3>Design Decisions</h3>
+        <ul style="gap:8px; display:flex; flex-direction:column;">
+          <li><b>coordinator only, no config</b> — config belongs in mount()</li>
+          <li><b>async-only</b> — sync implementations log a warning, are skipped</li>
+          <li><b>non-fatal, isolated</b> — one failure cannot block others</li>
+          <li><b>fires before session:fork</b> — children run independently</li>
+          <li><b>100% backward compatible</b> — existing modules unchanged</li>
+          <li><b>queue drains after dispatch</b> — no double-dispatch risk</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 7 — PHASE 6
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Under the Hood</div>
+    <h2>Phase 6 in the Kernel</h2>
+    <div class="sep"></div>
+    <div class="phases">
+      <div class="phase"><div class="phase-num">1</div><div><b>Orchestrator</b><small>as before</small></div></div>
+      <div class="phase"><div class="phase-num">2</div><div><b>Context</b><small>as before</small></div></div>
+      <div class="phase"><div class="phase-num">3</div><div><b>Providers</b><small>as before</small></div></div>
+      <div class="phase"><div class="phase-num">4</div><div><b>Tools</b><small>as before</small></div></div>
+      <div class="phase"><div class="phase-num">5</div><div><b>Hooks</b><small>as before</small></div></div>
+      <div class="phase" style="border-color: rgba(63,185,80,.4);">
+        <div class="phase-num new">6</div>
+        <div><b style="color:var(--green)">on_session_ready</b><small style="color:var(--teal);">new — fires here</small></div>
+      </div>
+    </div>
+    <pre style="margin-top:16px; font-size:12.5px;">
+<span class="cm"># _session_init.py — Phase 6</span>
+on_session_ready_queue = loader.get_on_session_ready_queue()   <span class="cm"># sync</span>
+<span class="kw">for</span> module_id, on_session_ready_fn <span class="kw">in</span> on_session_ready_queue:
+    <span class="kw">try</span>:
+        <span class="kw">await</span> on_session_ready_fn(coordinator)
+    <span class="kw">except</span> <span class="cls">Exception</span> <span class="kw">as</span> e:
+        logger.warning(<span class="str">f"on_session_ready for '{module_id}' raised"</span>)
+        <span class="kw">await</span> coordinator.hooks.emit(
+            MODULE_ON_SESSION_READY_FAILED,   <span class="cm"># observable — new event #42</span>
+            {<span class="str">"module_id"</span>: module_id, <span class="str">"error"</span>: str(e)}
+        )
+loader.clear_on_session_ready_queue()   <span class="cm"># drain — prevents double-dispatch</span>
+    </pre>
+    <p style="font-size:13px; margin-top:8px; color: var(--muted);">
+      Enqueue happens <b>after each successful mount()</b> — failed mounts never get a Phase 6 callback.
+      Failures in Phase 6 are non-fatal and self-report via the event bus.
+    </p>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 8 — HOOKS-LOGGING BEFORE/AFTER
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">First Adopter · hooks-logging</div>
+    <h2>mount() Shrinks to One Line</h2>
+    <div class="sep"></div>
+    <div class="cols">
+      <div class="col">
+        <div class="label label-red">Before — everything in mount()</div>
+        <pre style="font-size:11px; flex:1;">
+<span class="kw">async def</span> <span class="fn">mount</span>(coordinator, config=<span class="kw">None</span>):
+    config = config <span class="kw">or</span> {}
+    priority = int(config.get(<span class="str">"priority"</span>, 100))
+    session_logger = SessionLogger(...)
+    
+    <span class="cm"># define handler closure...</span>
+    <span class="kw">async def</span> <span class="fn">handler</span>(event, data):
+        session_logger.write(...)
+    
+    events = list(ALL_EVENTS)
+    <span class="kw">if</span> auto_discover:
+        <span class="cm"># race condition: tools may not be mounted</span>
+        <span class="bad">discovered = coordinator.get_capability(</span>
+        <span class="bad">    "observability.events") or []</span>
+        events.extend(discovered)
+    
+    <span class="kw">for</span> ev <span class="kw">in</span> events:
+        coordinator.hooks.register(ev, handler)
+        </pre>
+      </div>
+      <div class="col">
+        <div class="label label-green">After — deferred, safe, complete</div>
+        <pre style="font-size:11px; flex:1;">
+_deferred_configs: list[dict] = []
+
+<span class="kw">async def</span> <span class="fn">mount</span>(coordinator, config=<span class="kw">None</span>):
+    <span class="ok">_deferred_configs.append(config or {})</span>
+
+<span class="kw">async def</span> <span class="fn">on_session_ready</span>(coordinator):
+    <span class="kw">while</span> _deferred_configs:
+        config = _deferred_configs.pop(0)
+        <span class="cm"># ... build logger, closure ...</span>
+
+        <span class="cm"># legacy path preserved</span>
+        if auto_discover:
+            discovered = coordinator
+                .get_capability(<span class="str">"obs.events"</span>) or []
+            events.extend(discovered)
+        <span class="cm"># new path — safe here, all tools mounted</span>
+        if auto_discover:
+            contributions = <span class="ok">await coordinator</span>
+                <span class="ok">.collect_contributions("obs.events")</span>
+            <span class="kw">for</span> c <span class="kw">in</span> contributions:
+                events.extend(c)
+        <span class="kw">for</span> ev <span class="kw">in</span> events:
+            coordinator.hooks.register(ev, handler)
+        </pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 9 — DTU INTRO
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Testing Strategy</div>
+    <h2>Unit Tests Are Not Enough</h2>
+    <div class="sep"></div>
+    <p style="margin-bottom:16px;">
+      All unit tests pass in 0.09s. But pytest can't answer the real question:
+      <b>"Does the Amplifier module loader actually call on_session_ready?
+      Does the kernel event bus work end-to-end? Are events written to disk?"</b>
+    </p>
+    <div class="cols">
+      <div class="col">
+        <div class="callout bad">
+          <b>What unit tests verify:</b><br>
+          <code>mount()</code> defers config ✓<br>
+          <code>on_session_ready()</code> registers handlers ✓<br>
+          <code>collect_contributions()</code> is called ✓<br>
+          <span style="color:var(--muted);">Module loader invocation … ✗</span><br>
+          <span style="color:var(--muted);">Kernel event bus … ✗</span><br>
+          <span style="color:var(--muted);">JSONL written to disk … ✗</span>
+        </div>
+      </div>
+      <div class="col">
+        <div class="callout ok">
+          <b>What DTU E2E verifies:</b><br>
+          Full <code>amplifier run</code> session ✓<br>
+          Local source code loaded (not PyPI) ✓<br>
+          Kernel mounts all modules ✓<br>
+          Phase 6 fires on_session_ready ✓<br>
+          Events appear in JSONL on disk ✓<br>
+          Real provider (mock), no API key needed ✓
+        </div>
+      </div>
+    </div>
+    <div class="callout purple" style="margin-top:12px; font-size:14px;">
+      <b>Digital Twin Universe</b> lets you run your local feature branch inside a fully provisioned,
+      real-user-facing environment — without touching production infrastructure.
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 10 — DTU PHASE 1
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Digital Twin Universe · Phase 1</div>
+    <h2>Isolated Test Suite</h2>
+    <div class="sep"></div>
+    <div class="dtu-box" style="margin-bottom:16px;">
+      <div class="dtu-badge">test-suite.yaml</div>
+      <div style="margin-top:6px; display:flex; gap:20px; flex-wrap:wrap;">
+        <div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:4px;">ENVIRONMENT</p>
+          <p style="font-size:13px;">Ubuntu 24.04 · Rust toolchain · uv · Gitea mirror</p>
+        </div>
+        <div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:4px;">SOURCE</p>
+          <p style="font-size:13px;">Local <code>feat/on-session-ready</code> branch via Gitea</p>
+        </div>
+        <div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:4px;">BUILD</p>
+          <p style="font-size:13px;"><code>uv sync --group dev</code> → compiles amplifier-core from Rust source</p>
+        </div>
+      </div>
+    </div>
+    <pre style="font-size:12.5px;">
+<span class="cm"># run via amplifier-digital-twin exec</span>
+<span class="kw">cd</span> /root/work/amplifier-module-hooks-logging && \
+    PATH=/root/.local/bin:/root/.cargo/bin:$PATH \
+    uv run pytest tests/ -v
+
+<span class="cm">======================== 24 passed in 0.09s ========================</span>
+    </pre>
+    <div class="callout warn" style="margin-top:14px; font-size:14px;">
+      <b>Insight discovered here:</b> The test suite validates behavioral isolation.
+      But pytest cannot exercise the Amplifier module loader, kernel event bus,
+      or filesystem write path. A second DTU profile is needed.
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 11 — DTU PHASE 2
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Digital Twin Universe · Phase 2</div>
+    <h2>True End-to-End: Real amplifier run</h2>
+    <div class="sep"></div>
+    <div class="dtu-box" style="margin-bottom:14px;">
+      <div class="dtu-badge">e2e-event-logging.yaml</div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:10px;">
+        <div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:3px;">WHEEL STRATEGY</p>
+          <p style="font-size:13px;"><code>pypi_overrides.wheel_from_git</code>: builds amplifier-core wheel on <b>host</b> (where cargo lives), serves via in-container pypiserver. Container needs no Rust.</p>
+        </div>
+        <div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:3px;">URL REWRITE</p>
+          <p style="font-size:13px;"><code>allow_uv_github_fast_path: false</code> — critical flag. Without it, uv resolves SHAs via GitHub API, bypassing local Gitea mirror silently.</p>
+        </div>
+        <div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:3px;">TEST BUNDLE</p>
+          <p style="font-size:13px;"><code>loop-basic</code> + <code>provider-mock</code> + hooks-logging from Gitea. No API key required.</p>
+        </div>
+        <div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:3px;">ASSERTION</p>
+          <p style="font-size:13px;">grep JSONL on disk for <code>session:start</code>, <code>prompt:submit</code>, <code>session:end</code>. Binary PASS/FAIL.</p>
+        </div>
+      </div>
+    </div>
+    <pre style="font-size:12px;">
+<span class="kw">for</span> ev <span class="kw">in</span> <span class="str">"session:start"</span> <span class="str">"prompt:submit"</span> <span class="str">"session:end"</span>; <span class="kw">do</span>
+  grep -q <span class="str">'"event": "'"$ev"'"'</span> <span class="str">"$JSONL"</span> || MISSING=<span class="str">"$MISSING $ev"</span>
+<span class="kw">done</span>
+<span class="ok">PASS: all required events present (session:start, prompt:submit, session:end)</span>
+    </pre>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 12 — DTU ARCHITECTURE
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Digital Twin Universe · Architecture</div>
+    <h2>How the E2E Profile Wires Together</h2>
+    <div class="sep"></div>
+
+    <style>
+      .dtu-diag { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+      .dtu-zone {
+        border-radius: 10px; padding: 12px 16px;
+        border: 1px solid var(--border);
+      }
+      .dtu-zone.host { background: rgba(210,153,34,.07); border-color: rgba(210,153,34,.35); }
+      .dtu-zone.container { background: rgba(188,140,255,.07); border-color: rgba(188,140,255,.35); }
+      .dtu-zone-label {
+        font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+      .dtu-zone.host .dtu-zone-label { color: var(--yellow); }
+      .dtu-zone.container .dtu-zone-label { color: var(--purple); }
+      .dtu-row { display: flex; gap: 10px; align-items: center; }
+      .dtu-box {
+        background: var(--bg3); border: 1px solid var(--border);
+        border-radius: 7px; padding: 7px 12px;
+        font-size: 12px; line-height: 1.4; flex: 1;
+        display: flex; flex-direction: column; gap: 2px;
+      }
+      .dtu-box b { color: var(--text); font-size: 12px; }
+      .dtu-box span { color: var(--muted); font-size: 11px; }
+      .dtu-box.ok { border-color: rgba(63,185,80,.4); }
+      .dtu-box.ok b { color: var(--green); }
+      .dtu-arrow-right { color: var(--muted); font-size: 18px; flex-shrink: 0; line-height: 1; }
+      .dtu-arrow-down {
+        text-align: center; color: var(--muted); font-size: 14px;
+        line-height: 1; margin: 2px 0;
+      }
+      .dtu-step-row { display: flex; gap: 10px; }
+      .dtu-step {
+        display: flex; align-items: flex-start; gap: 8px;
+        background: var(--bg3); border: 1px solid var(--border);
+        border-radius: 7px; padding: 7px 12px; flex: 1; font-size: 12px;
+      }
+      .dtu-step-num {
+        width: 18px; height: 18px; border-radius: 50%; background: var(--bg2);
+        border: 1px solid var(--border); color: var(--muted);
+        font-size: 10px; font-weight: 700; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .dtu-step b { color: var(--text); display: block; }
+      .dtu-step span { color: var(--muted); font-size: 11px; }
+      .dtu-pass {
+        background: rgba(63,185,80,.12); border: 1px solid rgba(63,185,80,.4);
+        border-radius: 7px; padding: 8px 14px;
+        font-size: 13px; font-weight: 700; color: var(--green);
+        text-align: center; letter-spacing: .03em;
+      }
+    </style>
+
+    <div class="dtu-diag">
+
+      <!-- HOST -->
+      <div class="dtu-zone host">
+        <div class="dtu-zone-label">🖥 Host Machine</div>
+        <div class="dtu-row">
+          <div class="dtu-box">
+            <b>cargo build</b>
+            <span>amplifier-core.whl compiled from local source</span>
+          </div>
+          <div class="dtu-arrow-right">→</div>
+          <div class="dtu-box">
+            <b>amplifier-digital-twin launch</b>
+            <span>e2e-event-logging.yaml · spins up Incus container</span>
+          </div>
+          <div class="dtu-arrow-right">→</div>
+          <div class="dtu-box">
+            <b>pypiserver (in-container)</b>
+            <span>serves the .whl to uv inside the container — no Rust needed inside</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dtu-arrow-down">↓ provisions</div>
+
+      <!-- CONTAINER -->
+      <div class="dtu-zone container">
+        <div class="dtu-zone-label">📦 Incus Container · Ubuntu 24.04</div>
+        <div class="dtu-step-row" style="margin-bottom:6px;">
+          <div class="dtu-step">
+            <div class="dtu-step-num">1</div>
+            <div><b>uv tool install amplifier</b><span>URLs rewritten → gitea mirror + pypiserver (fast-path disabled)</span></div>
+          </div>
+          <div class="dtu-arrow-right" style="align-self:center;">→</div>
+          <div class="dtu-step">
+            <div class="dtu-step-num">2</div>
+            <div><b>amplifier run --bundle e2e-bundle</b><span>loop-basic · provider-mock · hooks-logging from gitea</span></div>
+          </div>
+        </div>
+        <div class="dtu-step-row" style="margin-bottom:6px;">
+          <div class="dtu-step">
+            <div class="dtu-step-num">3</div>
+            <div><b>Phase 6 fires</b><span>on_session_ready() called → handler registered → events observed</span></div>
+          </div>
+          <div class="dtu-arrow-right" style="align-self:center;">→</div>
+          <div class="dtu-step">
+            <div class="dtu-step-num">4</div>
+            <div><b>events.jsonl written to disk</b><span>~/.amplifier/projects/.../events.jsonl</span></div>
+          </div>
+        </div>
+        <div class="dtu-pass">✅ PASS · session:start · prompt:submit · session:end — all present in JSONL</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 13 — TIMELINE
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Timeline</div>
+    <h2>From Bug Discovery to Verified Ship</h2>
+    <div class="sep"></div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Apr 10</div>
+        <div class="tl-body">CI design plan documents the <b>7% graph coverage gap</b> publicly. Delegation events confirmed absent.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Apr 22</div>
+        <div class="tl-body"><b>Parallax Discovery</b> investigation runs (4 sessions). PROPOSAL.md written (672 lines). Design committed.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Apr 23</div>
+        <div class="tl-body"><b>tool-delegate</b> fix merged (<code>register_capability</code> → <code>register_contributor</code>). Gap closed immediately. Bundle guide updated.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Apr 24</div>
+        <div class="tl-body"><b>amplifier-core 1.4.0</b>: feat(lifecycle) + 64 tests merged. Version 1.3.3 → 1.4.0. CONTRACTS.md +171 lines.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot green"></div>
+        <div class="tl-date">Apr 28</div>
+        <div class="tl-body"><b>hooks-logging</b> adopts on_session_ready(). TDD red → green. Code quality review passes.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot purple"></div>
+        <div class="tl-date">Apr 29</div>
+        <div class="tl-body"><b>DTU Phase 1</b> (test-suite.yaml): 24 tests pass in isolated container. <b>DTU Phase 2</b> (e2e-event-logging.yaml): real <code>amplifier run</code> → JSONL verified. <span class="green-text">PASS.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 14 — HOW TO USE
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">How to Use It</div>
+    <h2>Adopting on_session_ready() in Your Module</h2>
+    <div class="sep"></div>
+    <div class="checklist">
+      <div class="check-item">
+        <div class="check-icon">1</div>
+        <div class="check-text">
+          <b>Add an async def on_session_ready(coordinator) function to your module.</b>
+          <span> The loader auto-discovers it — no new entry point declaration needed.</span>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="check-icon">2</div>
+        <div class="check-text">
+          <b>Move cross-module setup out of mount() and into on_session_ready().</b>
+          <span> Anything that reads from other modules (capabilities, contributions, tool registrations) belongs here.</span>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="check-icon">3</div>
+        <div class="check-text">
+          <b>Defer config with a module-level list, not a scalar.</b>
+          <span> Use <code>_deferred_configs: list[dict] = []</code>. Append in mount(), pop in on_session_ready(). No global keyword.</span>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="check-icon">4</div>
+        <div class="check-text">
+          <b>Pin amplifier-core≥1.4.0 in dev dependencies.</b>
+          <span> Add <code>amplifier-core&gt;=1.4.0</code> to <code>[dependency-groups] dev</code>. Runtime dep stays empty — the CLI provides core.</span>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="check-icon">5</div>
+        <div class="check-text">
+          <b>Update existing tests to call on_session_ready() after mount().</b>
+          <span> Add an autouse fixture to clear module-level deferred state between tests.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 15 — PATTERN REFERENCE
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Pattern Reference</div>
+    <h2>The Canonical Template</h2>
+    <div class="sep"></div>
+    <pre style="font-size:12.5px;">
+<span class="cm"># module/__init__.py</span>
+<span class="cm"># ─────────────────────────────────────────────────────────────</span>
+<span class="cm"># Module-level deferred state</span>
+<span class="cm"># list avoids `global`; .append() / .pop(0) mutate without reassignment</span>
+_deferred_configs: list[dict] = []
+
+<span class="kw">async def</span> <span class="fn">mount</span>(coordinator: ModuleCoordinator, config: dict | <span class="kw">None</span> = <span class="kw">None</span>) <span class="kw">-></span> <span class="kw">None</span>:
+    _deferred_configs.append(config <span class="kw">or</span> {})   <span class="cm"># slim — just defer</span>
+
+<span class="kw">async def</span> <span class="fn">on_session_ready</span>(coordinator: ModuleCoordinator) <span class="kw">-></span> <span class="kw">None</span>:
+    <span class="str">"""Runs after ALL modules are mounted. Coordinator is fully composed."""</span>
+    <span class="kw">while</span> _deferred_configs:
+        config = _deferred_configs.pop(0)
+
+        <span class="cm"># ✅ Safe to call collect_contributions() here</span>
+        contributions = <span class="kw">await</span> coordinator.collect_contributions(<span class="str">"observability.events"</span>)
+
+        <span class="cm"># ✅ Safe to get_capability() for any module</span>
+        tool = coordinator.get_capability(<span class="str">"my-required-tool"</span>)
+        <span class="kw">if</span> tool <span class="kw">is None</span>:
+            <span class="kw">return</span>   <span class="cm"># fail gracefully — on_session_ready is non-fatal</span>
+
+        <span class="cm"># ✅ Store session-scoped state via capabilities (not process globals)</span>
+        coordinator.register_capability(<span class="str">"my-module.instance"</span>, MyInstance(config))
+    </pre>
+    <div class="callout ok" style="margin-top:10px; font-size:13px;">
+      <b>Test pattern:</b> always call <code>await on_session_ready(coordinator)</code> after <code>await mount(...)</code> in tests.
+      Add an autouse fixture that clears <code>_module._deferred_configs</code> between test cases.
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 16 — GOTCHAS
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Gotchas &amp; Contracts</div>
+    <h2>What the Docs Say — Read These</h2>
+    <div class="sep"></div>
+    <div class="cols">
+      <div class="col">
+        <h3 style="margin-bottom:10px;">Know Before You Ship</h3>
+        <div class="callout warn" style="margin-bottom:10px;">
+          <b>No timeout enforced.</b> A hanging <code>on_session_ready()</code> hangs the entire session.
+          Implement your own deadline or rely on the caller's budget.
+        </div>
+        <div class="callout warn" style="margin-bottom:10px;">
+          <b>Fires once per session.</b> Child sessions run an independent mount wave
+          and their own Phase 6 pass. Parent callbacks do not re-run.
+        </div>
+        <div class="callout bad">
+          <b>Do not use process-scoped globals.</b> Use <code>coordinator.register_capability()</code>
+          for session-scoped instance state instead.
+        </div>
+      </div>
+      <div class="col">
+        <h3 style="margin-bottom:10px;">Failure Is Observable</h3>
+        <div class="callout ok" style="margin-bottom:10px;">
+          Exceptions in <code>on_session_ready()</code> emit <code>module:on_session_ready_failed</code>
+          on the event bus — event #42 in ALL_EVENTS. Hooks-logging will write it to JSONL.
+        </div>
+        <div class="callout" style="margin-bottom:10px;">
+          <b>sync functions are skipped with a warning</b>, not called via <code>asyncio.run()</code>.
+          Always declare <code>async def on_session_ready</code>.
+        </div>
+        <div class="callout">
+          The full contract is in <code>amplifier-core/docs/CONTRACTS.md</code> under
+          "Module Lifecycle: on_session_ready()".
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 17 — IMPACT
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Impact</div>
+    <h2>What Changed Across the Ecosystem</h2>
+    <div class="sep"></div>
+    <div class="stats" style="margin-bottom:18px;">
+      <div class="stat"><div class="stat-num green">42</div><div class="stat-label">canonical events (was 41)</div></div>
+      <div class="stat"><div class="stat-num">1128</div><div class="stat-label">lines of new tests</div></div>
+      <div class="stat"><div class="stat-num purple">64+</div><div class="stat-label">new test cases</div></div>
+    </div>
+    <table>
+      <tr><th>Change</th><th>Repo</th><th>Status</th></tr>
+      <tr>
+        <td>Phase 6 + loader + queue</td>
+        <td><code>amplifier-core</code></td>
+        <td class="green">Merged 1.4.0</td>
+      </tr>
+      <tr>
+        <td><code>register_capability</code> → <code>register_contributor</code></td>
+        <td><code>amplifier-foundation</code> (tool-delegate)</td>
+        <td class="green">Merged</td>
+      </tr>
+      <tr>
+        <td>on_session_ready adoption + DTU E2E</td>
+        <td><code>amplifier-module-hooks-logging</code></td>
+        <td class="green">Verified PASS</td>
+      </tr>
+      <tr>
+        <td>CONTRACTS.md lifecycle section</td>
+        <td><code>amplifier-core</code></td>
+        <td class="green">+171 lines</td>
+      </tr>
+      <tr>
+        <td>on_session_ready in BUNDLE_GUIDE.md</td>
+        <td><code>amplifier-foundation</code></td>
+        <td class="green">Documented</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       SLIDE 18 — CLOSE
+  ─────────────────────────────────────────────────────────── -->
+  <div class="slide">
+    <div class="kicker">Summary</div>
+    <h2 style="font-size:36px; line-height:1.15;">
+      One lifecycle hook.<br>
+      End of defensive mounting.<br>
+      <span class="green-text">Verified end-to-end by DTU.</span>
+    </h2>
+    <div class="sep" style="margin: 20px 0;"></div>
+    <div class="cols">
+      <div class="col">
+        <h3>The Pattern</h3>
+        <ul>
+          <li><b>mount()</b> — store config only</li>
+          <li><b>on_session_ready()</b> — do cross-module work</li>
+          <li><b>collect_contributions()</b> — safe only here</li>
+          <li><b>DTU e2e profile</b> — prove the full stack</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>The Stack</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+          <span class="label label-blue" style="display:inline-flex; align-items:center; gap:6px; font-size:12px;">
+            amplifier-core 1.4.0 — Phase 6 lifecycle
+          </span>
+          <span class="label label-green" style="display:inline-flex; align-items:center; gap:6px; font-size:12px;">
+            hooks-logging — first on_session_ready adopter
+          </span>
+          <span class="label label-purple" style="display:inline-flex; align-items:center; gap:6px; font-size:12px;">
+            Digital Twin Universe — unit + E2E two-phase testing
+          </span>
+          <span class="label label-orange" style="display:inline-flex; align-items:center; gap:6px; font-size:12px;">
+            CONTRACTS.md — lifecycle contract documented
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="callout ok" style="margin-top:20px; font-size:14px;">
+      <b>Next:</b> context-intelligence hook eliminates its dual-path init using this same pattern.
+      Any module that registers events or reads capabilities in <code>mount()</code> should migrate.
+    </div>
+  </div>
+
+  <div class="click-zone" id="click-prev">&#8249;</div>
+  <div class="click-zone" id="click-next">&#8250;</div>
+</div><!-- #deck -->
+
+<!-- ── Navigation Controls ─────────────────────────── -->
+<div id="nav">
+  <button class="nav-btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+  <span id="slide-counter">1 / 18</span>
+  <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next →</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let current = 0;
+
+  function showSlide(n) {
+    slides[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, total - 1));
+    slides[current].classList.add('active');
+
+    document.getElementById('slide-counter').textContent = `${current + 1} / ${total}`;
+    document.getElementById('prev-btn').disabled = current === 0;
+    document.getElementById('next-btn').disabled = current === total - 1;
+
+    const pct = ((current / (total - 1)) * 100).toFixed(1);
+    document.getElementById('progress-bar').style.width = pct + '%';
+  }
+
+  function navigate(dir) { showSlide(current + dir); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); navigate(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); navigate(-1); }
+    if (e.key === 'Home') showSlide(0);
+    if (e.key === 'End')  showSlide(total - 1);
+  });
+
+  // Touch swipe
+  let touchStartX = 0;
+  document.getElementById('deck').addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+  document.getElementById('deck').addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) navigate(dx < 0 ? 1 : -1);
+  });
+
+  // Click-zone navigation: left half of viewport = prev, right half = next
+  document.addEventListener('click', e => {
+    if (e.target.closest('button, a, input, select, textarea, [role="button"]')) return;
+    navigate(e.clientX > window.innerWidth / 2 ? 1 : -1);
+  });
+  document.addEventListener('mousemove', e => {
+    const mid = window.innerWidth / 2;
+    document.body.classList.toggle('hover-left',  e.clientX <= mid);
+    document.body.classList.toggle('hover-right', e.clientX >  mid);
+  });
+  document.addEventListener('mouseleave', () => document.body.classList.remove('hover-left', 'hover-right'));
+
+  showSlide(0);
+</script>
+
+</body>
+</html>
