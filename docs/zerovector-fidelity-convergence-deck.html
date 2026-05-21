@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ZeroVector &mdash; Zero Translation Loss: Fidelity Convergence Architecture</title>
+    <style>
+        :root {
+            --accent: #E74C3C;
+            --accent-dim: rgba(231, 76, 60, 0.15);
+            --accent-glow: rgba(231, 76, 60, 0.3);
+
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Typography scale */
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 36px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 16px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 1.8vw, 15px);
+
+            /* Spacing */
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Slide base */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin-bottom: var(--space-md);
+        }
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: var(--space-md);
+        }
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(680px, 90vw);
+        }
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-sm);
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: 100px;
+            background: rgba(231, 76, 60, 0.15);
+            color: #E74C3C;
+            margin-top: var(--space-sm);
+        }
+
+        /* Grids */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .quads {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .fifths {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .card h3, .card h4 {
+            color: var(--text-primary);
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.5;
+        }
+        .card .icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Card with accent border top */
+        .card-accent {
+            border-top: 2px solid var(--accent);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: #BFC0C5;
+            margin-top: var(--space-md);
+        }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-cmd { color: #E74C3C; }
+        .code-flag { color: #E74C3C; }
+        .code-string { color: #FF9F0A; }
+        .code-var { color: #64D2FF; }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            max-width: min(800px, 95vw);
+        }
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+        }
+        .flow-number {
+            flex-shrink: 0;
+            width: clamp(36px, 5vw, 48px);
+            height: clamp(36px, 5vw, 48px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--fs-body);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .flow-content h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .flow-content p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .flow-arrow {
+            width: 2px;
+            height: var(--space-sm);
+            background: var(--accent-dim);
+            margin-left: clamp(17px, 2.3vw, 23px);
+        }
+
+        /* Architecture diagram */
+        .arch-entities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .entity-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+        .entity-box .icon {
+            font-size: clamp(32px, 6vw, 56px);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box h4 {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Velocity stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+        .velocity-stat { text-align: center; }
+        .velocity-number {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #FF6B6B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .velocity-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Quote / callout box */
+        .callout {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            margin-top: var(--space-md);
+            max-width: min(700px, 95vw);
+        }
+        .callout p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            font-style: italic;
+        }
+        .callout .attribution {
+            font-style: normal;
+            color: var(--text-tertiary);
+            font-size: var(--fs-small);
+            margin-top: var(--space-xs);
+        }
+
+        /* Convergence diagram */
+        .convergence-loop {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            margin-top: var(--space-lg);
+            max-width: min(800px, 95vw);
+        }
+        .convergence-loop .loop-header {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: var(--space-md);
+            text-align: center;
+        }
+        .convergence-flow {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 2;
+            color: #BFC0C5;
+        }
+
+        /* Lens table */
+        .lens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .lens-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .lens-card .lens-name {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: var(--space-xs);
+        }
+        .lens-card .lens-question {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            font-style: italic;
+        }
+        .lens-card .lens-route {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        /* Sources slide specifics */
+        .sources-content {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            max-width: min(800px, 95vw);
+        }
+        .sources-content strong {
+            color: var(--text-primary);
+        }
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .sources-content ul {
+            padding-left: var(--space-md);
+            margin: var(--space-xs) 0;
+        }
+        .sources-content li {
+            margin-bottom: var(--space-xs);
+        }
+
+        /* More stories link */
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Touch targets */
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+
+        /* Highlight accent text */
+        .accent { color: var(--accent); }
+
+        /* Inline list with subtle bullets */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding-left: var(--space-md);
+            position: relative;
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-xs);
+        }
+        .feature-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 1: TITLE                                                -->
+    <!-- ============================================================ -->
+    <div class="slide active center">
+        <div class="section-label">Architecture &amp; Philosophy &middot; Amplifier Bundle</div>
+        <h1 class="headline">ZeroVector</h1>
+        <p class="subhead">State your intent once. Get exactly what you meant.<br>Zero translation loss through fidelity convergence.</p>
+        <div class="status-badge">v0.3.0 &middot; Fidelity Convergence</div>
+        <div class="small-text">May 2026 &middot; michaeljabbour/amplifier-bundle-zerovector</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 2: THE PROBLEM                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Every handoff<br>loses signal</h2>
+        <div class="code-block"><span class="code-comment"># The traditional translation chain &mdash; every arrow is lossy compression</span>
+
+<span class="code-var">Intent</span> &rarr; <span class="code-string">Sketch</span> &rarr; <span class="code-string">Wireframe</span> &rarr; <span class="code-string">Mockup</span> &rarr; <span class="code-string">Handoff</span> &rarr; <span class="code-string">Dev Interpretation</span> &rarr; <span class="code-string">Build</span> &rarr; <span class="code-string">Review</span> &rarr; <span class="code-flag">Ship</span>
+
+<span class="code-comment"># By the time you ship, what % of the original intent survived?</span></div>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F50A;</div>
+                <h3>Signal Decay</h3>
+                <p>Each step from vision to product is a lossy compression. Requirements get misread, context gets dropped, nuance evaporates.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F500;</div>
+                <h3>Interpretation Drift</h3>
+                <p>Designer interprets PM. Engineer interprets designer. Reviewer interprets engineer. The original intent is nowhere in the chain.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x2753;</div>
+                <h3>No Feedback Loop</h3>
+                <p>Linear pipelines have no mechanism to measure how much of the original intent survived into the final artifact.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>A beautifully crafted artifact that solves the wrong problem has high quality but low fidelity. Quality without fidelity is wasted effort.</p>
+            <div class="attribution">&mdash; Zero-Vector Design, Fidelity Framework</div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 3: THE SOLUTION                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Solution</div>
+        <h2 class="headline">Intent &rarr; Crew &rarr;<br>Artifact</h2>
+        <p class="subhead">Collapse the entire translation chain into three steps. The person with the vision directs a crew of AI agents and moves directly from intent to working artifact.</p>
+        <div class="code-block"><span class="code-comment"># OLD: 8 lossy handoffs</span>
+<span class="code-string">Intent &rarr; Sketch &rarr; Wireframe &rarr; Mockup &rarr; Handoff &rarr; Dev &rarr; Build &rarr; Review &rarr; Ship</span>
+
+<span class="code-comment"># NEW: Zero translation loss</span>
+<span class="code-cmd">Intent &rarr; Crew &rarr; Artifact</span>
+
+<span class="code-comment"># The artifact IS the thing. Not a picture of the thing.</span></div>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Fidelity Over Quality</h3>
+                <p><em>Quality</em> asks: is this well-made? <em>Fidelity</em> asks: does this faithfully represent what was intended? ZeroVector optimizes for fidelity first, because quality without fidelity is wasted effort.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Crew, Not Assistants</h3>
+                <p>Agents are crew members with roles, standards, and contracts &mdash; not assistants waiting for literal instructions. Each executes with judgment within their domain.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 4: THE FIVE AGENTS                                      -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Crew</div>
+        <h2 class="medium-headline">Five agents, one pipeline</h2>
+        <p class="subhead">Each agent is a quality gate for the next. Together they eliminate translation loss at every stage.</p>
+        <div class="fifths">
+            <div class="entity-box">
+                <div class="icon">&#x1F50D;</div>
+                <h4>Intent Analyst</h4>
+                <p>Decode intent, surface constraints, define what success looks like</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F3D7;&#xFE0F;</div>
+                <h4>Architect</h4>
+                <p>Translate intent into structure, interfaces, and ordered tasks</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F528;</div>
+                <h4>Builder</h4>
+                <p>Implement the artifact from spec, meeting every acceptance criterion</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F9D0;</div>
+                <h4>Critic</h4>
+                <p>Score all five fidelity lenses, identify the priority gap, route action</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F680;</div>
+                <h4>Shipper</h4>
+                <p>Package, commit, document, and deliver the finished artifact</p>
+            </div>
+        </div>
+        <div class="callout" style="margin-top: var(--space-lg);">
+            <p>An assistant waits for instructions and executes them literally. A crew member has a role, a standard, and a contract &mdash; and executes with judgment.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 5: THE FIVE LENSES                                      -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Fidelity Scoring</div>
+        <h2 class="medium-headline">Five lenses, scored 0.0 &ndash; 1.0</h2>
+        <p class="subhead">Every lens measures translation loss at a specific stage. The Critic scores all five simultaneously. The weakest lens gets routed to first.</p>
+        <div class="lens-grid">
+            <div class="lens-card">
+                <div class="lens-name">1. Intent Clarity</div>
+                <div class="lens-question">Is the original intent fully understood and unambiguous?</div>
+                <div class="lens-route">If weak &rarr; Return to intent capture with user</div>
+            </div>
+            <div class="lens-card">
+                <div class="lens-name">2. Specification</div>
+                <div class="lens-question">Does the spec completely and correctly capture the intent?</div>
+                <div class="lens-route">If weak &rarr; Revise spec, fill gaps, trace requirements</div>
+            </div>
+            <div class="lens-card">
+                <div class="lens-name">3. Implementation</div>
+                <div class="lens-question">Does the artifact faithfully implement the spec?</div>
+                <div class="lens-route">If weak &rarr; Continue building, fix deviations from spec</div>
+            </div>
+            <div class="lens-card">
+                <div class="lens-name">4. Quality</div>
+                <div class="lens-question">Does the artifact meet quality standards &mdash; tests, style, correctness?</div>
+                <div class="lens-route">If weak &rarr; Add tests, fix bugs, improve readability</div>
+            </div>
+            <div class="lens-card">
+                <div class="lens-name">5. Ship-Readiness</div>
+                <div class="lens-question">Is the artifact packaged and deliverable?</div>
+                <div class="lens-route">If weak &rarr; Complete docs, clean commits, resolve blockers</div>
+            </div>
+        </div>
+        <div class="small-text" style="margin-top: var(--space-md); max-width: min(700px, 95vw);">
+            <strong class="accent">Priority rule:</strong> When lenses tie, prioritize earlier in the pipeline. Upstream fixes compound downstream.
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 6: THE CONVERGENCE LOOP                                 -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Core Architecture</div>
+        <h2 class="medium-headline">The convergence loop</h2>
+        <p class="subhead">Not a linear pipeline. A convergence engine that routes to the weakest lens and acts until overall fidelity meets the target threshold.</p>
+        <div class="convergence-loop">
+            <div class="loop-header">fidelity-convergence.yaml</div>
+            <div class="convergence-flow"><span class="code-cmd">DECODE-INTENT</span> &rarr; <span class="code-flag">(GATE 1: approve spec)</span>
+  &rarr; <span class="code-cmd">ASSESS</span> all five lenses simultaneously <span class="code-var">(score 0.0&ndash;1.0)</span>
+  &rarr; <span class="code-flag">while</span> <span class="code-var">fidelity_score</span> &lt; <span class="code-var">target_fidelity</span>:
+      route to <span class="code-cmd">weakest lens</span> &rarr; act &rarr; re-assess
+  &rarr; <span class="code-flag">(GATE 2: approve converged artifact)</span>
+  &rarr; <span class="code-cmd">FINISH</span> <span class="code-var">(merge / pr / keep / discard)</span></div>
+        </div>
+        <div class="thirds">
+            <div class="card">
+                <h4 class="accent">Default Target: 0.85</h4>
+                <p>The convergence loop terminates when the arithmetic mean of all five lens scores meets the domain-specific target.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Max 8 Iterations</h4>
+                <p>Safety bound prevents infinite loops. Persistent failures get Builder the Critic's exact findings for targeted fixes.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">2 Human Gates</h4>
+                <p>Approval after spec and after convergence. The human stays in control &mdash; the crew does the work.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 7: SIX DOMAIN MODES                                     -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Domain Tuning</div>
+        <h2 class="medium-headline">Six crews, one architecture</h2>
+        <p class="subhead">Same five agents, domain-tuned prompts per crew. Each mode calibrates fidelity targets and lens priorities for its domain.</p>
+        <div class="thirds">
+            <div class="card card-accent">
+                <h3><span class="accent">/crew</span></h3>
+                <p><strong>General</strong> &mdash; Any domain. Auto-adapts. The Intent Analyst surfaces the correct domain from your intent.</p>
+                <div class="small-text">Target: 0.85</div>
+            </div>
+            <div class="card card-accent">
+                <h3><span class="accent">/crew-build</span></h3>
+                <p><strong>Code</strong> &mdash; Features, apps, tools, scripts. TDD tasks, test-first build, spec compliance.</p>
+                <div class="small-text">Target: 0.85</div>
+            </div>
+            <div class="card card-accent">
+                <h3><span class="accent">/crew-product</span></h3>
+                <p><strong>UX</strong> &mdash; Flows, specs, validation, strategy. Jobs-to-be-done, user-centricity, decision points.</p>
+                <div class="small-text">Target: 0.80</div>
+            </div>
+            <div class="card card-accent">
+                <h3><span class="accent">/crew-platform</span></h3>
+                <p><strong>Infra</strong> &mdash; Modules, APIs, architecture. Contracts, migration paths, breaking change analysis.</p>
+                <div class="small-text">Target: 0.88</div>
+            </div>
+            <div class="card card-accent">
+                <h3><span class="accent">/crew-research</span></h3>
+                <p><strong>Analysis</strong> &mdash; Investigation, synthesis, papers. Evidence standards, source strategy, actionability.</p>
+                <div class="small-text">Target: 0.80</div>
+            </div>
+            <div class="card card-accent">
+                <h3><span class="accent">/crew-content</span></h3>
+                <p><strong>Writing</strong> &mdash; Docs, curriculum, posts. Audience-fit, narrative arc, clarity.</p>
+                <div class="small-text">Target: 0.75</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 8: UNIVERSAL FIDELITY                                   -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Composability</div>
+        <h2 class="headline">Universal<br>Fidelity Layer</h2>
+        <p class="subhead">The fidelity behavior is an extractable, standalone layer. Any Amplifier bundle gets five-lens scoring, a live ANSI dashboard, and the fidelity state tool &mdash; without the full ZeroVector crew.</p>
+        <div class="code-block"><span class="code-comment"># Add fidelity diagnostics to ANY bundle &mdash; 2 lines</span>
+
+<span class="code-var">includes:</span>
+  - <span class="code-flag">bundle:</span> <span class="code-string">zerovector:behaviors/fidelity</span>
+
+<span class="code-comment"># You get:</span>
+<span class="code-comment">#   &bull; zerovector:critic agent     &mdash; structured 5-lens scoring</span>
+<span class="code-comment">#   &bull; tool-fidelity-state         &mdash; Python module for score I/O</span>
+<span class="code-comment">#   &bull; hooks-fidelity-reporter     &mdash; live ANSI dashboard per turn</span>
+<span class="code-comment">#   &bull; fidelity-framework context  &mdash; scoring rubric + evidence reqs</span></div>
+        <div class="halves">
+            <div class="card">
+                <h3>3 Python Modules</h3>
+                <ul class="feature-list">
+                    <li><strong>tool-fidelity-state</strong> &mdash; Read/write fidelity scores to session state (198 lines)</li>
+                    <li><strong>hooks-fidelity-reporter</strong> &mdash; Live ANSI dashboard after each agent turn (388 lines)</li>
+                    <li><strong>hooks-crew-gate</strong> &mdash; Blocks artifact creation without an active crew mode (186 lines)</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>Evidence Before Claims</h3>
+                <p>A score without evidence is a guess. Every lens score must be accompanied by specific evidence &mdash; test results, file paths, cited requirements, concrete metrics. Vague justifications like "looks good" are not evidence.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 9: THE SEVEN PRINCIPLES                                 -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Philosophy</div>
+        <h2 class="medium-headline">Seven principles of Zero-Vector Design</h2>
+        <p class="subhead">Founded by Erika Flowers. This is NOT vibe coding. It is rigorous, intentional, crew-directed work.</p>
+        <div class="halves" style="margin-top: var(--space-md);">
+            <div class="card">
+                <h4><span class="accent">1.</span> Work in the Medium</h4>
+                <p>Build real artifacts, not representations. A working module, not a mockup. The medium is the message.</p>
+            </div>
+            <div class="card">
+                <h4><span class="accent">2.</span> Boundaryless by Nature</h4>
+                <p>Disciplinary walls are constraints of the old model. The person with the vision operates across all of them.</p>
+            </div>
+            <div class="card">
+                <h4><span class="accent">3.</span> The Medium Shapes Thought</h4>
+                <p>Working directly in the real artifact changes what you see, what you ask, and what you build. Representations lie.</p>
+            </div>
+            <div class="card">
+                <h4><span class="accent">4.</span> Intentional Impermanence</h4>
+                <p>Don't patch &mdash; regenerate. The spec is the truth; the artifact is an instance of it.</p>
+            </div>
+            <div class="card">
+                <h4><span class="accent">5.</span> POSIWID</h4>
+                <p>Judge systems by outputs, not intentions. If the process produces translation loss, change the system.</p>
+            </div>
+            <div class="card">
+                <h4><span class="accent">6.</span> Compound Your Leverage</h4>
+                <p>A precise intent produces a sharper spec. A sharp spec produces a faithful build. Early precision compounds.</p>
+            </div>
+            <div class="card">
+                <h4><span class="accent">7.</span> Venture Beyond &ldquo;Possible&rdquo;</h4>
+                <p>The old ceiling was set by the translation chain. When translation is eliminated, the ceiling rises.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 10: BY THE NUMBERS                                      -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">By the Numbers</div>
+        <h2 class="medium-headline">Built in 4 days</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">63</div>
+                <div class="velocity-label">commits</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">5</div>
+                <div class="velocity-label">agents</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">6</div>
+                <div class="velocity-label">domain modes</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">6</div>
+                <div class="velocity-label">recipes</div>
+            </div>
+        </div>
+        <div class="velocity-grid" style="margin-top: var(--space-md);">
+            <div class="velocity-stat">
+                <div class="velocity-number">25</div>
+                <div class="velocity-label">test files</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">5k</div>
+                <div class="velocity-label">lines of tests</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">772</div>
+                <div class="velocity-label">lines Python modules</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">130</div>
+                <div class="velocity-label">total files</div>
+            </div>
+        </div>
+        <div class="small-text" style="margin-top: var(--space-lg);">March 6&ndash;9, 2026 &middot; Sole contributor: Michael J. Jabbour &middot; 51 commits on March 8 alone</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 11: SOURCES & METHODOLOGY                               -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Sources &amp; Methodology</div>
+        <h2 class="medium-headline">How this deck was built</h2>
+        <div class="sources-content">
+            <p><strong>Primary source:</strong> <code>michaeljabbour/amplifier-bundle-zerovector</code> on GitHub</p>
+            <ul>
+                <li><strong>63 commits</strong> from <strong>1 contributor</strong> (Michael J. Jabbour), March 6&ndash;9, 2026</li>
+                <li>Repository cloned and inspected: <code>git log</code>, <code>git shortlog -sn</code>, <code>find</code>, <code>wc -l</code></li>
+                <li>Commit distribution: 2 commits (Mar 6), 51 commits (Mar 8), 10 commits (Mar 9)</li>
+            </ul>
+
+            <p style="margin-top: var(--space-md);"><strong>Files examined:</strong></p>
+            <ul>
+                <li><code>README.md</code> &mdash; 15,408 bytes, comprehensive architecture documentation</li>
+                <li><code>bundle.md</code> &mdash; v0.3.0 entry point with STANDING-ORDER enforcement</li>
+                <li><code>context/fidelity-framework.md</code> &mdash; five-lens scoring rubric and evidence requirements</li>
+                <li><code>context/zerovector-principles.md</code> &mdash; seven ZVD principles and philosophy</li>
+                <li>All 18 capability YAML files from team knowledge index</li>
+                <li>5 agent definitions, 6 mode definitions, 6 recipe definitions, 2 behavior files</li>
+                <li>3 Python modules (772 total lines): tool-fidelity-state, hooks-fidelity-reporter, hooks-crew-gate</li>
+            </ul>
+
+            <p style="margin-top: var(--space-md);"><strong>Line counts (non-git, non-investigation):</strong></p>
+            <ul>
+                <li>Agent markdown: <strong>990 lines</strong> across 5 agents</li>
+                <li>Context documentation: <strong>1,264 lines</strong> across 6 context files</li>
+                <li>Recipe YAML: <strong>1,357 lines</strong> across 6 recipes</li>
+                <li>Mode definitions: <strong>452 lines</strong> across 6 modes</li>
+                <li>Test suite: <strong>5,017 lines</strong> across 25 test files</li>
+            </ul>
+
+            <p style="margin-top: var(--space-md);"><strong>Philosophy source:</strong> <a href="https://zerovector.design/" style="color: var(--accent);">zerovector.design</a> by Erika Flowers</p>
+
+            <p style="margin-top: var(--space-md);"><strong>No metrics were fabricated.</strong> All numbers come from <code>git log</code>, <code>git shortlog</code>, <code>wc -l</code>, and <code>find</code> against the cloned repository.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 12: CTA                                                 -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">Get Started</div>
+        <h1 class="headline">State your intent</h1>
+        <p class="subhead">Install the bundle. Activate a crew. Say what you want. The crew converges to a high-fidelity artifact.</p>
+        <div class="code-block" style="text-align: left; max-width: min(600px, 90vw);"><span class="code-comment"># Install</span>
+<span class="code-cmd">amplifier bundle add</span> <span class="code-string">git+https://github.com/michaeljabbour/amplifier-bundle-zerovector@main</span> <span class="code-flag">--app</span>
+
+<span class="code-comment"># Activate a crew and state intent</span>
+<span class="code-cmd">/crew-build</span>
+<span class="code-var">&gt; Build a CLI tool that validates bundle.md frontmatter</span></div>
+        <div class="small-text" style="margin-top: var(--space-lg);">
+            github.com/<strong>michaeljabbour/amplifier-bundle-zerovector</strong><br>
+            v0.3.0 &middot; 5 agents &middot; 6 crews &middot; 5-lens fidelity convergence<br><br>
+            Built on <a href="https://zerovector.design/" style="color: var(--accent);">Zero-Vector Design</a> by Erika Flowers
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>
