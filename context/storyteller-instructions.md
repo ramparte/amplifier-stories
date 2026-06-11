@@ -186,17 +186,58 @@ With it, no-JS users get a scrollable single-page document; JS users get normal 
 
 ### Navigation JavaScript
 
-Always include this for keyboard/click/dot/**touch** navigation:
+Always include this exact pattern for animated slide transitions with keyboard/click/dot/**touch** navigation.
+
+**CRITICAL — Do NOT improvise a different transition approach.** This pattern
+handles the inline-style vs CSS-class specificity interaction correctly.
+Variations (adding `.exiting`/`.prev` classes, skipping the reflow force,
+or forgetting to clean up inline styles) cause broken back-and-forth
+navigation.
 
 ```javascript
 const slides = document.querySelectorAll('.slide');
-let currentSlide = 0;
+const total = slides.length;
+let current = 0;
+let transitioning = false;
 
-function showSlide(n) {
-    slides[currentSlide].classList.remove('active');
-    currentSlide = (n + slides.length) % slides.length;
-    slides[currentSlide].classList.add('active');
+function goTo(n) {
+    n = ((n % total) + total) % total;
+    if (transitioning || n === current) return;
+    transitioning = true;
+    var direction = n > current ? 1 : -1;
+    var prev = slides[current];
+    var next = slides[n];
+
+    // 1. Animate previous slide out
+    prev.classList.remove('active');
+    prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+    prev.style.opacity = '0';
+
+    // 2. Position next slide at entry point (disable transition first)
+    next.style.transition = 'none';
+    next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+    next.style.opacity = '0';
+
+    // 3. Force reflow so browser registers the starting position
+    void next.offsetWidth;
+
+    // 4. Re-enable transitions and animate to final position
+    next.style.transition = '';
+    next.style.transform = 'translateX(0)';
+    next.style.opacity = '1';
+    next.classList.add('active');
+
+    current = n;
     updateNav();
+
+    // 5. Clean up ALL inline styles from BOTH slides after animation
+    setTimeout(function() {
+        prev.style.transform = '';
+        prev.style.opacity = '';
+        next.style.transform = '';
+        next.style.opacity = '';
+        transitioning = false;
+    }, 500);
 }
 
 function updateNav() {
@@ -205,29 +246,29 @@ function updateNav() {
     nav.innerHTML = '';
     slides.forEach((_, i) => {
         const dot = document.createElement('div');
-        dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-        dot.onclick = () => showSlide(i);
+        dot.className = 'nav-dot' + (i === current ? ' active' : '');
+        dot.onclick = () => goTo(i);
         nav.appendChild(dot);
     });
-    counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+    counter.textContent = `${current + 1} / ${total}`;
 }
 
 // Keyboard navigation
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
-    if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
+    if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+    if (e.key === 'ArrowLeft') goTo(current - 1);
 });
 
-// Click navigation
+// Click navigation (left half = back, right half = forward)
 document.addEventListener('click', (e) => {
     if (e.target.closest('.nav')) return;
-    if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-    else showSlide(currentSlide - 1);
+    if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+    else goTo(current - 1);
 });
 
 // Touch/swipe navigation (REQUIRED for mobile)
 let touchStartX = 0;
-let touchEndX = 0;
+
 const SWIPE_THRESHOLD = 50;
 
 document.addEventListener('touchstart', (e) => {
@@ -235,11 +276,10 @@ document.addEventListener('touchstart', (e) => {
 }, { passive: true });
 
 document.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    const diff = touchStartX - touchEndX;
+    const diff = touchStartX - e.changedTouches[0].screenX;
     if (Math.abs(diff) > SWIPE_THRESHOLD) {
-        if (diff > 0) showSlide(currentSlide + 1);
-        else showSlide(currentSlide - 1);
+        if (diff > 0) goTo(current + 1);
+        else goTo(current - 1);
     }
 }, { passive: true });
 
