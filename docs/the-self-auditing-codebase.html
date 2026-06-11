@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>The Self-Auditing Codebase — Architecture as Bug Specification</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-dim: rgba(255, 55, 95, 0.15);
+            --accent-glow: rgba(255, 55, 95, 0.3);
+
+            /* Typography scale */
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 36px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 18px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 1.8vw, 15px);
+            --fs-label: clamp(11px, 1.5vw, 13px);
+            --fs-big-number: clamp(48px, 12vw, 120px);
+
+            /* Spacing */
+            --space-xs: clamp(6px, 1vw, 10px);
+            --space-sm: clamp(10px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Surfaces */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.18);
+
+            /* Text */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active { display: flex; }
+
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Labels */
+        .section-label {
+            font-size: var(--fs-label);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+
+        .act-label {
+            font-size: var(--fs-label);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--accent);
+            margin-bottom: var(--space-xs);
+            display: inline-block;
+            padding: var(--space-xs) var(--space-sm);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
+        }
+
+        /* Headlines */
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            margin-bottom: var(--space-md);
+        }
+
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            margin-bottom: var(--space-md);
+        }
+
+        .small-headline {
+            font-size: var(--fs-h2);
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            line-height: 1.2;
+            margin-bottom: var(--space-sm);
+        }
+
+        /* Body text */
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(700px, 90vw);
+        }
+
+        .body-text {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: min(800px, 90vw);
+        }
+
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+        }
+
+        /* Accent text */
+        .accent { color: var(--accent); }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--fs-label);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #30D158;
+            border: 1px solid rgba(48, 209, 88, 0.4);
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            margin-top: var(--space-sm);
+        }
+
+        /* Grids */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--space-md);
+            width: 100%;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--space-md);
+            width: 100%;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--space-md);
+            width: 100%;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+
+        .card-accent {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-glow);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+
+        .card h3, .card h4 { color: var(--text-primary); }
+        .card p, .card li { color: var(--text-secondary); }
+        .card-accent h3, .card-accent h4 { color: var(--text-primary); }
+        .card-accent p { color: var(--text-secondary); }
+
+        .card-icon {
+            font-size: var(--fs-label);
+            font-weight: 700;
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: var(--space-xs);
+            padding: var(--space-xs) var(--space-sm);
+            border: 1px solid var(--accent-glow);
+            border-radius: var(--radius-sm);
+            display: inline-block;
+        }
+
+        .card-title {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .card-body {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .card-meta {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-xs);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+        }
+
+        /* Quote block */
+        .quote-block {
+            border-left: 3px solid var(--accent);
+            padding: var(--space-md) var(--space-lg);
+            margin: var(--space-md) 0;
+            max-width: min(800px, 90vw);
+        }
+
+        .quote-text {
+            font-size: var(--fs-h2);
+            font-weight: 500;
+            font-style: italic;
+            line-height: 1.4;
+            color: var(--text-primary);
+        }
+
+        .quote-attr {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-sm);
+            font-style: normal;
+        }
+
+        /* Big number */
+        .big-number {
+            font-size: var(--fs-big-number);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #FF8A5C);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .big-number-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Velocity grid */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-lg);
+            width: 100%;
+            max-width: min(900px, 100%);
+        }
+
+        .velocity-stat { text-align: center; }
+
+        .velocity-number {
+            font-size: clamp(36px, 8vw, 72px);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--accent), #FF8A5C);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .velocity-label {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Code block */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: #30D158;
+            max-width: min(900px, 100%);
+        }
+
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-accent { color: var(--accent); }
+        .code-string { color: #FF9F0A; }
+        .code-keyword { color: #BF5AF2; }
+
+        /* Timeline */
+        .timeline-item {
+            display: flex;
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+            align-items: flex-start;
+        }
+
+        .timeline-marker {
+            flex-shrink: 0;
+            width: clamp(36px, 5vw, 48px);
+            height: clamp(36px, 5vw, 48px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--fs-body);
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .timeline-content { flex: 1; }
+
+        .timeline-title {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .timeline-body {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Flow diagram */
+        .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            margin: var(--space-md) 0;
+        }
+
+        .flow-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: var(--radius-sm);
+            padding: var(--space-sm) var(--space-md);
+            font-size: var(--fs-body);
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .flow-arrow {
+            font-size: var(--fs-h3);
+            color: var(--accent);
+        }
+
+        /* Bug category strip */
+        .bug-strip {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: var(--space-sm);
+            align-items: center;
+            padding: var(--space-sm) var(--space-md);
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-sm);
+        }
+
+        .bug-cat {
+            font-size: var(--fs-small);
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+        }
+
+        .bug-desc {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+        }
+
+        .bug-count {
+            font-size: var(--fs-body);
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Sources list */
+        .sources-list {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.8;
+            list-style: none;
+        }
+
+        .sources-list li {
+            padding-left: var(--space-md);
+            position: relative;
+            margin-bottom: var(--space-xs);
+        }
+
+        .sources-list li::before {
+            content: '›';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .sources-list code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            background: var(--surface-2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--text-primary);
+        }
+
+        /* Validation result */
+        .validation-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-xs) 0;
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+        }
+
+        .validation-check {
+            color: #30D158;
+            font-size: var(--fs-h3);
+        }
+
+        .validation-partial {
+            color: #FF9F0A;
+            font-size: var(--fs-h3);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: clamp(24px, 4vw, 36px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: clamp(6px, 1vw, 10px);
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: clamp(6px, 1vw, 8px);
+            height: clamp(6px, 1vw, 8px);
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(24px, 4vw, 36px);
+            right: clamp(20px, 3vw, 40px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: var(--fs-label);
+            color: rgba(255,255,255,0.25);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Touch targets */
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Subtle animation for title */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide.active .animate-in {
+            animation: fadeUp 0.6s ease-out both;
+        }
+
+        .slide.active .animate-in:nth-child(2) { animation-delay: 0.1s; }
+        .slide.active .animate-in:nth-child(3) { animation-delay: 0.2s; }
+        .slide.active .animate-in:nth-child(4) { animation-delay: 0.3s; }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 1: TITLE                                                -->
+    <!-- ============================================================ -->
+    <div class="slide active center">
+        <div class="section-label animate-in">Case Study</div>
+        <h1 class="headline animate-in" style="max-width: min(900px, 90vw);">The Self-Auditing<br>Codebase</h1>
+        <p class="subhead animate-in">When architecture diagrams become bug specifications</p>
+        <div class="animate-in" style="margin-top: var(--space-lg); display: flex; gap: var(--space-md); flex-wrap: wrap; justify-content: center; align-items: center;">
+            <span class="small-text">March 25–27, 2026</span>
+            <span class="status-badge">Active Pattern</span>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 2: THE PREMISE                                          -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">The Idea</div>
+        <h2 class="medium-headline" style="max-width: min(800px, 90vw);">What if the architecture diagram <em>is</em> the test?</h2>
+        <p class="subhead" style="margin-top: var(--space-md);">
+            Generate a DOT graph from code. Compare it to the design doc.<br>
+            Feed the graph to AI agents as a <span class="accent">specification</span>.<br>
+            Let them measure the code against its own architecture.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 3: ACT I — THE VISION                                  -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="act-label">Act I · Mar 25–26</div>
+        <h2 class="medium-headline" style="margin-top: var(--space-md);">Building the Pipeline</h2>
+
+        <div class="quote-block">
+            <div class="quote-text">"We want a dot file that is purposeful — to the goal of explaining a system architecture. Not a call graph. Not file names pointing to line numbers. Those aren't useful."</div>
+            <div class="quote-attr">— User, establishing the vision</div>
+        </div>
+
+        <p class="body-text" style="margin-top: var(--space-md);">
+            It started with the team-knowledge-base project. The user generated a deep DOT graph of the team-kb codebase, then compared it against the design document. The <em>gap</em> between diagram and design revealed concrete, actionable issues.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 4: THE ARCHITECTURE GRAPH                               -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Graph</div>
+        <h2 class="medium-headline">One DOT file. 667 lines of architecture.</h2>
+
+        <div class="grid-4" style="margin-top: var(--space-lg);">
+            <div class="card" style="text-align: center;">
+                <div class="velocity-number">667</div>
+                <div class="velocity-label">Lines of DOT</div>
+            </div>
+            <div class="card" style="text-align: center;">
+                <div class="velocity-number">70</div>
+                <div class="velocity-label">Nodes</div>
+            </div>
+            <div class="card" style="text-align: center;">
+                <div class="velocity-number">99</div>
+                <div class="velocity-label">Edges</div>
+            </div>
+            <div class="card" style="text-align: center;">
+                <div class="velocity-number">8</div>
+                <div class="velocity-label">Clusters</div>
+            </div>
+        </div>
+
+        <p class="body-text" style="margin-top: var(--space-lg);">
+            The user then built DOT generation into the team-kb CLI and ran it against <code style="font-family: 'SF Mono', monospace; color: var(--accent);">amplifier-chat</code>, producing two key files:
+        </p>
+
+        <div class="grid-2" style="margin-top: var(--space-md);">
+            <div class="card">
+                <div class="card-title" style="font-family: 'SF Mono', monospace; font-size: var(--fs-body);">amplifier-chat.dot</div>
+                <p class="card-body">System architecture overview — 5-tier: entry points → daemon → plugin backend → SSE streaming → frontend SPA → disk storage</p>
+            </div>
+            <div class="card">
+                <div class="card-title" style="font-family: 'SF Mono', monospace; font-size: var(--fs-body);">event-flow-deep.dot</div>
+                <p class="card-body">Deep event flow with 7 annotated bugs (BUG-01 through BUG-07) and 3 structural gaps embedded directly in the graph</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 5: THE GAP                                              -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Gap</div>
+        <h2 class="medium-headline">Diagram vs. Design Doc</h2>
+        <p class="body-text">Comparing the generated architecture graph against the original design document revealed concrete discrepancies:</p>
+
+        <div class="grid-3" style="margin-top: var(--space-lg);">
+            <div class="card-accent">
+                <div class="card-icon">01</div>
+                <div class="card-title">Stub Functions</div>
+                <p class="card-body">Functions declared in the design but never implemented — empty shells that silently passed through.</p>
+            </div>
+            <div class="card-accent">
+                <div class="card-icon">02</div>
+                <div class="card-title">Dead Fields</div>
+                <p class="card-body">Data fields declared in structures but never populated by any code path — ghosts in the schema.</p>
+            </div>
+            <div class="card-accent">
+                <div class="card-icon">03</div>
+                <div class="card-title">170 Lines Duplicated</div>
+                <p class="card-body">Logic duplicated between modules — copy-pasted implementations that should have been shared.</p>
+            </div>
+        </div>
+
+        <p class="body-text" style="margin-top: var(--space-lg);">
+            The architecture diagram didn't just <em>describe</em> the system. It became a <span class="accent">contract</span> the code was measured against.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 6: THE AGENT INSIGHT                                    -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">The Breakthrough</div>
+
+        <div class="quote-block" style="text-align: left;">
+            <div class="quote-text">"Less for human consumption and more for context/pointers for agents — they can provide more bang-for-the-buck (more context for fewer tokens) than other approaches."</div>
+            <div class="quote-attr">— Brian, on the value of DOT graphs for AI agents</div>
+        </div>
+
+        <p class="subhead" style="margin-top: var(--space-lg); max-width: min(700px, 90vw);">
+            A 667-line DOT file encodes more structural information than thousands of lines of raw source code.<br><br>
+            <span class="accent">Architecture as compression.</span>
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 7: ACT II — THE HUNT                                    -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="act-label">Act II · Mar 27, 1:00 AM</div>
+        <h2 class="headline" style="margin-top: var(--space-md); max-width: min(800px, 90vw);">DOT as<br>Bug-Finding Spec</h2>
+        <p class="subhead" style="margin-top: var(--space-sm);">
+            4 parallel Amplifier sessions.<br>
+            Each consuming a DOT file.<br>
+            Each diving into the code.
+        </p>
+        <div class="small-text" style="margin-top: var(--space-lg);">1:00 AM – 3:30 AM · One continuous night session</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 8: FOUR SESSIONS                                        -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Parallel Attack</div>
+        <h2 class="medium-headline">Four sessions, four angles</h2>
+
+        <div class="grid-2" style="margin-top: var(--space-md);">
+            <div class="card">
+                <div class="card-icon">S1</div>
+                <div class="card-title">Architecture Audit</div>
+                <div class="card-meta">14 turns · amplifier-chat.dot</div>
+                <p class="card-body" style="margin-top: var(--space-xs);">Fed <code style="font-family: monospace; color: var(--accent);">amplifier-chat.dot</code>. Dispatched 3 parallel agents (frontend, backend, test/git-history). Found <strong style="color: var(--text-primary);">24 issues</strong> across 4 categories.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">S2</div>
+                <div class="card-title">Bug Validation</div>
+                <div class="card-meta">7 turns · event-flow-deep.dot</div>
+                <p class="card-body" style="margin-top: var(--space-xs);">Fed <code style="font-family: monospace; color: var(--accent);">event-flow-deep.dot</code> with its annotated bugs (BUG-01 through BUG-07). Agents validated each against source code.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">S3</div>
+                <div class="card-title">Cross-Validator</div>
+                <div class="card-meta">8 turns · independent verification</div>
+                <p class="card-body" style="margin-top: var(--space-xs);">Read Session 1's findings via session-analyst. Dispatched parallel agents (Security, Frontend, Backend) to independently verify every issue. Found an <strong style="color: var(--accent);">additional vulnerability</strong> the original session missed.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">S4</div>
+                <div class="card-title">Execution</div>
+                <div class="card-meta">52 turns · git worktrees → 4 PRs</div>
+                <p class="card-body" style="margin-top: var(--space-xs);">Cross-checked with all other sessions. Designed a 4-PR fix plan organized by regression risk. Implemented all fixes using git worktrees.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 9: THE HUMAN ROUTER                                     -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Human Router</div>
+        <h2 class="medium-headline">Manually shuttling findings between sessions</h2>
+
+        <div style="margin-top: var(--space-lg); max-width: min(800px, 95vw);">
+            <div class="quote-block" style="margin-bottom: var(--space-md);">
+                <div class="quote-text" style="font-size: var(--fs-h3);">"Another session found this, can you clarify if it's accurate"</div>
+            </div>
+            <div class="quote-block" style="margin-bottom: var(--space-md);">
+                <div class="quote-text" style="font-size: var(--fs-h3);">"The other session gave you this feedback, can you validate?"</div>
+            </div>
+            <div class="quote-block" style="margin-bottom: var(--space-md);">
+                <div class="quote-text" style="font-size: var(--fs-h3);">"I just passed back your assessment into the other session."</div>
+            </div>
+        </div>
+
+        <p class="body-text" style="margin-top: var(--space-md);">
+            The user became the <span class="accent">orchestrator</span> — a human message bus routing findings between competing AI sessions for independent verification. Each session could challenge the others' conclusions.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 10: BUG TAXONOMY                                        -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Findings</div>
+        <h2 class="medium-headline">36+ verified issues, 4 categories</h2>
+
+        <div style="margin-top: var(--space-lg); max-width: min(800px, 95vw);">
+            <div class="bug-strip">
+                <span class="bug-cat">G1</span>
+                <span class="bug-desc">Security — path traversal, regex mismatch, event loop blocking</span>
+                <span class="bug-count">6</span>
+            </div>
+            <div class="bug-strip">
+                <span class="bug-cat">G2</span>
+                <span class="bug-desc">Event Pipeline — token routing, race conditions, lineage loss</span>
+                <span class="bug-count">9</span>
+            </div>
+            <div class="bug-strip">
+                <span class="bug-cat">G3</span>
+                <span class="bug-desc">Backend Reliability — atomic writes, thread safety</span>
+                <span class="bug-count">—</span>
+            </div>
+            <div class="bug-strip">
+                <span class="bug-cat">G4</span>
+                <span class="bug-desc">Frontend State — memory growth, toolMap contamination</span>
+                <span class="bug-count">—</span>
+            </div>
+        </div>
+
+        <p class="body-text" style="margin-top: var(--space-lg);">
+            <strong style="color: var(--text-primary);">31 confirmed unique issues.</strong> Session 4 discovered an additional bug during implementation. All stemming from two DOT files used as specifications.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 11: CROSS-VALIDATION                                    -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">Cross-Validation</div>
+        <div class="big-number">24/24</div>
+        <div class="big-number-label" style="margin-bottom: var(--space-lg);">Issues independently confirmed real</div>
+
+        <div class="grid-3" style="max-width: min(800px, 95vw);">
+            <div class="card" style="text-align: center;">
+                <div class="velocity-number" style="font-size: clamp(28px, 6vw, 48px);">22</div>
+                <div class="velocity-label">Fully confirmed</div>
+            </div>
+            <div class="card" style="text-align: center;">
+                <div class="velocity-number" style="font-size: clamp(28px, 6vw, 48px);">2</div>
+                <div class="velocity-label">Partially confirmed</div>
+            </div>
+            <div class="card-accent" style="text-align: center;">
+                <div class="velocity-number" style="font-size: clamp(28px, 6vw, 48px);">+1</div>
+                <div class="velocity-label">New vulnerability found</div>
+            </div>
+        </div>
+
+        <p class="subhead" style="margin-top: var(--space-lg); max-width: min(700px, 90vw);">
+            When parallel sessions independently converge on the same findings, confidence is <span class="accent">multiplicative</span>.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 12: ACT III — THE META-REALIZATION                      -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="act-label">Act III · ~3:00 AM</div>
+        <h2 class="medium-headline" style="margin-top: var(--space-md);">The Meta-Realization</h2>
+
+        <div class="quote-block" style="margin-top: var(--space-lg);">
+            <div class="quote-text">"I have 4 different sessions investigating the same issue. Is there a way I can have them talk to each other? Continue the conversation until they all agree."</div>
+        </div>
+
+        <div class="quote-block" style="margin-top: var(--space-md);">
+            <div class="quote-text">"HELLO! Different amplifier sessions. On my terminal. So what are the ways that they can talk to each other until they all get agreement?"</div>
+        </div>
+
+        <p class="body-text" style="margin-top: var(--space-lg);">
+            The workflow was so powerful it <span class="accent">demanded its own infrastructure</span>. The user designed a cross-session consensus protocol — sessions that could autonomously converge on findings, observable and interruptable.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 13: THE FEEDBACK LOOP                                   -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">The Pattern</div>
+        <h2 class="medium-headline" style="max-width: min(700px, 90vw);">The Self-Auditing Feedback Loop</h2>
+
+        <div class="flow-row" style="margin-top: var(--space-xl);">
+            <div class="flow-box" style="border-color: var(--accent);">Generate<br>Architecture</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-box" style="border-color: var(--accent);">Compare to<br>Design</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-box" style="border-color: var(--accent);">Feed to<br>Agents</div>
+        </div>
+        <div class="flow-row">
+            <div class="flow-box" style="border-color: #30D158;">Update<br>Architecture</div>
+            <div class="flow-arrow" style="color: #30D158;">←</div>
+            <div class="flow-box" style="border-color: #30D158;">Fix<br>Bugs</div>
+            <div class="flow-arrow" style="color: #30D158;">←</div>
+            <div class="flow-box" style="border-color: #30D158;">Find<br>Bugs</div>
+        </div>
+
+        <p class="subhead" style="margin-top: var(--space-xl); max-width: min(700px, 90vw);">
+            The architecture diagram is both the <span class="accent">map</span> and the <span style="color: #30D158;">test</span>.<br>
+            The codebase audits itself.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 14: BY THE NUMBERS                                      -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">By The Numbers</div>
+        <h2 class="medium-headline">One night session</h2>
+
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">4</div>
+                <div class="velocity-label">Parallel sessions</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">81</div>
+                <div class="velocity-label">Total turns</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">36+</div>
+                <div class="velocity-label">Issues found</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">31</div>
+                <div class="velocity-label">Confirmed unique</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">4</div>
+                <div class="velocity-label">PRs squash-merged</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">~2.5h</div>
+                <div class="velocity-label">Total elapsed time</div>
+            </div>
+        </div>
+
+        <p class="body-text" style="margin-top: var(--space-lg); text-align: center; max-width: min(600px, 90vw);">
+            From DOT generation to merged fixes, driven by architecture-as-specification and cross-session validation.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 15: SOURCES & METHODOLOGY                               -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Research Methodology</h2>
+
+        <div style="margin-top: var(--space-md); max-width: min(800px, 95vw);">
+            <p class="body-text"><strong style="color: var(--text-primary);">Data as of:</strong> March 27, 2026</p>
+            <p class="body-text" style="margin-top: var(--space-xs);"><strong style="color: var(--text-primary);">Pattern status:</strong> <span style="color: #30D158;">Active — discovered workflow, not a shipped product feature</span></p>
+
+            <p class="body-text" style="margin-top: var(--space-md);"><strong style="color: var(--text-primary);">Primary source:</strong></p>
+            <ul class="sources-list" style="margin-top: var(--space-xs);">
+                <li>First-party account from the user who conducted the sessions (March 25–27, 2026)</li>
+                <li>4 parallel Amplifier sessions analyzed via session-analyst</li>
+                <li>DOT graph stats (667 lines, 70 nodes, 99 edges, 8 clusters) from user-reported graph analysis</li>
+                <li>Bug counts (36+ found, 31 unique, 24/24 cross-validated) from user-reported session outcomes</li>
+                <li>Turn counts (14, 7, 8, 52 = 81 total) from session metadata</li>
+            </ul>
+
+            <p class="body-text" style="margin-top: var(--space-md);"><strong style="color: var(--text-primary);">Quotes:</strong></p>
+            <ul class="sources-list" style="margin-top: var(--space-xs);">
+                <li>All user quotes are authentic voice transcriptions from the sessions</li>
+                <li>Brian's quote is attributed feedback provided during the workflow</li>
+            </ul>
+
+            <p class="body-text" style="margin-top: var(--space-md);"><strong style="color: var(--text-primary);">Gaps &amp; caveats:</strong></p>
+            <ul class="sources-list" style="margin-top: var(--space-xs);">
+                <li>G3/G4 individual bug counts not specified in source — listed without counts</li>
+                <li>Elapsed time (~2.5h) estimated from stated window of 1:00 AM–3:30 AM</li>
+                <li>170 duplicated lines count from user's report, not independently verified</li>
+                <li>Cross-session consensus protocol was designed, not necessarily shipped/deployed</li>
+            </ul>
+
+            <p class="body-text" style="margin-top: var(--space-md);"><strong style="color: var(--text-primary);">Primary contributor:</strong> Single user conducted all sessions and provided the full account</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 16: CTA                                                 -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">Try It</div>
+        <h2 class="headline" style="max-width: min(800px, 90vw);">Your architecture knows where the bugs are.</h2>
+        <p class="subhead" style="margin-top: var(--space-md); max-width: min(600px, 90vw);">
+            Generate a DOT graph. Feed it to an agent.<br>
+            Let the code audit itself.
+        </p>
+        <div style="margin-top: var(--space-xl);">
+            <div class="code-block" style="text-align: left; display: inline-block; max-width: min(600px, 90vw);">
+<span class="code-comment"># 1. Generate the architecture</span>
+amplifier dot-graph --repo ./my-project
+
+<span class="code-comment"># 2. Feed it to an agent as a spec</span>
+amplifier chat <span class="code-string">"Review this codebase against</span>
+<span class="code-string">  its architecture: @my-project.dot"</span>
+
+<span class="code-comment"># 3. Cross-validate with a second session</span>
+amplifier chat <span class="code-string">"Verify these findings</span>
+<span class="code-string">  independently: @findings.md"</span></div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch / swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Team Pulse &mdash; What Did We Actually Ship?</title>
+    <style>
+        :root {
+            --accent: #26C6DA;
+            --accent-dim: rgba(38, 198, 218, 0.15);
+            --accent-glow: rgba(38, 198, 218, 0.3);
+
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Typography scale */
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 36px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 16px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 1.8vw, 15px);
+
+            /* Spacing */
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Slide base */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin-bottom: var(--space-md);
+        }
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: var(--space-md);
+        }
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(680px, 90vw);
+        }
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-sm);
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: 100px;
+            background: rgba(48, 209, 88, 0.15);
+            color: #30D158;
+            margin-top: var(--space-sm);
+        }
+
+        /* Grids */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .quads {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .card h3, .card h4 {
+            color: var(--text-primary);
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.5;
+        }
+        .card .icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Card with accent border top */
+        .card-accent {
+            border-top: 2px solid var(--accent);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: #BFC0C5;
+            margin-top: var(--space-md);
+        }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-cmd { color: #30D158; }
+        .code-flag { color: #26C6DA; }
+        .code-string { color: #FF9F0A; }
+        .code-var { color: #64D2FF; }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            max-width: min(800px, 95vw);
+        }
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+        }
+        .flow-number {
+            flex-shrink: 0;
+            width: clamp(36px, 5vw, 48px);
+            height: clamp(36px, 5vw, 48px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--fs-body);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .flow-content h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .flow-content p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .flow-arrow {
+            width: 2px;
+            height: var(--space-sm);
+            background: var(--accent-dim);
+            margin-left: clamp(17px, 2.3vw, 23px);
+        }
+
+        /* Architecture diagram */
+        .arch-entities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .entity-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+        .entity-box .icon {
+            font-size: clamp(32px, 6vw, 56px);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box h4 {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Velocity stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+        .velocity-stat { text-align: center; }
+        .velocity-number {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #BF5AF2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .velocity-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-top: var(--space-lg);
+            max-width: min(700px, 95vw);
+        }
+        .timeline-item {
+            display: flex;
+            gap: var(--space-md);
+            padding-bottom: var(--space-md);
+            position: relative;
+        }
+        .timeline-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: clamp(30px, 4vw, 40px);
+            top: clamp(36px, 5vw, 48px);
+            bottom: 0;
+            width: 2px;
+            background: var(--accent-dim);
+        }
+        .timeline-date {
+            flex-shrink: 0;
+            width: clamp(60px, 8vw, 80px);
+            height: clamp(60px, 8vw, 80px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .timeline-date .day {
+            font-size: var(--fs-h3);
+            color: var(--accent);
+            line-height: 1;
+        }
+        .timeline-date .month {
+            font-size: var(--fs-small);
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+        .timeline-text h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .timeline-text p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Quote / callout box */
+        .callout {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            margin-top: var(--space-md);
+            max-width: min(700px, 95vw);
+        }
+        .callout p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            font-style: italic;
+        }
+        .callout .attribution {
+            font-style: normal;
+            color: var(--text-tertiary);
+            font-size: var(--fs-small);
+            margin-top: var(--space-xs);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        /* Sources slide specifics */
+        .sources-content {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            max-width: min(800px, 95vw);
+        }
+        .sources-content strong {
+            color: var(--text-primary);
+        }
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .sources-content ul {
+            padding-left: var(--space-md);
+            margin: var(--space-xs) 0;
+        }
+        .sources-content li {
+            margin-bottom: var(--space-xs);
+        }
+
+        /* More stories link */
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Touch targets */
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+
+        /* Highlight accent text */
+        .accent { color: var(--accent); }
+
+        /* Inline list with subtle bullets */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding-left: var(--space-md);
+            position: relative;
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-xs);
+        }
+        .feature-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 1: TITLE                                                -->
+    <!-- ============================================================ -->
+    <div class="slide active center">
+        <div class="section-label">MADE:Explorations &middot; Team</div>
+        <h1 class="headline">Team Pulse</h1>
+        <p class="subhead">What did we actually ship?<br>Accountability through outcomes, not status updates.</p>
+        <div class="status-badge">Active &middot; Amplifier Bundle</div>
+        <div class="small-text">May 2026 &middot; cpark4x/amplifier-team-pulse</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 2: THE PROBLEM                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Status theater<br>kills teams</h2>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F3AD;</div>
+                <h3>Performance, Not Progress</h3>
+                <p>Standups become recitals. People report what they touched, not what moved. Nobody connects daily work to quarterly goals.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F4CB;</div>
+                <h3>Audit Amnesia</h3>
+                <p>By Friday, nobody remembers what actually shipped. Managers reconstruct the week from Slack threads and gut feel. Evidence evaporates.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F50D;</div>
+                <h3>Invisible Coordination</h3>
+                <p>Cross-team connections happen by accident. Two people solve the same problem in parallel. Leverage points go unnoticed until it's too late.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>Every team has outcomes on a slide somewhere. The question is whether anyone can trace this week's work back to them &mdash; with evidence, not narrative.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 3: THE SOLUTION                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Solution</div>
+        <h2 class="headline">Outcomes in,<br>accountability out</h2>
+        <p class="subhead">An Amplifier bundle that automates the full weekly accountability cycle &mdash; from commitment logging to leadership showcases.</p>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div class="flow-content">
+                    <h4>Set Outcomes</h4>
+                    <p>Each team member defines quarterly outcomes &mdash; observable, time-bounded, with short IDs. The anchor for everything that follows.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div class="flow-content">
+                    <h4>Log Commitments</h4>
+                    <p>Weekly commitment logging ties this week's work to those outcomes. Interactive collection, file writing, cascade, and git commit &mdash; all automated.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div class="flow-content">
+                    <h4>Pull Activity</h4>
+                    <p>Daily GitHub activity pull fetches real events &mdash; commits, PRs, reviews. Builds per-person activity files. Evidence, not self-reporting.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">4</div>
+                <div class="flow-content">
+                    <h4>Audit &amp; Showcase</h4>
+                    <p>End-of-week: generate outcome-first audits, coordination analysis across teams, and narrative showcases for leadership. All from real data.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 4: ARCHITECTURE                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">Four data sources, one accountability loop</h2>
+        <div class="arch-entities">
+            <div class="entity-box">
+                <div class="icon">&#x1F4AC;</div>
+                <h4>Teams Standups</h4>
+                <p>Meeting transcripts fetched via Graph API &mdash; processed into structured commitments</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F4BB;</div>
+                <h4>GitHub Activity</h4>
+                <p>Commits, PRs, reviews pulled daily &mdash; evidence of what actually happened</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F4DD;</div>
+                <h4>Commitment Logs</h4>
+                <p>Per-person weekly files tied to quarterly outcomes by ID</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F3AF;</div>
+                <h4>Outcome Registry</h4>
+                <p>Quarterly goals with short IDs &mdash; the anchor for all accountability</p>
+            </div>
+        </div>
+        <div class="thirds">
+            <div class="card">
+                <h4 class="accent">Amplifier Recipes</h4>
+                <p>11 declarative recipes orchestrate the entire cycle. Each writes its own files and commits to git independently.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Agent Daemon</h4>
+                <p>Auto-process-standup runs M&ndash;Tu&ndash;W&ndash;Th at noon. Pull-activity runs daily. No human triggers needed.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Staged Approvals</h4>
+                <p>Showcases use a staged recipe gate &mdash; manager reviews drafts before they post to Teams via webhooks.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 5: THE WEEKLY CYCLE                                     -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Weekly Cycle</div>
+        <h2 class="medium-headline">One command chains the full week</h2>
+        <p class="subhead">The <code>weekly-cycle</code> recipe sequences three sub-recipes into a single end-of-week run. Each writes files and commits to git; the orchestrator sequences and reports.</p>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div class="flow-content">
+                    <h4>pull-activity</h4>
+                    <p>Fetches GitHub events, builds per-person activity files, runs the github-activity cascade (Backlog items), commits everything in one shot.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div class="flow-content">
+                    <h4>prep-audit</h4>
+                    <p>Identifies the week's data files, processes per-person audit and review files in parallel, then assembles team-level views in a single final step.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div class="flow-content">
+                    <h4>generate-coordination</h4>
+                    <p>Reads all weekly reviews and audit views. Synthesizes cross-team connection signals, themes, and leverage points.</p>
+                </div>
+            </div>
+        </div>
+        <div class="callout">
+            <p>The weekly cycle produces the complete accountability picture: what each person shipped, how it maps to outcomes, and where teams are unknowingly working on the same problems.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 6: 11 RECIPES                                           -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Capabilities</div>
+        <h2 class="medium-headline">11 recipes, full lifecycle</h2>
+        <div class="thirds">
+            <div class="card card-accent">
+                <h3>Define</h3>
+                <ul class="feature-list">
+                    <li><strong>set-outcomes</strong> &mdash; Set quarterly outcomes per person with short IDs</li>
+                    <li><strong>log-commitments</strong> &mdash; Interactive weekly commitment collection tied to outcomes</li>
+                </ul>
+            </div>
+            <div class="card card-accent">
+                <h3>Capture</h3>
+                <ul class="feature-list">
+                    <li><strong>pull-activity</strong> &mdash; Daily GitHub events fetch + cascade</li>
+                    <li><strong>download-meeting</strong> &mdash; Teams transcripts via Graph API</li>
+                    <li><strong>process-standup</strong> &mdash; Extract commitments from transcripts</li>
+                    <li><strong>auto-process-standup</strong> &mdash; Automated noon runs via agent-daemon</li>
+                </ul>
+            </div>
+            <div class="card card-accent">
+                <h3>Analyze &amp; Share</h3>
+                <ul class="feature-list">
+                    <li><strong>prep-audit</strong> &mdash; Parallel per-person audits + team views</li>
+                    <li><strong>confirm-alignment</strong> &mdash; Weekly alignment confirmation</li>
+                    <li><strong>generate-coordination</strong> &mdash; Cross-team signal synthesis</li>
+                    <li><strong>draft-showcase</strong> &mdash; Leadership showcases with approval gate</li>
+                    <li><strong>weekly-cycle</strong> &mdash; End-to-end orchestrator</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 7: WHAT MAKES IT DIFFERENT                              -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">What Makes It Different</div>
+        <h2 class="medium-headline">Outcomes first, always</h2>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Evidence Over Narrative</h3>
+                <p>GitHub activity is pulled automatically. Standup transcripts are processed by the agent. Audits cross-reference commitments against actual work. You can't game what you didn't do.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Multi-Team Coordination</h3>
+                <p>The coordination recipe reads <em>all</em> weekly reviews across teams and synthesizes connection signals, shared themes, and leverage points &mdash; surfacing collaboration opportunities that no individual team can see.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Human-in-the-Loop Showcases</h3>
+                <p>Draft-showcase is a staged recipe: the agent generates outcome-first narratives, but a manager reviews and approves before anything posts to Teams via webhooks. Automation with judgment.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Git as the System of Record</h3>
+                <p>Every recipe writes files and commits to git. Commitments, activity, audits, coordination views &mdash; all versioned, all auditable, all diffable. No SaaS database. Just a repo.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 8: VELOCITY                                             -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">By the Numbers</div>
+        <h2 class="medium-headline">Built for real teams, shipping weekly</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">11</div>
+                <div class="velocity-label">Amplifier recipes</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">3</div>
+                <div class="velocity-label">Contributors</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">4</div>
+                <div class="velocity-label">Auto-runs per week</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">1</div>
+                <div class="velocity-label">Command for the full week</div>
+            </div>
+        </div>
+        <div class="halves" style="max-width: min(800px, 95vw);">
+            <div class="card">
+                <h4 class="accent">Dependencies</h4>
+                <ul class="feature-list">
+                    <li>amplifier-foundation</li>
+                    <li>amplifier-bundle-recipes</li>
+                    <li>connector-m365 (Graph API)</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4 class="accent">Data Model</h4>
+                <ul class="feature-list">
+                    <li>Per-person outcome files with short IDs</li>
+                    <li>Weekly commitment + activity files</li>
+                    <li>Team-level audit + coordination views</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 9: SOURCES & METHODOLOGY                                -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Sources &amp; Methodology</div>
+        <h2 class="medium-headline">How this deck was built</h2>
+        <div class="sources-content">
+            <p><strong>Repository:</strong> <code>cpark4x/amplifier-team-pulse</code> (private)</p>
+            <p><strong>Primary contributors:</strong> cpark4x, samueljklee</p>
+            <p><strong>Bundle owner:</strong> kenotron-ms</p>
+            <p><strong>Last updated:</strong> May 19, 2026</p>
+            <br>
+            <p><strong>Data sources for this deck:</strong></p>
+            <ul>
+                <li>13 team-knowledge capability YAML files from <code>made-team-knowledge-data/capabilities/cpark4x/amplifier-team-pulse/</code></li>
+                <li>Bundle metadata: <code>team-pulse.yaml</code> (type: bundle, owner: kenotron-ms)</li>
+                <li>Tool metadata: <code>amplifier-team-pulse.yaml</code> (type: tool, owner: cpark4x)</li>
+                <li>11 recipe definitions: <code>auto-process-standup</code>, <code>confirm-alignment</code>, <code>download-meeting</code>, <code>draft-showcase</code>, <code>generate-coordination</code>, <code>log-commitments</code>, <code>prep-audit</code>, <code>process-standup</code>, <code>pull-activity</code>, <code>set-outcomes</code>, <code>weekly-cycle</code></li>
+                <li>Cross-reference from <code>kenotron-ms/lifeos-vault</code> capability: <code>amplifier-team-pulse.yaml</code></li>
+            </ul>
+            <br>
+            <p><strong>Methodology:</strong> All recipe names, descriptions, contributor lists, dependency chains, and automation schedules were extracted directly from team-knowledge YAML metadata. No runtime metrics were fabricated. The "4 auto-runs per week" figure reflects the <code>auto-process-standup</code> recipe description: "Runs at noon M-Tu-W-Th via agent-daemon." Recipe count (11) is the distinct recipe-type capabilities in team-knowledge. Contributor count (3) reflects the union of contributors across all capability files: kenotron-ms, cpark4x, samueljklee.</p>
+            <br>
+            <p><strong>What this deck does not cover:</strong> Source line counts, commit history, and test coverage are unavailable &mdash; the repository is private and not cloned locally. All claims are grounded in team-knowledge metadata only.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 10: CTA                                                 -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">Get Started</div>
+        <h1 class="headline">Stop reporting.<br>Start shipping.</h1>
+        <p class="subhead">Team Pulse replaces status theater with outcome-driven accountability. Set your quarterly goals, and let the system prove what you shipped.</p>
+        <div class="code-block" style="text-align: left; max-width: min(600px, 90vw);"><span class="code-comment"># Set quarterly outcomes</span>
+<span class="code-cmd">amplifier recipe run</span> <span class="code-string">set-outcomes</span>
+
+<span class="code-comment"># Log this week's commitments</span>
+<span class="code-cmd">amplifier recipe run</span> <span class="code-string">log-commitments</span>
+
+<span class="code-comment"># Run the full weekly cycle</span>
+<span class="code-cmd">amplifier recipe run</span> <span class="code-string">weekly-cycle</span></div>
+        <div class="small-text" style="margin-top: var(--space-lg);">
+            cpark4x/<strong>amplifier-team-pulse</strong><br>
+            Amplifier Bundle &middot; 11 Recipes &middot; Outcome-Driven Accountability
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

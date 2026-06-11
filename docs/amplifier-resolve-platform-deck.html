@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Amplifier Resolve — How Amplifier Builds Software</title>
+    <style>
+        :root {
+            --accent: #2ECC71;
+            --accent-dim: rgba(46, 204, 113, 0.15);
+            --accent-glow: rgba(46, 204, 113, 0.3);
+
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Typography scale */
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 36px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 16px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 1.8vw, 15px);
+
+            /* Spacing */
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Slide base */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin-bottom: var(--space-md);
+        }
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: var(--space-md);
+        }
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(680px, 90vw);
+        }
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-sm);
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: 100px;
+            background: rgba(46, 204, 113, 0.15);
+            color: #2ECC71;
+            margin-top: var(--space-sm);
+        }
+
+        /* Grids */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .quads {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .card h3, .card h4 {
+            color: var(--text-primary);
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.5;
+        }
+        .card .icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Card with accent border top */
+        .card-accent {
+            border-top: 2px solid var(--accent);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: #BFC0C5;
+            margin-top: var(--space-md);
+        }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-cmd { color: #2ECC71; }
+        .code-flag { color: #3498DB; }
+        .code-string { color: #FF9F0A; }
+        .code-var { color: #64D2FF; }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            max-width: min(800px, 95vw);
+        }
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+        }
+        .flow-number {
+            flex-shrink: 0;
+            width: clamp(36px, 5vw, 48px);
+            height: clamp(36px, 5vw, 48px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--fs-body);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .flow-content h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .flow-content p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .flow-arrow {
+            width: 2px;
+            height: var(--space-sm);
+            background: var(--accent-dim);
+            margin-left: clamp(17px, 2.3vw, 23px);
+        }
+
+        /* Architecture diagram */
+        .arch-entities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .entity-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+        .entity-box .icon {
+            font-size: clamp(32px, 6vw, 56px);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box h4 {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Velocity stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+        .velocity-stat { text-align: center; }
+        .velocity-number {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #27AE60);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .velocity-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-top: var(--space-lg);
+            max-width: min(700px, 95vw);
+        }
+        .timeline-item {
+            display: flex;
+            gap: var(--space-md);
+            padding-bottom: var(--space-md);
+            position: relative;
+        }
+        .timeline-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: clamp(30px, 4vw, 40px);
+            top: clamp(36px, 5vw, 48px);
+            bottom: 0;
+            width: 2px;
+            background: var(--accent-dim);
+        }
+        .timeline-date {
+            flex-shrink: 0;
+            width: clamp(60px, 8vw, 80px);
+            height: clamp(60px, 8vw, 80px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .timeline-date .day {
+            font-size: var(--fs-h3);
+            color: var(--accent);
+            line-height: 1;
+        }
+        .timeline-date .month {
+            font-size: var(--fs-small);
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+        .timeline-text h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .timeline-text p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Quote / callout box */
+        .callout {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            margin-top: var(--space-md);
+            max-width: min(700px, 95vw);
+        }
+        .callout p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            font-style: italic;
+        }
+        .callout .attribution {
+            font-style: normal;
+            color: var(--text-tertiary);
+            font-size: var(--fs-small);
+            margin-top: var(--space-xs);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        /* Sources slide specifics */
+        .sources-content {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            max-width: min(800px, 95vw);
+        }
+        .sources-content strong {
+            color: var(--text-primary);
+        }
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .sources-content ul {
+            padding-left: var(--space-md);
+            margin: var(--space-xs) 0;
+        }
+        .sources-content li {
+            margin-bottom: var(--space-xs);
+        }
+
+        /* More stories link */
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Touch targets */
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+
+        /* Highlight accent text */
+        .accent { color: var(--accent); }
+
+        /* Inline list with subtle bullets */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding-left: var(--space-md);
+            position: relative;
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-xs);
+        }
+        .feature-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        /* Layer diagram */
+        .layer-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-top: var(--space-lg);
+            max-width: min(800px, 95vw);
+        }
+        .layer {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: var(--space-sm) var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+        .layer-num {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--fs-small);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .layer h4 {
+            font-size: var(--fs-body);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .layer p {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+        .layer-connector {
+            width: 2px;
+            height: 12px;
+            background: var(--accent-dim);
+            margin-left: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 1: TITLE                                                -->
+    <!-- ============================================================ -->
+    <div class="slide active center">
+        <div class="section-label">Architecture & Philosophy &middot; Amplifier Platform</div>
+        <h1 class="headline">Amplifier Resolve</h1>
+        <p class="subhead">How Amplifier builds software.<br>Turn intent into working code through pluggable resolver backends.</p>
+        <div class="status-badge">Active &middot; A2UI v0.9 Protocol</div>
+        <div class="small-text">May 2026 &middot; microsoft/amplifier-resolve</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 2: THE VISION                                           -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Vision</div>
+        <h2 class="headline">Code that<br>writes code</h2>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F4DD;</div>
+                <h3>Describe Intent</h3>
+                <p>A user writes a spec &mdash; what the software should do, defined as observable HTTP behavior. No implementation details.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x2699;&#xFE0F;</div>
+                <h3>Resolve Autonomously</h3>
+                <p>A resolver instance explores the codebase, plans changes, implements them, tests in a live environment, and iterates until done.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F680;</div>
+                <h3>Deliver a Pull Request</h3>
+                <p>The platform promotes results back to GitHub or Gitea as a PR. Working code, tested and ready for review.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>The host handles lifecycle, routing, and validation. Resolvers own the semantics. The platform is a thin orchestration layer &mdash; not a monolithic AI.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 3: FOUR-LAYER ARCHITECTURE                              -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">Four layers, clear boundaries</h2>
+        <p class="subhead">A modular monolith: single Python process on a single host, with per-instance services running under Incus containers.</p>
+        <div class="layer-stack">
+            <div class="layer">
+                <div class="layer-num">1</div>
+                <div>
+                    <h4>App Shell</h4>
+                    <p>React SPA &mdash; A2UI rendering surface with optional viewport extensions for custom resolver visualization</p>
+                </div>
+            </div>
+            <div class="layer-connector"></div>
+            <div class="layer">
+                <div class="layer-num">2</div>
+                <div>
+                    <h4>Headless Core</h4>
+                    <p>FastAPI service &mdash; instance lifecycle, broker, resolver registry, auth, observability. ~24,000 lines of source.</p>
+                </div>
+            </div>
+            <div class="layer-connector"></div>
+            <div class="layer">
+                <div class="layer-num">3</div>
+                <div>
+                    <h4>Resolvers</h4>
+                    <p>One child process per phase, speaking JSONL over stdio via amplifier-resolver-sdk. Pluggable &mdash; discovered via entry points.</p>
+                </div>
+            </div>
+            <div class="layer-connector"></div>
+            <div class="layer">
+                <div class="layer-num">4</div>
+                <div>
+                    <h4>Per-Instance Services</h4>
+                    <p>Sidecar containers: Gitea, GH-router, DTU spawn, Reality-Check spawn. New capabilities via CapabilityHandlerProtocol.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 4: THE A2UI PROTOCOL                                    -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Protocol</div>
+        <h2 class="headline">A2UI v0.9</h2>
+        <p class="subhead">The instance-centric protocol that makes resolver plugins interchangeable.</p>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Schema-Driven Input</h3>
+                <p>Resolvers declare their input schemas via <code>instantiation_schema</code>. The host validates every <code>POST /instances</code> request before creation. Dynamic refinement supported via <code>GET /resolvers/{name}/schema?params={...}</code>.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Runtime Input Requests</h3>
+                <p>Resolvers can request additional user input mid-run by writing structured request files with A2UI form schemas. The host exposes, validates, and routes responses back &mdash; a general, schema-driven mechanism.</p>
+            </div>
+        </div>
+        <div class="thirds">
+            <div class="card">
+                <h4 class="accent">12-Member Protocol</h4>
+                <p>Properties: <code>name</code>, <code>version</code>, <code>description</code>, <code>supports_resume</code>. Methods: <code>instantiation_schema</code>, <code>workspace_spec</code>, <code>container_setup</code>, <code>message_types</code>, <code>run</code>, <code>on_input_response</code>, <code>on_message</code>, <code>stop</code>.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Typed Messages</h4>
+                <p>Send typed messages to a running instance. Message types are validated against the resolver's <code>message_types()</code> for the current state. Unknown types return 422.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">SSE Events</h4>
+                <p>Per-instance event streams via <code>GET /instances/{id}/events</code>. Events logged to <code>events.jsonl</code>, state snapshots to <code>state.json</code>. Real-time observability.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 5: INSTANCE LIFECYCLE                                   -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Lifecycle</div>
+        <h2 class="medium-headline">Eight states, one happy path</h2>
+        <p class="subhead">Every instance follows a state machine from creation to completion &mdash; with pausing, input requests, and cancellation built in.</p>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div class="flow-content">
+                    <h4>created &rarr; starting</h4>
+                    <p>Instance record persisted. Container launches, worker initializes. Cache image cuts this from ~5 minutes to ~15 seconds.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div class="flow-content">
+                    <h4>running</h4>
+                    <p>Resolver actively working inside a container. May transition to <code>awaiting_input</code> or <code>paused</code> and back.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div class="flow-content">
+                    <h4>completed | failed | cancelled</h4>
+                    <p>Terminal states. Success delivers a PR. Failure logs diagnostics. Cancellation is available from any non-terminal state.</p>
+                </div>
+            </div>
+        </div>
+        <div class="callout">
+            <p>The typical happy path: created &rarr; starting &rarr; running &rarr; completed. Each transition emits events to both the SSE stream and the Amplifier hook system.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 6: PLUGGABLE RESOLVERS                                  -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Resolver Ecosystem</div>
+        <h2 class="headline">Pluggable<br>backends</h2>
+        <p class="subhead">Each resolver is a strategy plugin. The host provides infrastructure &mdash; resolvers own the intelligence.</p>
+        <div class="arch-entities">
+            <div class="entity-box">
+                <div class="icon">&#x1F9F2;</div>
+                <h4>Attractor</h4>
+                <p>Multi-stage AI pipeline &mdash; plan, implement, test, review. Ships as a submodule at <code>amplifier-bundle-attractor</code>.</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F4BB;</div>
+                <h4>Dev Machine</h4>
+                <p>Interactive resolver that pairs with a human developer in the loop for guided implementation.</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F4CA;</div>
+                <h4>Dot Graph</h4>
+                <p>Specialized resolver for architecture diagram generation and codebase visualization.</p>
+            </div>
+        </div>
+        <div class="halves" style="margin-top: var(--space-md);">
+            <div class="card">
+                <h4 class="accent">Register & Scaffold</h4>
+                <p><code>amplifier-resolve resolver add &lt;spec&gt;</code> validates installation in an ephemeral worker container. <code>amplifier-resolve init-resolver my-resolver</code> scaffolds a new one.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Shared Infrastructure</h4>
+                <p>Every resolver gets: workspace provisioning, Gitea sidecars, DTU environments, reality-check sessions, promotion to upstream repos, and container lifecycle management &mdash; for free.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 7: PLATFORM SERVICES                                    -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Platform Services</div>
+        <h2 class="medium-headline">What the host provides</h2>
+        <div class="thirds">
+            <div class="card card-accent">
+                <h3>Workspace & Promotion</h3>
+                <p>GitSidecarManager provisions repos, clones, and sets up branches. PromotionService pushes results to upstream repos as PRs. Pure HTTP &mdash; no git binary needed.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Broker &amp; DTU</h3>
+                <p>The broker provisions per-instance sidecar services: ephemeral Gitea instances, Digital Twin Universe environments, and Reality-Check sessions &mdash; all running under Incus.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Reality Check</h3>
+                <p>Validates resolver output against live services. Observable HTTP behavior &mdash; not source inspection. The platform tests what the code <em>does</em>, not how it's written.</p>
+            </div>
+        </div>
+        <div class="halves">
+            <div class="card">
+                <h4 class="accent">Container Providers</h4>
+                <p>Abstracted via ContainerProvider: Incus (primary) and Docker (fallback). Worker cache images cut startup from ~5 min to ~15 sec. Rebuild weekly.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Two-Domain Auth</h4>
+                <p>User domain (<code>/api/*</code>): session cookies or bearer tokens via PAM/env/file cascade. Worker domain (<code>/worker/*</code>): instance-scoped tokens with container identity verification.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 8: API SURFACE                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">API Surface</div>
+        <h2 class="medium-headline">REST-first, JSON everywhere</h2>
+        <p class="subhead">The full instance lifecycle as HTTP endpoints &mdash; designed for programmatic consumption by agents, scripts, and UIs.</p>
+        <div class="code-block"><span class="code-comment"># Discover available resolvers</span>
+<span class="code-cmd">curl</span> <span class="code-string">http://localhost:10120/resolvers</span>
+
+<span class="code-comment"># Create an instance</span>
+<span class="code-cmd">curl</span> <span class="code-flag">-X POST</span> <span class="code-string">http://localhost:10120/instances</span> \
+  <span class="code-flag">-H</span> <span class="code-string">"Content-Type: application/json"</span> \
+  <span class="code-flag">-d</span> <span class="code-var">'{"resolver": "attractor", "input": {"spec": "Add GET /api/version", "repo": "org/repo"}}'</span>
+
+<span class="code-comment"># Watch events in real-time</span>
+<span class="code-cmd">curl</span> <span class="code-flag">-N</span> <span class="code-string">http://localhost:10120/instances/{id}/events</span>
+
+<span class="code-comment"># Check instance status</span>
+<span class="code-cmd">curl</span> <span class="code-string">http://localhost:10120/instances/{id}</span></div>
+        <div class="thirds" style="margin-top: var(--space-md);">
+            <div class="card">
+                <h4 class="accent">20+ Endpoints</h4>
+                <p>Instance CRUD, input-requests, messages, events, state, workspace ops, broker services, sub-container management.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Structured Errors</h4>
+                <p>All 4xx/5xx responses use <code>{code, detail, next_action}</code> envelope. Idempotency-Key header with 24h dedup window.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Self-Managing</h4>
+                <p><code>amplifier-resolve doctor</code> diagnoses issues. <code>amplifier-resolve upgrade</code> self-updates. <code>install-service</code> for systemd/launchd.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 9: VELOCITY                                             -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">Development Velocity</div>
+        <h2 class="medium-headline">22 days of focused engineering</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">100</div>
+                <div class="velocity-label">Commits</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">24K</div>
+                <div class="velocity-label">Lines of source</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">67K</div>
+                <div class="velocity-label">Lines of tests</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">3,400</div>
+                <div class="velocity-label">Test cases</div>
+            </div>
+        </div>
+        <div class="callout" style="margin-top: var(--space-lg); text-align: left;">
+            <p>First commit April 29, latest May 20 &mdash; 100 commits in 22 days. 77 source files, 184 test files. A ~2.8:1 test-to-source ratio by line count. Built to be tested, not just to run.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 10: BIGGER PICTURE                                      -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Bigger Picture</div>
+        <h2 class="headline">The factory<br>for factories</h2>
+        <p class="subhead">Amplifier Resolve is the orchestration layer that turns every other Amplifier component into a code-generation pipeline.</p>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Composable by Design</h3>
+                <p>amplifier-bundle-gitea provides ephemeral git. amplifier-foundation provides the core runtime. amplifier-bundle-attractor provides the AI pipeline. Resolve composes them into a working factory.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Resolver as Strategy</h3>
+                <p>New coding approaches are new resolvers &mdash; not new platforms. Register with one command, validate in an ephemeral container, deploy immediately. The platform stays thin.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>The host is a thin lifecycle/routing/validation layer. Resolvers own all resolution semantics. New capabilities are added as new broker handlers conforming to CapabilityHandlerProtocol.</p>
+            <div class="attribution">&mdash; design/ARCHITECTURE.md</div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 11: CTA                                                 -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">Get Started</div>
+        <h1 class="headline">Run it today</h1>
+        <p class="subhead">One command to install. One command to start the server. One API call to generate code.</p>
+        <div class="code-block" style="text-align: left; max-width: min(600px, 90vw);"><span class="code-comment"># Install</span>
+<span class="code-cmd">uv tool install</span> <span class="code-string">'git+https://github.com/microsoft/amplifier-resolve@main'</span>
+
+<span class="code-comment"># Start the server</span>
+<span class="code-cmd">amplifier-resolve</span> <span class="code-flag">--port</span> <span class="code-var">10120</span>
+
+<span class="code-comment"># Build the worker cache (cuts startup 5 min &rarr; 15 sec)</span>
+<span class="code-cmd">./docker/build-cache-image.sh</span></div>
+        <div class="small-text" style="margin-top: var(--space-lg);">
+            github.com/<strong>microsoft/amplifier-resolve</strong><br>
+            Python 3.11+ &middot; FastAPI &middot; Incus/Docker &middot; A2UI v0.9
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 12: SOURCES & METHODOLOGY                               -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Sources & Methodology</div>
+        <h2 class="medium-headline">How this deck was built</h2>
+        <div class="sources-content">
+            <p><strong>Repository:</strong> <code>microsoft/amplifier-resolve</code> &mdash; cloned and analyzed May 20, 2026.</p>
+            <ul>
+                <li><strong>Commit range:</strong> 100 commits, <code>9bf3b55</code> (Apr 29) to <code>d4eb669</code> (May 20)</li>
+                <li><strong>Contributors (git shortlog):</strong> Brian Krabach (97 commits), dependabot[bot] (2), Salil Das (1)</li>
+                <li><strong>Primary contributors (team knowledge):</strong> bkrabach, DavidKoleczek, singh2</li>
+                <li><strong>Source code:</strong> 77 Python files, ~24,000 lines in <code>src/amplifier_resolve/</code></li>
+                <li><strong>Test code:</strong> 184 Python files, ~66,600 lines in <code>tests/</code>; ~3,400 test cases (per README)</li>
+                <li><strong>Total Python:</strong> ~96,500 lines across 291 files</li>
+                <li><strong>Key modules by LOC:</strong> orchestrator.py (3,001), reality_check.py (1,066), promotion.py (806), workspace/service.py (656), containers/incus.py (641)</li>
+            </ul>
+            <p><strong>Sources consulted:</strong></p>
+            <ul>
+                <li><code>README.md</code> &mdash; API surface, quick start, environment variables, architecture table</li>
+                <li><code>design/ARCHITECTURE.md</code> &mdash; four-layer architecture, two-domain auth, router topology</li>
+                <li><code>docs/INSTANCE_LIFECYCLE.md</code> &mdash; 8-state machine, transitions, state diagram</li>
+                <li><code>docs/AUTHORING_GUIDE.md</code> &mdash; instance spec conventions, observable behavior requirement</li>
+                <li>Team knowledge YAML: <code>amplifier-resolve.yaml</code>, <code>amplifier-bundle-attractor.yaml</code>, <code>amplifier-reality-check-runner.yaml</code></li>
+                <li>Source inspection: <code>core/resolve_orchestrator.py</code>, <code>core/events.py</code>, <code>broker/</code>, <code>containers/</code>, <code>workspace/</code></li>
+            </ul>
+            <p><strong>Commands used:</strong> <code>git log --oneline | wc -l</code>, <code>git shortlog -sn --all</code>, <code>find . -name "*.py" | xargs wc -l</code>, <code>wc -l</code> on key modules.</p>
+            <p style="margin-top: var(--space-sm);"><strong>No metrics were fabricated.</strong> All numbers come from git history and file system analysis at the commit referenced above.</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

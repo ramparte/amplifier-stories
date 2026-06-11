@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Launch Once, Update in Place</title>
+    <style>
+        :root {
+            --accent: #5E5CE6;
+            --accent-glow: rgba(94, 92, 230, 0.25);
+            --accent-soft: rgba(94, 92, 230, 0.15);
+            --green: #30D158;
+            --orange: #FF9F0A;
+            --red: #FF453A;
+            --teal: #64D2FF;
+            --pink: #FF375F;
+
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-small: clamp(12px, 1.5vw, 14px);
+
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --border-subtle: rgba(255,255,255,0.12);
+
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active { display: flex; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px var(--padding-slide) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: clamp(12px, 2vw, 20px);
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: clamp(-1px, -0.03em, -2px);
+            line-height: 1.1;
+            color: var(--text-primary);
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            line-height: 1.15;
+            color: var(--text-primary);
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: 700px;
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .small-text {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+        }
+
+        /* Layout */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card h3 {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(8px, 1.5vw, 12px);
+        }
+
+        .card p, .card li {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .card-accent { border-top: 3px solid var(--accent); }
+        .card-green { border-top: 3px solid var(--green); }
+        .card-orange { border-top: 3px solid var(--orange); }
+        .card-teal { border-top: 3px solid var(--teal); }
+        .card-pink { border-top: 3px solid var(--pink); }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.8vw, 15px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: var(--text-secondary);
+        }
+
+        .code-green { color: var(--green); }
+        .code-accent { color: var(--accent); }
+        .code-comment { color: var(--text-tertiary); }
+        .code-flag { color: var(--orange); }
+        .code-string { color: var(--teal); }
+
+        /* Flow diagram */
+        .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: clamp(8px, 2vw, 20px);
+            margin: clamp(12px, 2vw, 20px) 0;
+        }
+
+        .flow-step {
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: clamp(10px, 2vw, 16px) clamp(14px, 3vw, 24px);
+            font-size: var(--font-body);
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .flow-step.accent {
+            background: var(--accent-soft);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .flow-arrow {
+            font-size: clamp(18px, 3vw, 28px);
+            color: var(--text-tertiary);
+        }
+
+        /* Comparison labels */
+        .comparison-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: clamp(8px, 1.5vw, 12px);
+        }
+
+        .label-before { color: var(--red); }
+        .label-after { color: var(--green); }
+
+        /* Strikethrough */
+        .struck {
+            font-size: var(--font-body);
+            text-decoration: line-through;
+            color: var(--text-tertiary);
+            line-height: 1.8;
+        }
+
+        /* Feature list */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            padding: clamp(4px, 1vw, 8px) 0;
+            padding-left: 1.5em;
+            position: relative;
+        }
+
+        .feature-list li::before {
+            content: '\2192';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+
+        /* Highlight inline */
+        .highlight {
+            display: inline-block;
+            background: var(--accent-soft);
+            color: var(--accent);
+            padding: 2px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        /* Spacers */
+        .spacer { height: clamp(16px, 3vw, 32px); }
+        .spacer-sm { height: clamp(8px, 1.5vw, 16px); }
+
+        /* Inline code */
+        .body-text code, .subhead code, .card code {
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9em;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 24px;
+            right: var(--padding-slide);
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== SLIDE 1: Title ==================== -->
+    <div class="slide active center">
+        <div class="section-label">Digital Twin Universe</div>
+        <h1 class="headline">Launch Once.<br>Update in Place.</h1>
+        <p class="subhead">Isolated environments that evolve with your code, verify themselves end-to-end from the host, and stay out of your way.</p>
+    </div>
+
+    <!-- ==================== SLIDE 2: Install Guides ==================== -->
+    <div class="slide">
+        <div class="section-label">Documentation</div>
+        <h2 class="headline">Standalone Install Guides</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 28px); max-width: 700px;">Extracted <code>installing-incus.md</code> and <code>installing-docker.md</code> as single sources of truth. No more scattered prerequisite instructions &mdash; one file per tool, covering every supported platform.</p>
+        <div class="thirds">
+            <div class="card card-teal">
+                <h3>Platform-Specific Steps</h3>
+                <p>Install instructions for Ubuntu, WSL2, and macOS. Each platform gets its own section with tested commands and expected output.</p>
+            </div>
+            <div class="card card-teal">
+                <h3>Docker Coexistence Fix</h3>
+                <p>Documents the networking conflict between Docker and Incus and provides the fix. Verification steps confirm both tools work side-by-side.</p>
+            </div>
+            <div class="card card-teal">
+                <h3>Troubleshooting Tables</h3>
+                <p>Common failure modes with symptoms, causes, and fixes in a scannable table format. Agent instructions included for one-command-at-a-time output.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 3: Skill and Doc Cleanup ==================== -->
+    <div class="slide">
+        <div class="section-label">Documentation</div>
+        <h2 class="headline">Skill and Doc Cleanup</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 28px); max-width: 700px;">Streamlined SKILL.md and the awareness context. Removed duplication, added missing references, and made agents self-sufficient for verification.</p>
+        <div class="thirds">
+            <div class="card card-accent">
+                <h3>SKILL.md Overhaul</h3>
+                <p>Added mock-authoring.md reference for mock service discovery. Added Agents section pointing to dtu-profile-builder and dtu-browser-tester. Removed Key Concepts section that duplicated api-reference.md and profiles.md.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Agent-Driven Verification</h3>
+                <p>Added agent instruction comments so verification commands run automatically instead of asking the user to do it manually. Agents now verify Incus installs directly.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Trimmed Awareness Context</h3>
+                <p>Reduced dtu-awareness.md to remove content that was already covered by the skill and referenced docs. Less redundancy, fewer tokens consumed.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 4: Docker-in-Incus ==================== -->
+    <div class="slide">
+        <div class="section-label">New Capability</div>
+        <h2 class="headline">Docker-in-Incus</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 28px); max-width: 700px;">Added <code>base.config</code> to the profile schema, enabling Incus container configuration flags like <code>security.nesting</code> at creation time. Docker can now run nested inside an Incus container.</p>
+        <div class="thirds">
+            <div class="card card-accent">
+                <h3>base.config Schema</h3>
+                <p>Profiles can now pass arbitrary Incus container configuration at creation time. This unlocks any workload that needs container nesting, device passthrough, or custom kernel parameters.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Reference Profile</h3>
+                <p><code>docker-in-incus.yaml</code> &mdash; a minimal profile that exercises Docker nested inside Incus with full networking verification. Host-to-Docker inbound, Docker-to-host outbound, Docker-to-Docker inter-container.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Guide and E2E Tests</h3>
+                <p><code>docker-in-incus.md</code> covers setup, platform-specific issues (WSL2, bare-metal Ubuntu, AppArmor), networking paths, and known non-working workarounds. E2E tests cover all networking paths. Test cleanup fixed to only destroy session containers.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 5: In-Place Updates ==================== -->
+    <div class="slide">
+        <div class="section-label">Headline Feature</div>
+        <h2 class="headline">In-Place Updates</h2>
+        <p class="subhead" style="margin-bottom: clamp(20px, 4vw, 40px);">The new <span class="highlight">update</span> command patches a running environment without destroying it. One command transforms the rebuild cycle into a fast refresh.</p>
+        <div class="halves">
+            <div class="card">
+                <div class="comparison-label label-before">Before &mdash; Full Rebuild</div>
+                <p class="struck">Destroy environment</p>
+                <p class="struck">Re-provision from scratch</p>
+                <p class="struck">Reinstall all dependencies</p>
+                <p class="struck">Re-run readiness checks</p>
+                <p class="body-text" style="margin-top: clamp(8px, 1.5vw, 12px); color: var(--red);">Full teardown for every iteration</p>
+            </div>
+            <div class="card">
+                <div class="comparison-label label-after">After &mdash; In-Place Update</div>
+                <ul class="feature-list">
+                    <li>Validate environment is running</li>
+                    <li>Optionally refresh PyPI overrides</li>
+                    <li>Run update commands in-place</li>
+                    <li>Re-run readiness checks</li>
+                </ul>
+                <p class="body-text" style="margin-top: clamp(8px, 1.5vw, 12px); color: var(--green);">Environment stays alive across iterations</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 6: Update Deep Dive ==================== -->
+    <div class="slide">
+        <div class="section-label">How It Works</div>
+        <h2 class="medium-headline">The Update Workflow</h2>
+        <div class="flow-row">
+            <div class="flow-step">launch</div>
+            <div class="flow-arrow">&#x2192;</div>
+            <div class="flow-step accent">update</div>
+            <div class="flow-arrow">&#x2192;</div>
+            <div class="flow-step">test</div>
+            <div class="flow-arrow">&#x2192;</div>
+            <div class="flow-step accent">update</div>
+            <div class="flow-arrow">&#x2192;</div>
+            <div class="flow-step">test</div>
+        </div>
+        <div class="spacer-sm"></div>
+        <div class="code-block"><span class="code-comment"># Launch once, update repeatedly</span>
+<span class="code-green">$</span> amplifier-digital-twin <span class="code-accent">update</span> my-env <span class="code-flag">--var</span> <span class="code-string">branch=feature-x</span>
+
+<span class="code-comment"># Skip readiness checks for rapid iteration</span>
+<span class="code-green">$</span> amplifier-digital-twin <span class="code-accent">update</span> my-env <span class="code-flag">--skip-readiness</span></div>
+        <div class="spacer-sm"></div>
+        <div class="thirds">
+            <div class="card">
+                <h3>Profile Schema</h3>
+                <p>New <code>update</code> section with <code>cmds</code> (shell commands) and <code>refresh_pypi</code> (bool to rebuild PyPI overrides from current source repos).</p>
+            </div>
+            <div class="card">
+                <h3>Engine Logic</h3>
+                <p>Validates running env, optionally kills pypiserver, clears wheels, rebuilds overrides, runs update commands, then re-checks readiness.</p>
+            </div>
+            <div class="card">
+                <h3>3 E2E Tests</h3>
+                <p>Verify: new code is picked up, environment stays running across updates, and the skip-readiness path works correctly.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 7: Update Profile Examples ==================== -->
+    <div class="slide">
+        <div class="section-label">Profile Examples</div>
+        <h2 class="medium-headline">Real update profiles shipped</h2>
+        <div class="halves">
+            <div class="card card-green">
+                <h3>amplifier-user-sim</h3>
+                <div class="code-block"><span class="code-accent">update:</span>
+  <span class="code-accent">refresh_pypi:</span> <span class="code-green">true</span>
+  <span class="code-accent">cmds:</span>
+    - <span class="code-string">pip cache purge</span>
+    - <span class="code-string">pip install --upgrade amplifier-core</span></div>
+                <p style="margin-top: clamp(8px, 1.5vw, 12px);">Rebuilds PyPI overrides from current source repos, clears pip cache, reinstalls from local packages.</p>
+            </div>
+            <div class="card card-teal">
+                <h3>amplifier-chat</h3>
+                <div class="code-block"><span class="code-accent">update:</span>
+  <span class="code-accent">cmds:</span>
+    - <span class="code-string">pkill -f amplifier-chat</span>
+    - <span class="code-string">pip install --upgrade amplifier-chat</span>
+    - <span class="code-string">amplifier-chat serve &amp;</span></div>
+                <p style="margin-top: clamp(8px, 1.5vw, 12px);">Kills the running server, reinstalls the package, and restarts &mdash; a clean server refresh without touching the container.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 8: Host-Side Verification ==================== -->
+    <div class="slide">
+        <div class="section-label">Reliability</div>
+        <h2 class="headline">Host-Side Access<br>Verification</h2>
+        <p class="subhead" style="margin-bottom: clamp(20px, 4vw, 40px);"><code>check-readiness</code> now verifies that access ports are reachable from the host &mdash; not just from inside the container. Confirms Incus proxy devices work end-to-end.</p>
+        <div class="thirds">
+            <div class="card card-green">
+                <h3>TCP + HTTP Checks</h3>
+                <p>Connects via Python socket and urllib from the host process. Verifies both TCP reachability and HTTP response codes for each mapped port.</p>
+            </div>
+            <div class="card card-green">
+                <h3>Configurable Retry</h3>
+                <p>New PortMapping fields: <code>verify</code> (default true), <code>verify_timeout</code> (30s), <code>verify_interval</code> (2s). Retry loop catches slow-starting services.</p>
+            </div>
+            <div class="card card-green">
+                <h3>Tested End-to-End</h3>
+                <p>Unit tests with a real local HTTP server. E2E tests launch containers, verify access passes, stop the service, verify access correctly fails.</p>
+            </div>
+        </div>
+        <div class="spacer-sm"></div>
+        <div class="code-block"><span class="code-comment"># New "access" key in check-readiness JSON output</span>
+<span class="code-green">$</span> amplifier-digital-twin check-readiness my-env
+{ <span class="code-accent">"services"</span>: { ... },
+  <span class="code-accent">"access"</span>: { <span class="code-accent">"port_8080"</span>: { <span class="code-accent">"status"</span>: <span class="code-green">"reachable"</span>, <span class="code-accent">"method"</span>: <span class="code-string">"http_get"</span> } } }
+
+<span class="code-comment"># Skip when you don't need it</span>
+<span class="code-green">$</span> amplifier-digital-twin check-readiness my-env <span class="code-flag">--skip-access-check</span></div>
+    </div>
+
+    <!-- ==================== SLIDE 9: Profile Convention + Gitea ==================== -->
+    <div class="slide">
+        <div class="section-label">Developer Experience</div>
+        <h2 class="headline">Profile Convention<br>and Gitea Integration</h2>
+        <div class="halves">
+            <div class="card card-pink">
+                <h3>Profile Placement Convention</h3>
+                <p>Standardized where DTU profiles live:</p>
+                <div class="code-block"><span class="code-accent">.amplifier/</span>
+  <span class="code-accent">digital-twin-universe/</span>
+    <span class="code-accent">profiles/</span>
+      <span class="code-green">my-profile.yaml</span></div>
+                <ul class="feature-list">
+                    <li>Profile-builder agent updated to use convention</li>
+                    <li>Default: don&rsquo;t commit (workspace-specific, ephemeral)</li>
+                    <li>Skill docs and README updated</li>
+                </ul>
+            </div>
+            <div class="card card-orange">
+                <h3>Gitea as Bundle Dependency</h3>
+                <p><code>amplifier-bundle-gitea</code> added as an <code>includes</code> dependency in the DTU behavior. Automatically available when the DTU bundle is composed.</p>
+                <ul class="feature-list">
+                    <li>New self-validation profile tests the bundle against local Gitea repos</li>
+                    <li>Test without pushing to origin</li>
+                    <li>Profile-builder agent guides users toward Gitea for local testing</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 10: Context Sink Pattern ==================== -->
+    <div class="slide">
+        <div class="section-label">Architecture</div>
+        <h2 class="headline">Agents as the<br>Primary Interface</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 28px); max-width: 700px;">DTU work now routes through agents, not the root session. The heavy skill loads in agent sessions so tokens are consumed only when DTU work is actually happening.</p>
+        <div class="halves">
+            <div class="card">
+                <div class="comparison-label label-before">Before</div>
+                <div class="flow-row" style="justify-content: flex-start;">
+                    <div class="flow-step">Root Session</div>
+                    <div class="flow-arrow">&#x2190;</div>
+                    <div class="flow-step" style="background: rgba(255,69,58,0.12); border-color: var(--red);">DTU Skill (heavy)</div>
+                </div>
+                <p>Skill loaded in root session. Token cost paid even when DTU not in use.</p>
+            </div>
+            <div class="card">
+                <div class="comparison-label label-after">After &mdash; Context Sink</div>
+                <div class="flow-row" style="justify-content: flex-start;">
+                    <div class="flow-step">Root Session</div>
+                    <div class="flow-arrow">&#x2192;</div>
+                    <div class="flow-step accent">Agent</div>
+                    <div class="flow-arrow">&#x2190;</div>
+                    <div class="flow-step" style="background: var(--accent-soft);">DTU Skill</div>
+                </div>
+                <p>Lightweight awareness doc in root. Agents load skill as their first step with <code>context_depth=all, context_scope=full</code>.</p>
+            </div>
+        </div>
+        <div class="spacer-sm"></div>
+        <div class="halves">
+            <div class="card">
+                <h3>dtu-profile-builder</h3>
+                <p>Loads skill first, then builds and validates profiles. Reports state changes and issues encountered back to root.</p>
+            </div>
+            <div class="card">
+                <h3>dtu-browser-tester</h3>
+                <p>Loads skill first, then runs browser-based tests against running environments. Full context handoff on delegation.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 11: CTA ==================== -->
+    <div class="slide center">
+        <div class="section-label">Get Started</div>
+        <h1 class="headline">Try It Now</h1>
+        <div class="spacer-sm"></div>
+        <div class="code-block" style="max-width: 700px; text-align: left;"><span class="code-comment"># Launch an environment</span>
+<span class="code-green">$</span> amplifier-digital-twin launch my-profile.yaml
+
+<span class="code-comment"># Make changes to your code, then update in-place</span>
+<span class="code-green">$</span> amplifier-digital-twin <span class="code-accent">update</span> my-env
+
+<span class="code-comment"># Verify ports are reachable from the host</span>
+<span class="code-green">$</span> amplifier-digital-twin check-readiness my-env
+
+<span class="code-comment"># Or ask an agent to build you a profile</span>
+<span class="code-green">$</span> <span class="code-string">"Build me a DTU profile for testing amplifier-chat"</span></div>
+        <div class="spacer"></div>
+        <p class="subhead">The DTU skill and agents are available in any Amplifier workspace<br>with the digital-twin-universe bundle composed.</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = (currentSlide + 1) + ' / ' + slides.length;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

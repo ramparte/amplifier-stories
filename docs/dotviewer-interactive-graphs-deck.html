@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>dotviewer &mdash; See Your Architecture</title>
+    <script>document.documentElement.classList.add('js')</script>
+    <style>
+        :root {
+            --accent: #2ECC71;
+            --accent-dim: rgba(46, 204, 113, 0.15);
+            --accent-glow: rgba(46, 204, 113, 0.3);
+
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Typography scale */
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 36px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 16px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 1.8vw, 15px);
+
+            /* Spacing */
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Slide base */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin-bottom: var(--space-md);
+        }
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: var(--space-md);
+        }
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(680px, 90vw);
+        }
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-sm);
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: 100px;
+            background: rgba(46, 204, 113, 0.15);
+            color: #2ECC71;
+            margin-top: var(--space-sm);
+        }
+
+        /* Grids */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .quads {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .card h3, .card h4 {
+            color: var(--text-primary);
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.5;
+        }
+        .card .icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Card with accent border top */
+        .card-accent {
+            border-top: 2px solid var(--accent);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: #BFC0C5;
+            margin-top: var(--space-md);
+        }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-cmd { color: #2ECC71; }
+        .code-flag { color: #3498DB; }
+        .code-string { color: #FF9F0A; }
+        .code-var { color: #64D2FF; }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            max-width: min(800px, 95vw);
+        }
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+        }
+        .flow-number {
+            flex-shrink: 0;
+            width: clamp(36px, 5vw, 48px);
+            height: clamp(36px, 5vw, 48px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--fs-body);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .flow-content h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .flow-content p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .flow-arrow {
+            width: 2px;
+            height: var(--space-sm);
+            background: var(--accent-dim);
+            margin-left: clamp(17px, 2.3vw, 23px);
+        }
+
+        /* Velocity stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+        .velocity-stat { text-align: center; }
+        .velocity-number {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #3498DB);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .velocity-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-top: var(--space-lg);
+            max-width: min(700px, 95vw);
+        }
+        .timeline-item {
+            display: flex;
+            gap: var(--space-md);
+            padding-bottom: var(--space-md);
+            position: relative;
+        }
+        .timeline-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: clamp(30px, 4vw, 40px);
+            top: clamp(36px, 5vw, 48px);
+            bottom: 0;
+            width: 2px;
+            background: var(--accent-dim);
+        }
+        .timeline-date {
+            flex-shrink: 0;
+            width: clamp(60px, 8vw, 80px);
+            height: clamp(60px, 8vw, 80px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .timeline-date .day {
+            font-size: var(--fs-h3);
+            color: var(--accent);
+            line-height: 1;
+        }
+        .timeline-date .month {
+            font-size: var(--fs-small);
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+        .timeline-text h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .timeline-text p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Quote / callout box */
+        .callout {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            margin-top: var(--space-md);
+            max-width: min(700px, 95vw);
+        }
+        .callout p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            font-style: italic;
+        }
+        .callout .attribution {
+            font-style: normal;
+            color: var(--text-tertiary);
+            font-size: var(--fs-small);
+            margin-top: var(--space-xs);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        /* Sources slide specifics */
+        .sources-content {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            max-width: min(800px, 95vw);
+        }
+        .sources-content strong {
+            color: var(--text-primary);
+        }
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .sources-content ul {
+            padding-left: var(--space-md);
+            margin: var(--space-xs) 0;
+        }
+        .sources-content li {
+            margin-bottom: var(--space-xs);
+        }
+
+        /* More stories link */
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Touch targets */
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+
+        /* Highlight accent text */
+        .accent { color: var(--accent); }
+
+        /* Inline list with subtle bullets */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding-left: var(--space-md);
+            position: relative;
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-xs);
+        }
+        .feature-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        /* Interaction demo mockup */
+        .interaction-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .interaction-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            border-left: 3px solid var(--accent);
+        }
+        .interaction-card .action {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        .interaction-card h4 {
+            color: var(--text-primary);
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        .interaction-card p {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.5;
+        }
+
+        /* Scheme swatches */
+        .scheme-strip {
+            display: flex;
+            gap: var(--space-xs);
+            margin-top: var(--space-sm);
+            flex-wrap: wrap;
+        }
+        .scheme-swatch {
+            width: clamp(40px, 6vw, 56px);
+            height: clamp(28px, 4vw, 36px);
+            border-radius: 6px;
+            border: 1px solid var(--border-visible);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* Architecture entity boxes */
+        .arch-entities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .entity-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+        .entity-box .icon {
+            font-size: clamp(32px, 6vw, 56px);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box h4 {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 1: TITLE                                                -->
+    <!-- ============================================================ -->
+    <div class="slide active center">
+        <div class="section-label">Developer Tools &middot; Amplifier Toolkit</div>
+        <h1 class="headline">See Your<br>Architecture</h1>
+        <p class="subhead">dotviewer turns complex DOT graphs into explorable, zoomable, interactive maps. Stop squinting at flat PNGs &mdash; drag, search, and discover your system's structure.</p>
+        <div class="status-badge">Single HTML &middot; Zero Install</div>
+        <div class="small-text">May 2026 &middot; ramparte/amplifier-toolkit</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 2: THE PROBLEM                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">DOT graphs<br>deserve better</h2>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F50D;</div>
+                <h3>Squinting at PNGs</h3>
+                <p>Static renders of complex graphs are unreadable. Dozens of nodes and edges blur into an indistinguishable tangle at any zoom level.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x2699;&#xFE0F;</div>
+                <h3>Tool Installation</h3>
+                <p>Graphviz desktop apps, VS Code extensions, online services requiring uploads &mdash; every option adds friction before you can see your graph.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F6AB;</div>
+                <h3>No Interaction</h3>
+                <p>Traditional viewers are read-only. You can't hover to see connections, drag nodes to untangle clusters, or search for what matters.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>Architecture diagrams generated as DOT are only useful if people can actually explore them. A 200-node graph rendered to PNG is a poster, not a tool.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 3: THE SOLUTION                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Solution</div>
+        <h2 class="headline">One HTML file.<br>Open and explore.</h2>
+        <p class="subhead">dotviewer is a fully self-contained, browser-based DOT graph viewer. No install, no server, no uploads &mdash; just open the file and drag in your <code>.dot</code>.</p>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div class="flow-content">
+                    <h4>Open dotviewer.html</h4>
+                    <p>A single 1,679-line HTML file. Double-click it or serve it locally &mdash; everything is self-contained with two CDN dependencies.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div class="flow-content">
+                    <h4>Drop a .dot file</h4>
+                    <p>Drag and drop any <code>.dot</code> or <code>.gv</code> file onto the canvas, or use the "Open .dot" button. Viz.js renders it client-side &mdash; no server round-trip.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div class="flow-content">
+                    <h4>Explore interactively</h4>
+                    <p>Pan, zoom, hover, click, drag, search, collapse clusters, follow edges. The graph becomes a living, navigable map of your system.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 4: CORE FEATURES                                        -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Core Features</div>
+        <h2 class="medium-headline">Everything you need in the browser</h2>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Pan &amp; Zoom</h3>
+                <p>Smooth viewport navigation powered by svg-pan-zoom. Mouse wheel to zoom, drag the background to pan. Keyboard shortcuts: <code>Home</code> to fit, <code>+</code>/<code>-</code> to zoom.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>6 Color Schemes</h3>
+                <p>Switch between Dark, Light, Midnight, Solarized Dark, Blueprint, and High Contrast. Your preference persists across sessions via localStorage.</p>
+                <div class="scheme-strip">
+                    <div class="scheme-swatch" style="background:#1a1a2e;color:#e0e0e0;">Dark</div>
+                    <div class="scheme-swatch" style="background:#f5f5f5;color:#333;">Light</div>
+                    <div class="scheme-swatch" style="background:#0d1117;color:#c9d1d9;">Mid</div>
+                    <div class="scheme-swatch" style="background:#002b36;color:#eee8d5;">Sol</div>
+                    <div class="scheme-swatch" style="background:#0a1929;color:#b0d4f1;">Blue</div>
+                    <div class="scheme-swatch" style="background:#000;color:#fff;">Hi-C</div>
+                </div>
+            </div>
+            <div class="card card-accent">
+                <h3>Layout Toggle</h3>
+                <p>Re-render the graph in any of four directions: Top-to-Bottom, Left-to-Right, Bottom-to-Top, or Right-to-Left. Viz.js re-layouts on demand.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Live Search</h3>
+                <p>Type in the search bar to highlight matching nodes and dim everything else. Instant visual filter for finding what you need in large graphs.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 5: INTERACTIVE EXPLORATION                              -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Interactive Exploration</div>
+        <h2 class="medium-headline">Every element is a doorway</h2>
+        <div class="interaction-grid">
+            <div class="interaction-card">
+                <div class="action">hover &rarr; node</div>
+                <h4>Highlight Neighbors</h4>
+                <p>Hovering a node dims unrelated elements and lights up directly connected nodes and edges. The info panel previews incoming/outgoing connections.</p>
+            </div>
+            <div class="interaction-card">
+                <div class="action">click &rarr; node</div>
+                <h4>Focus Mode</h4>
+                <p>Click to lock selection. Everything except the chosen node, its edges, and neighbors fades to near-invisible. The node glows with a <code>drop-shadow</code> highlight.</p>
+            </div>
+            <div class="interaction-card">
+                <div class="action">drag &rarr; node</div>
+                <h4>Move Freely</h4>
+                <p>Drag any node to reposition it. Connected edges dynamically redraw as straight lines from center-to-center, keeping the graph readable.</p>
+            </div>
+            <div class="interaction-card">
+                <div class="action">click &rarr; edge</div>
+                <h4>Follow the Arrow</h4>
+                <p>Click an edge to pan the viewport to the target node and select it. Walk dependency chains by clicking edge after edge &mdash; a navigation tool, not just a decoration.</p>
+            </div>
+            <div class="interaction-card">
+                <div class="action">click &rarr; node</div>
+                <h4>Info Panel</h4>
+                <p>A slide-out panel displays the node's label, internal ID, parent cluster, and full lists of incoming and outgoing connections with arrow notation.</p>
+            </div>
+            <div class="interaction-card">
+                <div class="action">Esc</div>
+                <h4>Clear Everything</h4>
+                <p>Press Escape to dismiss focus mode, clear search, close the info panel, and restore full graph visibility in one keystroke.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 6: CLUSTER INTELLIGENCE                                 -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Cluster Intelligence</div>
+        <h2 class="headline">Tame the<br>complexity</h2>
+        <p class="subhead">Clusters (subgraphs) are first-class interactive citizens, not just background rectangles.</p>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F4A1;</div>
+                <h3>Cluster Spotlight</h3>
+                <p>Click a cluster's background to spotlight its contents &mdash; member nodes stay bright, everything outside dims. Boundary-crossing edges show at reduced opacity.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x270B;</div>
+                <h3>Cluster Drag</h3>
+                <p>Drag a cluster background to move the entire group &mdash; all contained nodes, nested child clusters, and labels move together. Membership detected via bounding-box containment.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F5DC;&#xFE0F;</div>
+                <h3>Double-Click Collapse</h3>
+                <p>Double-click a cluster to collapse it into a compact representation, hiding internal nodes. Double-click again to expand. Manage visual complexity on the fly.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>Cluster membership uses bounding-box containment rather than DOM hierarchy &mdash; a rewrite that fixed broken detection when SVG groups don't nest the way you'd expect.</p>
+            <div class="attribution">&mdash; commit 0c85cf2, April 1 2026</div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 7: DEVELOPMENT VELOCITY                                 -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Development Velocity</div>
+        <h2 class="medium-headline">Built in a weekend</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">7</div>
+                <div class="velocity-label">Commits</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">2</div>
+                <div class="velocity-label">Days (Mar 31 &ndash; Apr 1)</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">1,679</div>
+                <div class="velocity-label">Lines of HTML/CSS/JS</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">1</div>
+                <div class="velocity-label">File &mdash; fully self-contained</div>
+            </div>
+        </div>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-date">
+                    <span class="day">31</span>
+                    <span class="month">Mar</span>
+                </div>
+                <div class="timeline-text">
+                    <h4>Foundation &amp; Interactive Features</h4>
+                    <p>Initial viewer with pan/zoom and color schemes (f672668). Same day: hover highlighting, progressive reveal, node dragging, search, layout toggle, info panel (e193236). Then: edge-click-to-zoom, cluster spotlight, enhanced node focus (8d29c7a). Plus: hover info panel, wider edge hit areas, sticky drag, cluster drag (dac4563).</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-date">
+                    <span class="day">1</span>
+                    <span class="month">Apr</span>
+                </div>
+                <div class="timeline-text">
+                    <h4>Polish &amp; Cluster Refinement</h4>
+                    <p>Double-click collapse, cluster drag moves contents, help dropdown (d908149). Cluster membership rewritten to use bbox containment (0c85cf2). Child cluster groups now move correctly when dragging parent clusters (df9d8c3).</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 8: HOW IT WORKS                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Under the Hood</div>
+        <h2 class="medium-headline">Two libraries, zero backend</h2>
+        <div class="halves">
+            <div class="card">
+                <h3>Tech Stack</h3>
+                <ul class="feature-list">
+                    <li><strong>Viz.js 3.11.0</strong> &mdash; Graphviz compiled to WebAssembly, renders DOT to SVG client-side</li>
+                    <li><strong>svg-pan-zoom 3.6.1</strong> &mdash; smooth pan and zoom for SVG elements</li>
+                    <li><strong>Vanilla JS</strong> &mdash; no framework, no bundler, no build step</li>
+                    <li><strong>CSS transitions</strong> &mdash; all dimming, glowing, and highlighting via CSS classes</li>
+                    <li><strong>localStorage</strong> &mdash; persists color scheme preference</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>Keyboard Shortcuts</h3>
+                <div class="code-block"><span class="code-cmd">Home / 0</span>    Fit graph to viewport
+<span class="code-cmd">+ / -</span>        Zoom in / out
+<span class="code-cmd">Escape</span>       Clear selection &amp; search
+
+<span class="code-flag">Hover node</span>   Preview info + highlight neighbors
+<span class="code-flag">Click node</span>   Focus mode (dims all else)
+<span class="code-flag">Drag node</span>    Reposition (edges redraw)
+<span class="code-flag">Click edge</span>   Pan to &amp; select target node
+<span class="code-flag">Dbl-click</span>    Collapse / expand cluster</div>
+            </div>
+        </div>
+        <div class="callout">
+            <p>Edge click targets use invisible 20px-wide stroke paths for easy clicking &mdash; you don't need pixel-perfect aim to follow a dependency chain.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 9: PART OF THE TOOLKIT                                  -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Bigger Picture</div>
+        <h2 class="headline">Part of the<br>Toolkit</h2>
+        <p class="subhead">dotviewer lives in <strong>amplifier-toolkit</strong> alongside reusable bundles, recipes, scripts, skills, and tools for the Amplifier ecosystem.</p>
+        <div class="arch-entities">
+            <div class="entity-box">
+                <div class="icon">&#x1F4E6;</div>
+                <h4>Bundles</h4>
+                <p>Deliberate Development, Looper, M365 Collab, Session Discovery</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F4DC;</div>
+                <h4>Recipes</h4>
+                <p>Feature workflows, session digests</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F527;</div>
+                <h4>Tools</h4>
+                <p>Voice Bridge, M365 Collab CLI</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F4CA;</div>
+                <h4>dotviewer</h4>
+                <p>Interactive graph explorer &mdash; visualize what agents build</p>
+            </div>
+        </div>
+        <div class="halves">
+            <div class="card">
+                <h4 class="accent">For Amplifier Users</h4>
+                <p>The Amplifier platform generates DOT graphs for architecture diagrams, bundle documentation, and dependency maps. dotviewer makes those artifacts explorable instead of static.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">For Anyone with DOT Files</h4>
+                <p>dotviewer works with any valid DOT file &mdash; CI/CD pipelines, database schemas, state machines, org charts. If Graphviz can render it, dotviewer can make it interactive.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 10: SOURCES & METHODOLOGY                               -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Sources &amp; Methodology</div>
+        <h2 class="medium-headline">How this deck was built</h2>
+        <div class="sources-content">
+            <p><strong>Primary Source</strong></p>
+            <ul>
+                <li>Direct inspection of <code>dotviewer.html</code> (1,679 lines) in the <code>ramparte/amplifier-toolkit</code> repository</li>
+                <li>Git log: <code>git log --oneline --all -- dotviewer.html</code> &mdash; 7 commits from March 31 &ndash; April 1, 2026</li>
+                <li>Full commit history: <code>git log --oneline --since="60 days ago" --no-merges</code> for development context</li>
+            </ul>
+
+            <p style="margin-top: var(--space-md);"><strong>Data Points (all verified from source)</strong></p>
+            <ul>
+                <li><strong>Line count:</strong> 1,679 lines &mdash; via <code>wc -l dotviewer.html</code></li>
+                <li><strong>Commits:</strong> 7 total across 2 days (f672668 through df9d8c3)</li>
+                <li><strong>Insertions:</strong> 1,380 lines added from first to final commit &mdash; via <code>git diff --stat f672668..df9d8c3</code></li>
+                <li><strong>Color schemes:</strong> 6 (Dark, Light, Midnight, Solarized Dark, Blueprint, High Contrast) &mdash; from SCHEMES object in source</li>
+                <li><strong>Layout directions:</strong> 4 (TB, LR, BT, RL) &mdash; from rankdir-select element</li>
+                <li><strong>CDN dependencies:</strong> viz-js/viz@3.11.0 and svg-pan-zoom@3.6.1 &mdash; from script tags</li>
+                <li><strong>Contributors:</strong> Sam Schillace (4 commits), Amplifier Dev (3 commits) &mdash; via <code>git log --format="%an"</code></li>
+            </ul>
+
+            <p style="margin-top: var(--space-md);"><strong>Methodology</strong></p>
+            <ul>
+                <li>All feature descriptions sourced from reading the actual HTML, CSS classes, and JavaScript functions</li>
+                <li>Interaction model documented from the help panel content embedded in the source (lines 201&ndash;238)</li>
+                <li>No metrics were fabricated or estimated &mdash; every number traces to a git or file-system command</li>
+            </ul>
+
+            <p style="margin-top: var(--space-md);"><strong>Contributor:</strong> Sam Schillace &middot; <strong>Deck generated:</strong> May 2026</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

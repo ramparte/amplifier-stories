@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Building the Storyteller &mdash; canvas-specialists</title>
+    <style>
+        :root {
+            --accent: #F5A623;
+            --accent-dim: rgba(245, 166, 35, 0.12);
+            --accent-glow: rgba(245, 166, 35, 0.3);
+            --accent-bright: #FFD93D;
+            --accent-bright-dim: rgba(255, 217, 61, 0.12);
+            --accent-cool: #4ECDC4;
+            --accent-cool-dim: rgba(78, 205, 196, 0.12);
+            --accent-cool-glow: rgba(78, 205, 196, 0.3);
+            --green: #30D158;
+            --green-dim: rgba(48, 209, 88, 0.15);
+            --red: #FF6B6B;
+            --red-dim: rgba(255, 107, 107, 0.12);
+            --red-glow: rgba(255, 107, 107, 0.3);
+
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            --fs-hero: clamp(32px, 7vw, 64px);
+            --fs-h1: clamp(26px, 5.5vw, 44px);
+            --fs-h2: clamp(22px, 4vw, 36px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 18px);
+            --fs-body-lg: clamp(16px, 2.5vw, 20px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-label: clamp(11px, 1.4vw, 13px);
+            --fs-big-number: clamp(56px, 16vw, 140px);
+            --fs-quote: clamp(20px, 3.5vw, 32px);
+            --fs-code: clamp(12px, 1.8vw, 15px);
+
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(24px, 6vw, 100px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .center { text-align: center; align-items: center; justify-content: center; }
+
+        .section-label {
+            font-size: var(--fs-label);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: var(--accent);
+            margin-bottom: var(--space-md);
+        }
+
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: var(--space-md);
+        }
+
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin-bottom: var(--space-md);
+        }
+
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.45;
+            max-width: min(700px, 90vw);
+        }
+
+        .body-text {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.65;
+            max-width: min(640px, 90vw);
+        }
+
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+        }
+
+        .big-number {
+            font-size: var(--fs-big-number);
+            font-weight: 800;
+            letter-spacing: -3px;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .unit { font-size: 0.4em; font-weight: 500; letter-spacing: 0; }
+
+        /* Quote */
+        .quote-block {
+            border-left: 3px solid var(--accent);
+            padding-left: var(--space-lg);
+            margin: var(--space-lg) 0;
+            max-width: min(720px, 90vw);
+        }
+
+        .quote-text {
+            font-size: var(--fs-quote);
+            font-style: italic;
+            line-height: 1.5;
+            color: var(--text-primary);
+        }
+
+        .quote-hero {
+            font-size: clamp(24px, 4.5vw, 42px);
+            font-style: italic;
+            line-height: 1.35;
+            max-width: min(800px, 90vw);
+            color: var(--text-primary);
+        }
+
+        .quote-attr {
+            font-size: var(--fs-body);
+            color: var(--text-tertiary);
+            font-style: normal;
+            margin-top: var(--space-sm);
+        }
+
+        /* Grids */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-md);
+            width: min(800px, 90vw);
+        }
+
+        .stat-card {
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg) var(--space-md);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: clamp(32px, 7vw, 56px);
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--space-md);
+            width: min(800px, 90vw);
+        }
+
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--space-md);
+            width: min(900px, 90vw);
+        }
+
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+        }
+
+        .card-accent {
+            background: var(--accent-dim);
+            border-color: var(--accent-glow);
+        }
+
+        .card-cool {
+            background: var(--accent-cool-dim);
+            border-color: var(--accent-cool-glow);
+        }
+
+        .card-green {
+            background: var(--green-dim);
+            border-color: rgba(48, 209, 88, 0.3);
+        }
+
+        .card-red {
+            background: var(--red-dim);
+            border-color: var(--red-glow);
+        }
+
+        .card h3, .card h4 { color: var(--text-primary); }
+        .card p, .card li { color: var(--text-secondary); }
+
+        .card-icon {
+            font-size: clamp(28px, 5vw, 44px);
+            margin-bottom: var(--space-xs);
+        }
+
+        .card-title {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .card-body {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.55;
+        }
+
+        /* Flow */
+        .flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: var(--space-sm);
+            width: min(900px, 90vw);
+        }
+
+        .flow-step {
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: var(--space-sm) var(--space-md);
+            font-size: var(--fs-body);
+            font-weight: 600;
+        }
+
+        .flow-arrow { font-size: var(--fs-h3); color: var(--accent); }
+
+        .flow-step.highlight {
+            background: var(--accent-dim);
+            border-color: var(--accent-glow);
+            color: var(--accent);
+        }
+
+        .flow-step.new {
+            background: var(--accent-dim);
+            border-color: var(--accent-glow);
+            color: var(--accent);
+            position: relative;
+        }
+
+        .flow-step.dim {
+            opacity: 0.5;
+        }
+
+        /* Versus */
+        .versus {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: 2px;
+            width: min(800px, 90vw);
+        }
+
+        .versus-side {
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+        }
+
+        .versus-label {
+            font-size: var(--fs-small);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: var(--space-sm);
+        }
+
+        .versus-label.before { color: var(--text-tertiary); }
+        .versus-label.after { color: var(--accent); }
+
+        /* Punchline */
+        .punchline {
+            font-size: var(--fs-h2);
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.3;
+            max-width: min(700px, 90vw);
+        }
+
+        .dim-text {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.65;
+            max-width: min(680px, 90vw);
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            font-size: var(--fs-label);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            background: var(--accent-dim);
+            color: var(--accent);
+            border: 1px solid var(--accent-glow);
+        }
+
+        .badge-cool {
+            background: var(--accent-cool-dim);
+            color: var(--accent-cool);
+            border-color: var(--accent-cool-glow);
+        }
+
+        /* Pipeline */
+        .pipeline {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            width: min(700px, 90vw);
+        }
+
+        .pipeline-stage {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: var(--space-sm) var(--space-md);
+        }
+
+        .pipeline-stage.active-stage {
+            background: var(--accent-dim);
+            border-color: var(--accent-glow);
+        }
+
+        .stage-num {
+            font-size: var(--fs-h3);
+            font-weight: 800;
+            color: var(--accent);
+            min-width: 32px;
+        }
+
+        .stage-name {
+            font-size: var(--fs-body);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stage-desc {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-left: auto;
+        }
+
+        /* Finding flow */
+        .finding-flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-md);
+            width: min(700px, 90vw);
+        }
+
+        .finding-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            text-align: center;
+            width: 100%;
+        }
+
+        .finding-box.source {
+            border-color: var(--border-visible);
+        }
+
+        .finding-box.included {
+            background: var(--accent-dim);
+            border-color: var(--accent-glow);
+        }
+
+        .finding-box.omitted {
+            background: var(--surface-1);
+            border-color: var(--border-subtle);
+            opacity: 0.7;
+        }
+
+        .finding-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-md);
+            width: 100%;
+        }
+
+        .flow-down {
+            font-size: var(--fs-h2);
+            color: var(--accent);
+        }
+
+        /* Roles list */
+        .roles-list {
+            list-style: none;
+            padding: 0;
+            width: min(600px, 90vw);
+        }
+
+        .roles-list li {
+            display: flex;
+            align-items: baseline;
+            gap: var(--space-sm);
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: var(--fs-body);
+        }
+
+        .role-tag {
+            font-size: var(--fs-small);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+            min-width: 100px;
+        }
+
+        .rationale-tag {
+            font-size: var(--fs-small);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-tertiary);
+            min-width: 100px;
+        }
+
+        /* Checklist */
+        .checklist {
+            list-style: none;
+            padding: 0;
+            width: min(640px, 90vw);
+        }
+
+        .checklist li {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-xs) 0;
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+        }
+
+        .check-icon { color: var(--green); font-weight: 700; }
+        .check-category {
+            font-size: var(--fs-small);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+            padding: var(--space-sm) 0 var(--space-xs);
+        }
+
+        /* Specialist grid */
+        .spec-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(160px, 45%), 1fr));
+            gap: var(--space-sm);
+            width: min(800px, 90vw);
+        }
+
+        .spec-chip {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: var(--space-sm) var(--space-md);
+            text-align: center;
+        }
+
+        .spec-chip.new-spec {
+            background: var(--accent-dim);
+            border-color: var(--accent-glow);
+        }
+
+        .spec-name {
+            font-size: var(--fs-body);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .spec-desc {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            line-height: 1.4;
+        }
+
+        /* Closing */
+        .closing-lead {
+            font-size: var(--fs-h2);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(700px, 90vw);
+        }
+
+        .closing-line {
+            font-size: var(--fs-h1);
+            font-weight: 600;
+            color: var(--accent);
+            line-height: 1.3;
+            max-width: min(760px, 90vw);
+        }
+
+        /* Sources */
+        .sources-content {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            line-height: 1.9;
+            max-width: min(640px, 90vw);
+        }
+
+        .sources-content strong { color: var(--text-primary); }
+
+        .sources-content ul {
+            list-style: none;
+            padding-left: var(--space-md);
+            margin: var(--space-xs) 0;
+        }
+
+        .sources-content li::before {
+            content: "\2014\00a0";
+            color: var(--accent);
+        }
+
+        /* Inline code */
+        .code-inline {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            background: var(--surface-2);
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        /* Axis table */
+        .axis-table {
+            width: min(700px, 90vw);
+            border-collapse: collapse;
+        }
+
+        .axis-table th, .axis-table td {
+            padding: var(--space-sm) var(--space-md);
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: var(--fs-body);
+        }
+
+        .axis-table th {
+            font-size: var(--fs-small);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+            border-bottom-color: rgba(255,255,255,0.15);
+        }
+
+        .axis-table td { color: var(--text-secondary); }
+        .axis-table td:first-child { font-weight: 600; color: var(--text-primary); }
+
+        /* Utility */
+        .mb-md { margin-bottom: var(--space-md); }
+        .mb-sm { margin-bottom: var(--space-sm); }
+        .mt-sm { margin-top: var(--space-sm); }
+        .text-left { text-align: left; }
+        .max-w-sm { max-width: min(600px, 90vw); }
+        .max-w-md { max-width: min(700px, 90vw); }
+        .justify-center { justify-content: center; }
+        .color-accent { color: var(--accent); }
+        .color-green { color: var(--green); }
+        .color-red { color: var(--red); }
+        .color-cool { color: var(--accent-cool); }
+        .italic { font-style: italic; color: var(--text-tertiary); }
+
+        /* Spacers */
+        .spacer { height: var(--space-lg); }
+        .spacer-sm { height: var(--space-md); }
+        .spacer-xl { height: var(--space-xl); }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        @media (hover: none) {
+            .nav-dot { min-width: 16px; min-height: 16px; }
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        .story-link {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(10px, 1.3vw, 11px);
+            color: rgba(255,255,255,0.25);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .story-link:hover { color: rgba(255,255,255,0.45); }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============ SLIDE 1: TITLE ============ -->
+    <div class="slide active center">
+        <div class="section-label">Story 1 of 2</div>
+        <h1 class="headline">Building the Storyteller</h1>
+        <div class="spacer-sm"></div>
+        <p class="subhead">How to build an AI specialist that selects<br>rather than summarizes &mdash; and why<br>narrative cognition matters for knowledge work.</p>
+        <div class="spacer"></div>
+        <div class="small-text">March 2026 &nbsp;&middot;&nbsp; <span class="badge">Design Case Study</span></div>
+    </div>
+
+    <!-- ============ SLIDE 2: THE PROJECT ============ -->
+    <div class="slide">
+        <div class="section-label">Context &mdash; canvas-specialists</div>
+        <h2 class="medium-headline">Six specialists. One pipeline.</h2>
+        <div class="spacer-sm"></div>
+        <p class="body-text mb-md">canvas-specialists is a bundle of AI specialist agents designed for structured knowledge work. Each specialist has a formally specified output contract, a multi-stage pipeline, and documented guardrails. They chain together: one specialist&rsquo;s output is the next specialist&rsquo;s input. Machine-parseable contracts enable reliable handoffs.</p>
+        <div class="spacer-sm"></div>
+        <div class="spec-grid">
+            <div class="spec-chip">
+                <div class="spec-name">Researcher</div>
+                <div class="spec-desc">Deep web research with source tiering and per-claim confidence</div>
+            </div>
+            <div class="spec-chip">
+                <div class="spec-name">Formatter</div>
+                <div class="spec-desc">Normalizes researcher output to canonical format</div>
+            </div>
+            <div class="spec-chip">
+                <div class="spec-name">Data Analyzer</div>
+                <div class="spec-desc">Labeled inferences from research &mdash; pattern, causal, evaluative, predictive</div>
+            </div>
+            <div class="spec-chip">
+                <div class="spec-name">Writer</div>
+                <div class="spec-desc">Structured documents with full coverage and inline citations</div>
+            </div>
+            <div class="spec-chip">
+                <div class="spec-name">Competitive Analysis</div>
+                <div class="spec-desc">Comparison matrices, positioning gaps, and win conditions</div>
+            </div>
+            <div class="spec-chip new-spec">
+                <div class="spec-name color-accent">Storyteller</div>
+                <div class="spec-desc">The newest specialist.<br>This is the story of how it was built.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ SLIDE 3: THE CHAIN ============ -->
+    <div class="slide center">
+        <div class="section-label">The Analytical Chain</div>
+        <p class="subhead mb-md">The most common pipeline:</p>
+        <div class="spacer-sm"></div>
+        <div class="flow justify-center">
+            <div class="flow-step">Researcher</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step">Formatter</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step">Analyzer</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step">Writer</div>
+        </div>
+        <div class="spacer"></div>
+        <p class="dim-text mb-md">This chain produces rigorous, well-cited documents. Sourced findings. Labeled inferences. Full coverage. Inline citations tracing every claim.</p>
+        <div class="spacer-sm"></div>
+        <p class="punchline">But the documents read like what they are:<br>structured data transformed into prose.</p>
+    </div>
+
+    <!-- ============ SLIDE 4: THE GAP (BRUNER) ============ -->
+    <div class="slide center">
+        <div class="section-label">Act 1 &mdash; The Gap</div>
+        <p class="quote-hero">&ldquo;There are two modes of cognitive functioning,<br>two modes of thought, each providing<br>distinctive ways of ordering experience.&rdquo;</p>
+        <div class="spacer-sm"></div>
+        <p class="dim-text">&mdash; Jerome Bruner, <em>Actual Minds, Possible Worlds</em>, 1986</p>
+        <div class="spacer"></div>
+        <div class="versus max-w-md">
+            <div class="versus-side">
+                <div class="versus-label before">Paradigmatic Mode</div>
+                <p class="card-body">Logical. Categorical. Evidence-first. Evaluated by truth and falsehood. <strong>This is what the pipeline speaks.</strong></p>
+            </div>
+            <div class="versus-side">
+                <div class="versus-label after">Narrative Mode</div>
+                <p class="card-body">Sequential. Causal. Meaning-making. Evaluated by verisimilitude and coherence. <strong>This is what audiences need.</strong></p>
+            </div>
+        </div>
+        <div class="spacer"></div>
+        <p class="dim-text">You cannot get from one to the other by reformatting.<br>It requires structural transformation.</p>
+    </div>
+
+    <!-- ============ SLIDE 5: THE REAL COST ============ -->
+    <div class="slide">
+        <div class="section-label">What Happens Without It</div>
+        <h2 class="medium-headline">Two failure modes.<br>Neither is acceptable.</h2>
+        <div class="spacer-sm"></div>
+        <div class="halves">
+            <div class="card card-red">
+                <div class="card-title">The analysis ships as-is</div>
+                <p class="card-body">The audience receives a rigorous document in the wrong cognitive mode. They don&rsquo;t act on it &mdash; not because the evidence is weak, but because the format doesn&rsquo;t engage the system that drives decisions. Stakeholders, boards, customers need to be <em>moved</em>, not just <em>informed</em>.</p>
+            </div>
+            <div class="card card-red">
+                <div class="card-title">Someone rewrites it informally</div>
+                <p class="card-body">A human transforms the analysis into a narrative by hand. Traceability disappears. You can&rsquo;t tell what was selected, what was left out, or why. The editorial judgment that shaped the story is invisible &mdash; and unreviewable.</p>
+            </div>
+        </div>
+        <div class="spacer"></div>
+        <p class="body-text">For stakeholder communications, change narratives, and user research synthesis &mdash; where the audience needs to be moved, not just informed &mdash; there was a gap.</p>
+    </div>
+
+    <!-- ============ SLIDE 6: THE KEY INSIGHT ============ -->
+    <div class="slide center">
+        <div class="section-label">Act 2 &mdash; The Design Insight</div>
+        <div class="spacer-sm"></div>
+        <div class="quote-block text-left">
+            <p class="quote-text">&ldquo;The Writer covers everything.<br>The Storyteller selects.&rdquo;</p>
+        </div>
+        <div class="spacer"></div>
+        <p class="dim-text mb-md">Selection is the creative act. The Writer surfaces all findings, flags gaps, and produces structured documents with full coverage. The Storyteller is authorized to choose which findings are load-bearing for the narrative arc and which ones to set aside.</p>
+        <div class="spacer-sm"></div>
+        <p class="punchline">What you leave out shapes the narrative<br>as much as what you include.</p>
+    </div>
+
+    <!-- ============ SLIDE 7: THREE AXES ============ -->
+    <div class="slide">
+        <div class="section-label">Framework Selection</div>
+        <h2 class="medium-headline">Three independent axes.<br>No user picks a framework directly.</h2>
+        <div class="spacer-sm"></div>
+        <table class="axis-table">
+            <tr>
+                <th>Axis</th>
+                <th>Signal</th>
+                <th>Framework / Effect</th>
+            </tr>
+            <tr>
+                <td>Primary Goal</td>
+                <td>Decision needed</td>
+                <td>SCQA (answer-first, Minto)</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Persuasion required</td>
+                <td>Three-act or Sparkline (Duarte)</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Insight to deliver</td>
+                <td>Kish&#333;tenketsu (twist-based)</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Change to communicate</td>
+                <td>Story Spine (causal chain)</td>
+            </tr>
+            <tr>
+                <td colspan="3" style="border-bottom-color: rgba(255,255,255,0.15); height: 4px;"></td>
+            </tr>
+            <tr>
+                <td>Audience</td>
+                <td>Expert, time-constrained</td>
+                <td>Reinforces SCQA</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Skeptical, needs convincing</td>
+                <td>Reinforces three-act</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>General audience</td>
+                <td>Emotional-first framing</td>
+            </tr>
+            <tr>
+                <td colspan="3" style="border-bottom-color: rgba(255,255,255,0.15); height: 4px;"></td>
+            </tr>
+            <tr>
+                <td>Tone</td>
+                <td>Trustworthy</td>
+                <td>Conservative register, evidence-forward</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Dramatic</td>
+                <td>Amplified tension, urgency foregrounded</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Creative</td>
+                <td>Experimental sequencing, unexpected angles</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Persuasive</td>
+                <td>Loss aversion activated, audience-as-hero</td>
+            </tr>
+        </table>
+        <div class="spacer-sm"></div>
+        <p class="dim-text">Framework determines <em>structure</em>. Tone determines <em>register</em>. Any framework in any tone. A trustworthy SCQA and a dramatic SCQA are the same shape delivered in different voices.</p>
+    </div>
+
+    <!-- ============ SLIDE 8: THE PIPELINE ============ -->
+    <div class="slide">
+        <div class="section-label">The 6-Stage Pipeline</div>
+        <h2 class="medium-headline">From raw findings to clean prose.</h2>
+        <div class="spacer-sm"></div>
+        <div class="pipeline">
+            <div class="pipeline-stage">
+                <div class="stage-num">0</div>
+                <div class="stage-name">Open with STORY OUTPUT</div>
+                <div class="stage-desc">Header at byte 0. Non-negotiable.</div>
+            </div>
+            <div class="pipeline-stage">
+                <div class="stage-num">1</div>
+                <div class="stage-name">Parse</div>
+                <div class="stage-desc">Detect input type, extract findings, infer audience &amp; tone</div>
+            </div>
+            <div class="pipeline-stage">
+                <div class="stage-num">2</div>
+                <div class="stage-name">Find the Drama</div>
+                <div class="stage-desc">Dramatic question + 3-axis framework selection</div>
+            </div>
+            <div class="pipeline-stage active-stage">
+                <div class="stage-num">3</div>
+                <div class="stage-name">Select and Structure</div>
+                <div class="stage-desc">7 transformation decisions. NARRATIVE SELECTION built here.</div>
+            </div>
+            <div class="pipeline-stage">
+                <div class="stage-num">4</div>
+                <div class="stage-name">Draft</div>
+                <div class="stage-desc">Clean prose. No citations. No markdown headers.</div>
+            </div>
+            <div class="pipeline-stage">
+                <div class="stage-num">5</div>
+                <div class="stage-name">Quality Gate</div>
+                <div class="stage-desc">11-item checklist. Max 2 revision cycles. Fails loud.</div>
+            </div>
+        </div>
+        <div class="spacer"></div>
+        <p class="dim-text">Stage 3 is where the craft lives. The 7 transformation decisions &mdash; dramatic question, protagonist, gap, evidence selection, sequencing, register, peak moment &mdash; are all made before a single word of prose is written.</p>
+    </div>
+
+    <!-- ============ SLIDE 9: NARRATIVE ROLES ============ -->
+    <div class="slide">
+        <div class="section-label">Selection as Craft</div>
+        <h2 class="medium-headline">Every finding gets a role.<br>Or a rationale.</h2>
+        <div class="spacer-sm"></div>
+        <div class="halves">
+            <div class="card card-accent">
+                <div class="card-title color-accent">Included Findings</div>
+                <p class="card-body mb-sm">Each one earns a narrative role:</p>
+                <ul class="roles-list">
+                    <li><span class="role-tag">Hook</span> <span class="card-body">Opens the story, establishes the situation</span></li>
+                    <li><span class="role-tag">Complication</span> <span class="card-body">Creates the gap or tension</span></li>
+                    <li><span class="role-tag">Evidence</span> <span class="card-body">Supports the causal chain</span></li>
+                    <li><span class="role-tag">Peak</span> <span class="card-body">The single most powerful moment</span></li>
+                    <li><span class="role-tag">Resolution</span> <span class="card-body">Answers the dramatic question</span></li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-title">Omitted Findings</div>
+                <p class="card-body mb-sm">Each one gets an explicit rationale:</p>
+                <ul class="roles-list">
+                    <li><span class="rationale-tag">Off-arc</span> <span class="card-body">Doesn&rsquo;t serve the dramatic question</span></li>
+                    <li><span class="rationale-tag">Redundant</span> <span class="card-body">Covered by a stronger finding</span></li>
+                    <li><span class="rationale-tag">Undermines tone</span> <span class="card-body">Conflicts with the chosen register</span></li>
+                    <li><span class="rationale-tag">Insufficient</span> <span class="card-body">Too thin to carry story weight</span></li>
+                </ul>
+            </div>
+        </div>
+        <div class="spacer"></div>
+        <p class="dim-text">Nothing is silently dropped. Every finding from the Analyzer is accounted for.</p>
+    </div>
+
+    <!-- ============ SLIDE 10: THE NARRATIVE SELECTION RECORD ============ -->
+    <div class="slide center">
+        <div class="section-label">Act 3 &mdash; The Most Important Design Decision</div>
+        <h2 class="medium-headline">The NARRATIVE SELECTION record.</h2>
+        <div class="spacer-sm"></div>
+        <p class="dim-text mb-md">An editorial audit trail that makes narrative judgment transparent and reviewable.</p>
+        <div class="spacer-sm"></div>
+        <div class="card card-accent text-left max-w-md" style="font-family: 'SF Mono', 'Fira Code', monospace; font-size: var(--fs-code); line-height: 1.7; width: min(640px, 90vw);">
+            <p style="color: var(--accent); font-weight: 700;">NARRATIVE SELECTION</p>
+            <p style="color: var(--text-tertiary);">&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;</p>
+            <p>Dramatic question: <span style="color: var(--text-secondary);">Why are Fortune 500 companies generating impressive AI pilots they cannot finish?</span></p>
+            <p>Protagonist: <span style="color: var(--text-secondary);">Enterprise leadership</span></p>
+            <p>Framework: <span style="color: var(--text-secondary);">SCQA | Board audience + decision context</span></p>
+            <p>&nbsp;</p>
+            <p style="color: var(--accent);">INCLUDED FINDINGS</p>
+            <p><span style="color: var(--green);">F1:</span> <span style="color: var(--text-secondary);">78% Fortune 500 have AI in production</span> <span style="color: var(--accent);">| role: hook</span></p>
+            <p><span style="color: var(--green);">F4:</span> <span style="color: var(--text-secondary);">60% of AI projects fail at pilot stage</span> <span style="color: var(--accent);">| role: complication</span></p>
+            <p><span style="color: var(--green);">F5:</span> <span style="color: var(--text-secondary);">Root cause is missing exec sponsorship</span> <span style="color: var(--accent);">| role: peak</span></p>
+            <p><span style="color: var(--green);">F3:</span> <span style="color: var(--text-secondary);">Dedicated AI teams ship 3x faster</span> <span style="color: var(--accent);">| role: resolution</span></p>
+            <p>&nbsp;</p>
+            <p style="color: var(--text-tertiary);">OMITTED FINDINGS</p>
+            <p><span style="color: var(--text-tertiary);">F2:</span> <span style="color: var(--text-tertiary);">18-month avg prototype-to-production</span> <span style="color: var(--text-tertiary);">| rationale: off-arc</span></p>
+        </div>
+        <div class="spacer"></div>
+        <p class="dim-text">A reviewer can see exactly what was selected, what was cut, and why &mdash; something human writers rarely document.</p>
+    </div>
+
+    <!-- ============ SLIDE 11: THE FINDING FLOW ============ -->
+    <div class="slide center">
+        <div class="section-label">How Findings Flow</div>
+        <h2 class="medium-headline">From 15 findings to 8 with roles.</h2>
+        <div class="spacer-sm"></div>
+        <div class="finding-flow">
+            <div class="finding-box source">
+                <div class="stat-number" style="font-size: clamp(28px, 5vw, 44px);">15</div>
+                <div class="card-body mt-sm">Findings from the Analyzer</div>
+            </div>
+            <div class="flow-down">&darr;</div>
+            <div class="finding-split">
+                <div class="finding-box included">
+                    <div class="stat-number color-accent" style="font-size: clamp(28px, 5vw, 44px);">8</div>
+                    <div class="card-body mt-sm"><strong class="color-accent">Included</strong><br>Each with a narrative role:<br>hook, complication, evidence, peak, resolution</div>
+                </div>
+                <div class="finding-box omitted">
+                    <div style="font-size: clamp(28px, 5vw, 44px); font-weight: 700; color: var(--text-tertiary);">7</div>
+                    <div class="card-body mt-sm"><strong>Omitted</strong><br>Each with a rationale:<br>off-arc, redundant, undermines-tone, insufficient</div>
+                </div>
+            </div>
+            <div class="flow-down">&darr;</div>
+            <div class="finding-box included" style="opacity: 0.85;">
+                <div class="card-body">Story prose uses <strong class="color-accent">only the selected 8</strong>. Clean narrative. No citations. No markdown headers. Evaluated by coherence, not coverage.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ SLIDE 12: WHY NO CITATIONS ============ -->
+    <div class="slide center">
+        <div class="section-label">A Deliberate Choice</div>
+        <h2 class="medium-headline">Zero inline citations in the story body.</h2>
+        <div class="spacer-sm"></div>
+        <p class="dim-text mb-md">Inline citations activate the analytical reading mode and suppress narrative transportation &mdash; the psychological state where readers lose themselves in a story.</p>
+        <div class="spacer-sm"></div>
+        <div class="thirds max-w-md">
+            <div class="card">
+                <div class="card-title">Green &amp; Brock (2000)</div>
+                <p class="card-body">Narrative transportation mediates all narrative persuasion. Interruptions &mdash; including citation markers &mdash; break absorption and reduce impact.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Slovic et al. (2007)</div>
+                <p class="card-body">Adding statistics to a story <em>reduces</em> its emotional impact. More analytical detail is not better narrative.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">The NARRATIVE SELECTION</div>
+                <p class="card-body">Provides full traceability <em>without</em> breaking the story. Auditability lives in the editorial record, not in the prose.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ SLIDE 13: THE QUALITY GATE ============ -->
+    <div class="slide">
+        <div class="section-label">Act 4 &mdash; The Quality Gate</div>
+        <h2 class="medium-headline">11 items. 4 categories.<br>Zero tolerance on format.</h2>
+        <div class="spacer-sm"></div>
+        <div class="halves">
+            <div>
+                <div class="check-category">Structural (6 items)</div>
+                <ul class="checklist">
+                    <li><span class="check-icon">&bull;</span> Dramatic question present</li>
+                    <li><span class="check-icon">&bull;</span> Protagonist identified</li>
+                    <li><span class="check-icon">&bull;</span> Stakes explicit, not implied</li>
+                    <li><span class="check-icon">&bull;</span> Causal chain (not just sequence)</li>
+                    <li><span class="check-icon">&bull;</span> Single peak moment near climax</li>
+                    <li><span class="check-icon">&bull;</span> Resolution answers the dramatic question</li>
+                </ul>
+                <div class="spacer-sm"></div>
+                <div class="check-category">Craft (3 items)</div>
+                <ul class="checklist">
+                    <li><span class="check-icon">&bull;</span> Concreteness &mdash; no abstract claims without specifics</li>
+                    <li><span class="check-icon">&bull;</span> Curse of Knowledge check</li>
+                    <li><span class="check-icon">&bull;</span> Audience-as-protagonist framing</li>
+                </ul>
+            </div>
+            <div>
+                <div class="check-category">Auditability (1 item)</div>
+                <ul class="checklist">
+                    <li><span class="check-icon">&bull;</span> Every upstream finding accounted for in INCLUDED or OMITTED</li>
+                </ul>
+                <div class="spacer-sm"></div>
+                <div class="check-category">Format (1 item &mdash; zero tolerance)</div>
+                <ul class="checklist">
+                    <li><span class="check-icon">&bull;</span> STORY OUTPUT header at byte 0</li>
+                </ul>
+                <div class="spacer"></div>
+                <div class="card card-red">
+                    <div class="card-title color-red">Mechanical Fail Triggers</div>
+                    <p class="card-body">&lt;3 findings extracted<br>&gt;50% omitted as insufficient-evidence<br>Upstream quality NOT MET<br><br>Max 2 revision cycles, then NOT MET.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ SLIDE 14: VERIFICATION ============ -->
+    <div class="slide center">
+        <div class="section-label">Act 5 &mdash; Verification</div>
+        <div class="big-number">13/13</div>
+        <div class="spacer-sm"></div>
+        <p class="subhead mb-md">Contract items verified.</p>
+        <div class="spacer-sm"></div>
+        <div class="stat-grid max-w-md">
+            <div class="stat-card">
+                <div class="stat-number color-green">5/5</div>
+                <div class="stat-label">Pipeline Stages Execute in Order</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number color-green">3/3</div>
+                <div class="stat-label">Framework Axes Documented</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number color-green">5/5</div>
+                <div class="stat-label">Findings Accounted For</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number color-green">0</div>
+                <div class="stat-label">Inline Citations in Prose</div>
+            </div>
+        </div>
+        <div class="spacer"></div>
+        <p class="dim-text">Two tests: a rich AnalysisOutput (5 findings, board audience, trustworthy tone) and a boundary case (single low-confidence tertiary finding, upstream NOT MET). The first produced a clean SCQA narrative. The second correctly returned NOT MET with specific diagnostics.</p>
+    </div>
+
+    <!-- ============ SLIDE 15: WHAT THE BOUNDARY CASE PROVED ============ -->
+    <div class="slide">
+        <div class="section-label">The Boundary Case</div>
+        <h2 class="medium-headline">It fails loud. Not silent.</h2>
+        <div class="spacer-sm"></div>
+        <div class="versus">
+            <div class="versus-side">
+                <div class="versus-label after">Rich Input &mdash; 5 findings, board audience</div>
+                <p class="card-body">4 findings included with roles. 1 omitted (off-arc) with documented rationale. SCQA framework selected via 3-axis logic. Clean prose, zero citations. <strong class="color-green">QUALITY THRESHOLD RESULT: MET</strong></p>
+            </div>
+            <div class="versus-side">
+                <div class="versus-label" style="color: var(--red);">Sparse Input &mdash; 1 tertiary finding, upstream NOT MET</div>
+                <p class="card-body">Pipeline halted at Stage 2. No protagonist identifiable. No stakes establishable. No narrative fabricated. 6 specific structural failures documented. <strong class="color-red">QUALITY THRESHOLD RESULT: NOT MET</strong></p>
+            </div>
+        </div>
+        <div class="spacer"></div>
+        <p class="body-text">The boundary case didn&rsquo;t silently produce a weakened story and present it as complete. It halted, named the 6 missing structural elements, and refused to proceed. That&rsquo;s the design working.</p>
+    </div>
+
+    <!-- ============ SLIDE 16: THE NEW CHAIN ============ -->
+    <div class="slide center">
+        <div class="section-label">What Changed</div>
+        <p class="subhead mb-md">The pipeline gained a new terminal node.</p>
+        <div class="spacer-sm"></div>
+        <div class="flow justify-center mb-md">
+            <div class="flow-step dim">Researcher</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step dim">Formatter</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step dim">Analyzer</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step">Writer</div>
+        </div>
+        <p class="small-text mb-md" style="color: var(--text-tertiary);">Analytical chain &mdash; comprehensive coverage, inline citations</p>
+        <div class="spacer-sm"></div>
+        <div class="flow justify-center mb-md">
+            <div class="flow-step dim">Researcher</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step dim">Formatter</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step dim">Analyzer</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-step new">Storyteller</div>
+        </div>
+        <p class="small-text mb-md" style="color: var(--accent);">Narrative chain &mdash; selective framing, editorial transparency</p>
+        <div class="spacer"></div>
+        <p class="dim-text">Same first three steps. Different final specialist depending on the deliverable &mdash; document or narrative. The Storyteller speaks Bruner&rsquo;s other mode.</p>
+    </div>
+
+    <!-- ============ SLIDE 17: SOURCES ============ -->
+    <div class="slide">
+        <div class="section-label">Sources &amp; Design Lineage</div>
+        <h2 class="medium-headline">Sources</h2>
+        <div class="spacer-sm"></div>
+        <div class="sources-content">
+            <p><strong>Cognitive foundation:</strong></p>
+            <ul>
+                <li>Jerome Bruner (1986) &mdash; Two modes of thought: paradigmatic and narrative</li>
+                <li>Paul Zak (2009&ndash;2015) &mdash; Dramatic arc produces cortisol + oxytocin; flat narrative produces neither</li>
+                <li>Green &amp; Brock (2000) &mdash; Narrative transportation theory; reduced counterarguing + character identification</li>
+            </ul>
+            <div class="spacer-sm"></div>
+            <p><strong>Craft principles:</strong></p>
+            <ul>
+                <li>Heath &amp; Heath (2007) &mdash; The Curse of Knowledge: experts cannot simulate not knowing</li>
+                <li>Slovic et al. (2007) &mdash; Identifiable Victim Effect: statistics reduce emotional impact</li>
+                <li>Barbara Minto (1987) &mdash; SCQA / Pyramid Principle: answer-first for expert audiences</li>
+                <li>Nancy Duarte (2010/2019) &mdash; Sparkline, audience-as-hero, DataStory narrative moves</li>
+            </ul>
+            <div class="spacer-sm"></div>
+            <p><strong>Artifacts:</strong></p>
+            <ul>
+                <li>Design document: <code class="code-inline">docs/plans/2026-03-04-storyteller-design.md</code></li>
+                <li>Epic: <code class="code-inline">docs/02-requirements/epics/03-storyteller.md</code></li>
+                <li>Specialist instructions: <code class="code-inline">specialists/storyteller/index.md</code></li>
+                <li>Verification log: <code class="code-inline">docs/test-log/storyteller/2026-03-04-storyteller-verification.md</code></li>
+                <li>Contract test: 13/13 items verified (Test 13.2)</li>
+                <li>Boundary case test: NOT MET with specific diagnostics (Test 13.3)</li>
+            </ul>
+            <div class="spacer-sm"></div>
+            <p><strong>Primary contributor:</strong> Chris Park (design direction, all decisions) with Amplifier AI (research synthesis, implementation, verification)</p>
+        </div>
+    </div>
+
+    <!-- ============ SLIDE 18: THE CLOSING / BRIDGE ============ -->
+    <div class="slide center">
+        <p class="closing-lead">
+            The Storyteller adds a capability<br>
+            the pipeline didn&rsquo;t have:
+        </p>
+        <div class="spacer-sm"></div>
+        <p class="closing-lead">
+            the ability to select, frame, and structure<br>
+            findings for narrative impact rather than<br>
+            comprehensive coverage.
+        </p>
+        <div class="spacer-xl"></div>
+        <p class="closing-line">
+            But shipping is not the same<br>
+            as proving it works in a chain.<br><br>
+            That question requires evidence,<br>
+            not architecture.
+        </p>
+        <div class="spacer-xl"></div>
+        <p class="dim-text">Next: <a href="how-do-you-know-session-story.html" style="color: var(--accent-cool); text-decoration: none; border-bottom: 1px solid rgba(78,205,196,0.3);">&ldquo;How Do You Know?&rdquo;</a> &mdash; The blind test, the statistical reckoning, and the five-word question that changed everything.</p>
+        <div class="spacer-sm"></div>
+        <span class="badge badge-cool">Story 2 of 2</span>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="how-do-you-know-session-story.html" class="story-link">Next: &ldquo;How Do You Know?&rdquo; &rarr;</a>
+
+    <script>
+        var slides = document.querySelectorAll('.slide');
+        var currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            slides[currentSlide].scrollTop = 0;
+            updateNav();
+        }
+
+        function updateNav() {
+            var nav = document.getElementById('nav');
+            var counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach(function(_, i) {
+                var dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = function(e) { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = (currentSlide + 1) + ' / ' + slides.length;
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.nav') || e.target.closest('a')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        var touchStartX = 0;
+        var SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', function(e) {
+            var diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

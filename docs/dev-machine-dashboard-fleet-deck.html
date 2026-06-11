@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Dev Machine Dashboard &amp; Fleet Healing &mdash; The Dev Machine Grows a Brain</title>
+    <script>document.documentElement.classList.add('js')</script>
+    <style>
+        :root {
+            --accent: #00B4D8;
+            --accent-dim: rgba(0, 180, 216, 0.15);
+            --accent-glow: rgba(0, 180, 216, 0.3);
+
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Typography scale */
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 36px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 16px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 1.8vw, 15px);
+
+            /* Spacing */
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Slide base */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin-bottom: var(--space-md);
+        }
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: var(--space-md);
+        }
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(680px, 90vw);
+        }
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-sm);
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: 100px;
+            background: rgba(0, 180, 216, 0.15);
+            color: var(--accent);
+            margin-top: var(--space-sm);
+        }
+
+        /* Grids */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .quads {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .card h3, .card h4 {
+            color: var(--text-primary);
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.5;
+        }
+        .card .icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Card with accent border top */
+        .card-accent {
+            border-top: 2px solid var(--accent);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: #BFC0C5;
+            margin-top: var(--space-md);
+        }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-cmd { color: #30D158; }
+        .code-flag { color: #00B4D8; }
+        .code-string { color: #FF9F0A; }
+        .code-var { color: #64D2FF; }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            max-width: min(800px, 95vw);
+        }
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+        }
+        .flow-number {
+            flex-shrink: 0;
+            width: clamp(36px, 5vw, 48px);
+            height: clamp(36px, 5vw, 48px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--fs-body);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .flow-content h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .flow-content p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .flow-arrow {
+            width: 2px;
+            height: var(--space-sm);
+            background: var(--accent-dim);
+            margin-left: clamp(17px, 2.3vw, 23px);
+        }
+
+        /* Architecture diagram */
+        .arch-entities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .entity-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+        .entity-box .icon {
+            font-size: clamp(32px, 6vw, 56px);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box h4 {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Velocity stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+        .velocity-stat { text-align: center; }
+        .velocity-number {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #90E0EF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .velocity-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Quote / callout box */
+        .callout {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            margin-top: var(--space-md);
+            max-width: min(700px, 95vw);
+        }
+        .callout p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            font-style: italic;
+        }
+        .callout .attribution {
+            font-style: normal;
+            color: var(--text-tertiary);
+            font-size: var(--fs-small);
+            margin-top: var(--space-xs);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        /* Sources slide specifics */
+        .sources-content {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            max-width: min(800px, 95vw);
+        }
+        .sources-content strong {
+            color: var(--text-primary);
+        }
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .sources-content ul {
+            padding-left: var(--space-md);
+            margin: var(--space-xs) 0;
+        }
+        .sources-content li {
+            margin-bottom: var(--space-xs);
+        }
+
+        /* More stories link */
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Touch targets */
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+
+        /* Highlight accent text */
+        .accent { color: var(--accent); }
+
+        /* Inline list with subtle bullets */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding-left: var(--space-md);
+            position: relative;
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-xs);
+        }
+        .feature-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        /* Status indicator pills */
+        .status-pill {
+            display: inline-block;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 100px;
+            letter-spacing: 0.5px;
+        }
+        .status-pill.green { background: rgba(63, 185, 80, 0.2); color: #3fb950; }
+        .status-pill.yellow { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+        .status-pill.red { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+        .status-pill.blue { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+        .status-pill.purple { background: rgba(188, 140, 255, 0.2); color: #bc8cff; }
+        .status-pill.gray { background: rgba(139, 148, 158, 0.2); color: #8b949e; }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 1: TITLE                                                -->
+    <!-- ============================================================ -->
+    <div class="slide active center">
+        <div class="section-label">Showcase &middot; amplifier-bundle-dev-machine</div>
+        <h1 class="headline">The Dev Machine<br>Grows a Brain</h1>
+        <p class="subhead">Autonomous dev machines that monitor themselves, heal themselves, and phone home with a status page you can check from your phone.</p>
+        <div class="status-badge">Dashboard &middot; Fleet Healing &middot; Intent Gates</div>
+        <div class="small-text">May 2026 &middot; Marc Goodner &amp; Sam Schillace</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 2: THE PROBLEM                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Five machines,<br>zero visibility</h2>
+        <p class="subhead">A fleet of autonomous dev machines building software around the clock. But when something breaks at 2 AM, nobody knows until morning.</p>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F648;</div>
+                <h3>Blind Operations</h3>
+                <p>word4, botslack, openM365, safeguard, universal-app &mdash; all running autonomously with no unified view of what's happening.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F4A5;</div>
+                <h3>Silent Failures</h3>
+                <p>A missing Python package kills a container. A stale lockfile halts a build. Hours of compute wasted before anyone notices.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F4F1;</div>
+                <h3>No Remote Access</h3>
+                <p>Checking machine status meant SSH into the host. No way to glance at fleet health from a phone or another machine.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>The machines were already building software autonomously. But they were like factories with no control room &mdash; productive when everything worked, helpless when anything broke.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 3: THE DASHBOARD                                        -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Dashboard</div>
+        <h2 class="headline">A control room<br>for the fleet</h2>
+        <p class="subhead">Full-stack web dashboard: FastAPI backend, 2,253-line SPA frontend, streaming chat panel with markdown rendering.</p>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>FastAPI + SPA</h3>
+                <p>15 Python modules (3,404 LOC), single-page app with live status polling, fleet summary bar, per-machine drill-down, and one-click actions: restart, push, clear blockers.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>AI Chat Panel</h3>
+                <p>Streaming chat interface with SSE architecture, live activity indicators, and markdown rendering. Ask the dashboard about your machines in natural language. Backed by a dedicated minimal Amplifier bundle.</p>
+            </div>
+        </div>
+        <div class="thirds">
+            <div class="card">
+                <h4 class="accent">Mobile-Ready</h4>
+                <p>Responsive design. Check fleet health from your phone over Tailscale.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Dual Data Sources</h4>
+                <p>v1 (Docker polling + fleet-state.json) and v2 (status.yaml + fleet-status.yaml). Auto-prefers v2 when available.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Plugin or Standalone</h4>
+                <p>Runs as <code>dev-machine-monitor</code> CLI or auto-discovered as an amplifierd plugin via entry points.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 4: TWO-TIER ARCHITECTURE                                -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">Two-tier monitoring<br>replaces the monolith</h2>
+        <p class="subhead">The 2,325-line fleet-supervisor was a single process doing everything. The new architecture splits concerns cleanly.</p>
+        <div class="arch-entities">
+            <div class="entity-box">
+                <div class="icon">&#x1F4DD;</div>
+                <h4>Per-Machine Monitor</h4>
+                <p>Runs on each machine. Writes <code>status.yaml</code> with health, features, problems, git HEAD age.</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F3DB;&#xFE0F;</div>
+                <h4>Fleet Coordinator</h4>
+                <p>Reads all status files. Applies cross-fleet sanity checks. Writes <code>fleet-status.yaml</code>. Sends alerts.</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F4CA;</div>
+                <h4>Dashboard</h4>
+                <p>Serves the SPA. Reads fleet-status. Provides API endpoints. Hosts the chat panel.</p>
+            </div>
+        </div>
+        <div class="halves">
+            <div class="card">
+                <h4 class="accent">4 Sanity Checks</h4>
+                <ul class="feature-list">
+                    <li>Individual monitor dead or stale (status.yaml &gt; 10 min old)</li>
+                    <li>Self-report contradiction (claims healthy, HEAD unchanged &gt; 1 hour)</li>
+                    <li>Simultaneous token burn (2+ machines stopped at once)</li>
+                    <li>All monitors dead (host-level problem)</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4 class="accent">Read-Only Coordinator</h4>
+                <p>The fleet coordinator <strong>never starts or stops containers</strong>. It is strictly read-only on the fleet. All writes go to coordinator-owned files: fleet-status.yaml, digest-queue.jsonl, last-alert.json. Alerts deduplicate on a 1-hour cooldown per condition key.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 5: FLEET STATUS                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Fleet Status</div>
+        <h2 class="medium-headline">Nine states, one glance</h2>
+        <p class="subhead">Every machine reports one of 9 v2 status values. The dashboard maps them to 5 visual buckets for instant comprehension.</p>
+        <div class="quads">
+            <div class="card" style="text-align:center;">
+                <div class="status-pill green">healthy</div>
+                <p style="margin-top:var(--space-xs);">Running, building, committing.</p>
+            </div>
+            <div class="card" style="text-align:center;">
+                <div class="status-pill yellow">warning</div>
+                <p style="margin-top:var(--space-xs);">Degraded but still active. Includes <span class="accent">recovering</span>.</p>
+            </div>
+            <div class="card" style="text-align:center;">
+                <div class="status-pill red">halted / error</div>
+                <p style="margin-top:var(--space-xs);">Critical. Needs human attention now.</p>
+            </div>
+            <div class="card" style="text-align:center;">
+                <div class="status-pill blue">stopped</div>
+                <p style="margin-top:var(--space-xs);">Paused, completed, or blocked on escalation.</p>
+            </div>
+        </div>
+        <div class="halves" style="margin-top:var(--space-md);">
+            <div class="card">
+                <h4 class="accent">What You See Per Machine</h4>
+                <ul class="feature-list">
+                    <li><strong>Status badge</strong> &mdash; color-coded health at a glance</li>
+                    <li><strong>Problems</strong> &mdash; active issues detected by the monitor</li>
+                    <li><strong>Actions</strong> &mdash; restart, push, clear blockers, clear postmortem</li>
+                    <li><strong>Escalation state</strong> &mdash; postmortem files, halt loops</li>
+                    <li><strong>HEAD age</strong> &mdash; time since last commit (stall detection)</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4 class="accent">Fleet Summary Bar</h4>
+                <p>Top-of-page summary with dot counts: how many machines are healthy, warning, critical, stopped, offline. Auto-refreshes every 120 seconds. One number tells you if the fleet needs attention.</p>
+                <p style="margin-top:var(--space-xs);"><strong>Alert history</strong> from digest-queue.jsonl with repeat counts and condition deduplication.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 6: SELF-HEALING                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Self-Healing</div>
+        <h2 class="headline">Machines that<br>fix themselves</h2>
+        <p class="subhead">Two layers of auto-recovery: Pattern I for container-level crashes, and the env-remediation agent for intelligent diagnosis.</p>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Pattern I: Auto-Heal</h3>
+                <p>Detects crash loops and missing packages directly from container logs. Identifies the failing import, runs <code>pip install</code> or <code>uv sync</code>, and restarts the container &mdash; all without human intervention.</p>
+                <ul class="feature-list" style="margin-top:var(--space-sm);">
+                    <li>Detect running-but-never-healthy containers</li>
+                    <li>Parse <code>ModuleNotFoundError</code> from log output</li>
+                    <li>Install missing package, verify, restart</li>
+                    <li>Escalate if 3 attempts fail</li>
+                </ul>
+            </div>
+            <div class="card card-accent">
+                <h3>Env-Remediation Agent</h3>
+                <p>An AI agent (288 lines of protocol) that <em>reasons</em> about broken environments instead of just matching regexes. Two-phase: fast-path catalog lookup, then independent diagnosis.</p>
+                <ul class="feature-list" style="margin-top:var(--space-sm);">
+                    <li>Reads hints catalog first (known fixes)</li>
+                    <li>Falls back to independent reasoning about the stack</li>
+                    <li>3-attempt hard limit, then structured escalation</li>
+                    <li>Discovers new fix patterns for the catalog</li>
+                </ul>
+            </div>
+        </div>
+        <div class="callout">
+            <p>The agent may modify lockfiles, reinstall node_modules, recreate .venv, or apt-get install missing system tools. It may never touch application source code. If it can't fix the environment in 3 tries, it escalates with a structured report of what it tried and what it learned.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 7: INTENT GATES                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Safety Layer</div>
+        <h2 class="medium-headline">Intent Gates &mdash; human sign-off<br>before the machine acts</h2>
+        <p class="subhead">Tests passing is necessary but not sufficient. The intent gate checks whether a feature actually serves the claimed user story.</p>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div class="flow-content">
+                    <h4>Feature Tests Pass</h4>
+                    <p>Build and test succeed. The code works mechanically. But does it serve the human's intent?</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div class="flow-content">
+                    <h4>Intent Gate Fires</h4>
+                    <p>The intent-gate-agent reads PROJECT-INTENT.md, the feature spec's Section 0, implementation summary, and test results. Cross-references claimed story against actual evidence.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div class="flow-content">
+                    <h4>Structured Verdict</h4>
+                    <p>PASS or FAIL with specific evidence: <em>CLAIMED_STORY, EVIDENCE, GAPS, STORIES_ADVANCED, STORIES_REMAINING, FEEDBACK.</em> Incremental progress counts &mdash; practical, not pedantic.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">4</div>
+                <div class="flow-content">
+                    <h4>Gate Enforced or Inactive</h4>
+                    <p>No PROJECT-INTENT.md? Gate auto-passes with a note. Missing Section 0 in the spec? Hard FAIL with instructions to add it. The gate adapts to the project's maturity.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 8: REMOTE ACCESS                                        -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Remote Access</div>
+        <h2 class="medium-headline">Check fleet health<br>from your phone</h2>
+        <p class="subhead">TLS, Caddy reverse proxy, heartbeat agent, API key auth. The dashboard is accessible anywhere on your Tailscale network.</p>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F493;</div>
+                <h3>Heartbeat Agent</h3>
+                <p>Runs on remote hosts, pushes machine status to a central hub every 60 seconds. Supports continuous mode or single-shot for cron. Auto-registers discovered machines with TTL-based expiry.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F512;</div>
+                <h3>TLS + Auth</h3>
+                <p>Local mode: <code>127.0.0.1</code>, no TLS, no auth. Serve mode: auto TLS (Tailscale certs or self-signed), bearer token auth, Caddy forward_auth integration with Frontdoor.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F310;</div>
+                <h3>Caddy Deployment</h3>
+                <p>Monitor binds localhost. Caddy terminates TLS on a Tailscale FQDN port. systemd service unit keeps it alive. One command to update: <code>uv tool install --force</code>.</p>
+            </div>
+        </div>
+        <div class="code-block"><span class="code-comment"># Remote host: push status to hub</span>
+<span class="code-cmd">dev-machine-heartbeat</span> <span class="code-flag">--hub</span> <span class="code-string">https://monad.ts.net:8111</span> <span class="code-flag">--interval</span> <span class="code-var">60</span>
+
+<span class="code-comment"># Hub: serve with TLS and auth</span>
+<span class="code-cmd">dev-machine-monitor serve</span> <span class="code-flag">--tls</span> <span class="code-var">auto</span>
+
+<span class="code-comment"># API endpoints available</span>
+<span class="code-var">GET</span>  <span class="code-string">/api/machines</span>    <span class="code-comment"># all machines + status</span>
+<span class="code-var">GET</span>  <span class="code-string">/api/fleet</span>       <span class="code-comment"># fleet health summary</span>
+<span class="code-var">GET</span>  <span class="code-string">/api/alerts</span>      <span class="code-comment"># alert history</span>
+<span class="code-var">POST</span> <span class="code-string">/api/action</span>      <span class="code-comment"># restart, push, clear</span>
+<span class="code-var">POST</span> <span class="code-string">/api/register</span>    <span class="code-comment"># heartbeat registration</span></div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 9: BY THE NUMBERS                                       -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">By the Numbers</div>
+        <h2 class="medium-headline">60 days of building</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">70</div>
+                <div class="velocity-label">commits in 60 days</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">14k</div>
+                <div class="velocity-label">lines added</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">272</div>
+                <div class="velocity-label">test functions</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">5</div>
+                <div class="velocity-label">machines in fleet</div>
+            </div>
+        </div>
+        <div class="halves" style="margin-top:var(--space-lg);">
+            <div class="card">
+                <h4 class="accent">Dashboard Package</h4>
+                <ul class="feature-list">
+                    <li>15 Python source modules (3,404 LOC)</li>
+                    <li>2,253-line SPA frontend</li>
+                    <li>17 test files (4,610 LOC test code)</li>
+                    <li>9 v2 status values mapped to 5 dashboard buckets</li>
+                    <li>13 API endpoints (6 status + 7 chat/tool)</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4 class="accent">Agents &amp; Monitor</h4>
+                <ul class="feature-list">
+                    <li>6 agent definitions (1,210 lines of protocol)</li>
+                    <li>Fleet coordinator: 434 lines (read-only)</li>
+                    <li>Fleet supervisor: 2,325 lines (v1 monolith)</li>
+                    <li>4 cross-fleet sanity checks</li>
+                    <li>Slack, email, and digest-queue alerting</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 10: WHAT CHANGED                                        -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Evolution</div>
+        <h2 class="medium-headline">From "22 Features in 1 Day"<br>to fleet operations</h2>
+        <p class="subhead">The earlier story was about proving a dev machine could ship. This story is about what happens when you have five of them and need to keep them alive.</p>
+        <div class="halves">
+            <div class="card">
+                <h4>Before: Ship Fast</h4>
+                <ul class="feature-list">
+                    <li>One machine, one project</li>
+                    <li>Manual monitoring via SSH</li>
+                    <li>If it broke, you noticed eventually</li>
+                    <li>No self-healing capability</li>
+                    <li>Monolithic fleet-supervisor</li>
+                </ul>
+            </div>
+            <div class="card card-accent">
+                <h4>Now: Stay Alive</h4>
+                <ul class="feature-list">
+                    <li>Five machines running in parallel</li>
+                    <li>Web dashboard from any device</li>
+                    <li>Problems surface automatically</li>
+                    <li>Pattern I + agent-based self-healing</li>
+                    <li>Two-tier architecture, intent gates</li>
+                </ul>
+            </div>
+        </div>
+        <div class="callout">
+            <p>The foundry doesn't just create dev machines anymore. It creates dev machines that can reason about their own health, fix their own environments, and phone home when they need help. The dashboard is the human's window into a fleet that increasingly manages itself.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 11: SOURCES & METHODOLOGY                               -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Sources &amp; Methodology</div>
+        <h2 class="medium-headline">How we got these numbers</h2>
+        <div class="sources-content">
+            <p><strong>Repository:</strong> <code>amplifier-bundle-dev-machine</code> (github.com/ramparte/amplifier-bundle-dev-machine)</p>
+            <p><strong>Primary contributors:</strong> Marc Goodner (robotdad) &mdash; 53 commits, Sam Schillace &mdash; 16 commits</p>
+
+            <p style="margin-top: var(--space-md);"><strong>Commit data</strong> (60-day window ending May 20, 2026):</p>
+            <ul>
+                <li><code>git log --oneline --since="60 days ago" --no-merges | wc -l</code> &rarr; <strong>70 commits</strong></li>
+                <li><code>git log --format='%an' ... | sort | uniq -c | sort -rn</code> &rarr; Marc Goodner: 53, Sam Schillace: 16, ramparte: 1</li>
+                <li><code>git diff --stat &lt;60d-ago&gt;..HEAD -- dashboard/ agents/ monitor/</code> &rarr; <strong>58 files changed, ~14,400 insertions</strong></li>
+                <li>41 of 70 commits directly reference dashboard, fleet, monitor, healing, chat, or agent features</li>
+            </ul>
+
+            <p style="margin-top: var(--space-md);"><strong>Line counts</strong> (measured via <code>wc -l</code> / <code>find ... | xargs wc -l</code>):</p>
+            <ul>
+                <li>Dashboard Python source: 15 files, 3,404 LOC &mdash; <code>find dashboard/src -name "*.py" | xargs wc -l</code></li>
+                <li>Dashboard SPA: 2,253 lines &mdash; <code>wc -l dashboard/src/.../static/index.html</code></li>
+                <li>Dashboard tests: 17 files, 4,610 LOC, 272 test functions &mdash; <code>grep -c "def test_" dashboard/tests/*.py</code></li>
+                <li>Monitor scripts: 6,540 LOC &mdash; <code>find monitor/ -name "*.py" | xargs wc -l</code></li>
+                <li>Agent definitions: 6 files, 1,210 lines &mdash; <code>wc -l agents/*.md</code></li>
+            </ul>
+
+            <p style="margin-top: var(--space-md);"><strong>Architecture claims</strong> verified by reading:</p>
+            <ul>
+                <li><code>dashboard/README.md</code> (354 lines) &mdash; dual data source, v2 status mapping, API endpoints, deployment</li>
+                <li><code>monitor/fleet-coordinator.py</code> (434 lines) &mdash; 4 sanity checks, read-only design, alert dedup</li>
+                <li><code>monitor/fleet-config.yaml</code> (43 lines) &mdash; 5 registered machines confirmed</li>
+                <li><code>dashboard/src/dev_machine_monitor/health.py</code> &mdash; 9 v2 status values, 5 dashboard buckets</li>
+                <li><code>agents/env-remediation-agent.md</code> (288 lines) &mdash; 3-attempt limit, scope boundaries, discovery loop</li>
+                <li><code>agents/intent-gate-agent.md</code> (223 lines) &mdash; 6-step evaluation, structured verdict format</li>
+            </ul>
+
+            <p style="margin-top: var(--space-md);"><strong>Date:</strong> May 2026 &middot; <strong>Category:</strong> Showcase</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

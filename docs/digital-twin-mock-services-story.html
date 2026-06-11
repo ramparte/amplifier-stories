@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mock Services — Testing Against the Real World Without the Real World</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-glow: rgba(255, 55, 95, 0.15);
+            --accent-dim: rgba(255, 55, 95, 0.6);
+
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Typography scale */
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 32px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 16px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 2vw, 15px);
+
+            /* Spacing scale */
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Border radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+            --radius-lg: clamp(16px, 2vw, 24px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active { display: flex; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* --- Typography --- */
+        .section-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            color: var(--text-primary);
+            margin-bottom: var(--space-md);
+        }
+
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            color: var(--text-primary);
+            margin-bottom: var(--space-md);
+        }
+
+        .subhead {
+            font-size: var(--fs-h3);
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(700px, 90vw);
+        }
+
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+        }
+
+        .body-text {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: min(800px, 95vw);
+        }
+
+        /* --- Layout --- */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            width: 100%;
+        }
+
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            width: 100%;
+        }
+
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+        }
+
+        .card h3 {
+            color: var(--text-primary);
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.5;
+        }
+
+        .card-icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: var(--space-sm);
+            display: block;
+        }
+
+        /* --- Code blocks --- */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: var(--space-md);
+            width: 100%;
+            max-width: min(900px, 95vw);
+        }
+
+        .code-green { color: #30D158; }
+        .code-blue { color: #64D2FF; }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-keyword { color: var(--accent); }
+        .code-string { color: #FFD60A; }
+
+        /* --- Flow diagram --- */
+        .flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-top: var(--space-lg);
+        }
+
+        .flow-step {
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: var(--space-sm) var(--space-md);
+            font-size: var(--fs-body);
+            color: var(--text-primary);
+            font-weight: 500;
+            text-align: center;
+            min-width: min(140px, 40vw);
+        }
+
+        .flow-step.accent {
+            background: var(--accent-glow);
+            border-color: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .flow-arrow {
+            font-size: var(--fs-h3);
+            color: var(--text-tertiary);
+        }
+
+        /* --- Feature status badge --- */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid;
+            margin-top: var(--space-sm);
+        }
+
+        .status-active {
+            color: #30D158;
+            border-color: rgba(48, 209, 88, 0.4);
+            background: rgba(48, 209, 88, 0.1);
+        }
+
+        /* --- Big quote --- */
+        .big-quote {
+            font-size: var(--fs-h2);
+            font-weight: 600;
+            font-style: italic;
+            color: var(--text-primary);
+            line-height: 1.4;
+            max-width: min(800px, 90vw);
+            border-left: 4px solid var(--accent);
+            padding-left: var(--space-lg);
+            margin: var(--space-lg) 0;
+        }
+
+        /* --- Velocity stats --- */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(160px, 45%), 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-xl);
+            width: 100%;
+            max-width: min(900px, 95vw);
+        }
+
+        .velocity-stat {
+            text-align: center;
+        }
+
+        .velocity-number {
+            font-size: clamp(40px, 10vw, 72px);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--accent), #FF6B8A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .velocity-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* --- Vision grid --- */
+        .vision-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-sm);
+            margin-top: var(--space-lg);
+            width: 100%;
+        }
+
+        .vision-item {
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            text-align: center;
+        }
+
+        .vision-item .vi-icon {
+            font-size: clamp(32px, 6vw, 48px);
+            margin-bottom: var(--space-xs);
+            display: block;
+        }
+
+        .vision-item .vi-name {
+            font-size: var(--fs-body);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .vision-item .vi-desc {
+            font-size: var(--fs-small);
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .vision-item.active-mock {
+            border-color: var(--accent-dim);
+            background: var(--accent-glow);
+        }
+
+        .vision-item.future-mock {
+            border-style: dashed;
+        }
+
+        /* --- Comparison table --- */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            margin-top: var(--space-lg);
+            width: 100%;
+            max-width: min(900px, 95vw);
+        }
+
+        .comparison-header {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        }
+
+        .comparison-header.before {
+            background: rgba(255, 69, 58, 0.15);
+            color: #FF453A;
+        }
+
+        .comparison-header.after {
+            background: rgba(48, 209, 88, 0.15);
+            color: #30D158;
+        }
+
+        .comparison-cell {
+            background: var(--surface-2);
+            padding: var(--space-sm) var(--space-md);
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .comparison-cell:last-child {
+            border-radius: 0 0 var(--radius-sm) 0;
+        }
+
+        .comparison-cell:nth-last-child(2) {
+            border-radius: 0 0 0 var(--radius-sm);
+        }
+
+        /* --- Navigation --- */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover {
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* --- Utilities --- */
+        .mt-md { margin-top: var(--space-md); }
+        .mt-lg { margin-top: var(--space-lg); }
+        .accent-text { color: var(--accent); }
+        .highlight-line { background: var(--accent-glow); padding: 2px 6px; border-radius: 4px; }
+
+        .list-styled {
+            list-style: none;
+            padding: 0;
+        }
+
+        .list-styled li {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            padding-left: var(--space-md);
+            position: relative;
+            margin-bottom: var(--space-xs);
+        }
+
+        .list-styled li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 1: Title -->
+    <!-- ============================================================ -->
+    <div class="slide active center">
+        <div class="section-label">Amplifier Digital Twin Universe</div>
+        <h1 class="headline">Mock Services</h1>
+        <p class="subhead">Testing against the real world without the real world.</p>
+
+        <div class="small-text" style="margin-top: var(--space-md);">April 2026</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 2: The Problem -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="medium-headline">External services make testing painful</h2>
+        <p class="body-text">Most real software integrates with external services. Testing those integrations creates friction that kills velocity.</p>
+
+        <div class="thirds">
+            <div class="card">
+                <span class="card-icon">🔑</span>
+                <h3>Account Overhead</h3>
+                <p>Slack alone needs: an account, an app registration, a workspace, OAuth tokens. Multiply that for every environment.</p>
+            </div>
+            <div class="card">
+                <span class="card-icon">⏱️</span>
+                <h3>Rate Limits</h3>
+                <p>Real APIs have quotas. In a software factory where agents constantly create and tear down environments, you burn through limits fast.</p>
+            </div>
+            <div class="card">
+                <span class="card-icon">🔧</span>
+                <h3>Manual Setup</h3>
+                <p>Throwaway accounts, manual configuration, cleanup after every test run. Non-starter for agent-driven development.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 3: The Architecture -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Solution</div>
+        <h2 class="medium-headline">Mock services as sidecar containers with DNS rewriting</h2>
+
+        <div class="flow">
+            <div class="flow-step">DTU Profile</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Clone Mock Repo</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Build Image</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step accent">Start Sidecar</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step accent">DNS Rewrite via mitmproxy</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">App Runs Unmodified</div>
+        </div>
+
+        <div class="code-block"><span class="code-comment"># digital-twin-mock.yaml — the standard manifest</span>
+<span class="code-keyword">name:</span> <span class="code-string">slack</span>
+<span class="code-keyword">version:</span> <span class="code-string">0.1.0</span>
+<span class="code-keyword">description:</span> <span class="code-string">Mock Slack service for DTU testing</span>
+
+<span class="code-keyword">runtime:</span>
+  <span class="code-keyword">type:</span> docker
+  <span class="code-keyword">build:</span> Dockerfile
+  <span class="code-keyword">port:</span> <span class="code-green">3000</span>
+
+<span class="code-keyword">domains:</span>
+  - <span class="code-blue">api.slack.com</span>
+  - <span class="code-blue">slack.com</span></div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 4: Critical Design Point -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Design Principle</div>
+        <h2 class="headline">No code changes.</h2>
+
+        <div class="big-quote">The mock is what changes, not the app. The application under test runs exactly as it would in production.</div>
+
+        <p class="body-text">Traffic destined for a real API hostname gets transparently redirected to the mock container. The application under test is installed completely unmodified. It genuinely believes it's talking to the real service.</p>
+
+        <div class="comparison mt-lg">
+            <div class="comparison-header before">Traditional Mocking</div>
+            <div class="comparison-header after">DTU Mock Services</div>
+            <div class="comparison-cell">Modify app code with test doubles</div>
+            <div class="comparison-cell">App runs unmodified — production code</div>
+            <div class="comparison-cell">Swap SDK clients for fakes</div>
+            <div class="comparison-cell">DNS rewrite at the network layer</div>
+            <div class="comparison-cell">Test harness version of the app</div>
+            <div class="comparison-cell">Test the real thing</div>
+            <div class="comparison-cell">"Works in test" ≠ works in prod</div>
+            <div class="comparison-cell">What you test is what you ship</div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 5: How the Slack Mock Works -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Sample Scenario</div>
+        <h2 class="medium-headline">amplifier-hive-slack: a Slack bot that needs Slack</h2>
+
+        <p class="body-text" style="margin-bottom: var(--space-md);">amplifier-hive-slack is a bot that integrates with Slack's APIs. To test it for real, you need a Slack account, an app registration, a workspace, OAuth tokens — and you're subject to rate limits. In a software factory where agents are constantly creating and tearing down environments, that's a non-starter. So we built a mock.</p>
+
+        <h3 style="color: var(--text-secondary); font-size: var(--fs-h3); margin-bottom: var(--space-sm);">The Slack mock: 822 lines of Python, 11 API endpoints</h3>
+
+        <div class="halves">
+            <div class="card">
+                <span class="card-icon">🌐</span>
+                <h3>Slack Web API</h3>
+                <p>11 endpoints (GET + POST): <code>auth.test</code>, <code>apps.connections.open</code>, <code>conversations.info</code>, <code>conversations.list</code>, <code>conversations.history</code>, <code>chat.postMessage</code>, <code>chat.update</code>, <code>reactions.add</code>, <code>users.info</code>, <code>bots.info</code>, <code>team.info</code></p>
+            </div>
+            <div class="card">
+                <span class="card-icon">🔌</span>
+                <h3>Socket Mode WebSocket</h3>
+                <p>Full Socket Mode support: hello handshake, event envelopes, ack responses, ping/pong keepalive. mitmproxy rewrites the WebSocket URL so the bot connects via TLS transparently.</p>
+            </div>
+            <div class="card">
+                <span class="card-icon">🎛️</span>
+                <h3>Control API</h3>
+                <p>Endpoints for simulation: <code>/mock/state</code>, <code>/mock/send-message</code>, <code>/mock/add-reaction</code>, <code>/mock/create-user</code>, <code>/mock/create-channel</code>. Full programmatic control.</p>
+            </div>
+            <div class="card">
+                <span class="card-icon">🖥️</span>
+                <h3>Web UI</h3>
+                <p>Vanilla HTML/JS interface at <code>/</code> with channel list, message feed, and input. Interact with the mock directly from your browser.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 6: The Profile -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Configuration</div>
+        <h2 class="medium-headline">A DTU profile declares everything</h2>
+        <p class="body-text">The profile is the single source of truth: what to install, which mocks to wire up, which real APIs to allow through, and how to start the app.</p>
+
+        <div class="code-block"><span class="code-comment"># amplifier-hive-slack.yaml — DTU profile (86 lines)</span>
+<span class="code-keyword">name:</span> <span class="code-string">amplifier-hive-slack</span>
+<span class="code-keyword">base:</span>
+  <span class="code-keyword">image:</span> ubuntu:24.04
+
+<span class="code-keyword">mock_services:</span>                    <span class="code-comment"># ← declare mocks here</span>
+  - <span class="code-keyword">source:</span> <span class="code-string">${MOCK_SLACK_PATH}</span>
+    <span class="code-keyword">config:</span>
+      <span class="code-keyword">workspace_name:</span> <span class="code-string">"${WORKSPACE_NAME}"</span>
+
+<span class="code-keyword">passthrough:</span>                      <span class="code-comment"># ← real APIs still work</span>
+  <span class="code-keyword">allow_external:</span> <span class="code-green">true</span>
+  <span class="code-keyword">services:</span>
+    - <span class="code-keyword">name:</span> anthropic
+      <span class="code-keyword">key_env:</span> ANTHROPIC_API_KEY
+
+<span class="code-keyword">provision:</span>                        <span class="code-comment"># ← install & launch</span>
+  <span class="code-keyword">setup_cmds:</span>
+    - uv tool install amplifier-hive-slack
+    - nohup hive-slack config.yaml &</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 7: The Workflow -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Workflow</div>
+        <h2 class="medium-headline">Tell the agent what you want. It builds the rest.</h2>
+
+        <div class="card mt-lg" style="max-width: min(800px, 95vw);">
+            <p class="body-text" style="color: var(--text-primary);">
+                <span class="accent-text" style="font-weight: 600;">"Look at amplifier-hive-slack and make me a Digital Twin Universe that will let me try it out with a mock Slack."</span>
+            </p>
+            <ul class="list-styled mt-md">
+                <li>Agent builds a DTU profile with the Slack mock declared as a sidecar</li>
+                <li>DTU engine clones the mock repo, builds the Docker image</li>
+                <li>Launches the Incus environment with the mock container alongside it</li>
+                <li>Configures mitmproxy: <code>api.slack.com</code> → mock container</li>
+                <li>Installs hive-slack as-is with fake OAuth tokens (mock doesn't validate)</li>
+                <li>Bot starts, connects via Socket Mode — you're interacting through the browser</li>
+            </ul>
+        </div>
+
+        <p class="body-text mt-lg">When the bot wasn't replying as expected, the next step was natural: <em>"Amplifier, can you try x, y, z and simulate some users so I can see how it's working."</em></p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 8: The Power -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Capabilities</div>
+        <h2 class="medium-headline">You own the mock. You control everything.</h2>
+
+        <div class="thirds">
+            <div class="card">
+                <span class="card-icon">🎬</span>
+                <h3>Prepopulate Scenarios</h3>
+                <p>Seed channels, users, message history however you want. Create-user and create-channel endpoints let you build any workspace topology on demand.</p>
+            </div>
+            <div class="card">
+                <span class="card-icon">🤖</span>
+                <h3>Script Interactions</h3>
+                <p>Send messages, trigger events, simulate multiple users — all through the Control API. Automate entire conversation flows with a shell script.</p>
+            </div>
+            <div class="card">
+                <span class="card-icon">♾️</span>
+                <h3>No Limits</h3>
+                <p>No rate limits, no accounts to create, no cleanup. Run as many times as you want. Tear down and rebuild in seconds.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 9: The Demo -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Demo</div>
+        <h2 class="medium-headline">Four themed workspaces. Running simultaneously.</h2>
+        <p class="body-text">The multi-workspace demo launches 4 DTU environments, each with unique channels, users, and seeded conversations — including bot responses — with live message scripts firing in real time.</p>
+
+        <div class="halves mt-lg">
+            <div class="card">
+                <span class="card-icon">🚀</span>
+                <h3>Startup Weekend</h3>
+                <p>4 users, 3 channels (#general, #tech-stack, #pitch-prep). A team building a meal-prep app in 47 hours. The bot helps scope features and structure the pitch.</p>
+            </div>
+            <div class="card">
+                <span class="card-icon">🎮</span>
+                <h3>Moonlight Studios</h3>
+                <p>4 users, 4 channels (#general, #bugs, #playtesting, #art-assets). An indie game studio preparing for Steam Next Fest. The bot helps debug gameplay and optimize shaders.</p>
+            </div>
+            <div class="card">
+                <span class="card-icon">🔬</span>
+                <h3>Patel Research Lab</h3>
+                <p>4 users, 4 channels (#general, #paper-drafts, #experiment-results, #reading-group). A research team racing toward the ICML 2026 deadline. The bot reviews paper drafts and suggests experiments.</p>
+            </div>
+            <div class="card">
+                <span class="card-icon">🏘️</span>
+                <h3>Oakridge HOA</h3>
+                <p>4 users, 4 channels (#general, #maintenance, #events, #lost-and-found). A neighborhood association managing everything from fence disputes to block party planning.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 10: The Full Loop -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Integration</div>
+        <h2 class="medium-headline">Close the loop: mocks + browser-tester = full automation</h2>
+
+        <p class="body-text">Combined with the browser-tester agent, mock services create a full verification loop — all without touching a single real external service.</p>
+
+        <div class="flow mt-lg">
+            <div class="flow-step">Launch DTU</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step accent">Mock Services Start</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">App Installs</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step accent">Browser Agent Tests</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Integration Verified</div>
+        </div>
+
+        <div class="card mt-lg" style="max-width: min(800px, 95vw);">
+            <h3>What this means</h3>
+            <ul class="list-styled mt-md">
+                <li>Launch an environment with mock services wired up</li>
+                <li>Have an agent interact with the app through a real browser</li>
+                <li>Verify the integration works end-to-end</li>
+                <li>Zero real accounts, zero real API calls, zero cleanup</li>
+                <li>Fully reproducible — run it a thousand times</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 11: The Vision -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Vision</div>
+        <h2 class="medium-headline">A catalog of reusable mocks for any external service</h2>
+        <p class="body-text">Once someone builds a mock, everyone can use it. The profile just declares what it needs and DTU handles the rest: clone, build, start, DNS rewrite, ready.</p>
+
+        <div class="vision-grid mt-lg">
+            <div class="vision-item active-mock">
+                <span class="vi-icon">💬</span>
+                <span class="vi-name">Slack</span>
+                <span class="vi-desc">Available now</span>
+            </div>
+            <div class="vision-item future-mock">
+                <span class="vi-icon">📧</span>
+                <span class="vi-name">Microsoft 365</span>
+                <span class="vi-desc">Planned</span>
+            </div>
+            <div class="vision-item future-mock">
+                <span class="vi-icon">📂</span>
+                <span class="vi-name">Google Workspace</span>
+                <span class="vi-desc">Planned</span>
+            </div>
+            <div class="vision-item future-mock">
+                <span class="vi-icon">💳</span>
+                <span class="vi-name">Payment APIs</span>
+                <span class="vi-desc">Planned</span>
+            </div>
+            <div class="vision-item future-mock">
+                <span class="vi-icon">🗂️</span>
+                <span class="vi-name">GitHub API</span>
+                <span class="vi-desc">Planned</span>
+            </div>
+            <div class="vision-item future-mock">
+                <span class="vi-icon">📊</span>
+                <span class="vi-name">Any REST API</span>
+                <span class="vi-desc">Standard pattern</span>
+            </div>
+        </div>
+
+        <p class="body-text mt-lg">The framework is designed to be shared. Mocks are standalone repos with a standard <code>digital-twin-mock.yaml</code> definition. The same pattern extends to any external service.</p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 12: Architecture Detail -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Under the Hood</div>
+        <h2 class="medium-headline">How DNS rewriting works</h2>
+
+        <div class="code-block"><span class="code-comment"># Inside the Incus container, the DTU engine:</span>
+
+<span class="code-comment"># 1. Installs mitmproxy</span>
+pip3 install mitmproxy
+
+<span class="code-comment"># 2. Generates a rewrite addon that maps domains to mock containers</span>
+<span class="code-comment">#    api.slack.com → mock container IP:3000</span>
+<span class="code-comment">#    slack.com     → mock container IP:3000</span>
+
+<span class="code-comment"># 3. Installs the mitmproxy CA certificate</span>
+cp ~/.mitmproxy/mitmproxy-ca-cert.pem \
+   /usr/local/share/ca-certificates/mitmproxy.crt
+update-ca-certificates
+
+<span class="code-comment"># 4. Sets proxy environment variables</span>
+<span class="code-keyword">export</span> HTTP_PROXY=<span class="code-string">"http://localhost:8080"</span>
+<span class="code-keyword">export</span> HTTPS_PROXY=<span class="code-string">"http://localhost:8080"</span>
+
+<span class="code-comment"># 5. Special handling: WebSocket URL rewriting</span>
+<span class="code-comment">#    apps.connections.open returns ws://localhost:3000/ws</span>
+<span class="code-comment">#    mitmproxy rewrites it to wss://api.slack.com/ws</span>
+<span class="code-comment">#    so the bot connects via TLS through the proxy transparently</span></div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 13: CTA -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">Get Started</div>
+        <h2 class="headline">Try it yourself</h2>
+        <p class="subhead" style="margin-top: var(--space-md);">Tell Amplifier:<br><em>"Make me a DTU with a mock Slack so I can try amplifier-hive-slack."</em></p>
+
+        <div class="thirds" style="max-width: min(900px, 95vw); margin-top: var(--space-xl);">
+            <div class="card" style="text-align: center;">
+                <span class="card-icon">📦</span>
+                <h3>Use an existing mock</h3>
+                <p>Add <code>mock_services</code> to any DTU profile and point it at a mock repo.</p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <span class="card-icon">🔨</span>
+                <h3>Build a new mock</h3>
+                <p>Create a repo with a <code>digital-twin-mock.yaml</code> and a Dockerfile. That's the contract.</p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <span class="card-icon">🔄</span>
+                <h3>Run the demo</h3>
+                <p><code>./demos/launch-multi-workspace.sh</code> to see 4 workspaces come alive.</p>
+            </div>
+        </div>
+
+        <div style="margin-top: var(--space-xl); display: flex; gap: var(--space-md); justify-content: center; flex-wrap: wrap;">
+            <a href="https://github.com/microsoft/amplifier-bundle-digital-twin-universe" target="_blank" style="color: var(--accent); text-decoration: none; border: 1px solid var(--accent-dim); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-sm); font-size: var(--fs-body); transition: background 0.2s;">amplifier-bundle-digital-twin-universe</a>
+            <a href="https://github.com/DavidKoleczek/digital-twin-mock-slack" target="_blank" style="color: var(--accent); text-decoration: none; border: 1px solid var(--accent-dim); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-sm); font-size: var(--fs-body); transition: background 0.2s;">digital-twin-mock-slack</a>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

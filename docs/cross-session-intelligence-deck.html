@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Cross-Session Intelligence — When Your TUI Remembers Everything</title>
+<script>document.documentElement.classList.add('js')</script>
+
+<style>
+:root {
+    --accent: #FF375F;
+    --accent-dim: rgba(255, 55, 95, 0.15);
+    --accent-glow: rgba(255, 55, 95, 0.3);
+    --bg: #000;
+    --text: #fff;
+    --text-dim: rgba(255,255,255,0.5);
+    --text-secondary: rgba(255,255,255,0.7);
+    --green: #30D158;
+    --blue: #0A84FF;
+    --purple: #BF5AF2;
+    --teal: #64D2FF;
+    --orange: #FF9F0A;
+    --yellow: #FFD60A;
+
+    /* Surface hierarchy */
+    --surface-1: rgba(255,255,255,0.06);
+    --surface-2: rgba(255,255,255,0.10);
+    --surface-3: rgba(255,255,255,0.15);
+    --border-subtle: rgba(255,255,255,0.12);
+    --text-primary: #ffffff;
+    --text-readable: rgba(255,255,255,0.7);
+
+    /* Typography - all clamp() */
+    --font-headline: clamp(32px, 8vw, 72px);
+    --font-headline-sm: clamp(28px, 6vw, 56px);
+    --font-medium-headline: clamp(24px, 5vw, 48px);
+    --font-subhead: clamp(16px, 3vw, 32px);
+    --font-subhead-lg: clamp(18px, 3.5vw, 32px);
+    --font-body: clamp(14px, 2vw, 20px);
+    --font-small: clamp(13px, 1.6vw, 15px);
+    --font-caption: clamp(11px, 1.4vw, 14px);
+    --font-big-number: clamp(60px, 20vw, 180px);
+    --font-stat: clamp(36px, 8vw, 64px);
+    --padding-slide: clamp(20px, 5vw, 80px);
+    --gap-grid: clamp(16px, 3vw, 40px);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* === SLIDES === */
+.slide {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: var(--padding-slide);
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.slide.active { display: flex; }
+.slide.center { justify-content: center; }
+
+/* === LAYOUT === */
+.slide-content { max-width: 900px; }
+.slide-content.centered { text-align: center; margin-left: auto; margin-right: auto; }
+
+/* === TYPOGRAPHY === */
+.headline {
+    font-size: var(--font-headline);
+    font-weight: 700;
+    letter-spacing: clamp(-1px, -0.03em, -2px);
+    line-height: 1.08;
+    margin-bottom: 24px;
+}
+
+.headline-sm {
+    font-size: var(--font-headline-sm);
+    font-weight: 700;
+    letter-spacing: clamp(-1px, -0.03em, -2px);
+    line-height: 1.08;
+    margin-bottom: 24px;
+}
+
+.medium-headline {
+    font-size: var(--font-medium-headline);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin-bottom: 20px;
+}
+
+.subhead {
+    font-size: var(--font-subhead);
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    max-width: 800px;
+}
+
+.subhead-lg { font-size: var(--font-subhead-lg); }
+.subhead-narrow { max-width: 600px; }
+
+.body-text {
+    font-size: var(--font-body);
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 720px;
+}
+
+.body-text-centered {
+    font-size: var(--font-body);
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+.small-text {
+    font-size: var(--font-small);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.intro-text {
+    font-size: clamp(16px, 2.5vw, 24px);
+    color: var(--text-dim);
+    margin-bottom: 32px;
+}
+
+.section-label {
+    font-size: clamp(12px, 1.5vw, 14px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+
+.section-label.blue { color: var(--blue); }
+.section-label.green { color: var(--green); }
+.section-label.orange { color: var(--orange); }
+
+/* === COLORS === */
+.accent { color: var(--accent); }
+.green { color: var(--green); }
+.blue { color: var(--blue); }
+.purple { color: var(--purple); }
+.teal { color: var(--teal); }
+.orange { color: var(--orange); }
+.yellow { color: var(--yellow); }
+.dim { color: var(--text-dim); }
+.strikethrough { text-decoration: line-through; }
+
+/* === SPACING === */
+.mt-sm { margin-top: 16px; }
+.mt-md { margin-top: 32px; }
+.mt-lg { margin-top: 48px; }
+.mb-sm { margin-bottom: 16px; }
+.mb-md { margin-bottom: 32px; }
+.mb-lg { margin-bottom: 40px; }
+
+/* === CARDS === */
+.card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: clamp(12px, 2vw, 16px);
+    padding: clamp(16px, 4vw, 28px);
+}
+
+.card-accent {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-glow);
+}
+
+.card-narrow { max-width: 500px; }
+.stat-card { text-align: center; }
+
+.card-icon { font-size: clamp(28px, 4vw, 32px); margin-bottom: 12px; }
+
+.card-title {
+    font-size: clamp(16px, 2.5vw, 20px);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.card-title-sm {
+    font-size: clamp(14px, 2vw, 17px);
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.card-desc {
+    color: var(--text-readable);
+    font-size: var(--font-small);
+    line-height: 1.5;
+}
+
+.card-desc-body {
+    color: var(--text-readable);
+    font-size: clamp(13px, 1.6vw, 15px);
+    line-height: 1.6;
+}
+
+/* === STATS === */
+.big-number {
+    font-size: var(--font-big-number);
+    font-weight: 800;
+    letter-spacing: -4px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent), #FF6B8A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.big-stat-row {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+}
+
+.stat-number {
+    font-size: var(--font-stat);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    color: var(--accent);
+}
+
+.stat-label {
+    font-size: clamp(13px, 1.5vw, 16px);
+    color: var(--text-dim);
+    margin-top: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* === GRIDS === */
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: var(--gap-grid);
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    gap: var(--gap-grid);
+}
+
+.grid-4 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: var(--gap-grid);
+}
+
+.grid-narrow {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* === TAGS === */
+.tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: var(--font-caption);
+    font-weight: 500;
+    margin: 3px;
+}
+
+.tag-accent { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-glow); }
+.tag-green { background: rgba(48, 209, 88, 0.15); color: var(--green); border: 1px solid rgba(48, 209, 88, 0.3); }
+.tag-blue { background: rgba(10, 132, 255, 0.15); color: var(--blue); border: 1px solid rgba(10, 132, 255, 0.3); }
+.tag-purple { background: rgba(191, 90, 242, 0.15); color: var(--purple); border: 1px solid rgba(191, 90, 242, 0.3); }
+.tag-teal { background: rgba(100, 210, 255, 0.15); color: var(--teal); border: 1px solid rgba(100, 210, 255, 0.3); }
+
+.tag-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* === STATUS BADGE === */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: var(--font-caption);
+    font-weight: 600;
+}
+
+.status-active {
+    background: rgba(48, 209, 88, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(48, 209, 88, 0.3);
+}
+
+/* === CODE BLOCKS === */
+.code-block {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: clamp(12px, 1.8vw, 15px);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    color: var(--text-secondary);
+}
+
+.code-block-sm { font-size: clamp(11px, 1.5vw, 14px); }
+.code-block-xs { font-size: clamp(11px, 1.5vw, 13px); }
+
+.code-block .cmd { color: var(--accent); font-weight: 600; }
+.code-block .comment { color: var(--text-dim); }
+.code-block .string { color: var(--green); }
+.code-block .keyword { color: var(--purple); }
+.code-block .func { color: var(--blue); }
+.code-block .output { color: var(--text-dim); font-style: italic; }
+
+/* === MONO COMMAND DISPLAY === */
+.mono-cmd {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: clamp(14px, 2vw, 18px);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+/* === PHASE INDICATORS === */
+.phase-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(36px, 5vw, 48px);
+    height: clamp(36px, 5vw, 48px);
+    border-radius: 50%;
+    font-size: clamp(16px, 2.5vw, 22px);
+    font-weight: 800;
+    margin-right: 16px;
+    flex-shrink: 0;
+}
+
+.phase-1 { background: rgba(10, 132, 255, 0.2); color: var(--blue); border: 2px solid var(--blue); }
+.phase-2 { background: rgba(48, 209, 88, 0.2); color: var(--green); border: 2px solid var(--green); }
+.phase-3 { background: rgba(255, 159, 10, 0.2); color: var(--orange); border: 2px solid var(--orange); }
+.phase-4 { background: rgba(255, 55, 95, 0.2); color: var(--accent); border: 2px solid var(--accent); }
+
+/* === TIMELINE === */
+.timeline-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: clamp(16px, 3vw, 28px);
+}
+
+.timeline-content { flex: 1; }
+
+.timeline-title {
+    font-size: clamp(18px, 3vw, 28px);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+}
+
+.timeline-desc {
+    font-size: clamp(13px, 2vw, 17px);
+    color: var(--text-readable);
+    line-height: 1.5;
+}
+
+.connector-line { position: relative; }
+
+.connector-line::before {
+    content: '';
+    position: absolute;
+    left: calc(clamp(18px, 2.5vw, 24px));
+    top: clamp(36px, 5vw, 48px);
+    bottom: 0;
+    width: 2px;
+    background: rgba(255,255,255,0.1);
+}
+
+.connector-line .timeline-item:last-child { margin-bottom: 0; }
+
+/* === FLOW ARROWS === */
+.flow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2vw, 16px);
+    flex-wrap: wrap;
+    margin: 24px 0;
+}
+
+.flow-step {
+    padding: clamp(8px, 2vw, 14px) clamp(14px, 3vw, 24px);
+    border-radius: 12px;
+    font-size: clamp(13px, 1.8vw, 16px);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.flow-step-blue { background: rgba(10, 132, 255, 0.15); color: var(--blue); border: 1px solid rgba(10, 132, 255, 0.3); }
+.flow-step-green { background: rgba(48, 209, 88, 0.15); color: var(--green); border: 1px solid rgba(48, 209, 88, 0.3); }
+.flow-step-purple { background: rgba(191, 90, 242, 0.15); color: var(--purple); border: 1px solid rgba(191, 90, 242, 0.3); }
+.flow-step-accent { background: rgba(255, 55, 95, 0.15); color: var(--accent); border: 1px solid rgba(255, 55, 95, 0.3); }
+.flow-step-orange { background: rgba(255, 159, 10, 0.15); color: var(--orange); border: 1px solid rgba(255, 159, 10, 0.3); }
+
+.flow-connector {
+    font-size: clamp(16px, 2vw, 24px);
+    color: var(--text-dim);
+}
+
+/* === PROMPT EXAMPLES === */
+.prompt-example {
+    border-left: 3px solid var(--accent);
+    padding: clamp(12px, 2vw, 20px);
+    padding-left: clamp(16px, 3vw, 24px);
+    margin: 12px 0;
+    background: rgba(255, 55, 95, 0.05);
+    border-radius: 0 12px 12px 0;
+    font-size: clamp(15px, 2.2vw, 20px);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.prompt-example .user-prompt {
+    color: var(--accent);
+    font-weight: 600;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.prompt-response {
+    margin-top: 12px;
+    color: var(--text-readable);
+    font-size: clamp(13px, 1.8vw, 16px);
+}
+
+/* === LISTS === */
+.feature-list {
+    color: var(--text-secondary);
+    font-size: clamp(13px, 1.8vw, 16px);
+    line-height: 1.8;
+    list-style: none;
+}
+
+.before-list {
+    color: var(--text-readable);
+    font-size: clamp(13px, 1.8vw, 16px);
+    line-height: 2;
+    list-style: none;
+}
+
+.after-list {
+    color: var(--text-secondary);
+    font-size: clamp(13px, 1.8vw, 16px);
+    line-height: 2;
+    list-style: none;
+}
+
+/* === SOURCES === */
+.sources-content {
+    opacity: 0.7;
+    line-height: 1.6;
+}
+
+.sources-content p { margin-bottom: 8px; }
+.sources-content ul { margin-left: 20px; margin-bottom: 8px; }
+.sources-content li { margin-bottom: 4px; }
+
+/* === ANIMATIONS === */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 55, 95, 0.2); }
+    50% { box-shadow: 0 0 40px rgba(255, 55, 95, 0.4); }
+}
+
+.glow-card { animation: pulse-glow 3s ease-in-out infinite; }
+
+/* === NAVIGATION === */
+.nav {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+    padding: 8px 16px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+}
+
+.nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    padding: 0;
+}
+
+.nav-dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+    transform: scale(1.3);
+}
+
+.nav-dot:hover { background: rgba(255,255,255,0.5); }
+
+.slide-counter {
+    position: fixed;
+    bottom: 24px;
+    right: 32px;
+    font-size: clamp(12px, 1.5vw, 13px);
+    color: var(--text-dim);
+    z-index: 100;
+    font-variant-numeric: tabular-nums;
+}
+
+/* === MORE STORIES LINK === */
+.more-stories {
+    position: fixed;
+    top: 24px;
+    right: 32px;
+    font-size: clamp(12px, 1.5vw, 14px);
+    color: var(--text-dim);
+    text-decoration: none;
+    z-index: 100;
+    transition: color 0.2s;
+}
+
+.more-stories:hover { color: var(--accent); }
+
+/* === MOBILE === */
+@media (max-width: 640px) {
+    .nav { bottom: 12px; gap: 6px; padding: 6px 12px; }
+    .slide-counter { bottom: 12px; right: 16px; }
+    .more-stories { top: 12px; right: 16px; }
+    .headline { margin-bottom: 16px; }
+}
+
+/* === LANDSCAPE COMPACT === */
+@media (max-height: 500px) and (orientation: landscape) {
+    .slide { padding: clamp(12px, 2vw, 24px); }
+    .headline, .headline-sm { font-size: clamp(24px, 5vw, 40px); margin-bottom: 12px; }
+    .medium-headline { font-size: clamp(20px, 4vw, 32px); margin-bottom: 12px; }
+    .big-number { font-size: clamp(40px, 12vw, 80px); }
+    .stat-number { font-size: clamp(28px, 6vw, 48px); }
+    .card { padding: clamp(10px, 2vw, 16px); }
+    .mt-lg, .mb-lg { margin-top: 16px; margin-bottom: 16px; }
+}
+
+/* === REDUCED MOTION === */
+@media (prefers-reduced-motion: reduce) {
+    .slide { animation: none; }
+    .glow-card { animation: none; }
+    .nav-dot { transition: none; }
+    .more-stories { transition: none; }
+}
+
+
+        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: Title -->
+<!-- ============================================================ -->
+<div class="slide center active">
+    <div class="slide-content">
+        <div class="section-label">amplifier-tui</div>
+        <h1 class="headline mb-md">
+            Cross-Session<br>Intelligence
+        </h1>
+        <p class="subhead subhead-lg dim">
+            When Your TUI Remembers Everything
+        </p>
+        <div class="tag-row mt-lg">
+            <span class="status-badge status-active">Active</span>
+            <span class="tag tag-accent">Phase 4</span>
+            <span class="tag tag-blue">/project ask</span>
+            <span class="tag tag-green">/project search</span>
+            <span class="tag tag-purple">collective memory</span>
+        </div>
+        <p class="dim mt-lg">February 2026</p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: The Question -->
+<!-- ============================================================ -->
+<div class="slide center">
+    <div class="slide-content centered">
+        <p class="intro-text">The question that started everything:</p>
+        <h1 class="headline-sm">
+            What if your development environment <span class="accent">remembered everything</span> you've ever done?
+        </h1>
+        <p class="body-text-centered mt-md">
+            Not just the current session. Not just the last few conversations.<br>
+            <em>Everything.</em>
+        </p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 3: The Foundation — ~750+ Sessions -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label">The Starting Point</div>
+        <h2 class="medium-headline">The most-used Amplifier interface</h2>
+        <div class="big-stat-row mt-md mb-md">
+            <span class="big-number">~750+</span>
+            <span class="subhead dim">sessions from one developer alone</span>
+        </div>
+        <p class="body-text mb-md">
+            amplifier-tui evolved from a simple terminal UI to a full web-native frontend —
+            markdown rendering, Ctrl+K command palette, collapsible sidebar, structured event cards,
+            keyboard shortcuts, ARIA accessibility. ~102 web frontend tests.
+        </p>
+        <div class="grid-3 mt-sm">
+            <div class="card stat-card">
+                <div class="stat-number blue">~33,645</div>
+                <div class="stat-label">Lines of Code</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-number green">~1,334</div>
+                <div class="stat-label">Test Functions</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-number purple">~246</div>
+                <div class="stat-label">Commits</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4: The Problem -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline-sm">
+            Every session is an <span class="dim strikethrough">island</span>
+        </h2>
+        <div class="grid-2 mt-lg">
+            <div class="card">
+                <div class="card-icon">&#x1F507;</div>
+                <div class="card-title">Sessions don't talk</div>
+                <p class="card-desc">
+                    You solved the auth bug in Tuesday's session.
+                    Friday's session has no idea. You explain it again.
+                </p>
+            </div>
+            <div class="card">
+                <div class="card-icon">&#x1F50D;</div>
+                <div class="card-title">Finding past work is manual</div>
+                <p class="card-desc">
+                    "I know I did something with the caching layer last week..."
+                    Good luck scrolling through hundreds of sessions to find it.
+                </p>
+            </div>
+            <div class="card">
+                <div class="card-icon">&#x1F4CA;</div>
+                <div class="card-title">No project awareness</div>
+                <p class="card-desc">
+                    Sessions exist in a flat list. No grouping by project,
+                    no themes, no patterns across your work.
+                </p>
+            </div>
+            <div class="card">
+                <div class="card-icon">&#x1F9E0;</div>
+                <div class="card-title">Knowledge evaporates</div>
+                <p class="card-desc">
+                    Every insight, decision, and pattern discovered in a session
+                    lives only in that session's transcript.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5: The 4-Phase Plan -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label">The Solution</div>
+        <h2 class="headline-sm">
+            A 4-phase rollout
+        </h2>
+        <p class="body-text mb-lg">
+            Turn isolated sessions into a growing knowledge base — incrementally.
+        </p>
+        <div class="connector-line">
+            <div class="timeline-item">
+                <div class="phase-indicator phase-1">1</div>
+                <div class="timeline-content">
+                    <div class="timeline-title"><span class="blue">Tag Foundation</span></div>
+                    <div class="timeline-desc">Basic tag infrastructure — sessions can be tagged, filtered, and sorted</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="phase-indicator phase-2">2</div>
+                <div class="timeline-content">
+                    <div class="timeline-title"><span class="green">Auto-Tagging</span></div>
+                    <div class="timeline-desc">LLM reads every session and assigns tags automatically</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="phase-indicator phase-3">3</div>
+                <div class="timeline-content">
+                    <div class="timeline-title"><span class="orange">Project Aggregation</span></div>
+                    <div class="timeline-desc">Tags and sessions group into projects with counts and activity</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="phase-indicator phase-4">4</div>
+                <div class="timeline-content">
+                    <div class="timeline-title"><span class="accent">Cross-Session Intelligence</span></div>
+                    <div class="timeline-desc"><code class="accent">/project ask</code> and <code class="accent">/project search</code> — query across everything</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6: Phase 1 — Tag Foundation -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label blue">Phase 1 — Tag Foundation</div>
+        <h2 class="medium-headline">Give sessions a vocabulary</h2>
+        <p class="body-text mb-md">
+            A JSON-backed <code class="blue">TagStore</code> that lets sessions carry metadata.
+            Tags are normalized, filterable, and visible in the sidebar.
+        </p>
+        <div class="grid-2">
+            <div>
+                <div class="code-block"><span class="comment"># Tag sessions manually</span>
+<span class="cmd">/tag auth-refactor</span>
+<span class="cmd">/tag caching performance</span>
+
+<span class="comment"># Filter sessions by tag</span>
+<span class="cmd">#auth</span>          <span class="comment">→ finds all auth-tagged sessions</span>
+<span class="cmd">#performance</span>   <span class="comment">→ finds performance sessions</span>
+
+<span class="comment"># Sort by tag groups</span>
+<span class="cmd">/sort tag</span>       <span class="comment">→ groups sidebar by first tag</span></div>
+            </div>
+            <div>
+                <div class="card mb-sm">
+                    <div class="card-title-sm">What it stores</div>
+                    <div class="code-block code-block-sm"><span class="comment">// tags.json</span>
+{
+  <span class="string">"sess_a3f2"</span>: [<span class="string">"auth"</span>, <span class="string">"refactor"</span>],
+  <span class="string">"sess_b7c1"</span>: [<span class="string">"caching"</span>, <span class="string">"perf"</span>],
+  <span class="string">"sess_d4e9"</span>: [<span class="string">"auth"</span>, <span class="string">"testing"</span>]
+}</div>
+                </div>
+                <div class="card">
+                    <div class="card-title-sm">Key decisions</div>
+                    <p class="card-desc">
+                        Tags normalized (lowercase, stripped). <code>#prefix</code> search matches tags only.
+                        Sidebar shows up to 2 tags inline per session.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7: Phase 2 — Auto-Tagging -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label green">Phase 2 — Auto-Tagging</div>
+        <h2 class="medium-headline">The LLM tags your sessions for you</h2>
+        <p class="body-text mb-md">
+            A queue-based, non-blocking system that reads session transcripts and assigns 1–3 tags.
+            Uses existing tag vocabulary for consistency. Respects user overrides.
+        </p>
+        <div class="flow-arrow mb-md">
+            <div class="flow-step flow-step-green">Untagged Session</div>
+            <div class="flow-connector">→</div>
+            <div class="flow-step flow-step-purple">AutoTagger Queue</div>
+            <div class="flow-connector">→</div>
+            <div class="flow-step flow-step-blue">Haiku (50 tokens)</div>
+            <div class="flow-connector">→</div>
+            <div class="flow-step flow-step-accent">1–3 Tags</div>
+        </div>
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-title-sm green">Smart design choices</div>
+                <ul class="feature-list">
+                    <li>✓ Batched: max 3 sessions per 30s cycle</li>
+                    <li>✓ Uses Haiku for cost (max 50 tokens)</li>
+                    <li>✓ Prefers existing tags for consistency</li>
+                    <li>✓ Tracks user removals — never re-tags</li>
+                    <li>✓ Graceful degradation if no API key</li>
+                </ul>
+            </div>
+            <div class="code-block code-block-sm"><span class="comment"># The prompt (simplified)</span>
+<span class="string">"""
+You are tagging an Amplifier session.
+
+Existing tags (prefer these):
+{tag_vocabulary}
+
+Session project: {project_name}
+Session transcript (recent):
+{transcript_text}
+
+Generate 1-3 short tags.
+Output only the tags, one per line.
+"""</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 8: Phase 3 — Project Aggregation -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label orange">Phase 3 — Project Aggregation</div>
+        <h2 class="medium-headline">Tags become structure</h2>
+        <p class="body-text mb-md">
+            Sessions and tags aggregate into projects. The sidebar shows session counts.
+            <code class="orange">/project</code> gives you a bird's-eye view of all your work.
+        </p>
+        <div class="code-block mb-md"><span class="cmd">/project</span>
+
+<span class="output">Projects (4 active)</span>
+
+<span class="func">amplifier-core</span>         <span class="dim">42 sessions</span>
+  Tags: <span class="string">kernel</span>, <span class="string">hooks</span>, <span class="string">providers</span>, <span class="string">refactor</span>, <span class="string">testing</span>
+  Last active: 2h ago
+
+<span class="func">amplifier-tui</span>          <span class="dim">38 sessions</span>
+  Tags: <span class="string">web-frontend</span>, <span class="string">sidebar</span>, <span class="string">commands</span>, <span class="string">streaming</span>, <span class="string">tags</span>
+  Last active: now
+
+<span class="func">amplifier-foundation</span>   <span class="dim">27 sessions</span>
+  Tags: <span class="string">bundles</span>, <span class="string">agents</span>, <span class="string">recipes</span>, <span class="string">explorer</span>
+  Last active: 1d ago
+
+<span class="func">amplifier-stories</span>      <span class="dim">12 sessions</span>
+  Tags: <span class="string">decks</span>, <span class="string">presentations</span>, <span class="string">deploy</span>
+  Last active: 3h ago</div>
+        <div class="card card-narrow">
+            <div class="card-title-sm orange">ProjectAggregator</div>
+            <p class="card-desc-body">
+                Stateless service. Groups sessions by directory path. Merges tag frequencies.
+                Supports exact, case-insensitive, and partial name matching.
+                ~145 lines of code. Zero state to manage.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 9: Phase 4 — The Breakthrough -->
+<!-- ============================================================ -->
+<div class="slide center">
+    <div class="slide-content centered">
+        <div class="section-label">Phase 4</div>
+        <h1 class="headline">
+            Cross-Session<br>Intelligence
+        </h1>
+        <p class="subhead mt-md centered">
+            Sessions stop being isolated conversations.<br>
+            They become <span class="accent">collective memory</span>.
+        </p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 10: /project ask -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label">Phase 4 — /project ask</div>
+        <h2 class="medium-headline">Ask questions across all your sessions</h2>
+        <p class="body-text mb-md">
+            The AI draws on your entire project history — every session, every tag, every decision — to answer questions about your work.
+        </p>
+        <div class="mb-md">
+            <div class="prompt-example">
+                <div class="user-prompt">/project ask what's the status of the auth work?</div>
+                <div class="prompt-response">
+                    → Synthesizes from relevant sessions, references specific dates and session IDs
+                </div>
+            </div>
+            <div class="prompt-example">
+                <div class="user-prompt">/project ask what did I do this week?</div>
+                <div class="prompt-response">
+                    → Weekly rollup grouped by theme, with key decisions and outcomes
+                </div>
+            </div>
+            <div class="prompt-example">
+                <div class="user-prompt">/project ask what patterns are emerging?</div>
+                <div class="prompt-response">
+                    → Cross-session analysis of recurring themes, common approaches, evolution
+                </div>
+            </div>
+        </div>
+        <div class="card card-accent card-narrow">
+            <p class="card-desc-body">
+                Powered by <strong class="accent">Sonnet</strong> for quality synthesis.
+                5-minute answer cache. Builds context from project name, top 10 tags, last 15 sessions with dates and tags.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 11: /project search + more commands -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label">Phase 4 — Full Command Suite</div>
+        <h2 class="medium-headline">Four intelligence commands</h2>
+        <div class="grid-2 mt-md">
+            <div class="card glow-card card-accent">
+                <div class="mono-cmd accent">/project ask &lt;question&gt;</div>
+                <p class="card-desc-body">
+                    Free-form Q&amp;A across your entire project. Ask anything — status, history, decisions, patterns.
+                    LLM references specific sessions by date and ID.
+                </p>
+            </div>
+            <div class="card">
+                <div class="mono-cmd teal">/project search &lt;query&gt;</div>
+                <p class="card-desc-body">
+                    Search transcript content across all sessions. Reads last 64KB per session, returns up to 20 results sorted by recency with context snippets.
+                </p>
+            </div>
+            <div class="card">
+                <div class="mono-cmd yellow">/project attention</div>
+                <p class="card-desc-body">
+                    Identifies stalled work, frequent topics indicating issues, and sessions that ended without resolution. Prioritized and actionable.
+                </p>
+            </div>
+            <div class="card">
+                <div class="mono-cmd green">/project weekly</div>
+                <p class="card-desc-body">
+                    Weekly summary grouped by theme — not chronologically. Key outcomes, decisions, and blockers surfaced automatically.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 12: How It Works — Architecture -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">How it all connects</h2>
+        <div class="flow-arrow mb-lg">
+            <div class="flow-step flow-step-blue">TagStore</div>
+            <div class="flow-connector">+</div>
+            <div class="flow-step flow-step-green">AutoTagger</div>
+            <div class="flow-connector">→</div>
+            <div class="flow-step flow-step-orange">Aggregator</div>
+            <div class="flow-connector">→</div>
+            <div class="flow-step flow-step-accent">Intelligence</div>
+        </div>
+        <div class="grid-2">
+            <div class="code-block code-block-sm"><span class="comment"># ProjectIntelligence builds context from:</span>
+context = {
+    <span class="string">"project"</span>: project.name,
+    <span class="string">"path"</span>: project.project_path,
+    <span class="string">"sessions"</span>: project.session_count,
+    <span class="string">"top_tags"</span>: project.top_tags[:<span class="func">10</span>],
+    <span class="string">"recent"</span>: [
+        {
+            <span class="string">"date"</span>: s.date,
+            <span class="string">"id"</span>: s.short_id,
+            <span class="string">"name"</span>: s.display_name,
+            <span class="string">"tags"</span>: s.tags
+        }
+        <span class="keyword">for</span> s <span class="keyword">in</span> sessions[:<span class="func">15</span>]
+    ]
+}
+
+<span class="comment"># Then asks Sonnet to synthesize</span>
+answer = <span class="keyword">await</span> <span class="func">intelligence.ask</span>(
+    project, question,
+    max_tokens=<span class="func">500</span>
+)</div>
+            <div>
+                <div class="card mb-sm">
+                    <div class="card-title-sm">Concurrent Sessions</div>
+                    <p class="card-desc-body">
+                        <code class="purple">SessionHandle</code> + registry pattern isolates per-session state.
+                        Each handle carries its own streaming callbacks and token counters.
+                        Zero cross-talk between concurrent sessions.
+                    </p>
+                </div>
+                <div class="card">
+                    <div class="card-title-sm">Answer Caching</div>
+                    <p class="card-desc-body">
+                        5-minute cache keyed by MD5(project + question).
+                        Same question in the same project returns instantly.
+                        Different phrasing gets a fresh answer.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 13: /commit Convenience -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label">Bonus Feature</div>
+        <h2 class="medium-headline mb-md">
+            <code class="accent">/commit</code> — one command, full workflow
+        </h2>
+        <div class="grid-2">
+            <div>
+                <div class="code-block mb-sm"><span class="cmd">/commit</span>
+<span class="output">→ git add -A</span>
+<span class="output">→ generates diff summary</span>
+<span class="output">→ LLM writes conventional commit message</span>
+<span class="output">→ git commit</span>
+<span class="output">→ git push</span>
+
+<span class="cmd">/commit nopush</span>
+<span class="output">→ same flow, skips push</span>
+
+<span class="cmd">/commit info</span>
+<span class="output">→ dry run: branch, staged, modified, untracked</span></div>
+            </div>
+            <div>
+                <div class="card mb-sm">
+                    <div class="card-title-sm">Why it matters</div>
+                    <p class="card-desc-body">
+                        Runs in the active session's project directory — not the TUI launch dir.
+                        Generates conventional commit format (feat:, fix:, refactor:).
+                        Includes Amplifier co-author trailer.
+                    </p>
+                </div>
+                <div class="card card-accent">
+                    <p class="card-desc-body">
+                        Combined with <code class="accent">/project ask</code>, you can ask
+                        "what did I change today?" then commit it all in one flow.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 14: The Shift — Before/After -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label">The Shift</div>
+        <h2 class="medium-headline mb-md">From terminal to knowledge base</h2>
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-title-sm dim">Before: Pretty Terminal</div>
+                <ul class="before-list">
+                    <li>✗ Sessions are disposable</li>
+                    <li>✗ Flat session list</li>
+                    <li>✗ Manual organization</li>
+                    <li>✗ Knowledge locked in transcripts</li>
+                    <li>✗ "What did I do last week?" — ¯\_(ツ)_/¯</li>
+                </ul>
+            </div>
+            <div class="card card-accent">
+                <div class="card-title-sm accent">After: Collective Memory</div>
+                <ul class="after-list">
+                    <li>✓ Sessions are permanent records</li>
+                    <li>✓ Organized by project and tags</li>
+                    <li>✓ Auto-tagged by AI</li>
+                    <li>✓ Knowledge queryable across sessions</li>
+                    <li>✓ "What did I do last week?" — <code class="accent">/project weekly</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 15: By the Numbers -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label">Velocity</div>
+        <h2 class="medium-headline mb-md">Built in approximately one day</h2>
+        <p class="body-text mb-lg">
+            All four phases reportedly shipped on February 12, 2026 — in ~26 minutes of consecutive commits.
+        </p>
+        <div class="grid-4">
+            <div class="card stat-card">
+                <div class="stat-number accent">4</div>
+                <div class="stat-label">Phases shipped</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-number green">~1,393</div>
+                <div class="stat-label">Lines added</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-number blue">~6</div>
+                <div class="stat-label">New modules</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-number purple">~26</div>
+                <div class="stat-label">Minutes, ~4 commits</div>
+            </div>
+        </div>
+        <div class="mt-md">
+            <div class="code-block code-block-xs"><span class="dim">10:11</span>  <span class="func">47f3cde</span>  feat: tag foundation — Phase 1
+<span class="dim">10:23</span>  <span class="func">425b58e</span>  feat: auto-tagging system — Phase 2        <span class="comment">+524 lines</span>
+<span class="dim">10:32</span>  <span class="func">17bc18c</span>  feat: project aggregation — Phase 3        <span class="comment">+246 lines</span>
+<span class="dim">10:37</span>  <span class="func">2957e4a</span>  feat: cross-session intelligence — Phase 4  <span class="comment">+623 lines</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 16: Sources & Methodology -->
+<!-- ============================================================ -->
+<div class="slide">
+    <div class="slide-content">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Research Methodology</h2>
+        <div class="small-text sources-content">
+            <p><strong>Data as of:</strong> February 20, 2026</p>
+            <p><strong>Feature status:</strong> Active</p>
+            <p><strong>Research performed:</strong></p>
+            <ul>
+                <li>Bundle analysis: session-discovery bundle in ramparte/amplifier-toolkit</li>
+                <li>Bundle analysis: dev-memory collection in ramparte/amplifier-collection-dev-memory</li>
+                <li>Feature inventory from bundle.md manifests and README files</li>
+                <li>Command documentation from session-discovery-awareness.md</li>
+            </ul>
+            <p><strong>Gaps:</strong> LOC counts, test counts, commit counts, and session counts from existing deck could not be independently verified in this research pass. Velocity numbers (~26 minutes, ~4 commits) not independently confirmed.</p>
+            <p><strong>Repository:</strong> ramparte/amplifier-toolkit (session-discovery), ramparte/amplifier-collection-dev-memory (dev-memory)</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 17: CTA -->
+<!-- ============================================================ -->
+<div class="slide center">
+    <div class="slide-content centered">
+        <div class="section-label">Try It</div>
+        <h1 class="headline-sm mb-md">
+            Your sessions are already<br>a <span class="accent">knowledge base</span>.
+        </h1>
+        <p class="subhead subhead-narrow centered mb-lg">
+            You just need to ask.
+        </p>
+        <div class="grid-3 grid-narrow">
+            <div class="card stat-card">
+                <div class="mono-cmd accent">/project ask</div>
+                <p class="dim">Query your history</p>
+            </div>
+            <div class="card stat-card">
+                <div class="mono-cmd teal">/project search</div>
+                <p class="dim">Find past sessions</p>
+            </div>
+            <div class="card stat-card">
+                <div class="mono-cmd green">/project weekly</div>
+                <p class="dim">Your week, summarized</p>
+            </div>
+        </div>
+        <p class="dim mt-lg">
+            amplifier-tui — <span class="accent">~750+ sessions</span> and counting
+        </p>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav" id="nav"></div>
+<div class="slide-counter" id="counter"></div>
+<a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let currentSlide = 0;
+
+function showSlide(n) {
+    slides[currentSlide].classList.remove('active');
+    currentSlide = (n + slides.length) % slides.length;
+    slides[currentSlide].classList.add('active');
+    updateNav();
+}
+
+function updateNav() {
+    const nav = document.getElementById('nav');
+    const counter = document.getElementById('counter');
+    nav.innerHTML = '';
+    slides.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+        dot.onclick = () => showSlide(i);
+        nav.appendChild(dot);
+    });
+    counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
+    if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
+});
+
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.nav')) return;
+    if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+    else showSlide(currentSlide - 1);
+});
+
+let touchStartX = 0;
+let touchEndX = 0;
+const SWIPE_THRESHOLD = 50;
+
+document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    const diff = touchStartX - touchEndX;
+    if (Math.abs(diff) > SWIPE_THRESHOLD) {
+        if (diff > 0) showSlide(currentSlide + 1);
+        else showSlide(currentSlide - 1);
+    }
+}, { passive: true });
+
+updateNav();
+</script>
+</body>
+</html>

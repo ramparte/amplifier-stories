@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Amplifier Builds Amplifier — The GitHub Copilot Provider Story</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0a0a0a;
+            color: #f0f0f0;
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        .center {
+            text-align: center;
+            justify-content: center;
+        }
+
+        .section-label,
+        .headline,
+        .medium-headline {
+            text-align: center;
+        }
+
+        .cards,
+        .comparison,
+        .highlight-box,
+        .sources-content {
+            text-align: left;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+                padding-top: 40px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        .section-label {
+            font-size: clamp(13px, 1.5vw, 16px);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: #4ecdc4;
+            margin-bottom: clamp(12px, 2vw, 24px);
+            font-weight: 600;
+        }
+
+        .headline {
+            font-size: clamp(28px, 6vw, 72px);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: clamp(16px, 3vw, 32px);
+            background: linear-gradient(135deg, #fff 0%, #4ecdc4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .medium-headline {
+            font-size: clamp(22px, 4vw, 48px);
+            font-weight: 600;
+            line-height: 1.2;
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+
+        .subhead {
+            font-size: clamp(16px, 2.5vw, 28px);
+            color: rgba(255,255,255,0.7);
+            max-width: 800px;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        .small-text {
+            font-size: clamp(15px, 1.8vw, 18px);
+            color: rgba(255,255,255,0.5);
+            margin-top: clamp(16px, 3vw, 32px);
+            text-align: center;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: clamp(16px, 2vw, 24px);
+            margin-top: clamp(24px, 4vw, 48px);
+            width: 100%;
+            max-width: 1200px;
+            align-items: stretch;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: clamp(20px, 3vw, 32px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-title {
+            font-size: clamp(17px, 2vw, 22px);
+            font-weight: 600;
+            color: #4ecdc4;
+            margin-bottom: clamp(8px, 1.5vw, 12px);
+        }
+
+        .card-text {
+            font-size: clamp(16px, 1.8vw, 20px);
+            color: rgba(255,255,255,0.7);
+            line-height: 1.6;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(78, 205, 196, 0.15) 0%, rgba(78, 205, 196, 0.05) 100%);
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            border-radius: 12px;
+            padding: clamp(20px, 3vw, 32px);
+            margin-top: clamp(24px, 4vw, 40px);
+            max-width: 900px;
+        }
+
+        .highlight-text {
+            font-size: clamp(18px, 2.2vw, 24px);
+            line-height: 1.6;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: flex-start;
+            gap: clamp(16px, 2vw, 24px);
+            margin-bottom: clamp(16px, 2vw, 24px);
+        }
+
+        .timeline-marker {
+            min-width: clamp(80px, 10vw, 100px);
+            font-size: clamp(16px, 1.8vw, 20px);
+            color: #4ecdc4;
+            font-weight: 600;
+        }
+
+        .timeline-content {
+            font-size: clamp(17px, 2vw, 22px);
+            color: rgba(255,255,255,0.8);
+            line-height: 1.5;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(150px, 45%), 1fr));
+            gap: clamp(16px, 3vw, 32px);
+            margin-top: clamp(24px, 4vw, 48px);
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: clamp(32px, 6vw, 64px);
+            font-weight: 700;
+            color: #4ecdc4;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: clamp(15px, 1.8vw, 18px);
+            color: rgba(255,255,255,0.6);
+            margin-top: clamp(8px, 1vw, 12px);
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: clamp(24px, 4vw, 48px);
+            margin-top: clamp(24px, 4vw, 48px);
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .comparison-box {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: clamp(20px, 3vw, 32px);
+        }
+
+        .comparison-title {
+            font-size: clamp(17px, 2vw, 22px);
+            font-weight: 600;
+            margin-bottom: clamp(12px, 2vw, 20px);
+        }
+
+        .comparison-title.before { color: #ff6b6b; }
+        .comparison-title.after { color: #4ecdc4; }
+
+        .comparison-text {
+            font-size: clamp(16px, 1.8vw, 20px);
+            color: rgba(255,255,255,0.7);
+            line-height: 1.6;
+        }
+
+        .meta-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(16px, 3vw, 32px);
+            flex-wrap: wrap;
+            margin: clamp(32px, 5vw, 64px) 0;
+        }
+
+        .meta-box {
+            background: rgba(78, 205, 196, 0.1);
+            border: 2px solid #4ecdc4;
+            border-radius: 12px;
+            padding: clamp(16px, 2.5vw, 24px) clamp(24px, 4vw, 40px);
+            font-size: clamp(17px, 2.2vw, 24px);
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .meta-arrow {
+            font-size: clamp(24px, 4vw, 40px);
+            color: #4ecdc4;
+        }
+
+        .quote-block {
+            border-left: 3px solid #4ecdc4;
+            padding-left: clamp(16px, 2vw, 24px);
+            margin: clamp(24px, 4vw, 40px) 0;
+            max-width: 800px;
+            text-align: left;
+        }
+
+        .quote-text {
+            font-size: clamp(18px, 2.2vw, 24px);
+            font-style: italic;
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }
+
+        .unlock-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: clamp(16px, 2vw, 24px);
+            margin-top: clamp(24px, 4vw, 48px);
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .unlock-item {
+            background: rgba(78, 205, 196, 0.1);
+            border-radius: 12px;
+            padding: clamp(20px, 3vw, 28px);
+            text-align: center;
+        }
+
+        .unlock-number {
+            font-size: clamp(36px, 5.5vw, 60px);
+            font-weight: 700;
+            color: #4ecdc4;
+        }
+
+        .unlock-label {
+            font-size: clamp(16px, 1.8vw, 20px);
+            color: rgba(255,255,255,0.7);
+            margin-top: 8px;
+        }
+
+        .credit-section {
+            margin-top: clamp(32px, 5vw, 64px);
+            text-align: center;
+        }
+
+        .credit-title {
+            font-size: clamp(16px, 2vw, 20px);
+            color: #4ecdc4;
+            margin-bottom: clamp(12px, 2vw, 20px);
+        }
+
+        .credit-name {
+            font-size: clamp(22px, 3vw, 36px);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .credit-role {
+            font-size: clamp(16px, 1.8vw, 20px);
+            color: rgba(255,255,255,0.6);
+        }
+
+        .nav {
+            position: fixed;
+            bottom: clamp(20px, 4vw, 40px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: clamp(8px, 1.2vw, 12px);
+            height: clamp(8px, 1.2vw, 12px);
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+        }
+
+        .nav-dot:hover {
+            background: rgba(255,255,255,0.4);
+            transform: scale(1.2);
+        }
+
+        .nav-dot.active {
+            background: #4ecdc4;
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(20px, 4vw, 40px);
+            right: clamp(20px, 4vw, 40px);
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: rgba(255,255,255,0.4);
+            z-index: 100;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+
+        .more-stories:hover {
+            color: rgba(255,255,255,0.5);
+        }
+
+        .sources-content {
+            font-size: clamp(12px, 1.4vw, 15px);
+            color: rgba(255,255,255,0.7);
+            line-height: 1.8;
+            max-width: 900px;
+        }
+
+        .sources-content strong { color: rgba(255,255,255,0.9); }
+        .sources-content code {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.9em;
+        }
+        .sources-content ul { margin-left: 20px; margin-top: 8px; }
+        .sources-content li { margin-bottom: 6px; }
+        .sources-content p { margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <!-- Slide 1: Title -->
+    <div class="slide active center">
+        <div class="section-label">An Open Source Contribution</div>
+        <h1 class="headline">Amplifier Builds Amplifier</h1>
+        <p class="subhead">The GitHub Copilot Provider Story</p>
+    </div>
+
+    <!-- Slide 2: The Setup -->
+    <div class="slide">
+        <div class="section-label">The Constraint</div>
+        <h2 class="medium-headline">Frontier Models. Without the Overhead.</h2>
+        <div class="cards">
+            <div class="card">
+                <div class="card-title">Model Sprawl</div>
+                <div class="card-text">Anthropic, OpenAI, and more. Serious experimentation means access to all of them.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Infrastructure Tax</div>
+                <div class="card-text">Spinning up LLM infrastructure with auth layers and endpoints takes time and expertise.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Enterprise Approval Gap</div>
+                <div class="card-text">Using models inside a company still requires compliance and security sign-off.</div>
+            </div>
+        </div>
+        <div class="highlight-box">
+            <div class="highlight-text">Every one of these constraints has the same answer: <strong>GitHub Copilot</strong> — frontier models from multiple providers, no additional setup required, no LLM infrastructure to own.</div>
+        </div>
+    </div>
+
+    <!-- Slide 3: The Question -->
+    <div class="slide center">
+        <div class="section-label">The Gap</div>
+        <h2 class="medium-headline">Why not use GitHub Copilot in Amplifier?</h2>
+        <p class="subhead" style="margin-top: 32px;">That question didn't have an answer yet.<br>Because the GitHub Copilot provider for Amplifier didn't exist.</p>
+    </div>
+
+    <!-- Slide 4: Week 1 -->
+    <div class="slide">
+        <div class="section-label">Discovery</div>
+        <h2 class="medium-headline">Feb 10, 2026 — V0 Ships</h2>
+        <div class="cards" style="max-width: 1000px;">
+            <div class="card">
+                <div class="card-title">Built in One Week</div>
+                <div class="card-text">From zero to working provider. Streaming support, SDK driver, converters, model discovery, test suite. All delivered.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Official Launch</div>
+                <div class="card-text">The Amplifier team saw what it could unlock for the ecosystem and adopted it as a native Amplifier provider.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: V1 Era -->
+    <div class="slide">
+        <div class="section-label">Momentum</div>
+        <h2 class="medium-headline">V1: Releases Shipping, SDK Breaking</h2>
+        <div style="margin-top: clamp(24px, 4vw, 40px); max-width: 800px; text-align: left;">
+            <div class="timeline-item">
+                <div class="timeline-marker">v1.0.1</div>
+                <div class="timeline-content">Feb 17 — 18 models, 692 tests, 95% coverage</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker">v1.0.2</div>
+                <div class="timeline-content">Feb 28 — SDK 0.1.28 update</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker">v1.0.3</div>
+                <div class="timeline-content">Mar 7 — SDK 0.1.30 update</div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker">v1.0.4</div>
+                <div class="timeline-content">Mar 8 — SDK 0.1.32 update</div>
+            </div>
+        </div>
+        <div class="highlight-box">
+            <div class="highlight-text">Keeping pace with a fast-moving Copilot SDK — same-day and same-week absorption of every breaking change. The codebase earned each update.</div>
+        </div>
+    </div>
+
+    <!-- Slide 6: The Wall -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="medium-headline">Hotfixes on Hotfixes</h2>
+        <div class="cards">
+            <div class="card">
+                <div class="card-title">SDK Imports Scattered</div>
+                <div class="card-text">Copilot SDK imports landed in the middle of provider logic — no clean boundary.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Tests Tightly Coupled</div>
+                <div class="card-text">Tests were reliable but coupled to implementation details. Any SDK change rippled through.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">No Formal Specification</div>
+                <div class="card-text">Only code comments and tribal knowledge. No contract-driven development.</div>
+            </div>
+        </div>
+        <div class="highlight-box">
+            <div class="highlight-text">The work to make any small change was growing. Something had to change.</div>
+        </div>
+    </div>
+
+    <!-- Slide 7: The Decision -->
+    <div class="slide">
+        <div class="section-label">The Pivot</div>
+        <h2 class="medium-headline">Four Goals for V2</h2>
+        <div class="cards">
+            <div class="card">
+                <div class="card-title">1. Match the Provider Contract</div>
+                <div class="card-text">Indistinguishable from any other first-class Amplifier provider. 100% contract compliance.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">2. Isolate the SDK Layer</div>
+                <div class="card-text">All Copilot SDK imports in a single quarantine module. When SDK breaks, only that module changes.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">3. Solid Tests, No Shortcuts</div>
+                <div class="card-text">No MagicMocks. Actual runtime types. TDD discipline applied consistently.</div>
+            </div>
+            <div class="card">
+                <div class="card-title">4. Contract-Driven Development</div>
+                <div class="card-text">Behavioural specs in markdown. Readable by humans and AI assistants alike.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: The Meta-Moment -->
+    <div class="slide center">
+        <div class="section-label">The Twist</div>
+        <h2 class="medium-headline">What if I used Amplifier<br>to build the Amplifier provider?</h2>
+        <div class="meta-diagram">
+            <div class="meta-box">amplifier-expert</div>
+            <div class="meta-arrow">·</div>
+            <div class="meta-box">core-expert</div>
+            <div class="meta-arrow">·</div>
+            <div class="meta-box">python-dev</div>
+            <div class="meta-arrow">·</div>
+            <div class="meta-box">superpowers</div>
+            <div class="meta-arrow">·</div>
+            <div class="meta-box">git-ops</div>
+            <div class="meta-arrow">·</div>
+            <div class="meta-box">dot-graph</div>
+        </div>
+        <div class="quote-block">
+            <div class="quote-text">Amplifier's own agent ecosystem did the heavy lifting — architecture advice, code generation, quality review, and git operations — all orchestrated through Amplifier itself.</div>
+        </div>
+        <div class="subhead" style="margin-top: 24px;">The provider was built by the same ecosystem it now powers.</div>
+    </div>
+
+    <!-- Slide 9: The Result -->
+    <div class="slide center">
+        <div class="section-label">V2.0.0</div>
+        <h2 class="medium-headline">175 Files. 5 Days. 100% AI-Assisted.</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-number">175</div>
+                <div class="stat-label">Files Changed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">+36K</div>
+                <div class="stat-label">Lines Added</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">−31K</div>
+                <div class="stat-label">Lines Deleted</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">858</div>
+                <div class="stat-label">Tests Passing</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 10: Proof It Worked -->
+    <div class="slide">
+        <div class="section-label">Validation</div>
+        <h2 class="medium-headline">SDK 0.2.x Breaks. Architecture Holds.</h2>
+        <div class="comparison">
+            <div class="comparison-box">
+                <div class="comparison-title before">V1: Entangled</div>
+                <div class="comparison-text">SDK breaking change → touches provider logic, tests, configuration. Everything ripples.</div>
+            </div>
+            <div class="comparison-box">
+                <div class="comparison-title after">V2: Isolated</div>
+                <div class="comparison-text">SDK breaking change → contained in sdk_adapter/ layer only. Provider-Amplifier integration untouched.</div>
+            </div>
+        </div>
+        <div class="highlight-box" style="margin-top: 40px; max-width: 1100px;">
+            <div class="highlight-text">Copilot SDK 0.2.1 relocated <code>PermissionRequestResult</code> and <code>SubprocessConfig</code>.<br>Isolated to one module. The architecture absorbed the change without a ripple.</div>
+        </div>
+        <div class="small-text">The re-architecture goals were validated in production.</div>
+    </div>
+
+    <!-- Slide 11: Quality Bar -->
+    <div class="slide center">
+        <div class="section-label">The State Today</div>
+        <h2 class="medium-headline">1,218 Tests · 98% Coverage</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-number">64</div>
+                <div class="stat-label">Days Active</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">6</div>
+                <div class="stat-label">SDK Breaks Absorbed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">8+</div>
+                <div class="stat-label">Releases Shipped</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Lint/Type Errors</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 12: The Opportunity -->
+    <div class="slide center">
+        <div class="section-label">The Unlock</div>
+        <h2 class="medium-headline">15+ Frontier Models. Zero API Cost.</h2>
+        <div class="unlock-grid">
+            <div class="unlock-item">
+                <div class="unlock-number">15+</div>
+                <div class="unlock-label">Frontier Models</div>
+            </div>
+            <div class="unlock-item">
+                <div class="unlock-number">$0</div>
+                <div class="unlock-label">Additional API Cost</div>
+            </div>
+            <div class="unlock-item">
+                <div class="unlock-number">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#4ecdc4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1em;height:1em;vertical-align:middle;">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                    </svg>
+                </div>
+                <div class="unlock-label">Enterprise Compliant</div>
+            </div>
+        </div>
+        <p class="subhead" style="margin-top: 32px;">Everyone with a GitHub Copilot subscription<br>can now use Amplifier at zero additional cost.</p>
+    </div>
+
+    <!-- Slide 13: Thank You -->
+    <div class="slide center">
+        <div class="section-label">Thank You</div>
+        <h2 class="headline">Amplifier Builds Amplifier</h2>
+        <p class="subhead" style="margin-top: 24px;">From zero to provider — built with the tools it now powers.</p>
+        <div class="credit-section">
+            <div class="credit-title">Built on Amplifier. Powered by GitHub Copilot. Contributed back to the ecosystem.</div>
+        </div>
+        <div class="small-text" style="margin-top: 48px;"><a href="https://github.com/microsoft/amplifier-module-provider-github-copilot" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.2);">microsoft/amplifier-module-provider-github-copilot</a></div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = () => showSlide(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
+            if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.target.closest('.more-stories')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

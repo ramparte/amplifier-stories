@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Designing the Researcher Specialist</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #30D158;
+    --accent-dim: rgba(48, 209, 88, 0.15);
+    --accent-mid: rgba(48, 209, 88, 0.35);
+    --bg: #000;
+    --surface-1: rgba(255,255,255,0.04);
+    --surface-2: rgba(255,255,255,0.08);
+    --surface-3: rgba(255,255,255,0.12);
+    --text-primary: rgba(255,255,255,0.95);
+    --text-secondary: rgba(255,255,255,0.65);
+    --text-tertiary: rgba(255,255,255,0.40);
+    --radius: 14px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+    overflow: hidden;
+  }
+
+  .deck {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: clamp(40px, 6vw, 80px) clamp(40px, 8vw, 120px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* ── Nav ── */
+  .nav-dots {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+  }
+
+  .dot.active {
+    background: var(--accent);
+    transform: scale(1.4);
+  }
+
+  .counter {
+    position: fixed;
+    bottom: 30px;
+    right: 36px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    z-index: 100;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Shared type ── */
+  .eyebrow {
+    font-size: clamp(11px, 1.1vw, 13px);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+    text-align: center;
+  }
+
+  h2 {
+    font-size: clamp(28px, 3.5vw, 46px);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    margin-bottom: 40px;
+    text-align: center;
+  }
+
+  .subtitle {
+    font-size: clamp(15px, 1.6vw, 20px);
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: 600px;
+    line-height: 1.5;
+    margin-top: 20px;
+  }
+
+  .meta {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    margin-top: 36px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Status badge ── */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 214, 10, 0.12);
+    border: 1px solid rgba(255, 214, 10, 0.3);
+    color: #FFD60A;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 20px;
+    margin-top: 32px;
+  }
+
+  .pulse {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #FFD60A;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* ── Card grid ── */
+  .cards {
+    display: grid;
+    gap: 16px;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .cards.cols-2 { grid-template-columns: 1fr 1fr; }
+  .cards.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+  }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+  }
+
+  .card-title {
+    font-size: clamp(14px, 1.4vw, 17px);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .card-body {
+    font-size: clamp(12px, 1.1vw, 14px);
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* ── Tier table (slide 2) ── */
+  .tier-list {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .tier-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 12px;
+    background: var(--surface-1);
+    border: 1px solid var(--surface-2);
+    border-radius: 10px;
+    padding: 14px 20px;
+    align-items: center;
+  }
+
+  .tier-row.header {
+    background: transparent;
+    border-color: transparent;
+    padding-bottom: 4px;
+  }
+
+  .tier-source {
+    font-size: clamp(12px, 1.2vw, 14px);
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .tier-badge {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-align: center;
+    width: fit-content;
+  }
+
+  .tier-primary   { background: rgba(48,209,88,0.15);  color: #30D158; }
+  .tier-secondary { background: rgba(100,210,255,0.12); color: #64D2FF; }
+  .tier-tertiary  { background: rgba(255,159,10,0.12);  color: #FF9F0A; }
+  .tier-incomplete{ background: rgba(255,107,107,0.12); color: #FF6B6B; }
+
+  .conf-high { color: var(--accent); font-size: 13px; font-weight: 600; }
+  .conf-low  { color: #FF9F0A; font-size: 13px; font-weight: 600; }
+  .conf-na   { color: var(--text-tertiary); font-size: 13px; }
+
+  .col-header {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  /* ── Grade (slide 3) ── */
+  .grade-wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 60px;
+    width: 100%;
+    max-width: 860px;
+  }
+
+  .grade-number {
+    font-size: clamp(64px, 10vw, 120px);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    background: linear-gradient(135deg, var(--accent), #64D2FF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    flex-shrink: 0;
+    line-height: 1;
+    padding-top: 4px;
+  }
+
+  .grade-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    flex: 1;
+  }
+
+  /* ── Principles (slide 4) ── */
+  .principle-list {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .principle-row {
+    display: grid;
+    grid-template-columns: 220px 40px 1fr;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface-1);
+    border: 1px solid var(--surface-2);
+    border-radius: 10px;
+    padding: 18px 24px;
+  }
+
+  .principle-from {
+    font-size: clamp(12px, 1.2vw, 14px);
+    color: var(--accent);
+    font-weight: 600;
+    font-style: italic;
+  }
+
+  .arrow {
+    font-size: 18px;
+    color: var(--text-tertiary);
+    text-align: center;
+  }
+
+  .principle-to {
+    font-size: clamp(12px, 1.2vw, 14px);
+    color: var(--text-primary);
+    line-height: 1.4;
+  }
+
+  .principle-to code {
+    background: var(--surface-3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    color: #64D2FF;
+  }
+
+  /* ── Quality gate (slide 5) ── */
+  .gate-steps {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    max-width: 860px;
+    position: relative;
+  }
+
+  .gate-step {
+    flex: 1;
+    background: var(--surface-1);
+    border: 1px solid var(--surface-2);
+    border-radius: var(--radius);
+    padding: 22px 20px;
+    text-align: center;
+    position: relative;
+  }
+
+  .gate-step + .gate-step {
+    margin-left: 10px;
+  }
+
+  .gate-step.highlight {
+    background: var(--accent-dim);
+    border-color: var(--accent-mid);
+  }
+
+  .gate-icon {
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+
+  .gate-title {
+    font-size: clamp(12px, 1.2vw, 14px);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .gate-desc {
+    font-size: clamp(10px, 1vw, 12px);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .gate-note {
+    margin-top: 28px;
+    font-size: clamp(13px, 1.3vw, 15px);
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: 700px;
+    line-height: 1.6;
+  }
+
+  .gate-note em {
+    color: var(--text-primary);
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  /* ── Artifacts (slide 6) ── */
+  .artifact-list {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .artifact-row {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 20px;
+    align-items: flex-start;
+    background: var(--surface-1);
+    border: 1px solid var(--surface-2);
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+
+  .artifact-icon {
+    font-size: 28px;
+    margin-top: 2px;
+  }
+
+  .artifact-title {
+    font-size: clamp(13px, 1.3vw, 16px);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .artifact-detail {
+    font-size: clamp(11px, 1.1vw, 13px);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .artifact-detail code {
+    background: var(--surface-3);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    color: #64D2FF;
+  }
+
+  /* ── The Bet (slide 7) ── */
+  .bet-quote {
+    font-size: clamp(22px, 3vw, 38px);
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    text-align: center;
+    max-width: 740px;
+    color: var(--text-primary);
+  }
+
+  .bet-quote em {
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  .bet-sub {
+    margin-top: 28px;
+    font-size: clamp(13px, 1.3vw, 16px);
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: 560px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- ─── Slide 1: Title ─── -->
+  <div class="slide active" data-index="0">
+    <div class="eyebrow">Amplifier · February 2026</div>
+    <h1>Designing the<br>Researcher Specialist</h1>
+    <p class="subtitle">Using Amplifier's design principles to build a research agent that prioritizes trust over speed</p>
+    <div class="meta">Built with Amplifier · February 2026</div>
+    <div class="status-badge"><span class="pulse"></span>In Development</div>
+  </div>
+
+  <!-- ─── Slide 2: The Starting Point ─── -->
+  <div class="slide" data-index="1">
+    <div class="eyebrow">The Starting Point</div>
+    <h2>A research query surfaced a design question</h2>
+    <div class="tier-list">
+      <div class="tier-row header">
+        <span class="col-header">Source</span>
+        <span class="col-header">Tier</span>
+        <span class="col-header">Confidence</span>
+      </div>
+      <div class="tier-row">
+        <span class="tier-source">Sam Altman's blog posts</span>
+        <span class="tier-badge tier-primary">Primary</span>
+        <span class="conf-high">High</span>
+      </div>
+      <div class="tier-row">
+        <span class="tier-source">Senate hearing transcript</span>
+        <span class="tier-badge tier-primary">Primary</span>
+        <span class="conf-high">High</span>
+      </div>
+      <div class="tier-row">
+        <span class="tier-source">CNBC / TechCrunch reporting</span>
+        <span class="tier-badge tier-secondary">Secondary</span>
+        <span class="conf-high">High</span>
+      </div>
+      <div class="tier-row">
+        <span class="tier-source">Rumored GPT-5.3 "Garlic" — one speculative blog</span>
+        <span class="tier-badge tier-tertiary">Tertiary</span>
+        <span class="conf-low">Low</span>
+      </div>
+      <div class="tier-row">
+        <span class="tier-source">Forbes interview (paywalled at 204KB of 1.2MB)</span>
+        <span class="tier-badge tier-incomplete">Incomplete</span>
+        <span class="conf-na">— flagged, not skipped</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Slide 3: Competitive Grade ─── -->
+  <div class="slide" data-index="2">
+    <div class="eyebrow">Honest Competitive Grade</div>
+    <div class="grade-wrap">
+      <div class="grade-number">B+/A−</div>
+      <div class="grade-cols">
+        <div class="card">
+          <div class="card-label">Where we win</div>
+          <div class="card-body">Per-claim source tiering with confidence levels. Evidence gaps disclosed explicitly — the Forbes paywall was named, not skipped. Structured output designed for downstream agents.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Where competition wins</div>
+          <div class="card-body">ChatGPT Deep Research has broader coverage. Grok has native X/Twitter access. Neither of those gaps is immediately closeable.</div>
+        </div>
+        <div class="card" style="grid-column: 1 / -1; background: var(--accent-dim); border-color: var(--accent-mid);">
+          <div class="card-label" style="color: var(--accent);">The bet</div>
+          <div class="card-body" style="color: var(--text-primary);">A rigorous trustworthiness framework is a more defensible moat than raw coverage volume. Speed is not the goal.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Slide 4: Principles → Decisions ─── -->
+  <div class="slide" data-index="3">
+    <div class="eyebrow">Design Decisions</div>
+    <h2>Amplifier principles, applied directly</h2>
+    <div class="principle-list">
+      <div class="principle-row">
+        <span class="principle-from">"Center stays still"</span>
+        <span class="arrow">→</span>
+        <span class="principle-to">Stable typed output schema: <code>ResearchOutput</code>, <code>Finding</code>, <code>EvidenceGap</code>. Callers never break on schema drift.</span>
+      </div>
+      <div class="principle-row">
+        <span class="principle-from">"Mechanism not policy"</span>
+        <span class="arrow">→</span>
+        <span class="principle-to"><code>quality_threshold</code> is configurable. <em style="color: var(--text-primary); font-style: normal;">High</em> is the default — not speed. The caller decides; the tool doesn't assume.</span>
+      </div>
+      <div class="principle-row">
+        <span class="principle-from">"Bricks and studs"</span>
+        <span class="arrow">→</span>
+        <span class="principle-to">7 composable stages: <code>Planner → Source Discoverer → Fetcher → Extractor → Corroborator → Quality Gate → Synthesizer</code></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Slide 5: The Quality Gate ─── -->
+  <div class="slide" data-index="4">
+    <div class="eyebrow">The Differentiator</div>
+    <h2>The Quality Gate</h2>
+    <div class="gate-steps">
+      <div class="gate-step">
+        <div class="gate-icon">🔍</div>
+        <div class="gate-title">Low confidence claim?</div>
+        <div class="gate-desc">Triggers another research pass before output is allowed</div>
+      </div>
+      <div class="gate-step">
+        <div class="gate-icon">🔄</div>
+        <div class="gate-title">Closeable gap?</div>
+        <div class="gate-desc">Gets one additional attempt — not silently accepted</div>
+      </div>
+      <div class="gate-step highlight">
+        <div class="gate-icon">🚫</div>
+        <div class="gate-title">Fails loudly</div>
+        <div class="gate-desc">Never silently returns below-threshold results</div>
+      </div>
+      <div class="gate-step">
+        <div class="gate-icon">✓</div>
+        <div class="gate-title">Passes threshold?</div>
+        <div class="gate-desc">Only then is output returned to the caller</div>
+      </div>
+    </div>
+    <p class="gate-note">
+      This is what makes it <em>slower than Perplexity</em>. That's not a bug — it's the design. The researcher cannot return output until it passes its own gate.
+    </p>
+  </div>
+
+  <!-- ─── Slide 6: Three Artifacts ─── -->
+  <div class="slide" data-index="5">
+    <div class="eyebrow">One Session</div>
+    <h2>Three artifacts shipped</h2>
+    <div class="artifact-list">
+      <div class="artifact-row">
+        <div class="artifact-icon">📄</div>
+        <div>
+          <div class="artifact-title">Design Document</div>
+          <div class="artifact-detail"><code>2026-02-26-researcher-specialist-design.md</code> — architecture, quality gate spec, output schema, competitive analysis</div>
+        </div>
+      </div>
+      <div class="artifact-row">
+        <div class="artifact-icon">📦</div>
+        <div>
+          <div class="artifact-title">New Repository</div>
+          <div class="artifact-detail"><code>cpark4x/specialists</code> — stable output schema, researcher agent bundle, interface contract. Separate repo by design: specialists are composable, not embedded.</div>
+        </div>
+      </div>
+      <div class="artifact-row">
+        <div class="artifact-icon">📋</div>
+        <div>
+          <div class="artifact-title">Implementation Plan</div>
+          <div class="artifact-detail">8 tasks to wire the researcher as a live Amplifier agent — from bundle wiring to quality gate integration to schema validation</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Slide 7: The Bet ─── -->
+  <div class="slide" data-index="6">
+    <div class="eyebrow">The Bet</div>
+    <p class="bet-quote">"It won't be the fastest research agent.<br>It will be the <em>one you trust most</em>."</p>
+    <p class="bet-sub">Every claim sourced. Every gap named. Every threshold enforced before output reaches you.</p>
+    <div class="status-badge" style="margin-top: 40px;"><span class="pulse"></span>In Development · cpark4x/specialists</div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- Nav dots -->
+<div class="nav-dots" id="navDots"></div>
+<div class="counter" id="counter">1 / 7</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dotsEl  = document.getElementById('navDots');
+  const counterEl = document.getElementById('counter');
+  let current = 0;
+  const total = slides.length;
+
+  // Build dots
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(d);
+  });
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(total - 1, n));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    counterEl.textContent = `${current + 1} / ${total}`;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') goTo(current + 1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     goTo(current - 1);
+  });
+
+  document.addEventListener('click', e => {
+    const x = e.clientX / window.innerWidth;
+    if (x > 0.6) goTo(current + 1);
+    else if (x < 0.4) goTo(current - 1);
+  });
+</script>
+</body>
+</html>

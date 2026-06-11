@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Amplifier Session Viewer — Case Study</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-dim: rgba(255, 55, 95, 0.15);
+            --accent-glow: rgba(255, 55, 95, 0.3);
+            --green: #30D158;
+            --blue: #0A84FF;
+            --amber: #FF9F0A;
+            --red: #FF453A;
+            --teal: #64D2FF;
+            --purple: #BF5AF2;
+            --text: #ffffff;
+            --text-dim: rgba(255,255,255,0.5);
+            --text-muted: rgba(255,255,255,0.35);
+            --card-bg: rgba(255,255,255,0.05);
+            --card-border: rgba(255,255,255,0.08);
+            --font-headline: clamp(32px, 7vw, 68px);
+            --font-medium-headline: clamp(24px, 5vw, 44px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-small: clamp(12px, 1.5vw, 14px);
+            --font-big-number: clamp(48px, 15vw, 140px);
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text);
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Slides ── */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            gap: clamp(20px, 4vw, 40px);
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── Typography ── */
+        .section-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--accent);
+        }
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+        }
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+        }
+        .subhead {
+            font-size: var(--font-subhead);
+            font-weight: 400;
+            color: var(--text-dim);
+            line-height: 1.5;
+            max-width: 700px;
+        }
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-dim);
+            line-height: 1.65;
+            max-width: 680px;
+        }
+        .small-text {
+            font-size: var(--font-small);
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+        .accent { color: var(--accent); }
+        .green { color: var(--green); }
+        .blue { color: var(--blue); }
+        .amber { color: var(--amber); }
+        .red { color: var(--red); }
+        .teal { color: var(--teal); }
+        .purple { color: var(--purple); }
+        .dim { color: var(--text-dim); }
+
+        /* ── Layout ── */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+        .quarters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+        .stack {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(12px, 2vw, 20px);
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(20px, 4vw, 32px);
+        }
+        .card-title {
+            font-size: clamp(15px, 2.2vw, 19px);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .card-desc {
+            font-size: clamp(13px, 1.8vw, 15px);
+            color: var(--text-dim);
+            line-height: 1.55;
+        }
+        .card-accent { border-left: 3px solid var(--accent); }
+        .card-green { border-left: 3px solid var(--green); }
+        .card-blue { border-left: 3px solid var(--blue); }
+        .card-amber { border-left: 3px solid var(--amber); }
+        .card-red { border-left: 3px solid var(--red); }
+        .card-teal { border-left: 3px solid var(--teal); }
+        .card-purple { border-left: 3px solid var(--purple); }
+
+        /* ── Code Blocks ── */
+        .code-block {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.8vw, 15px);
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+            max-width: 900px;
+        }
+        .code-block .kw { color: var(--accent); }
+        .code-block .fn { color: var(--blue); }
+        .code-block .str { color: var(--green); }
+        .code-block .cm { color: rgba(255,255,255,0.3); }
+        .code-block .num { color: var(--amber); }
+        .code-block .op { color: var(--text-dim); }
+        .code-block .type { color: var(--teal); }
+
+        /* ── Diagram / Flow ── */
+        .flow {
+            display: flex;
+            align-items: center;
+            gap: clamp(8px, 2vw, 20px);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .flow-box {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: clamp(12px, 2vw, 20px) clamp(16px, 3vw, 28px);
+            font-size: clamp(13px, 1.8vw, 16px);
+            font-weight: 500;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .flow-arrow {
+            color: var(--text-muted);
+            font-size: clamp(16px, 2vw, 24px);
+        }
+
+        /* ── Phase / Timeline ── */
+        .phase {
+            display: flex;
+            gap: clamp(16px, 3vw, 24px);
+            align-items: flex-start;
+            width: 100%;
+        }
+        .phase-marker {
+            flex-shrink: 0;
+            width: clamp(40px, 6vw, 56px);
+            height: clamp(40px, 6vw, 56px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 700;
+            position: relative;
+        }
+        .phase-marker::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            width: 2px;
+            height: clamp(30px, 5vw, 50px);
+            background: var(--card-border);
+            transform: translateX(-50%);
+        }
+        .phase:last-child .phase-marker::after { display: none; }
+        .phase-content { padding-top: clamp(4px, 1vw, 8px); flex: 1; }
+        .phase-title {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .phase-desc {
+            font-size: clamp(13px, 1.8vw, 15px);
+            color: var(--text-dim);
+            line-height: 1.55;
+        }
+
+        /* ── Stats Grid ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+        .stat { text-align: center; padding: clamp(12px, 2vw, 20px); }
+        .stat-number {
+            font-size: clamp(32px, 8vw, 64px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #FF6B8A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-label {
+            font-size: clamp(11px, 1.3vw, 13px);
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 6px;
+        }
+
+        /* ── Comparison ── */
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+        .comp-side {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(24px, 4vw, 36px);
+        }
+        .comp-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+
+        /* ── Pull Quote ── */
+        .pull-quote {
+            font-size: clamp(20px, 4vw, 36px);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1.3;
+            max-width: 800px;
+            position: relative;
+            padding-left: clamp(16px, 3vw, 28px);
+            border-left: 3px solid var(--accent);
+        }
+
+        /* ── Navigation ── */
+        .nav {
+            position: fixed;
+            bottom: clamp(16px, 3vw, 28px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .nav-dot:hover { background: rgba(255,255,255,0.5); }
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(16px, 3vw, 28px);
+            right: clamp(16px, 3vw, 28px);
+            font-size: 12px;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+            z-index: 100;
+        }
+
+        /* ── File tree ── */
+        .file-tree {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.6vw, 14px);
+            line-height: 1.8;
+            color: var(--text-dim);
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: clamp(16px, 3vw, 24px);
+            white-space: pre;
+            overflow-x: auto;
+            max-width: 600px;
+        }
+        .file-tree .dir { color: var(--blue); }
+        .file-tree .file { color: var(--text-dim); }
+        .file-tree .hl { color: var(--accent); font-weight: 600; }
+
+        /* ── Badges ── */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: clamp(11px, 1.3vw, 13px);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .badge-accent { background: var(--accent-dim); color: var(--accent); }
+        .badge-green { background: rgba(48,209,88,0.15); color: var(--green); }
+        .badge-blue { background: rgba(10,132,255,0.15); color: var(--blue); }
+
+        /* ── Scenario blocks ── */
+        .scenario {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: clamp(24px, 4vw, 36px);
+            width: 100%;
+        }
+        .scenario-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+        .scenario-text {
+            font-size: clamp(15px, 2.2vw, 20px);
+            font-weight: 500;
+            line-height: 1.5;
+        }
+        .scenario-detail {
+            font-size: clamp(13px, 1.8vw, 15px);
+            color: var(--text-dim);
+            line-height: 1.55;
+            margin-top: 12px;
+        }
+
+        /* ── Negation list ── */
+        .no-list {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(8px, 1.5vw, 14px);
+            max-width: 550px;
+        }
+        .no-item {
+            display: flex;
+            align-items: center;
+            gap: clamp(10px, 2vw, 16px);
+            font-size: clamp(14px, 2vw, 18px);
+            font-weight: 500;
+        }
+        .no-x {
+            color: var(--red);
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 700;
+            flex-shrink: 0;
+            width: 28px;
+            text-align: center;
+        }
+        .yes-check {
+            color: var(--green);
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 700;
+            flex-shrink: 0;
+            width: 28px;
+            text-align: center;
+        }
+
+        /* ── Responsive ── */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px var(--padding-slide) 60px;
+                gap: 12px;
+            }
+            .slide.center { justify-content: flex-start; padding-top: 32px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
+            50% { box-shadow: 0 0 40px var(--accent-glow), 0 0 80px rgba(255,55,95,0.1); }
+        }
+        .glow { animation: pulse-glow 3s ease-in-out infinite; }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 1 — TITLE
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide active center">
+    <div class="section-label">Case Study</div>
+    <h1 class="headline" style="margin-top: 12px;">Amplifier<br>Session Viewer</h1>
+    <p class="subhead" style="margin-top: 8px;">A window into AI-assisted production</p>
+    <div style="margin-top: 32px; display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;">
+        <span class="badge badge-accent">Python + Flask</span>
+        <span class="badge badge-green">HTMX</span>
+        <span class="badge badge-blue">Pydantic</span>
+    </div>
+    <div class="small-text" style="margin-top: 40px;">February 2026</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 2 — THE PROBLEM
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">The Origin</div>
+    <h2 class="headline">Powerful data.<br><span class="dim">Completely invisible.</span></h2>
+    <p class="body-text" style="margin-top: 8px;">
+        Every Amplifier session generates a rich log of events — tool calls, 
+        agent delegations, responses, thinking blocks, errors. All stored as 
+        JSONL files. None of it visible to the developer.
+    </p>
+    <div class="file-tree" style="margin-top: 8px;"><span class="dir">~/.amplifier/projects/</span>
+  <span class="dir">-Users-me-my-project/</span>
+    <span class="dir">sessions/</span>
+      <span class="dir">a3f2c1e8-...</span>
+        <span class="file">metadata.json</span>
+        <span class="hl">events.jsonl</span>      <span class="cm">← megabytes of rich data</span>
+      <span class="dir">b7d4e9f1-...</span>
+        <span class="file">metadata.json</span>
+        <span class="hl">events.jsonl</span></div>
+    <p class="body-text" style="margin-top: 16px;">
+        The idea was simple: a fast, lightweight web viewer that runs locally, 
+        auto-detects the current project, opens a browser, and lets you explore 
+        sessions <em>instantly</em>.
+    </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 3 — HOW IT'S BUILT (condensed)
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">How It's Built</div>
+    <h2 class="medium-headline">Lean by design</h2>
+    <p class="body-text">
+        Python because Amplifier users already have it. Flask + HTMX for server-side 
+        rendering — multi-MB event files never leave the server. Pydantic for type-safe 
+        data. Two runtime dependencies total. One command to install.
+    </p>
+
+    <div class="stats-grid" style="max-width: 600px;">
+        <div class="stat">
+            <div class="stat-number">2</div>
+            <div class="stat-label">Dependencies</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">6</div>
+            <div class="stat-label">Data Models</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">0</div>
+            <div class="stat-label">Config Required</div>
+        </div>
+    </div>
+
+    <p class="body-text">
+        Events are indexed in memory for O(1) filtering. List pages use binary 
+        line counting and tail-reads — they never parse the full file. Detail pages 
+        parse once, then cache the rendered HTML. A semantic color system — 
+        <span class="green">green</span> for success, <span class="amber">amber</span> for 
+        attention, <span class="blue">blue</span> for interaction, <span class="red">red</span> 
+        for errors — lets you scan sessions at a glance.
+    </p>
+
+    <div class="code-block" style="max-width: 550px;"><pre><code><span class="cm"># Install</span>
+<span class="fn">uv tool install</span> amplifier-session-viewer
+
+<span class="cm"># Or try instantly, no install</span>
+<span class="fn">uvx</span> amplifier-session-viewer</code></pre></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 4 — FEATURES (condensed)
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">What You See</div>
+    <h2 class="medium-headline">Three levels of visibility</h2>
+
+    <div class="flow" style="margin-top: 4px;">
+        <div class="flow-box" style="border-color: var(--accent);">Projects</div>
+        <div class="flow-arrow">&#x2192;</div>
+        <div class="flow-box" style="border-color: var(--blue);">Sessions</div>
+        <div class="flow-arrow">&#x2192;</div>
+        <div class="flow-box" style="border-color: var(--green);">Detail</div>
+    </div>
+
+    <div class="quarters" style="margin-top: 12px;">
+        <div class="card card-accent">
+            <div class="card-title">Projects List</div>
+            <div class="card-desc">The entry point. Every project you've used Amplifier in — auto-discovered, with session count, last activity, and project path. Your development dashboard.</div>
+        </div>
+        <div class="card card-blue">
+            <div class="card-title">Session List</div>
+            <div class="card-desc">Pick a project, see all its sessions. Timestamps, model info, event counts, and parent/child agent hierarchy.</div>
+        </div>
+        <div class="card card-green">
+            <div class="card-title">Timeline View</div>
+            <div class="card-desc">Every event in a session — filterable by type, agent, time range, error flag, and full text search.</div>
+        </div>
+        <div class="card card-amber">
+            <div class="card-title">Transcript View</div>
+            <div class="card-desc">Turn-by-turn conversation. Thinking blocks in green, tool calls in blue, errors in red. Collapsible progressive disclosure.</div>
+        </div>
+    </div>
+    <p class="body-text" style="margin-top: 12px;">
+        Toggle between Timeline and Transcript with HTMX — no page reload. 
+        Malformed data becomes "corrupted" turns instead of crashes. The app 
+        never breaks, even on damaged session files.
+    </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 5 — THE WIDENING LENS
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">The Widening Lens</div>
+    <h2 class="headline">From one session<br>to <span class="accent">everything</span></h2>
+    <p class="body-text" style="margin-top: 4px;">
+        The viewer was originally built for a single purpose: show me what happened 
+        in <em>this</em> session. But the scope kept expanding naturally — and each 
+        expansion unlocked something more valuable than the last.
+    </p>
+
+    <div style="max-width: 700px; margin-top: 12px;" class="stack">
+        <div class="phase">
+            <div class="phase-marker" style="background: rgba(10,132,255,0.15); color: var(--blue);">1</div>
+            <div class="phase-content">
+                <div class="phase-title">One Session <span class="badge badge-green">Built</span></div>
+                <div class="phase-desc"><em>"What happened in this conversation?"</em> — Open a session, see every event, every tool call, every response. The original problem, solved.</div>
+            </div>
+        </div>
+        <div class="phase">
+            <div class="phase-marker" style="background: rgba(191,90,242,0.15); color: var(--purple);">2</div>
+            <div class="phase-content">
+                <div class="phase-title">One Project <span class="badge badge-green">Built</span></div>
+                <div class="phase-desc"><em>"What's the full history of this project?"</em> — All sessions for the current project, chronologically ordered, with parent/child agent hierarchy. Your project's complete development story.</div>
+            </div>
+        </div>
+        <div class="phase">
+            <div class="phase-marker" style="background: var(--accent-dim); color: var(--accent);">3</div>
+            <div class="phase-content">
+                <div class="phase-title">All Projects <span class="badge badge-green">Built</span></div>
+                <div class="phase-desc"><em>"What am I working on across everything?"</em> — A bird's-eye dashboard of every project you've used Amplifier in. How many sessions, when you last worked on it, the full scope of your AI-assisted development.</div>
+            </div>
+        </div>
+        <div class="phase">
+            <div class="phase-marker" style="background: rgba(48,209,88,0.15); color: var(--green);">4</div>
+            <div class="phase-content">
+                <div class="phase-title" class="dim">All Machines <span class="badge badge-accent">Vision</span></div>
+                <div class="phase-desc"><em>"Show me everything, everywhere."</em> — Your complete development history across every machine, synced and searchable. The natural next step.</div>
+            </div>
+        </div>
+    </div>
+
+    <p class="body-text" style="margin-top: 16px;">
+        The first three levels all work today. And the third one — the all-projects 
+        view — was the surprise. It turned the viewer from a debugging tool into 
+        a <strong>development dashboard</strong>.
+    </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 6 — IT JUST WORKS
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">The Magic Moment</div>
+    <h2 class="headline">It just works.</h2>
+    <p class="body-text" style="margin-top: 4px;">
+        The all-projects dashboard wasn't the hard part. The hard part was making 
+        it feel <strong>invisible</strong>. Every project auto-discovered, every session 
+        auto-indexed — because Amplifier already stores sessions keyed by working directory 
+        under <code style="color:var(--blue)">~/.amplifier/projects/</code>.
+    </p>
+
+    <div class="no-list" style="margin-top: 8px;">
+        <div class="no-item"><span class="no-x">&#x2717;</span> No "create project" step</div>
+        <div class="no-item"><span class="no-x">&#x2717;</span> No YAML config file</div>
+        <div class="no-item"><span class="no-x">&#x2717;</span> No registration or onboarding</div>
+        <div class="no-item"><span class="no-x">&#x2717;</span> No manual path configuration</div>
+        <div class="no-item" style="margin-top: 4px;"><span class="yes-check">&#x2713;</span> <span class="green">Just run it. Everything appears.</span></div>
+    </div>
+
+    <div class="flow" style="margin-top: 24px;">
+        <div class="flow-box" style="border-color: var(--green);">Create<br>any folder</div>
+        <div class="flow-arrow">&#x2192;</div>
+        <div class="flow-box" style="border-color: var(--blue);">Run<br>Amplifier</div>
+        <div class="flow-arrow">&#x2192;</div>
+        <div class="flow-box" style="border-color: var(--accent);">Open<br>the viewer</div>
+        <div class="flow-arrow">&#x2192;</div>
+        <div class="flow-box" style="border-color: var(--amber);">Full history<br>is there</div>
+    </div>
+
+    <p class="body-text" style="margin-top: 20px;">
+        This changes the mental model: projects aren't something you <em>set up</em>. 
+        They're something that <em>happens naturally</em>. Work in a folder with Amplifier, 
+        and a project exists — with its complete session history, ready to explore. 
+        Launch the viewer from anywhere and you see <em>all</em> your projects at once — 
+        a dashboard of everything you're building.
+    </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 7 — HISTORY LIVES OUTSIDE THE CODE
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">The Discovery</div>
+    <h2 class="headline">Development history<br><span class="dim">lives outside the code</span></h2>
+    <p class="body-text" style="margin-top: 8px;">
+        While building this project, a fundamental tension surfaced.
+    </p>
+
+    <div class="comparison" style="margin-top: 12px;">
+        <div class="comp-side" style="border: 1px solid rgba(255,55,95,0.3);">
+            <div class="comp-label" style="color: var(--accent);">Today</div>
+            <p class="card-desc">
+                Development sessions — the <strong>how</strong> and <strong>why</strong> behind every decision — 
+                are stored in <code style="color:var(--text-dim)">~/.amplifier/</code>. 
+                They live on one machine. When you clone a repo, you get the code 
+                but not the process that created it.
+            </p>
+        </div>
+        <div class="comp-side" style="border: 1px solid rgba(48,209,88,0.3);">
+            <div class="comp-label" style="color: var(--green);">What If</div>
+            <p class="card-desc">
+                An option to store session data inside the project — 
+                <code style="color:var(--green)">.amplifier/sessions/</code> — 
+                would make development history portable, shareable, and version-controlled.
+                Clone a repo, get the full AI-assisted story behind every feature.
+            </p>
+        </div>
+    </div>
+
+    <div class="pull-quote" style="margin-top: 28px;">
+        Imagine cloning a repo and getting not just the code,<br>
+        but the full development conversation behind every feature.
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 8 — YOUR HISTORY, EVERYWHERE
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">Vision — Continuity</div>
+    <h2 class="headline">Your history,<br><span class="accent">everywhere</span></h2>
+    <p class="body-text" style="margin-top: 8px;">
+        Today, your development history is trapped on one machine. 
+        But development doesn't happen in one place.
+    </p>
+
+    <div class="stack" style="margin-top: 8px; max-width: 700px;">
+        <div class="scenario">
+            <div class="scenario-label blue">Morning — Laptop at the coffee shop</div>
+            <div class="scenario-text">You start debugging a tricky authentication issue. Three sessions deep, you've identified the root cause and have a fix in progress.</div>
+        </div>
+        <div class="scenario">
+            <div class="scenario-label purple">Afternoon — Desktop at home</div>
+            <div class="scenario-text">You sit down and pick up exactly where you left off. Every session, every conversation, every decision — already there.</div>
+        </div>
+        <div class="scenario">
+            <div class="scenario-label amber">Evening — Phone on the couch</div>
+            <div class="scenario-text">A teammate asks about the fix. You pull up the session on your phone, share the link, and they see the full development journey.</div>
+        </div>
+    </div>
+
+    <p class="body-text" style="margin-top: 16px;">
+        No manual export. No "sync my sessions" step. Start a session on one machine, 
+        continue on another — your entire development history, accessible from anywhere.
+    </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 9 — CROSS-PROJECT INTELLIGENCE
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">Vision — Intelligence</div>
+    <h2 class="headline">Intelligence<br><span class="dim">across every project</span></h2>
+    <p class="body-text" style="margin-top: 8px;">
+        Each Amplifier session is a structured record of developer-AI collaboration. 
+        Across hundreds of sessions, across dozens of projects, patterns emerge.
+    </p>
+
+    <div class="halves" style="margin-top: 12px;">
+        <div class="stack">
+            <div class="card card-blue">
+                <div class="card-title">Universal Search</div>
+                <div class="card-desc">Search across all your projects at once. "Where did I solve that Redis connection issue?" — find it in seconds, even if it was three months ago in a different project.</div>
+            </div>
+            <div class="card card-green">
+                <div class="card-title">Development Analytics</div>
+                <div class="card-desc">How long do features take? What types of bugs recur? Which tools get used most? Where do sessions stall? Data-driven insights on how you actually develop.</div>
+            </div>
+        </div>
+        <div class="stack">
+            <div class="card card-purple">
+                <div class="card-title">Pattern Recognition</div>
+                <div class="card-desc"><em>"You solved a similar problem in project X three months ago."</em> — ML on top of your development history, surfacing relevant past work automatically.</div>
+            </div>
+            <div class="card card-amber">
+                <div class="card-title">Development Replay</div>
+                <div class="card-desc">Revisit how a complex feature was actually built. Not the git log — the full thinking process, dead ends included, as they happened.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 10 — COLLABORATION & SHARING
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">Vision — Collaboration</div>
+    <h2 class="headline">Share the<br><span class="green">thinking</span>, not<br>just the code</h2>
+
+    <div class="thirds" style="margin-top: 12px;">
+        <div class="card card-green">
+            <div class="card-title">Team Sharing</div>
+            <div class="card-desc">Share sessions with teammates — not just a diff, but the full conversation and reasoning. See how a colleague solved a problem, learn from their AI-assisted approach.</div>
+        </div>
+        <div class="card card-blue">
+            <div class="card-title">Project Handover</div>
+            <div class="card-desc">Hand over a project with full development context. The new maintainer doesn't just get code — they get the <em>why</em> behind every architectural decision.</div>
+        </div>
+        <div class="card card-accent">
+            <div class="card-title">Open Source History</div>
+            <div class="card-desc">Open source projects could include development sessions. Clone the repo, get the code AND the full AI-assisted development story behind every feature.</div>
+        </div>
+    </div>
+
+    <div class="pull-quote" style="margin-top: 24px;">
+        A community of developers sharing not just what they built,<br>
+        but how they think about building.
+    </div>
+
+    <p class="body-text" style="margin-top: 16px;">
+        Junior developers learn by watching how senior developers work with AI. 
+        Senior developers discover techniques from each other's sessions. 
+        Everyone develops faster because development knowledge becomes a 
+        shared, explorable resource — not something locked in one person's head.
+    </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 11 — SESSIONS AS THE UNIT OF WORK
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide">
+    <div class="section-label">Reimagining PRs</div>
+    <h2 class="headline">Sessions as the<br>unit of work</h2>
+
+    <div class="comparison" style="margin-top: 12px;">
+        <div class="comp-side">
+            <div class="comp-label" style="color: var(--text-dim);">Pull Requests Today</div>
+            <div class="stack" style="gap: 10px;">
+                <div class="card-desc">A diff — <em>what</em> changed</div>
+                <div class="card-desc">A description — what the author <em>chose</em> to explain</div>
+                <div class="card-desc">Comments — post-hoc review after the fact</div>
+                <div class="card-desc" style="color: var(--text-muted); margin-top: 8px;">The process behind the code is lost forever.</div>
+            </div>
+        </div>
+        <div class="comp-side" style="border: 1px solid var(--accent-glow);">
+            <div class="comp-label" style="color: var(--accent);">PRs Built on Sessions</div>
+            <div class="stack" style="gap: 10px;">
+                <div class="card-desc"><span class="accent">Each bug fix or feature</span> = one Amplifier session</div>
+                <div class="card-desc"><span class="accent">PRs become</span> a list of sessions showing how the developer actually worked</div>
+                <div class="card-desc"><span class="accent">Ongoing PRs</span> = active sessions that can be handed to another developer mid-stream</div>
+                <div class="card-desc"><span class="accent">Code review</span> = review the code AND understand the full development journey</div>
+            </div>
+        </div>
+    </div>
+
+    <p class="body-text" style="margin-top: 20px;">
+        A reviewer sees not just that a function was refactored, but the three approaches 
+        the developer considered, why two were rejected, and the conversation that led to 
+        the final design. Dead ends become learning opportunities. The reasoning behind 
+        the code becomes a permanent, reviewable artifact.
+    </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 12 — CLOSING
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide center">
+    <div class="section-label">What This Means</div>
+    <h2 class="headline" style="margin-top: 16px; max-width: 900px;">
+        It started as a<br>debugging tool.<br>
+        <span class="dim" style="font-size: 0.7em; display: block; margin-top: 20px;">
+            It became a window into how<br>developers work with AI.
+        </span>
+    </h2>
+    <p class="subhead" style="margin-top: 36px; max-width: 750px;">
+        The future is making that window available everywhere, 
+        to everyone — creating a new layer of developer collaboration 
+        built on shared understanding, not just shared code.
+    </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 13 — CTA
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="slide center">
+    <div class="section-label">Get Started</div>
+    <h2 class="medium-headline" style="margin-top: 16px;">Try it now</h2>
+    <div class="code-block" style="margin-top: 28px; text-align: left;"><pre><code><span class="cm"># Install</span>
+<span class="fn">uv tool install</span> amplifier-session-viewer
+
+<span class="cm"># Or try without installing</span>
+<span class="fn">uvx</span> amplifier-session-viewer
+
+<span class="cm"># Run from any project directory</span>
+<span class="fn">cd</span> ~/workspace/my-project
+<span class="fn">amplifier-sessions</span></code></pre></div>
+    <div style="margin-top: 40px; display: flex; flex-direction: column; gap: 12px; align-items: center;">
+        <div class="small-text">Python 3.10+ &nbsp;·&nbsp; Flask &nbsp;·&nbsp; Pydantic &nbsp;·&nbsp; HTMX</div>
+        <div class="small-text" style="color: var(--accent);">MIT License</div>
+    </div>
+</div>
+
+<!-- ── Navigation ── -->
+<div class="nav" id="nav"></div>
+<div class="slide-counter" id="counter"></div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let currentSlide = 0;
+
+function showSlide(n) {
+    slides[currentSlide].classList.remove('active');
+    currentSlide = (n + slides.length) % slides.length;
+    slides[currentSlide].classList.add('active');
+    slides[currentSlide].scrollTop = 0;
+    updateNav();
+}
+
+function updateNav() {
+    const nav = document.getElementById('nav');
+    const counter = document.getElementById('counter');
+    nav.innerHTML = '';
+    slides.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+        dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+        nav.appendChild(dot);
+    });
+    counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+});
+
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.nav') || e.target.closest('.code-block') || e.target.closest('a')) return;
+    if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+    else showSlide(currentSlide - 1);
+});
+
+let touchStartX = 0;
+let touchEndX = 0;
+const SWIPE_THRESHOLD = 50;
+
+document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    const diff = touchStartX - touchEndX;
+    if (Math.abs(diff) > SWIPE_THRESHOLD) {
+        if (diff > 0) showSlide(currentSlide + 1);
+        else showSlide(currentSlide - 1);
+    }
+}, { passive: true });
+
+updateNav();
+</script>
+
+</body>
+</html>

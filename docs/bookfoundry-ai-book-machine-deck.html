@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>BookFoundry &mdash; The AI Book Writing Machine</title>
+    <style>
+        :root {
+            --accent: #E74C3C;
+            --accent-dim: rgba(231, 76, 60, 0.15);
+            --accent-glow: rgba(231, 76, 60, 0.3);
+
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Typography scale */
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 36px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 16px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 1.8vw, 15px);
+
+            /* Spacing */
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Slide base */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin-bottom: var(--space-md);
+        }
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: var(--space-md);
+        }
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(680px, 90vw);
+        }
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-sm);
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: 100px;
+            background: rgba(231, 76, 60, 0.15);
+            color: #E74C3C;
+            margin-top: var(--space-sm);
+        }
+
+        /* Grids */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .quads {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .card h3, .card h4 {
+            color: var(--text-primary);
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.5;
+        }
+        .card .icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Card with accent border top */
+        .card-accent {
+            border-top: 2px solid var(--accent);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: #BFC0C5;
+            margin-top: var(--space-md);
+        }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-cmd { color: #30D158; }
+        .code-flag { color: #E74C3C; }
+        .code-string { color: #FF9F0A; }
+        .code-var { color: #64D2FF; }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            max-width: min(800px, 95vw);
+        }
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+        }
+        .flow-number {
+            flex-shrink: 0;
+            width: clamp(36px, 5vw, 48px);
+            height: clamp(36px, 5vw, 48px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--fs-body);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .flow-content h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .flow-content p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .flow-arrow {
+            width: 2px;
+            height: var(--space-sm);
+            background: var(--accent-dim);
+            margin-left: clamp(17px, 2.3vw, 23px);
+        }
+
+        /* Architecture diagram */
+        .arch-entities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .entity-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+        .entity-box .icon {
+            font-size: clamp(32px, 6vw, 56px);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box h4 {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Velocity stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+        .velocity-stat { text-align: center; }
+        .velocity-number {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #F39C12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .velocity-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-top: var(--space-lg);
+            max-width: min(700px, 95vw);
+        }
+        .timeline-item {
+            display: flex;
+            gap: var(--space-md);
+            padding-bottom: var(--space-md);
+            position: relative;
+        }
+        .timeline-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: clamp(30px, 4vw, 40px);
+            top: clamp(36px, 5vw, 48px);
+            bottom: 0;
+            width: 2px;
+            background: var(--accent-dim);
+        }
+        .timeline-date {
+            flex-shrink: 0;
+            width: clamp(60px, 8vw, 80px);
+            height: clamp(60px, 8vw, 80px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .timeline-date .day {
+            font-size: var(--fs-h3);
+            color: var(--accent);
+            line-height: 1;
+        }
+        .timeline-date .month {
+            font-size: var(--fs-small);
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+        .timeline-text h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .timeline-text p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Quote / callout box */
+        .callout {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            margin-top: var(--space-md);
+            max-width: min(700px, 95vw);
+        }
+        .callout p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            font-style: italic;
+        }
+        .callout .attribution {
+            font-style: normal;
+            color: var(--text-tertiary);
+            font-size: var(--fs-small);
+            margin-top: var(--space-xs);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        /* Sources slide specifics */
+        .sources-content {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            max-width: min(800px, 95vw);
+        }
+        .sources-content strong {
+            color: var(--text-primary);
+        }
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .sources-content ul {
+            padding-left: var(--space-md);
+            margin: var(--space-xs) 0;
+        }
+        .sources-content li {
+            margin-bottom: var(--space-xs);
+        }
+
+        /* More stories link */
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Touch targets */
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+
+        /* Highlight accent text */
+        .accent { color: var(--accent); }
+
+        /* Inline list with subtle bullets */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding-left: var(--space-md);
+            position: relative;
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-xs);
+        }
+        .feature-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        /* Pipeline layer strip */
+        .pipeline-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: var(--space-md);
+        }
+        .pipeline-layer {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+        .pipeline-layer.active-layer {
+            background: var(--accent);
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 1: TITLE                                                -->
+    <!-- ============================================================ -->
+    <div class="slide active center">
+        <div class="section-label">Showcase &middot; Amplifier Bundle</div>
+        <h1 class="headline">BookFoundry</h1>
+        <p class="subhead">An AI book-writing machine.<br>Eight layers from voice capture to finished manuscript.</p>
+        <div class="status-badge">Active &middot; 3rd Generation</div>
+        <div class="small-text">May 2026 &middot; ramparte</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 2: THE PROBLEM                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Three Generations of Failure Modes</div>
+        <h2 class="headline">AI writes<br>like AI</h2>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F501;</div>
+                <h3>Revision Loops</h3>
+                <p>Filters fight each other. Later passes undo earlier fixes. Quality degrades with every iteration instead of improving.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F3AD;</div>
+                <h3>The 85% Wall</h3>
+                <p>"Just prompting" gets you 85% of the way there. The last 15% &mdash; voice fidelity, rhythm, the absence of AI tells &mdash; requires machinery.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F4CF;</div>
+                <h3>Metrics &#x2260; Quality</h3>
+                <p>Score-based reviewers optimize for numbers. Five competing score functions produce technically correct, spiritually dead prose.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>Book2 identified 5 critical failure modes. Book3 solved them. BookFoundry generalizes those solutions into a reusable engine anyone can point at a project directory.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 3: THE 8-LAYER PIPELINE                                 -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Engine</div>
+        <h2 class="medium-headline">8-layer chapter pipeline</h2>
+        <p class="subhead">Each chapter proceeds through a strict sequence. Mechanical always has the last word.</p>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div class="flow-content">
+                    <h4>Preparation</h4>
+                    <p>Research check, graph context extraction, exemplar matching &mdash; selects 2-3 voice-matched samples for this chapter's content.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div class="flow-content">
+                    <h4>Generation</h4>
+                    <p>Single best-possible draft with the richest prompt: voice exemplars, style guide, chapter config, graph context, research data.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div class="flow-content">
+                    <h4>Expansion &amp; Fact-Check</h4>
+                    <p>Paragraph-by-paragraph elaboration to hit word targets (nonfiction). Then a fact-check filter strips ~35% fabricated specifics by comparing against research YAML and first-draft snapshots.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">4</div>
+                <div class="flow-content">
+                    <h4>Triage &rarr; Editorial &rarr; Author Review &rarr; Mechanical</h4>
+                    <p>Classify paragraphs (good/fixable/stubborn). Taste Advisor gives targeted advice. Author approves or overrides. Supervised filter pipeline with damage detection finishes &mdash; mechanical always last.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 4: VOICE ACQUISITION                                    -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Voice First</div>
+        <h2 class="headline">Capture the<br>author's voice</h2>
+        <p class="subhead">Voice acquisition runs before any content generation. Three paths, same output format.</p>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F4DA;</div>
+                <h3>Corpus Path</h3>
+                <p>Provide existing writing &mdash; essays, blog posts, prior books. The machine analyzes sentence structure, hedging patterns, signature moves, vocabulary range, and rhythm.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F399;&#xFE0F;</div>
+                <h3>Sparse Path</h3>
+                <p>Limited material: interviews, conversations, a few short pieces. The machine distills what's detectable and flags areas of uncertainty.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x270D;&#xFE0F;</div>
+                <h3>Imitation Path</h3>
+                <p>Name a public writer, a website, or a reference book. The machine fetches available work, analyzes it, and distills a style guide.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>Output is always the same: <code>exemplars.yaml</code> (annotated writing samples) + <code>style-guide.md</code> (distilled rules). The machine then generates project-specific rubrics from the analysis.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 5: THE FILTER ARSENAL                                   -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">AI-Tell Removal</div>
+        <h2 class="medium-headline">14 filters, 5,580 lines of Python</h2>
+        <p class="subhead">A supervised pipeline with damage detection &mdash; the ReAct pattern prevents filters from undoing each other.</p>
+        <div class="thirds">
+            <div class="card">
+                <h4 class="accent">Programmatic Filters</h4>
+                <ul class="feature-list">
+                    <li>Em-dash overuse detection</li>
+                    <li>Hedge word removal</li>
+                    <li>Transition opener patterns</li>
+                    <li>Fragment fixer</li>
+                    <li>Sentence fusion</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4 class="accent">LLM-Guided Filters</h4>
+                <ul class="feature-list">
+                    <li>Tricolon detection</li>
+                    <li>Signpost removal</li>
+                    <li>Performative humility</li>
+                    <li>Fact-check (nonfiction)</li>
+                    <li>LLM rewrite orchestrator</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4 class="accent">Gradient &amp; Voice</h4>
+                <ul class="feature-list">
+                    <li>Sentence length gradient</li>
+                    <li>Voice gradient matching</li>
+                    <li>Voice match scoring</li>
+                    <li>Flow rewriter</li>
+                    <li>Supervised pipeline orchestrator</li>
+                </ul>
+            </div>
+        </div>
+        <div class="callout">
+            <p>Strict ordering: programmatic first, then LLM-guided, then gradient. After each stage, a damage check re-runs earlier filters if later ones reintroduced tells. This solved the book2 thrashing problem.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 6: COMPONENT INVENTORY                                  -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">Central engine + project directories</h2>
+        <div class="arch-entities">
+            <div class="entity-box">
+                <div class="icon">&#x1F9E0;</div>
+                <h4>10 Agents</h4>
+                <p>Drafter, editorial reviewer, taste advisor, triage router, voice analyzer, metrics analyst, and more</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F3ED;</div>
+                <h4>18 Recipes</h4>
+                <p>7 pipeline layers + voice acquisition + planning + assembly + full-book-cycle</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F4CA;</div>
+                <h4>11 Metric Modules</h4>
+                <p>Style distance, repetition, vocabulary, flow rhythm, perplexity, syntactic diversity</p>
+            </div>
+        </div>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Override System</h3>
+                <p>One rule: run the union of foundry + project components. Name collision = project wins. Blank file = disabled. No separate config, no enable/disable flags.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Graph Vocabularies</h3>
+                <p><strong>Nonfiction:</strong> thesis, sub-argument, evidence nodes with supports/contradicts/depends-on edges.<br><strong>Fiction:</strong> character, scene, plot-thread nodes with causes/foreshadows/develops edges.</p>
+            </div>
+        </div>
+        <div class="small-text">7 modes &middot; 3 rubric templates &middot; STATE.yaml session resilience &middot; Decision store learning loop</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 7: THE DESKTOP APP                                      -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">bookfoundry-desktop</div>
+        <h2 class="headline">A desktop app<br>for the machine</h2>
+        <p class="subhead">Electron + React + TypeScript frontend with a FastAPI Python sidecar. Watch the pipeline work in real time.</p>
+        <div class="quads">
+            <div class="card card-accent">
+                <div class="icon">&#x1F4CB;</div>
+                <h3>Library</h3>
+                <p>Project dashboard with chapter table, status icons, and pipeline state at a glance.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x26A1;</div>
+                <h3>Pipeline</h3>
+                <p>WebSocket-driven live progress. Start, pause, and approve pipeline stages with approval gates.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x270F;&#xFE0F;</div>
+                <h3>Editor</h3>
+                <p>TipTap rich text with AI suggestion marks, metrics sidebar, version history with diffs.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F4A1;</div>
+                <h3>Brainstorm</h3>
+                <p>Streaming chat sessions with pin/unpin ideas. Create new book projects directly from brainstorm output.</p>
+            </div>
+        </div>
+        <div class="small-text">41 commits &middot; 36 TypeScript files &middot; 20 Python sidecar files &middot; 10 API routes &middot; Electron Forge + Vite</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 8: VELOCITY                                             -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">Development Velocity</div>
+        <h2 class="medium-headline">Built in 11 days</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">122</div>
+                <div class="velocity-label">commits across<br>2 repositories</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">88</div>
+                <div class="velocity-label">Python source files<br>in the engine</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">15K</div>
+                <div class="velocity-label">lines of<br>engine source</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">10K</div>
+                <div class="velocity-label">lines of<br>test code</div>
+            </div>
+        </div>
+        <div class="small-text" style="margin-top: var(--space-lg);">April 12&ndash;23, 2026 &middot; ~11 commits/day &middot; 36 test files &middot; Solo developer (ramparte)</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 9: WHAT'S NEXT                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">What's Next</div>
+        <h2 class="headline">From tool<br>to platform</h2>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Full-Book-Cycle Recipe</h3>
+                <p>One command: voice acquisition, book planning, process all chapters, assembly, rendering. <code>full-book-cycle.yaml</code> is already scaffolded &mdash; the master recipe that produces a complete book.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Multi-Format Rendering</h3>
+                <p>EPUB and HTML require no external tools. Typst/PDF rendering is wired. Templates live in <code>templates/render/</code> with project-level overrides.</p>
+            </div>
+        </div>
+        <div class="halves">
+            <div class="card">
+                <h4 class="accent">Fiction Support</h4>
+                <p>Continuity graph vocabulary with character/scene/plot-thread nodes. Genre gates skip expansion and fact-check for fiction. Continuity tracking is the "killer app."</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Desktop Integration</h4>
+                <p>The sidecar API bridges the Amplifier CLI engine to the Electron UI. Real-time pipeline visualization, author review gates, and brainstorm-to-book flows.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>The override system means specialized components &mdash; genre-specific filters, research agents, domain vocabularies &mdash; can be shared and composed without forking the engine.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 10: SOURCES & METHODOLOGY                               -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Sources &amp; Methodology</div>
+        <h2 class="medium-headline">How this deck was built</h2>
+        <div class="sources-content">
+            <p><strong>Primary sources:</strong></p>
+            <ul>
+                <li><code>MACHINE-DESIGN.md</code> &mdash; 262-line architecture document covering the 8-layer pipeline, voice acquisition, graph vocabularies, override system, and decision store</li>
+                <li><code>bundle.md</code> &mdash; Amplifier bundle definition with 10 agents, 18 recipes, 7 modes</li>
+                <li><code>FACT-CHECK-PIPELINE-NOTE.md</code> &mdash; expansion fabrication rates and fact-check filter design</li>
+                <li><code>pyproject.toml</code> &mdash; Python 3.11+, dependencies: PyYAML, NumPy, Anthropic</li>
+            </ul>
+            <p style="margin-top: var(--space-sm);"><strong>Git data (bookfoundry):</strong></p>
+            <ul>
+                <li><code>git log --oneline --since="60 days ago" --no-merges | wc -l</code> &rarr; <strong>81 commits</strong></li>
+                <li>First commit: April 12, 2026 &middot; Latest: April 23, 2026</li>
+                <li>All commits by <strong>Sam Schillace</strong> (ramparte)</li>
+                <li>52 Python files in <code>bookfoundry/</code>, 36 test files, 88 total</li>
+                <li>14 filter modules (5,580 LOC), 11 metric modules (4,064 LOC)</li>
+            </ul>
+            <p style="margin-top: var(--space-sm);"><strong>Git data (bookfoundry-desktop):</strong></p>
+            <ul>
+                <li><code>git log --oneline --since="60 days ago" --no-merges | wc -l</code> &rarr; <strong>41 commits</strong></li>
+                <li>First commit: April 15, 2026 &middot; Electron + React + TypeScript + Vite</li>
+                <li>36 TypeScript files (~3,686 LOC), 20 Python sidecar files (~2,614 LOC)</li>
+            </ul>
+            <p style="margin-top: var(--space-sm);"><strong>All metrics derived from repository inspection.</strong> No fabricated data.</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

@@ -76,7 +76,7 @@ ls -lt ~/.amplifier/sessions/*/events.jsonl | head -5
 
 # 2. Run the recipe
 amplifier tool invoke recipes operation=execute \
-  recipe_path=amplifier-module-stories:recipes/session-to-case-study.yaml \
+  recipe_path=stories:recipes/session-to-case-study.yaml \
   context='{"session_file": "~/.amplifier/sessions/2026-01-17/events.jsonl"}'
 
 # 3. Verify output

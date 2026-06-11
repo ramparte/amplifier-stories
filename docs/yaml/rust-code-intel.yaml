@@ -1,0 +1,161 @@
+deck:
+  title: "From Reading Code to Understanding It — Rust Code Intelligence"
+  template: "default"
+  style:
+    accent_color: "#E44D26"
+    density: standard
+
+slides:
+  - type: title
+    title: "From Reading Code to Understanding It"
+    subtitle: "Full language intelligence for AI agents. 14 LSP operations. First-class Rust support. Zero external dependencies."
+    notes: "Amplifier Platform. Primary contributor: samschillace. February 2026."
+
+  - type: cards
+    title: "AI agents can search text. They can't understand code."
+    section_label: "The Problem"
+    cards:
+      - title: "grep finds strings"
+        body: "Text matching can't distinguish function calls from comments. 'What implements this trait?' returns noise, not answers."
+      - title: "No semantic graph"
+        body: "Without type information, agents can't trace call hierarchies, understand generics, or verify their own edits compile."
+      - title: "Broken feedback loop"
+        body: "Write code → shell out to compiler → parse raw text output → hope you fixed it. Slow, fragile, error-prone."
+    purpose: "Establish why grep-based AI coding is fundamentally limited"
+
+  - type: highlight
+    title: "The Insight"
+    highlight_text: "Language servers solved this for humans."
+    body: "Every IDE uses LSP for go-to-definition, find-references, rename, and diagnostics. Now we bring the same intelligence to AI agents."
+    accent: "orange"
+    pacing: "statement"
+
+  - type: content
+    title: "14 operations across 6 categories"
+    bullets:
+      - "Navigation: goToDefinition, findReferences, hover, documentSymbol"
+      - "Call Hierarchy: prepareCallHierarchy, incomingCalls, outgoingCalls"
+      - "Extended Navigation: goToImplementation, workspaceSymbol"
+      - "Verification: diagnostics"
+      - "Refactoring: rename, codeAction"
+      - "Inspection: inlayHints"
+      - "Extensibility: customRequest"
+    notes: "7 base (always available) + 7 extended (capability-gated per server). LLM only sees operations the configured server supports."
+
+  - type: comparison
+    title: "Diagnostics closes the read-write feedback loop"
+    left_label: "Before: Shell Out"
+    left_items:
+      - "cargo check 2>&1"
+      - "Parse raw text error output"
+      - "Hope you find the right line number"
+      - "No suggested fixes"
+    right_label: "After: LSP Diagnostics"
+    right_items:
+      - "LSP.diagnostics(\"src/main.rs\")"
+      - "Structured data: line 42, severity error, code E0277"
+      - "Precise location with context"
+      - "codeActions: [\"Add #[derive(Serialize)]\"]"
+    notes: "The agent verifies its own edits compile through LSP — structured data, precise line numbers, and suggested fixes. No more shelling out to cargo check and parsing text."
+
+  - type: cards
+    title: "What the 7 extended operations enable"
+    section_label: "Extended Operations"
+    cards:
+      - title: "diagnostics"
+        body: "Get compiler errors and warnings for any file. The agent's compile-check without leaving the LSP."
+        accent: "orange"
+      - title: "rename · codeAction"
+        body: "Semantic rename across files — 13 precise edits in 5 files from one call. Code actions suggest and apply fixes."
+        accent: "orange"
+      - title: "goToImplementation"
+        body: "Find every trait implementor across the entire workspace. Including blanket impls, generics, and dependency crates."
+        accent: "orange"
+      - title: "inlayHints"
+        body: "See what the compiler infers — types, parameter names, lifetimes — even when the code has zero annotations."
+        accent: "orange"
+      - title: "customRequest"
+        body: "Send any server-specific method. Rust: expandMacro, relatedTests, externalDocs. Fully extensible per language."
+        accent: "orange"
+    purpose: "Deep dive into the extended operation categories"
+
+  - type: section
+    title: "Rust gets the full treatment"
+    notes: "The lsp-rust bundle (now rust-dev) integrates rust-analyzer with a persistent proxy server and a specialist agent for multi-step code investigations."
+    pacing: "statement"
+
+  - type: stats
+    title: "What rust-analyzer delivers"
+    stats:
+      - value: "28"
+        label: "Cross-crate references in one call"
+      - value: "13"
+        label: "Precise edits across 5 files (one rename)"
+      - value: "40"
+        label: "Inferred types + params from one function"
+      - value: "24"
+        label: "Outgoing calls traced including stdlib"
+    notes: "Results from rust-analyzer test sessions."
+
+  - type: comparison
+    title: "goToImplementation — The Killer Feature"
+    left_label: "grep for implementors"
+    left_items:
+      - "grep -r \"impl Handler\" src/"
+      - "Finds ApiHandler, WsHandler"
+      - "False positive: // impl Handler mock"
+      - "Noise: /// impl Handler pattern"
+      - "Misses: blanket impls, generic impls, impls in dependencies"
+    right_label: "LSP goToImplementation"
+    right_items:
+      - "LSP.goToImplementation(\"src/traits.rs\", Handler)"
+      - "ApiHandler → src/api.rs:15"
+      - "WsHandler → src/ws.rs:8"
+      - "BatchHandler → src/batch.rs:22"
+      - "ProxyHandler → deps/proxy/src/lib.rs:44"
+      - "Including blanket impls, generics, deps"
+    notes: "All trait implementors found across the entire workspace. grep literally cannot do this."
+
+  - type: flow
+    title: "The cold-start problem, solved"
+    steps:
+      - "Session 1 (Cold start: 60s index)"
+      - "Persistent Proxy (Keeps server warm)"
+      - "Session 2+ (Instant connect)"
+    notes: "Auto-restart on crash. Idle timeout for resource savings. Cross-session discovery via state files."
+    purpose: "Explain the persistent proxy architecture that eliminates cold starts"
+
+  - type: flow
+    title: "Three-layer composition"
+    steps:
+      - "tool-lsp module (14 ops + proxy)"
+      - "lsp-rust bundle (Deep merge + config)"
+      - "Specialist agent (Multi-step investigations)"
+    notes: "The thin bundle pattern: amplifier-bundle-lsp-rust has zero module code. It's pure YAML — composing tool-lsp's capabilities with rust-analyzer configuration and a specialist agent description."
+
+  - type: three_column
+    title: "Every language gets smarter"
+    col1_head: "Rust"
+    col1_body: "rust-analyzer via lsp-rust bundle. All 14 operations including macro expansion via customRequest."
+    col2_head: "Python"
+    col2_body: "Pyright via python-dev bundle. lsp-python is deprecated — python-dev forwards all LSP operations."
+    col3_head: "Any Language"
+    col3_body: "Add any LSP-compatible server. TypeScript, Go, C++ — the architecture supports them all."
+
+  - type: stats
+    title: "Built with purpose"
+    stats:
+      - value: "3"
+        label: "Repositories"
+      - value: "14"
+        label: "LSP Operations"
+      - value: "421"
+        label: "LSP Test Functions"
+      - value: "0"
+        label: "External Dependencies"
+    notes: "~442 total ecosystem tests (421 LSP + 21 python-dev). Python stdlib only."
+
+  - type: closing
+    title: "Stop searching. Start understanding."
+    subtitle: "Language intelligence is now a core Amplifier capability. 14 operations. 421 tests. Zero external dependencies."
+    notes: "amplifier-bundle-lsp · rust-dev · python-dev"

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Seventh Layer — Cognitive Routing in Agent Pipelines</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #07070f;
+      --bg-2:        #0c0c1a;
+      --surface-1:   rgba(255,255,255,0.04);
+      --surface-2:   rgba(255,255,255,0.07);
+      --border:      rgba(255,255,255,0.09);
+      --border-med:  rgba(255,255,255,0.16);
+
+      --accent:      #A78BFA;
+      --accent-dim:  rgba(167,139,250,0.12);
+      --accent-glow: rgba(167,139,250,0.28);
+
+      --danger:      #FF453A;
+      --danger-dim:  rgba(255,69,58,0.12);
+      --danger-glow: rgba(255,69,58,0.30);
+
+      --success:     #30D158;
+      --success-dim: rgba(48,209,88,0.12);
+
+      --warn:        #FF9F0A;
+      --warn-dim:    rgba(255,159,10,0.12);
+
+      --text-1:   #FFFFFF;
+      --text-2:   rgba(255,255,255,0.70);
+      --text-3:   rgba(255,255,255,0.42);
+      --text-4:   rgba(255,255,255,0.25);
+
+      --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      --sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: var(--text-1);
+      font-family: var(--sans);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── DECK & SLIDES ─────────────────────────────────── */
+    .deck { width: 100%; height: 100%; position: relative; }
+
+    .slide {
+      position: absolute; inset: 0;
+      display: none; flex-direction: column;
+      padding: clamp(2.2rem, 4.5vh, 3.8rem) clamp(2.5rem, 5.5vw, 5.5rem);
+    }
+    .slide.active { display: flex; }
+
+    /* ── SLIDE LABEL ───────────────────────────────────── */
+    .label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: clamp(1rem, 2.2vh, 1.8rem);
+      display: flex; align-items: center; gap: 0.55rem;
+    }
+    .label::after {
+      content: '';
+      display: block;
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--accent-glow), transparent);
+    }
+
+    /* ── TYPOGRAPHY ────────────────────────────────────── */
+    .h1 {
+      font-size: clamp(2rem, 4.2vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+    }
+    .h2 {
+      font-size: clamp(1.35rem, 2.5vw, 2.2rem);
+      font-weight: 700;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+    }
+    .h3 {
+      font-size: clamp(0.95rem, 1.5vw, 1.2rem);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .body {
+      font-size: clamp(0.85rem, 1.15vw, 1rem);
+      line-height: 1.68;
+      color: var(--text-2);
+    }
+    .small {
+      font-size: clamp(0.7rem, 0.95vw, 0.8rem);
+      line-height: 1.55;
+      color: var(--text-3);
+    }
+
+    /* ── DISPLAY NUMBER ─────────────────────────────────── */
+    .display {
+      font-size: clamp(7rem, 20vw, 16rem);
+      font-weight: 900;
+      line-height: 0.88;
+      letter-spacing: -0.05em;
+    }
+
+    /* ── CODE BLOCK ─────────────────────────────────────── */
+    .code {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.3rem;
+      font-family: var(--mono);
+      font-size: clamp(0.68rem, 1.05vw, 0.85rem);
+      line-height: 1.78;
+      color: var(--text-1);
+      white-space: pre;
+    }
+    .code.accent-left  { border-left: 3px solid var(--accent); }
+    .code.danger-left  { border-left: 3px solid var(--danger); }
+    .code.success-left { border-left: 3px solid var(--success); }
+
+    .ck { color: var(--accent); }
+    .cv { color: var(--text-1); }
+    .cc { color: var(--text-3); }
+    .cd { color: var(--danger); }
+    .cs { color: var(--success); }
+    .cw { color: var(--warn); }
+
+    /* ── CARDS ─────────────────────────────────────────── */
+    .card {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+    }
+    .card.accent  { background: var(--accent-dim);  border-color: rgba(167,139,250,0.22); }
+    .card.danger  { background: var(--danger-dim);  border-color: rgba(255,69,58,0.22); }
+    .card.success { background: var(--success-dim); border-color: rgba(48,209,88,0.22); }
+    .card.surface { background: var(--surface-2);   border-color: var(--border-med); }
+
+    /* ── BADGE ─────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.65rem; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .badge.accent  { background: var(--accent-dim);  color: var(--accent);  border: 1px solid rgba(167,139,250,0.30); }
+    .badge.danger  { background: var(--danger-dim);  color: var(--danger);  border: 1px solid rgba(255,69,58,0.30); }
+    .badge.success { background: var(--success-dim); color: var(--success); border: 1px solid rgba(48,209,88,0.30); }
+    .badge.warn    { background: var(--warn-dim);    color: var(--warn);    border: 1px solid rgba(255,159,10,0.30); }
+    .badge.surface { background: var(--surface-2);   color: var(--text-3);  border: 1px solid var(--border-med); }
+
+    /* ── LAYOUT HELPERS ─────────────────────────────────── */
+    .cols   { display: grid; gap: 2rem; }
+    .cols-2 { grid-template-columns: 1fr 1fr; }
+    .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .cols-4-6 { grid-template-columns: 4fr 6fr; }
+    .cols-5-7 { grid-template-columns: 5fr 7fr; }
+
+    .flex     { display: flex; align-items: center; }
+    .flex-col { display: flex; flex-direction: column; }
+    .gap-xs   { gap: 0.4rem; }
+    .gap-1    { gap: 0.65rem; }
+    .gap-2    { gap: 1.1rem; }
+    .gap-3    { gap: 1.6rem; }
+    .mt-1     { margin-top: 0.65rem; }
+    .mt-2     { margin-top: 1.1rem; }
+    .mt-3     { margin-top: 1.6rem; }
+    .mt-auto  { margin-top: auto; }
+    .flex-1   { flex: 1; }
+    .center   { text-align: center; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 1.2rem 0; }
+
+    /* ── ENFORCE LIST ───────────────────────────────────── */
+    .enforce-list {
+      list-style: none;
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .enforce-list li {
+      display: flex; align-items: flex-start; gap: 0.7rem;
+      font-size: clamp(0.82rem, 1.1vw, 0.96rem);
+      line-height: 1.48;
+      color: var(--text-2);
+    }
+    .ei {
+      flex-shrink: 0;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.62rem; font-weight: 700;
+      margin-top: 2px;
+    }
+    .ei.bad     { background: var(--danger-dim);  border: 1px solid rgba(255,69,58,0.35);  color: var(--danger); }
+    .ei.good    { background: var(--success-dim); border: 1px solid rgba(48,209,88,0.35);  color: var(--success); }
+
+    /* ── CONTEXT BAR ────────────────────────────────────── */
+    .ctx-bar {
+      display: flex; border-radius: 8px; overflow: hidden;
+      height: 46px; border: 1px solid var(--border);
+    }
+    .ctx-seg {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .ctx-format { background: var(--accent-dim);  border-right: 1px solid rgba(167,139,250,0.25); color: var(--accent);  flex: 1.2; }
+    .ctx-middle { background: rgba(255,255,255,0.02); color: var(--text-3); flex: 8.5; font-size: 0.85rem; letter-spacing: 0; text-transform: none; font-weight: 400; }
+    .ctx-synth  { background: var(--warn-dim);   border-left:  1px solid rgba(255,159,10,0.25);  color: var(--warn);    flex: 1.5; }
+
+    /* ── COGNITIVE FLOW ─────────────────────────────────── */
+    .cflow {
+      display: flex; align-items: center; gap: 0; flex-wrap: nowrap;
+    }
+    .cflow-step {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0.3rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: 10px;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      min-width: 80px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .cflow-step.accent { background: var(--accent-dim); border-color: rgba(167,139,250,0.28); }
+    .cflow-step.bad    { background: var(--danger-dim); border-color: rgba(255,69,58,0.28); }
+    .cflow-arrow { color: var(--text-3); font-size: 1.1rem; padding: 0 0.25rem; flex-shrink: 0; }
+    .cflow-arrow.bad { color: rgba(255,69,58,0.6); }
+    .cflow-label { font-size: clamp(0.75rem, 1.0vw, 0.88rem); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .cflow-sub   { font-size: clamp(0.7rem, 0.9vw, 0.8rem); color: var(--text-2); line-height: 1.3; }
+
+    /* ── PIPELINE STAGE ─────────────────────────────────── */
+    .pipe-stage {
+      display: flex; align-items: center;
+      padding: 0.75rem 1.1rem;
+      border-radius: 10px;
+      gap: 0.7rem;
+    }
+    .pipe-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    /* ── NAVIGATION ─────────────────────────────────────── */
+    .nav-prev, .nav-next {
+      position: fixed; top: 0; bottom: 0; width: 11%;
+      cursor: pointer; z-index: 50;
+    }
+    .nav-prev { left: 0; }
+    .nav-next { right: 0; }
+
+    .nav-dots {
+      position: fixed; bottom: 2.2vh; left: 50%;
+      transform: translateX(-50%);
+      display: flex; gap: 7px; z-index: 100;
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      cursor: pointer; transition: all 0.22s ease;
+    }
+    .dot.active { background: var(--accent); width: 22px; border-radius: 3px; }
+
+    .slide-counter {
+      position: fixed; bottom: 1.9vh; right: 2.8vw;
+      font-size: 0.65rem; color: var(--text-4);
+      font-variant-numeric: tabular-nums; z-index: 100;
+    }
+
+    /* ── MONO INLINE ─────────────────────────────────────── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+  </style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="nav-prev" onclick="go(-1)"></div>
+  <div class="nav-next" onclick="go(1)"></div>
+  <div class="nav-dots" id="dots"></div>
+  <div class="slide-counter" id="counter"></div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SLIDE 1 — COLD OPEN
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="slide active" id="s1">
+    <div class="label">The Seventh Layer</div>
+
+    <div class="flex-1 flex-col" style="justify-content:center; gap:0;">
+      <div class="display" style="color:var(--danger);">0</div>
+
+      <div style="margin-top:clamp(1.2rem,2.5vh,2rem);">
+        <div class="h1" style="line-height:1.15;">
+          Four test runs.<br>
+          Three topics.<br>
+          Zero compliant outputs.
+        </div>
+        <div class="body mt-2" style="max-width:500px;">
+          Not close. Not almost.&nbsp;&nbsp;<span style="color:var(--text-1); font-weight:700;">Zero.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex mt-auto" style="gap:0.75rem;">
+      <span class="badge danger">Format Failure</span>
+      <span class="badge surface">7-Stage Pipeline</span>
+      <span class="badge surface">Agent Architecture</span>
+    </div>
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SLIDE 2 — THE CONTRACT  (stakes first, then evidence)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="slide" id="s2">
+    <div class="label">02 — The Contract</div>
+
+    <div class="flex-1 flex-col" style="justify-content:center; gap:1.8rem;">
+
+      <!-- Stakes first -->
+      <div>
+        <div class="h1">Downstream specialists depended on a strict schema contract.</div>
+        <div style="margin-top:1.1rem; font-size:clamp(1rem,1.55vw,1.3rem); font-weight:500; line-height:1.52; color:var(--text-1); max-width:820px;">
+          The Researcher produced beautiful, detailed research output.
+          Downstream specialists couldn't parse any of it.
+          <span style="color:var(--danger); font-weight:700;">No schema, no chain. Every run broke the pipeline.</span>
+        </div>
+      </div>
+
+      <!-- Code evidence — side by side -->
+      <div class="cols cols-2" style="gap:1.5rem;">
+
+        <div class="flex-col gap-1">
+          <div class="small" style="letter-spacing:0.1em; text-transform:uppercase; font-weight:700; color:var(--success);">✓ &nbsp;Expected schema</div>
+          <div class="code success-left"><span class="cc">// confidence</span>
+<span class="ck">confidence</span>: <span class="cs">"high"</span>      <span class="cc">← ≥ 0.8</span>
+<span class="ck">confidence</span>: <span class="cs">"medium"</span>   <span class="cc">← 0.5–0.79</span>
+<span class="ck">confidence</span>: <span class="cs">"low"</span>       <span class="cc">← &lt; 0.5</span>
+
+<span class="cc">// tier</span>
+<span class="ck">tier</span>: <span class="cs">"primary"</span>
+<span class="ck">tier</span>: <span class="cs">"secondary"</span>
+<span class="ck">tier</span>: <span class="cs">"tertiary"</span></div>
+        </div>
+
+        <div class="flex-col gap-1">
+          <div class="small" style="letter-spacing:0.1em; text-transform:uppercase; font-weight:700; color:var(--danger);">✗ &nbsp;What actually arrived — every run</div>
+          <div class="code danger-left"><span class="cc">// confidence</span>
+<span class="ck">confidence</span>: <span class="cd">0.97</span>       <span class="cc">← numeric, not categorical</span>
+
+<span class="cc">// tier</span>
+<span class="ck">tier</span>: <span class="cd">"T1"</span>        <span class="cc">← shorthand, not full word</span>
+
+<span class="cc">// plus: headers, tables, prose sections</span></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SLIDE 3 — THE INSTINCT
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="slide" id="s3">
+    <div class="label">03 — The Instinct</div>
+
+    <div class="cols cols-5-7 flex-1" style="gap:3.5rem; align-items:center;">
+
+      <!-- LEFT -->
+      <div class="flex-col gap-2">
+        <div class="card danger" style="max-width:300px;">
+          <div class="h2" style="color:var(--danger); letter-spacing:-0.03em;">150 / 393</div>
+          <div class="small mt-1" style="color:var(--text-2);">lines devoted to format enforcement — more than a third of the entire prompt.</div>
+        </div>
+        <div class="h1">Enforce harder.</div>
+        <div class="body" style="max-width:340px;">
+          Everyone who builds agents has had this instinct. The format failed — so add more format instructions.
+        </div>
+        <div class="h2 mt-2" style="color:var(--danger); letter-spacing:-0.02em;">
+          The format still failed.<br>Every time.
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="flex-col gap-2">
+        <div class="small" style="letter-spacing:0.1em; text-transform:uppercase; font-weight:700; color:var(--text-3);">Six enforcement layers</div>
+
+        <ul class="enforce-list">
+          <li>
+            <span class="ei bad">1</span>
+            <span><code style="color:var(--warn);">OUTPUT CONTRACT</code> block — written in capitals at the top of the prompt</span>
+          </li>
+          <li>
+            <span class="ei bad">2</span>
+            <span>Stage 0 pre-commit — <em>write the output format before any research begins</em></span>
+          </li>
+          <li>
+            <span class="ei bad">3</span>
+            <span>Rigid Stage 7 template with exact field names and structure</span>
+          </li>
+          <li>
+            <span class="ei bad">4</span>
+            <span><code style="color:var(--warn);">COMPLIANCE NOTE</code> reminder embedded mid-prompt</span>
+          </li>
+          <li>
+            <span class="ei bad">5</span>
+            <span><code style="color:var(--warn);">FINAL SELF-CHECK</code> gate at the very end</span>
+          </li>
+          <li>
+            <span class="ei bad">6</span>
+            <span>Annotated wrong/right examples — side by side, in the prompt</span>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SLIDE 4 — THE FORMAT SPEC GETS BURIED  (NEW)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="slide" id="s4">
+    <div class="label">04 — The Format Spec Gets Buried</div>
+
+    <div class="flex-1 flex-col" style="justify-content:center; gap:1.6rem;">
+
+      <div>
+        <div class="small" style="letter-spacing:0.1em; text-transform:uppercase; font-weight:700; color:var(--text-3); margin-bottom:0.9rem;">
+          The Researcher's context window at synthesis time
+        </div>
+
+        <!-- Context bar — format spec made tiny and almost lost -->
+        <div class="ctx-bar" style="height:90px;">
+          <div class="ctx-seg ctx-format" style="flex:0.65; font-size:0.58rem; line-height:1.4; text-align:center; padding:0 0.5rem;">Format<br>spec —<br>read here</div>
+          <div class="ctx-seg ctx-middle" style="flex:11;">10–20 web searches &nbsp;·&nbsp; thousands of tokens of real-world evidence</div>
+          <div class="ctx-seg ctx-synth" style="flex:1.5; font-size:0.6rem; line-height:1.4; text-align:center; padding:0 0.4rem;">Synthesize<br>→ Write</div>
+        </div>
+
+        <div style="margin-top:1.1rem; font-size:clamp(0.9rem,1.3vw,1.1rem); color:var(--text-2); line-height:1.6;">
+          By synthesis time, the format spec is buried under everything that came after it.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SLIDE 5 — THE WRONG COGNITIVE MODE  (NEW)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="slide" id="s5">
+    <div class="label">05 — The Wrong Cognitive Mode</div>
+
+    <div class="flex-1 flex-col" style="justify-content:center; gap:2.2rem; max-width:900px;">
+
+      <!-- Cognitive flow chain -->
+      <div>
+        <div class="small" style="letter-spacing:0.1em; text-transform:uppercase; font-weight:700; color:var(--text-3); margin-bottom:0.85rem;">
+          The model's cognitive flow through a research task
+        </div>
+        <div class="cflow" style="gap:0.3rem;">
+          <div class="cflow-step">
+            <span class="cflow-label">Gather</span>
+            <span class="cflow-sub">evidence</span>
+          </div>
+          <span class="cflow-arrow">→</span>
+          <div class="cflow-step">
+            <span class="cflow-label">Assess</span>
+            <span class="cflow-sub">credibility</span>
+          </div>
+          <span class="cflow-arrow">→</span>
+          <div class="cflow-step">
+            <span class="cflow-label">Identify</span>
+            <span class="cflow-sub">patterns</span>
+          </div>
+          <span class="cflow-arrow">→</span>
+          <div class="cflow-step">
+            <span class="cflow-label">Synthesize</span>
+            <span class="cflow-sub">findings</span>
+          </div>
+          <span class="cflow-arrow">→</span>
+          <div class="cflow-step accent">
+            <span class="cflow-label" style="color:var(--accent);">Write</span>
+            <span class="cflow-sub">narrative</span>
+          </div>
+          <span class="cflow-arrow bad">→</span>
+          <div class="cflow-step bad">
+            <span class="cflow-label" style="color:var(--danger);">Fill form</span>
+            <span class="cflow-sub" style="color:rgba(255,69,58,0.7);">cold switch — wrong mode</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Key line — large -->
+      <div>
+        <div class="h1" style="line-height:1.1;">The cognitive mode always wins.</div>
+        <div class="h2 mt-2" style="color:var(--text-1); font-weight:700;">
+          Every time. No matter how many enforcement layers you add.
+        </div>
+      </div>
+
+      <!-- Supporting -->
+      <div class="body" style="color:var(--text-2); max-width:640px;">
+        Adding a seventh enforcement layer was never going to change this. The task itself was wrong for the stage.
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SLIDE 6 — THE REFRAME
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="slide" id="s6">
+    <div class="label">06 — The Reframe</div>
+
+    <div class="flex-1 flex-col" style="justify-content:center; gap:2rem; max-width:820px;">
+
+      <div>
+        <div class="h1">The model wasn't being disobedient.</div>
+        <div class="h2 mt-2" style="color:var(--text-1); font-weight:500;">
+          It was doing exactly what it was built to do.
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="cols cols-2" style="gap:1.5rem;">
+        <div class="card danger">
+          <div class="h3" style="color:var(--danger); margin-bottom:0.5rem;">Research</div>
+          <div class="small" style="color:var(--text-2); line-height:1.6;">
+            Gather evidence. Assess credibility. Identify patterns. Build an argument. Produce narrative. This is what synthesis <em>is</em> — the cognitive mode is inseparable from the task.
+          </div>
+        </div>
+        <div class="card accent">
+          <div class="h3" style="color:var(--accent); margin-bottom:0.5rem;">Formatting</div>
+          <div class="small" style="color:var(--text-2); line-height:1.6;">
+            Receive content in any form. Apply deterministic transformation rules. Emit canonical schema. A completely different task — narrow, mechanical, exact.
+          </div>
+        </div>
+      </div>
+
+      <div class="body" style="max-width:680px;">
+        These are not the same cognitive task. Treating them as one task — for one stage — is the architecture error.
+        The prompt isn't the problem.
+      </div>
+      <div class="h2" style="color:var(--accent); letter-spacing:-0.02em; max-width:680px;">
+        The pipeline design is the problem.
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SLIDE 7 — THE FIX
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="slide" id="s7">
+    <div class="label">07 — The Fix</div>
+
+    <div class="cols cols-5-7 flex-1" style="gap:3.5rem; align-items:center;">
+
+      <!-- LEFT -->
+      <div class="flex-col gap-2">
+        <div class="h1">Strip all 150 lines. Add one stage.</div>
+        <div class="body" style="max-width:340px;">
+          Accept that the Researcher produces narrative. Stop treating that as a failure. Promote the Formatter to a mandatory stage — no bypass, no exceptions.
+        </div>
+
+        <!-- Pipeline flow -->
+        <div class="flex-col gap-1 mt-1">
+          <div class="pipe-stage card surface">
+            <div class="pipe-dot" style="background:var(--text-3);"></div>
+            <div>
+              <div class="small" style="color:var(--text-2); font-weight:600; font-size:0.78rem;">Researcher</div>
+              <div class="small">free-form narrative — always</div>
+            </div>
+          </div>
+
+          <div style="padding-left:1.5rem; color:var(--accent); font-size:1.1rem; line-height:1.2; opacity:0.7;">↓</div>
+
+          <div class="pipe-stage card accent">
+            <div class="pipe-dot" style="background:var(--accent);"></div>
+            <div>
+              <div class="small" style="color:var(--accent); font-weight:700; font-size:0.78rem;">Formatter &nbsp;<span style="opacity:0.6; font-weight:400;">new · mandatory</span></div>
+              <div class="small">any input → canonical schema</div>
+            </div>
+          </div>
+
+          <div style="padding-left:1.5rem; color:var(--accent); font-size:1.1rem; line-height:1.2; opacity:0.7;">↓</div>
+
+          <div class="pipe-stage card success">
+            <div class="pipe-dot" style="background:var(--success);"></div>
+            <div>
+              <div class="small" style="color:var(--success); font-weight:600; font-size:0.78rem;">Specialists</div>
+              <div class="small">see clean structured data — always</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: transformation rules -->
+      <div class="flex-col gap-2">
+        <div class="small" style="letter-spacing:0.1em; text-transform:uppercase; font-weight:700; color:var(--text-3);">Formatter — transformation rules</div>
+
+        <div class="code accent-left"><span class="cc">// Confidence: numeric → categorical</span>
+<span class="cd">0.97</span>      →  <span class="cs">"high"</span>       <span class="cc">← ≥ 0.8</span>
+<span class="cd">0.62</span>      →  <span class="cs">"medium"</span>    <span class="cc">← 0.5–0.79</span>
+<span class="cd">0.34</span>      →  <span class="cs">"low"</span>        <span class="cc">← &lt; 0.5</span>
+
+<span class="cc">// Tier: shorthand → full word</span>
+<span class="cd">"T1"</span>      →  <span class="cs">"primary"</span>
+<span class="cd">"T2"</span>      →  <span class="cs">"secondary"</span>
+<span class="cd">"T3"</span>      →  <span class="cs">"tertiary"</span>
+
+<span class="cc">// Sources: partial → validated URL</span>
+<span class="cd">name only</span>  →  <span class="cs">"unknown"</span>
+<span class="cd">partial</span>    →  <span class="cs">full https:// or bust</span></div>
+
+        <div class="card accent mt-1">
+          <div class="body" style="color:var(--text-1); line-height:1.6; font-weight:500;">
+            Each specialist does exactly one thing, in the cognitive mode that thing actually requires.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SLIDE 8 — VALIDATION
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="slide" id="s8">
+    <div class="label">08 — Validation</div>
+
+    <div class="flex-1 flex-col" style="justify-content:center;">
+      <div class="cols cols-4-6" style="gap:4rem; align-items:center;">
+
+        <!-- LEFT: hero number -->
+        <div class="flex-col gap-xs">
+          <div class="display" style="color:var(--accent);">43</div>
+          <div class="small" style="color:var(--text-2); margin-top:0.3rem;">claims extracted</div>
+          <div class="badge accent mt-2" style="align-self:flex-start;">One run. Clean.</div>
+        </div>
+
+        <!-- RIGHT: results -->
+        <div class="flex-col gap-2">
+          <div>
+            <div class="h2" style="font-weight:700;">Researcher → Formatter → Writer</div>
+            <div class="small mt-1" style="color:var(--text-2);">"What is Jina AI?" &nbsp;·&nbsp; first run after architectural change</div>
+          </div>
+
+          <ul class="enforce-list">
+            <li>
+              <span class="ei good">✓</span>
+              <span>Every confidence value <strong style="color:var(--text-1);">categorical</strong> — no numerics</span>
+            </li>
+            <li>
+              <span class="ei good">✓</span>
+              <span>Every tier label a <strong style="color:var(--text-1);">full word</strong> — no shorthand</span>
+            </li>
+            <li>
+              <span class="ei good">✓</span>
+              <span>Every source a <strong style="color:var(--text-1);">valid URL</strong> — no partials, no names</span>
+            </li>
+            <li>
+              <span class="ei good">✓</span>
+              <span>Writer produced a structured brief with <strong style="color:var(--text-1);">10 citations</strong></span>
+            </li>
+            <li>
+              <span class="ei good">✓</span>
+              <span>Chain ran <strong style="color:var(--text-1);">end-to-end</strong> without intervention</span>
+            </li>
+          </ul>
+
+          <div class="card accent" style="padding:1.2rem 1.4rem;">
+            <div style="font-size:clamp(1.05rem,1.5vw,1.35rem); font-weight:600; line-height:1.5; color:var(--text-1);">
+              Prior architecture: 4 runs, 3 topics, <span style="color:var(--danger); font-weight:800;">0</span> compliant outputs.<br>
+              One architectural change. One run. <span style="color:var(--success); font-weight:800;">Done.</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SLIDE 9 — THE PRINCIPLE  (kicker dominant)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="slide" id="s9">
+    <div class="label">09 — The Principle</div>
+
+    <div class="flex-1 flex-col" style="justify-content:center; align-items:center; text-align:center; gap:2.6rem; max-width:820px; margin:0 auto; width:100%;">
+
+      <!-- Kicker: DOMINANT — hits first -->
+      <div>
+        <div style="font-size:clamp(2.2rem,4.8vw,4.4rem); font-weight:800; line-height:1.08; letter-spacing:-0.03em; color:var(--text-1);">
+          The seventh layer was never<br>going to work.
+        </div>
+        <div style="font-size:clamp(2.2rem,4.8vw,4.4rem); font-weight:800; line-height:1.08; letter-spacing:-0.03em; color:var(--accent); margin-top:0.3em;">
+          The architecture was the<br>fix all along.
+        </div>
+      </div>
+
+      <!-- Setup: diagnostic principle — lands after the punch -->
+      <div style="font-size:clamp(0.85rem,1.15vw,1rem); line-height:1.72; color:var(--text-2); max-width:660px;">
+        When a prompt-level instruction fails consistently — not occasionally, not in edge cases,
+        but <em style="color:var(--accent);">every single time</em> — that pattern is a diagnostic signal:
+        stop enforcing. Start routing.
+      </div>
+
+      <!-- Source footnote -->
+      <div class="small" style="color:var(--text-4); line-height:1.6; max-width:640px;">
+        Source: first-person account — all metrics (150/393 lines, 43 claims, 6 enforcement layers) are author-reported from direct observation. Validation run: "What is Jina AI?" via Researcher → Formatter → Writer chain.
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dotsEl  = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+  const total = slides.length;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+
+  function update() {
+    slides.forEach((s, i) => s.classList.toggle('active', i === cur));
+    document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === cur));
+    counter.textContent = `${cur + 1} / ${total}`;
+  }
+
+  function go(dir) { goTo(cur + dir); }
+  function goTo(n) { cur = Math.max(0, Math.min(total - 1, n)); update(); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ')  go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')  go(-1);
+    if (e.key === 'Home') goTo(0);
+    if (e.key === 'End')  goTo(total - 1);
+  });
+
+  update();
+</script>
+</body>
+</html>

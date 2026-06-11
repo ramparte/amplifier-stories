@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parallax Discovery — Multi-Agent Deep Investigation</title>
+<style>
+  :root {
+    --accent: #6366F1;
+    --accent-dim: rgba(99, 102, 241, 0.15);
+    --accent-mid: rgba(99, 102, 241, 0.35);
+    --bg: #000;
+    --surface-1: rgba(255,255,255,0.04);
+    --surface-2: rgba(255,255,255,0.08);
+    --surface-3: rgba(255,255,255,0.12);
+    --text-primary: rgba(255,255,255,0.95);
+    --text-secondary: rgba(255,255,255,0.7);
+    --text-tertiary: rgba(255,255,255,0.5);
+    --green: #34D399;
+    --amber: #FBBF24;
+    --red: #F87171;
+    --teal: #2DD4BF;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    -webkit-font-smoothing: antialiased;
+  }
+  .deck { position: relative; width: 100%; height: 100%; }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: clamp(40px, 6vh, 80px) clamp(40px, 8vw, 120px);
+    opacity: 0;
+    transform: translateX(40px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+    overflow-y: auto;
+  }
+  .slide.active {
+    opacity: 1; transform: translateX(0);
+    pointer-events: auto;
+  }
+  .slide.exit-left {
+    opacity: 0; transform: translateX(-40px);
+  }
+
+  /* Typography */
+  h1 {
+    font-size: clamp(36px, 5vw, 72px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 0.3em;
+  }
+  h2 {
+    font-size: clamp(28px, 3.5vw, 52px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 0.5em;
+  }
+  h3 {
+    font-size: clamp(18px, 2vw, 28px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.4em;
+  }
+  p, li {
+    font-size: clamp(16px, 1.6vw, 22px);
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+  .accent { color: var(--accent); }
+  .green { color: var(--green); }
+  .amber { color: var(--amber); }
+  .red { color: var(--red); }
+  .dim { color: var(--text-tertiary); }
+
+  /* Title slide */
+  .slide--title { text-align: center; justify-content: center; }
+  .slide--title h1 { font-size: clamp(44px, 6vw, 88px); margin-bottom: 0.15em; }
+  .subtitle {
+    font-size: clamp(18px, 2.2vw, 32px);
+    color: var(--text-secondary);
+    font-weight: 400;
+    margin-bottom: 1em;
+  }
+  .tagline {
+    font-size: clamp(14px, 1.4vw, 20px);
+    color: var(--text-tertiary);
+    font-style: italic;
+    margin-bottom: 2em;
+  }
+  .badge-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: clamp(11px, 1.1vw, 14px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .badge--active { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+  .badge--version { background: var(--accent-dim); color: var(--accent); }
+  .badge--date { background: var(--surface-2); color: var(--text-tertiary); }
+
+  /* Content helpers */
+  .card-grid {
+    display: grid;
+    gap: clamp(12px, 1.5vw, 24px);
+    margin-top: 1em;
+  }
+  .card-grid--3 { grid-template-columns: repeat(3, 1fr); }
+  .card-grid--4 { grid-template-columns: repeat(4, 1fr); }
+  .card-grid--2 { grid-template-columns: repeat(2, 1fr); }
+  .card {
+    background: var(--surface-2);
+    border-radius: 16px;
+    padding: clamp(16px, 2vw, 28px);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .card h3 { color: var(--text-primary); }
+  .card p, .card li { font-size: clamp(13px, 1.2vw, 17px); color: var(--text-secondary); }
+
+  .metric-grid {
+    display: grid;
+    gap: clamp(16px, 2vw, 32px);
+    margin-top: 1.5em;
+  }
+  .metric-grid--3 { grid-template-columns: repeat(3, 1fr); }
+  .metric-grid--4 { grid-template-columns: repeat(4, 1fr); }
+  .metric {
+    text-align: center;
+    padding: clamp(16px, 2vw, 28px);
+    background: var(--surface-1);
+    border-radius: 16px;
+  }
+  .metric__number {
+    font-size: clamp(32px, 4vw, 64px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--accent), #A78BFA);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+  .metric__label {
+    font-size: clamp(12px, 1.1vw, 16px);
+    color: var(--text-tertiary);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .quote {
+    border-left: 3px solid var(--accent);
+    padding: 12px 20px;
+    margin: 1em 0;
+    font-style: italic;
+    color: var(--text-secondary);
+    font-size: clamp(14px, 1.4vw, 20px);
+    background: var(--accent-dim);
+    border-radius: 0 12px 12px 0;
+  }
+
+  .funnel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 1em;
+  }
+  .funnel__wave {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 1.5vw, 24px);
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: clamp(12px, 1.2vw, 20px) clamp(16px, 2vw, 28px);
+    border-left: 4px solid var(--accent);
+    transition: background 0.3s;
+  }
+  .funnel__wave:nth-child(2) { margin-left: 4%; border-left-color: #818CF8; }
+  .funnel__wave:nth-child(3) { margin-left: 8%; border-left-color: #A78BFA; }
+  .funnel__wave:nth-child(4) { margin-left: 12%; border-left-color: #C4B5FD; }
+  .funnel__gate {
+    text-align: center;
+    font-size: clamp(10px, 0.9vw, 13px);
+    color: var(--amber);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 0;
+    margin-left: 2%;
+  }
+  .funnel__wave-label {
+    font-size: clamp(11px, 1vw, 14px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    min-width: 120px;
+  }
+  .funnel__wave-desc {
+    font-size: clamp(13px, 1.2vw, 17px);
+    color: var(--text-secondary);
+    flex: 1;
+  }
+
+  .hierarchy {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 1em;
+  }
+  .hierarchy__level {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 1.5vw, 24px);
+    padding: clamp(10px, 1.2vw, 18px) clamp(16px, 2vw, 28px);
+    border-radius: 12px;
+  }
+  .hierarchy__level--1 { background: rgba(52, 211, 153, 0.12); border-left: 4px solid var(--green); }
+  .hierarchy__level--2 { background: rgba(99, 102, 241, 0.12); border-left: 4px solid var(--accent); }
+  .hierarchy__level--3 { background: rgba(251, 191, 36, 0.08); border-left: 4px solid var(--amber); }
+  .hierarchy__level--4 { background: rgba(248, 113, 113, 0.08); border-left: 4px solid var(--red); }
+  .hierarchy__rank {
+    font-size: clamp(18px, 2vw, 28px);
+    font-weight: 800;
+    min-width: 30px;
+  }
+  .hierarchy__type {
+    font-size: clamp(14px, 1.4vw, 20px);
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 180px;
+  }
+  .hierarchy__desc {
+    font-size: clamp(13px, 1.2vw, 17px);
+    color: var(--text-secondary);
+    flex: 1;
+  }
+
+  .severity-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 0.5em;
+    flex-wrap: wrap;
+  }
+  .severity-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: clamp(13px, 1.2vw, 17px);
+    font-weight: 600;
+  }
+  .severity-chip--critical { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+  .severity-chip--high { background: rgba(251, 191, 36, 0.15); color: var(--amber); }
+  .severity-chip--medium { background: rgba(99, 102, 241, 0.15); color: var(--accent); }
+  .severity-chip--low { background: var(--surface-2); color: var(--text-tertiary); }
+
+  .correction-card {
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: clamp(14px, 1.5vw, 22px);
+    margin-bottom: 10px;
+    border-left: 4px solid var(--red);
+  }
+  .correction-card--prevented { border-left-color: var(--green); }
+  .correction-card h4 {
+    font-size: clamp(14px, 1.3vw, 18px);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .correction-card p {
+    font-size: clamp(12px, 1.1vw, 15px);
+    color: var(--text-secondary);
+  }
+  .correction-label {
+    font-size: clamp(10px, 0.9vw, 12px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .correction-label--corrected { background: rgba(248,113,113,0.2); color: var(--red); }
+  .correction-label--prevented { background: rgba(52,211,153,0.2); color: var(--green); }
+
+  /* Comparison arrows */
+  .before-after {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-top: 1em;
+  }
+  .before-after__arrow {
+    font-size: 28px;
+    color: var(--accent);
+  }
+  .before-after__box {
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: clamp(14px, 1.5vw, 22px);
+    text-align: center;
+  }
+  .before-after__box--before { border: 1px solid rgba(248, 113, 113, 0.3); }
+  .before-after__box--after { border: 1px solid rgba(52, 211, 153, 0.3); }
+
+  /* Sources slide */
+  .sources-table {
+    margin-top: 1em;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .sources-table th, .sources-table td {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: clamp(12px, 1.1vw, 15px);
+    border-bottom: 1px solid var(--surface-2);
+  }
+  .sources-table th {
+    color: var(--text-tertiary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: clamp(10px, 0.9vw, 12px);
+    letter-spacing: 0.06em;
+  }
+  .sources-table td { color: var(--text-secondary); }
+
+  /* CTA slide */
+  .cta-block {
+    background: var(--surface-2);
+    border-radius: 16px;
+    padding: clamp(20px, 2.5vw, 36px);
+    margin-top: 0.8em;
+  }
+  .cta-block code {
+    display: block;
+    font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+    font-size: clamp(13px, 1.2vw, 17px);
+    color: var(--green);
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 8px;
+    margin: 8px 0;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .cta-block h3 { margin-bottom: 8px; }
+
+  .link-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 1em;
+  }
+  .link-card {
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: clamp(12px, 1.4vw, 20px);
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: border-color 0.2s;
+  }
+  .link-card:hover { border-color: var(--accent); }
+  .link-card h4 {
+    font-size: clamp(13px, 1.2vw, 17px);
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .link-card p {
+    font-size: clamp(11px, 1vw, 14px);
+    color: var(--text-tertiary);
+  }
+
+  /* Navigation */
+  .nav-dots {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    padding: 0;
+  }
+  .nav-dot.active {
+    background: var(--accent);
+    width: 24px;
+    border-radius: 4px;
+  }
+  .slide-counter {
+    position: fixed;
+    bottom: 24px;
+    right: 32px;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    z-index: 100;
+  }
+  .click-zone {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 20%;
+    z-index: 50;
+    cursor: pointer;
+  }
+  .click-zone--left { left: 0; }
+  .click-zone--right { right: 0; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .card-grid--3, .card-grid--4 { grid-template-columns: 1fr 1fr; }
+    .metric-grid--3, .metric-grid--4 { grid-template-columns: repeat(2, 1fr); }
+    .link-grid { grid-template-columns: 1fr; }
+    .before-after { grid-template-columns: 1fr; }
+    .before-after__arrow { transform: rotate(90deg); justify-self: center; }
+    .hierarchy__type { min-width: 120px; }
+  }
+  @media (max-width: 600px) {
+    .card-grid--3, .card-grid--4, .card-grid--2 { grid-template-columns: 1fr; }
+    .metric-grid--3, .metric-grid--4 { grid-template-columns: 1fr 1fr; }
+    .funnel__wave-label { min-width: 80px; }
+  }
+
+  /* Component inventory compact */
+  .inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-top: 1em;
+  }
+  .inventory-item {
+    text-align: center;
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: clamp(12px, 1.4vw, 22px) 8px;
+  }
+  .inventory-item__count {
+    font-size: clamp(28px, 3vw, 44px);
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .inventory-item__type {
+    font-size: clamp(12px, 1.1vw, 15px);
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .inventory-item__detail {
+    font-size: clamp(10px, 0.85vw, 12px);
+    color: var(--text-tertiary);
+    margin-top: 4px;
+    line-height: 1.3;
+  }
+  @media (max-width: 700px) {
+    .inventory-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+<!-- ====== SLIDE 1: TITLE ====== -->
+<div class="slide slide--title active" data-slide="0">
+  <h1>Parallax <span class="accent">Discovery</span></h1>
+  <p class="subtitle">Multi-Agent Deep Investigation for Complex Systems</p>
+  <p class="tagline">Not a quick answer. Not a plausible narrative. True understanding&mdash;with proof.</p>
+  <div class="badge-row">
+    <span class="badge badge--active">&#9679; Active</span>
+    <span class="badge badge--version">v0.1.0</span>
+    <span class="badge badge--date">March 2026</span>
+  </div>
+</div>
+
+<!-- ====== SLIDE 2: THE PROBLEM ====== -->
+<div class="slide" data-slide="1">
+  <h2>Single-perspective analysis <span class="red">misses things</span>. Every time.</h2>
+  <div class="card-grid card-grid--3">
+    <div class="card">
+      <h3>Incomplete by default</h3>
+      <p>You send an agent to investigate a complex system. It comes back with findings that seem reasonable&mdash;but are incomplete. You send a second agent. It finds different things. The intersection is never the full picture.</p>
+    </div>
+    <div class="card">
+      <h3>Docs &ne; reality</h3>
+      <p>Documentation describes the <em>intended</em> design. Code reveals the <em>actual</em> design. They diverge. Assumptions compound silently&mdash;each agent inherits the last one's blind spots.</p>
+    </div>
+    <div class="card">
+      <h3>Confident &amp; wrong</h3>
+      <p>LLM sessions produce plausible, confident narratives that can be confidently wrong. Without adversarial verification, you can't tell the difference between insight and illusion.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SLIDE 3: ORIGIN STORY ====== -->
+<div class="slide" data-slide="2">
+  <h2>We learned this <span class="accent">the hard way</span></h2>
+  <p style="margin-bottom:1em;">We ported patterns from a successful autonomous coding system&mdash;the dev-machine bundle, which had built a <strong>166K-line TypeScript word processor</strong> across 692 features and 255 sessions. The port looked right on paper.</p>
+  <div class="before-after">
+    <div class="before-after__box before-after__box--before">
+      <h3 class="red">Before</h3>
+      <p>Review loop <strong>couldn't converge</strong>&mdash;oscillated endlessly, finding new P0 issues on every pass.</p>
+      <p style="margin-top:8px;font-weight:600;color:var(--red);">Required human intervention every time.</p>
+    </div>
+    <div class="before-after__arrow">&rarr;</div>
+    <div class="before-after__box">
+      <h3 class="dim">Investigation</h3>
+      <p>Single-agent investigation produced analysis that seemed reasonable but was <strong>incomplete</strong>. Couldn't tell us <em>why</em> the convergence failed.</p>
+    </div>
+  </div>
+  <div class="quote" style="margin-top:1.2em;">
+    "Send multiple agents independently. Use their disagreements as signal. Then challenge everything with execution."
+  </div>
+</div>
+
+<!-- ====== SLIDE 4: THE INSIGHT ====== -->
+<div class="slide" data-slide="3">
+  <h2>The <span class="accent">Parallax</span> Insight</h2>
+  <p style="font-size:clamp(16px,1.8vw,24px);color:var(--text-secondary);margin-bottom:1.5em;">
+    In astronomy, <strong>parallax</strong> determines a star's true position by observing it from multiple vantage points. The apparent shift between observations reveals the actual distance.
+  </p>
+  <div class="card-grid card-grid--2">
+    <div class="card" style="border-left:4px solid var(--green);">
+      <h3 class="green">Agreements confirm</h3>
+      <p>When independent agents arrive at the same finding from different angles, confidence is high. This is corroboration through isolation.</p>
+    </div>
+    <div class="card" style="border-left:4px solid var(--amber);">
+      <h3 class="amber">Disagreements reveal</h3>
+      <p>When agents find different things, that's not a problem to resolve&mdash;it's a <strong>priority to investigate</strong>. Discrepancies are signal, not failure.</p>
+    </div>
+  </div>
+  <div class="quote" style="margin-top:1em;">
+    "Where there are discrepancies, send an independent party of investigative agents to go trace actual code&hellip; in fact, send multiple independent parties for the same value of not counting on/trusting just one."
+  </div>
+</div>
+
+<!-- ====== SLIDE 5: THREE-WAVE FUNNEL ====== -->
+<div class="slide" data-slide="4">
+  <h2>The Three-Wave <span class="accent">Funnel</span></h2>
+  <p style="color:var(--text-tertiary);margin-bottom:0.5em;">Each wave is more targeted and more rigorous than the last, informed by the discrepancies from the wave before it.</p>
+  <div class="funnel">
+    <div class="funnel__wave">
+      <span class="funnel__wave-label">Wave 1: Discovery</span>
+      <span class="funnel__wave-desc"><strong>Broad, triplicate.</strong> 3 independent agents per topic. Fresh context. Cast a wide net. Output: 75+ artifact files, reconciliation with discrepancies.</span>
+    </div>
+    <div class="funnel__gate">&#9650; Approval Gate &mdash; human reviews &amp; steers Wave 2</div>
+    <div class="funnel__wave">
+      <span class="funnel__wave-label">Wave 2: Verification</span>
+      <span class="funnel__wave-desc"><strong>Focused, expert.</strong> Targeted code-level deep dives on specific discrepancies. 1 expert per discrepancy. File:line evidence required.</span>
+    </div>
+    <div class="funnel__gate">&#9650; Approval Gate &mdash; human reviews &amp; steers Wave 3</div>
+    <div class="funnel__wave">
+      <span class="funnel__wave-label">Wave 3: Adversarial</span>
+      <span class="funnel__wave-desc"><strong>Execution-based.</strong> Challenge claims with actual code execution. Write test scripts. Run them. Verdicts: CONFIRMED / REFUTED / CORRECTED.</span>
+    </div>
+    <div class="funnel__gate">&#9650; Approval Gate &mdash; human reviews</div>
+    <div class="funnel__wave">
+      <span class="funnel__wave-label">Wave 4: Synthesis</span>
+      <span class="funnel__wave-desc"><strong>Final deliverables.</strong> Unified understanding, architecture DOT diagram, evidence catalog, open questions, actionable plan.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SLIDE 6: TRIPLICATE PATTERN ====== -->
+<div class="slide" data-slide="5">
+  <h2>The <span class="accent">Triplicate</span> Pattern</h2>
+  <p style="color:var(--text-tertiary);margin-bottom:0.5em;">Every topic gets 3 independent agents with <code style="color:var(--accent);background:var(--accent-dim);padding:2px 8px;border-radius:4px;font-size:0.9em;">context_depth="none"</code>&mdash;genuinely fresh context.</p>
+  <div class="card-grid card-grid--3">
+    <div class="card" style="border-top:3px solid var(--accent);">
+      <h3>Code Tracer <span class="dim" style="font-weight:400;font-size:0.8em;">HOW</span></h3>
+      <p>Traces actual code execution paths. File:line citations. LSP navigation.</p>
+      <p style="margin-top:8px;font-size:clamp(11px,1vw,14px);color:var(--text-tertiary);"><strong>Unique find:</strong> The admissions-advisor agent is NOT invoked by the admissions mode&mdash;they're parallel paths through 7 files.</p>
+    </div>
+    <div class="card" style="border-top:3px solid #818CF8;">
+      <h3>Behavior Observer <span class="dim" style="font-weight:400;font-size:0.8em;">WHAT</span></h3>
+      <p>Examines 10+ real artifacts. Quantifies patterns. Reveals reality vs. documentation.</p>
+      <p style="margin-top:8px;font-size:clamp(11px,1vw,14px);color:var(--text-tertiary);"><strong>Unique find:</strong> Word4 diverged 11.4x from its template. CONTEXT-TRANSFER.md grew 391x (28&rarr;10,967 lines).</p>
+    </div>
+    <div class="card" style="border-top:3px solid #A78BFA;">
+      <h3>Integration Mapper <span class="dim" style="font-weight:400;font-size:0.8em;">WHERE/WHY</span></h3>
+      <p>Maps cross-boundary integrations. Finds what happens where neither mechanism's docs describe the interaction.</p>
+      <p style="margin-top:8px;font-size:clamp(11px,1vw,14px);color:var(--text-tertiary);"><strong>Unique find:</strong> A confirmed <code>deep_merge</code> bug silently dropping config during bundle composition. Two live collision sites.</p>
+    </div>
+  </div>
+  <div class="quote" style="margin-top:0.8em;font-size:clamp(13px,1.2vw,17px);">
+    Every team in every investigation had at least one agent discover something the others missed. The integration mapper consistently produced the most architecturally significant insights.
+  </div>
+</div>
+
+<!-- ====== SLIDE 7: EVIDENCE HIERARCHY ====== -->
+<div class="slide" data-slide="6">
+  <h2>The Evidence <span class="accent">Hierarchy</span></h2>
+  <p style="color:var(--text-tertiary);margin-bottom:0.3em;">Not all evidence is equal. The methodology enforces a strict quality hierarchy.</p>
+  <div class="hierarchy">
+    <div class="hierarchy__level hierarchy__level--1">
+      <span class="hierarchy__rank green">1</span>
+      <span class="hierarchy__type green">Execution evidence</span>
+      <span class="hierarchy__desc">Ran code, observed behavior, captured output. <strong>Gold standard.</strong> Antagonist agent operates here.</span>
+    </div>
+    <div class="hierarchy__level hierarchy__level--2">
+      <span class="hierarchy__rank accent">2</span>
+      <span class="hierarchy__type accent">Code tracing</span>
+      <span class="hierarchy__desc">File:line citations, LSP navigation, followed logic. Code Tracer &amp; Integration Mapper operate here.</span>
+    </div>
+    <div class="hierarchy__level hierarchy__level--3">
+      <span class="hierarchy__rank amber">3</span>
+      <span class="hierarchy__type amber">Documentation</span>
+      <span class="hierarchy__desc">Read docs, README, comments. Medium reliability. Behavior Observer spans here.</span>
+    </div>
+    <div class="hierarchy__level hierarchy__level--4">
+      <span class="hierarchy__rank red">4</span>
+      <span class="hierarchy__type red">Assumption</span>
+      <span class="hierarchy__desc">Inferred from patterns. Must flag explicitly. All agents fall here sometimes.</span>
+    </div>
+  </div>
+  <p style="margin-top:1em;font-size:clamp(16px,1.6vw,22px);text-align:center;color:var(--text-primary);font-weight:600;">
+    Code reading identifies mechanisms. <span class="accent">Execution proves impact.</span>
+  </p>
+</div>
+
+<!-- ====== SLIDE 8: WHAT'S IN THE BUNDLE ====== -->
+<div class="slide" data-slide="7">
+  <h2>What's In the <span class="accent">Bundle</span></h2>
+  <div class="inventory-grid">
+    <div class="inventory-item">
+      <div class="inventory-item__count">5</div>
+      <div class="inventory-item__type">Agents</div>
+      <div class="inventory-item__detail">code-tracer, behavior-observer, integration-mapper, lead-investigator, antagonist</div>
+    </div>
+    <div class="inventory-item">
+      <div class="inventory-item__count">4</div>
+      <div class="inventory-item__type">Modes</div>
+      <div class="inventory-item__detail">/discovery &rarr; /verification &rarr; /adversarial &rarr; /synthesis</div>
+    </div>
+    <div class="inventory-item">
+      <div class="inventory-item__count">2</div>
+      <div class="inventory-item__type">Recipes</div>
+      <div class="inventory-item__detail">Staged outer orchestration + per-wave agent dispatch</div>
+    </div>
+    <div class="inventory-item">
+      <div class="inventory-item__count">1</div>
+      <div class="inventory-item__type">Skill</div>
+      <div class="inventory-item__detail">parallax-methodology: progressive-reveal (~2K tokens on demand)</div>
+    </div>
+    <div class="inventory-item">
+      <div class="inventory-item__count">4</div>
+      <div class="inventory-item__type">Context Files</div>
+      <div class="inventory-item__detail">methodology, triplicate-pattern, artifact-strategy, wave-protocol</div>
+    </div>
+  </div>
+  <p style="color:var(--text-tertiary);margin-top:1.2em;font-size:clamp(14px,1.3vw,18px);line-height:1.6;">
+    Built on real Amplifier mechanisms&mdash;validated by first investigating those mechanisms with 18 agents:
+    <strong class="accent">Skills</strong> for progressive-reveal JIT context &middot;
+    <strong class="accent">Modes</strong> for phase enforcement via hooks &middot;
+    <strong class="accent">Recipes</strong> for staged orchestration with approval gates &middot;
+    <strong class="accent">Agents</strong> with <code style="color:var(--accent);font-size:0.9em;">context_depth="none"</code> for cognitive isolation &middot;
+    <strong class="accent">Bundles</strong> via the thin bundle pattern.
+    Validated end-to-end through the recipe engine.
+  </p>
+</div>
+
+<!-- ====== SLIDE 9: PROOF — DEV-MACHINE ====== -->
+<div class="slide" data-slide="8">
+  <h2>Proof: <span class="accent">Dev-Machine</span> Investigation</h2>
+  <p style="color:var(--text-tertiary);margin-bottom:0.8em;">Understand how the dev-machine bundle truly works so we could port its patterns correctly.</p>
+  <div class="metric-grid metric-grid--4">
+    <div class="metric"><div class="metric__number">22</div><div class="metric__label">Agent investigations</div></div>
+    <div class="metric"><div class="metric__number">97</div><div class="metric__label">Artifact files</div></div>
+    <div class="metric"><div class="metric__number">22,433</div><div class="metric__label">Lines of content</div></div>
+    <div class="metric"><div class="metric__number">3</div><div class="metric__label">Waves</div></div>
+  </div>
+  <div class="card" style="margin-top:1.2em;border-left:4px solid var(--accent);">
+    <h3>The <span class="accent">Convergence Layering Principle</span></h3>
+    <p style="font-size:clamp(14px,1.4vw,20px);font-style:italic;">"The termination condition of an iterative loop must be more deterministic than the loop body."</p>
+    <p style="margin-top:8px;">The dev-machine reviewed <strong>one feature's diff</strong> against <strong>one feature's spec</strong>, gated by <strong>deterministic exit codes</strong>. Our resolver reviewed the <strong>entire codebase</strong> with <strong>probabilistic termination</strong>. Six boundary failures confirmed it.</p>
+  </div>
+  <p style="margin-top:0.8em;font-weight:600;font-size:clamp(14px,1.4vw,20px);">
+    Produced a <span class="green">deployable fix</span>&mdash;shipped as PR #45. Briefs now converge autonomously in <span class="green">7&ndash;27 minutes</span>.
+  </p>
+</div>
+
+<!-- ====== SLIDE 10: PROOF — AMPLIFIER-RESOLVE ====== -->
+<div class="slide" data-slide="9">
+  <h2>Proof: <span class="accent">Amplifier-Resolve</span> Investigation</h2>
+  <p style="color:var(--text-tertiary);margin-bottom:0.8em;">Understand how amplifier-resolve truly, currently works&mdash;not the docs, the reality.</p>
+  <div class="metric-grid metric-grid--4">
+    <div class="metric"><div class="metric__number">24</div><div class="metric__label">Agent investigations</div></div>
+    <div class="metric"><div class="metric__number">110</div><div class="metric__label">Artifact files</div></div>
+    <div class="metric"><div class="metric__number">18</div><div class="metric__label">Verified bugs</div></div>
+    <div class="metric"><div class="metric__number">13</div><div class="metric__label">Fixes shipped</div></div>
+  </div>
+  <div class="severity-row" style="margin-top:1em;margin-bottom:0.5em;">
+    <span class="severity-chip severity-chip--critical">3 CRITICAL</span>
+    <span class="severity-chip severity-chip--high">7 HIGH</span>
+    <span class="severity-chip severity-chip--medium">6 MEDIUM</span>
+    <span class="severity-chip severity-chip--low">2 LOW</span>
+  </div>
+  <div class="card-grid card-grid--2" style="margin-top:0.6em;">
+    <div class="card">
+      <h3>Critical bugs found</h3>
+      <p>Consensus pipeline silently running 1-of-3 models. DotGraph silencing 23 pipeline engine events. Resume creating an infinite escalation loop.</p>
+    </div>
+    <div class="card" style="border-left:4px solid var(--green);">
+      <h3 class="green">What it shipped</h3>
+      <p><strong>~50 lines</strong> fixed 3 CRITICAL + 2 HIGH bugs. <strong>~700 lines</strong> of verified dead code removed. Test suite: <strong>850 &rarr; 1,145</strong> (34% growth, zero failures).</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SLIDE 11: SELF-CORRECTION STORY ====== -->
+<div class="slide" data-slide="10">
+  <h2>The methodology catches <span class="green">its own errors</span></h2>
+  <p style="color:var(--text-tertiary);margin-bottom:0.8em;">Wave 3 doesn't just find bugs in the target&mdash;it corrects mistakes from Waves 1 and 2.</p>
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    <div class="correction-card">
+      <span class="correction-label correction-label--corrected">Corrected</span>
+      <h4>Wave 1 said "15 events." Wave 3 proved it's <span class="accent">23 constants, 7 unique types</span>.</h4>
+      <p>A 53% undercount that only execution-based measurement could reveal.</p>
+    </div>
+    <div class="correction-card">
+      <span class="correction-label correction-label--corrected">Corrected</span>
+      <h4>Wave 1 said "7 dead code items safe to remove." Wave 3 proved only <span class="accent">3 are truly dead</span>.</h4>
+      <p>4 items flagged as dead code are live production code.</p>
+    </div>
+    <div class="correction-card correction-card--prevented">
+      <span class="correction-label correction-label--prevented">Prevented</span>
+      <h4>The stealth production break <span class="green">that Wave 3 caught</span></h4>
+      <p>The <code>context=</code> parameter was flagged for removal. Removing it <strong>passes the full test suite</strong>. But it breaks <strong>8 production callers at runtime</strong>&mdash;callers not covered by any test. Wave 3's execution-based verification caught this. Code reading alone cannot.</p>
+    </div>
+    <div class="correction-card">
+      <span class="correction-label correction-label--corrected">Corrected</span>
+      <h4>Wave 1 estimated token budget at ~23&ndash;26K. Wave 3 measured <span class="accent">~36&ndash;39K</span>.</h4>
+      <p>A 50% correction. The difference between "probably fine" and "needs architectural attention."</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SLIDE 12: BY THE NUMBERS ====== -->
+<div class="slide" data-slide="11">
+  <h2>By the <span class="accent">Numbers</span></h2>
+  <div class="metric-grid metric-grid--3">
+    <div class="metric"><div class="metric__number">76+</div><div class="metric__label">Agent investigations<br>across 13 waves</div></div>
+    <div class="metric"><div class="metric__number">313+</div><div class="metric__label">Artifact files<br>produced</div></div>
+    <div class="metric"><div class="metric__number">72K+</div><div class="metric__label">Lines of investigation<br>content</div></div>
+  </div>
+  <div class="metric-grid metric-grid--3" style="margin-top:clamp(12px,1.5vw,24px);">
+    <div class="metric"><div class="metric__number" style="background:linear-gradient(135deg,#F87171,#FBBF24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">18</div><div class="metric__label">Verified bugs found<br>3 CRITICAL &middot; 7 HIGH</div></div>
+    <div class="metric"><div class="metric__number" style="background:linear-gradient(135deg,#34D399,#2DD4BF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">850&rarr;1,145</div><div class="metric__label">Test suite growth<br>34% &middot; zero failures</div></div>
+    <div class="metric"><div class="metric__number" style="background:linear-gradient(135deg,#34D399,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">7&ndash;27m</div><div class="metric__label">Resolver convergence<br>was: human every time</div></div>
+  </div>
+  <p style="text-align:center;margin-top:1.2em;font-size:clamp(14px,1.4vw,20px);color:var(--text-tertiary);">
+    Designed, built, validated, and used to ship real production fixes&mdash;<strong style="color:var(--text-primary);">all in a single session</strong>.
+  </p>
+</div>
+
+<!-- ====== SLIDE 13: SOURCES & METHODOLOGY ====== -->
+<div class="slide" data-slide="12">
+  <h2>Sources &amp; <span class="accent">Methodology</span></h2>
+  <table class="sources-table">
+    <thead>
+      <tr><th>Data Source</th><th>Method</th><th>Evidence Type</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Dev-machine investigation (22 agents)</td><td>Parallax Discovery 3-wave funnel against amplifier-bundle-dev-machine + word4 repos</td><td>97 artifact files, 22,433 lines, reconciled across triplicate teams</td></tr>
+      <tr><td>Amplifier-resolve investigation (24 agents)</td><td>Parallax Discovery 3-wave funnel against amplifier-resolve source</td><td>110 artifact files, 26,691 lines, 18 bugs adversarially verified</td></tr>
+      <tr><td>Amplifier mechanisms study (18 agents)</td><td>Triplicate teams across skills, recipes, bundles, agents, modes, hooks</td><td>80+ artifact files, ~15,000 lines, 5 discrepancies resolved</td></tr>
+      <tr><td>Recipe validation run</td><td>Full 4-wave recipe execution via Amplifier recipe engine</td><td>26 artifact files, 2 bugs caught and fixed live</td></tr>
+      <tr><td>E2E verification</td><td>Real brief submissions through the running resolver service</td><td>PR #45, PR #2, PR #3 — live convergence in 7.5, 26.9, 21.3 min</td></tr>
+      <tr><td>Test suite</td><td><code>uv run pytest tests/ -q</code> on amplifier-resolve main</td><td>1,145 passed, 0 failures</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:1em;font-size:clamp(12px,1.1vw,15px);color:var(--text-tertiary);">
+    <strong>Data as of:</strong> March 10, 2026 &middot;
+    <strong>Session:</strong> b174ff67-755d-43c3-a2b3-fe6acb4e7eb0 &middot;
+    <strong>All metrics</strong> from actual git commits, agent outputs, and test runs&mdash;not estimates.
+  </p>
+</div>
+
+<!-- ====== SLIDE 14: CTA ====== -->
+<div class="slide" data-slide="13">
+  <h2>Get <span class="accent">Started</span></h2>
+  <div class="card-grid card-grid--2">
+    <div class="cta-block">
+      <h3>Interactive (human-in-the-loop)</h3>
+      <code>amplifier bundle add github:bkrabach/amplifier-bundle-parallax-discovery</code>
+      <code>load_skill(skill_name="parallax-methodology")</code>
+      <code>/discovery</code>
+      <p style="margin-top:8px;font-size:clamp(12px,1.1vw,15px);color:var(--text-tertiary);">Load the skill, enter discovery mode, and follow the guidance. Define your topics, dispatch agents, and steer through approval gates.</p>
+    </div>
+    <div class="cta-block">
+      <h3>Recipe (automated with approval gates)</h3>
+      <code>amplifier run "execute @parallax-discovery:recipes/parallax-discovery.yaml \
+  with target='my-system' \
+  topics='api, auth, storage'"</code>
+      <p style="margin-top:8px;font-size:clamp(12px,1.1vw,15px);color:var(--text-tertiary);">The recipe automates the multi-wave flow. Approve between waves to steer the investigation.</p>
+    </div>
+  </div>
+  <div class="link-grid">
+    <a class="link-card" href="https://github.com/bkrabach/amplifier-bundle-parallax-discovery" target="_blank">
+      <h4>Repository</h4>
+      <p>github.com/bkrabach/amplifier-bundle-parallax-discovery</p>
+    </a>
+    <a class="link-card" href="https://github.com/microsoft/amplifier/pull/232" target="_blank">
+      <h4>MODULES.md PR</h4>
+      <p>microsoft/amplifier#232</p>
+    </a>
+    <div class="link-card">
+      <h4>When to use</h4>
+      <p>Complex systems &middot; Outdated docs &middot; Architectural decisions needing ground truth &middot; Previous investigations that were confident-but-wrong</p>
+    </div>
+    <div class="link-card">
+      <h4>Methodology skill</h4>
+      <p><code style="font-size:0.9em;color:var(--green);">load_skill("parallax-methodology")</code></p>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.deck -->
+
+<!-- Navigation -->
+<div class="nav-dots" id="navDots"></div>
+<div class="slide-counter" id="slideCounter"></div>
+<div class="click-zone click-zone--left" id="clickLeft"></div>
+<div class="click-zone click-zone--right" id="clickRight"></div>
+
+<script>
+(function() {
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let current = 0;
+
+  // Build nav dots
+  const dotsContainer = document.getElementById('navDots');
+  slides.forEach((_, i) => {
+    const dot = document.createElement('button');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.addEventListener('click', () => goTo(i));
+    dotsContainer.appendChild(dot);
+  });
+
+  function updateCounter() {
+    document.getElementById('slideCounter').textContent = (current + 1) + ' / ' + total;
+  }
+
+  function goTo(n) {
+    if (n < 0 || n >= total || n === current) return;
+    const dir = n > current ? 1 : -1;
+    slides[current].classList.remove('active');
+    slides[current].classList.add(dir > 0 ? 'exit-left' : '');
+    slides[current].style.transform = dir > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+    slides[current].style.opacity = '0';
+    current = n;
+    slides[current].style.transform = dir > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        slides[current].classList.add('active');
+        slides[current].classList.remove('exit-left');
+      });
+    });
+    // Update dots
+    dotsContainer.querySelectorAll('.nav-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+    updateCounter();
+  }
+
+  function next() { goTo(current + 1); }
+  function prev() { goTo(current - 1); }
+
+  // Keyboard
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+    if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+    if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+  });
+
+  // Click zones
+  document.getElementById('clickLeft').addEventListener('click', prev);
+  document.getElementById('clickRight').addEventListener('click', next);
+
+  // Touch
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
+  });
+
+  updateCounter();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>The AI That Set Up Its Own Communication Infrastructure</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-glow: rgba(255, 55, 95, 0.3);
+            --accent-dim: rgba(255, 55, 95, 0.15);
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2.2vw, 18px);
+            --font-small: clamp(12px, 1.8vw, 14px);
+            --font-big-number: clamp(48px, 15vw, 140px);
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+            --radius: clamp(12px, 2vw, 16px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .slide.active { display: flex; }
+
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--accent);
+            margin-bottom: clamp(12px, 2vw, 24px);
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            max-width: 14ch;
+        }
+
+        .headline.wide { max-width: 20ch; }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            max-width: 55ch;
+            margin-top: clamp(12px, 2vw, 24px);
+        }
+
+        .small-text {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            margin-top: clamp(8px, 1.5vw, 16px);
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: 60ch;
+        }
+
+        /* Grid layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+            margin-top: clamp(20px, 4vw, 40px);
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+            margin-top: clamp(20px, 4vw, 40px);
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+            margin-top: clamp(20px, 4vw, 40px);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius);
+            padding: clamp(20px, 4vw, 32px);
+        }
+
+        .card-accent {
+            background: var(--accent-dim);
+            border: 1px solid rgba(255, 55, 95, 0.25);
+            border-radius: var(--radius);
+            padding: clamp(20px, 4vw, 32px);
+        }
+
+        .card .icon, .card-accent .icon {
+            font-size: clamp(28px, 5vw, 44px);
+            margin-bottom: clamp(10px, 2vw, 16px);
+        }
+
+        .card h3, .card-accent h3 {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(6px, 1vw, 10px);
+        }
+
+        .card p, .card-accent p {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius);
+            padding: clamp(16px, 3vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(13px, 2vw, 16px);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: clamp(16px, 3vw, 32px);
+            max-width: 100%;
+        }
+
+        .code-green { color: #30D158; }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-accent { color: var(--accent); }
+        .code-blue { color: #64D2FF; }
+        .code-yellow { color: #FFD60A; }
+        .code-white { color: #fff; }
+
+        /* Directive card - special styling */
+        .directive-card {
+            background: linear-gradient(135deg, rgba(255,55,95,0.08), rgba(255,55,95,0.03));
+            border: 1px solid rgba(255, 55, 95, 0.2);
+            border-radius: clamp(16px, 3vw, 24px);
+            padding: clamp(28px, 5vw, 56px);
+            max-width: 800px;
+            margin: clamp(20px, 4vw, 48px) auto 0;
+            text-align: center;
+        }
+
+        .directive-card .quote {
+            font-size: clamp(20px, 4vw, 36px);
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--text-primary);
+            font-style: italic;
+        }
+
+        .directive-card .quote::before { content: '"'; color: var(--accent); }
+        .directive-card .quote::after { content: '"'; color: var(--accent); }
+
+        .directive-card .attribution {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            margin-top: clamp(12px, 2vw, 20px);
+        }
+
+        /* Timeline flow */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(12px, 2vw, 20px);
+            margin-top: clamp(20px, 4vw, 40px);
+            max-width: 700px;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: flex-start;
+            gap: clamp(12px, 2vw, 20px);
+        }
+
+        .timeline-marker {
+            flex-shrink: 0;
+            width: clamp(32px, 5vw, 44px);
+            height: clamp(32px, 5vw, 44px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(14px, 2vw, 18px);
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .timeline-content h4 {
+            font-size: clamp(15px, 2.2vw, 19px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .timeline-content p {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Recursive loop visual */
+        .loop-container {
+            position: relative;
+            width: clamp(280px, 50vw, 500px);
+            height: clamp(280px, 50vw, 500px);
+            margin: clamp(20px, 4vw, 48px) auto 0;
+        }
+
+        .loop-ring {
+            position: absolute;
+            inset: 0;
+            border: 2px solid rgba(255, 55, 95, 0.3);
+            border-radius: 50%;
+            animation: loopSpin 12s linear infinite;
+        }
+
+        .loop-ring::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 12px;
+            height: 12px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .loop-ring-inner {
+            position: absolute;
+            inset: 15%;
+            border: 2px solid rgba(255, 55, 95, 0.2);
+            border-radius: 50%;
+            animation: loopSpin 8s linear infinite reverse;
+        }
+
+        .loop-ring-inner::before {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        .loop-center {
+            position: absolute;
+            inset: 30%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .loop-center .icon {
+            font-size: clamp(36px, 8vw, 56px);
+            margin-bottom: 8px;
+        }
+
+        .loop-center .label {
+            font-size: clamp(11px, 1.8vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+        }
+
+        .loop-node {
+            position: absolute;
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: clamp(8px, 1.5vw, 12px);
+            padding: clamp(8px, 1.5vw, 14px) clamp(12px, 2vw, 18px);
+            font-size: clamp(11px, 1.6vw, 14px);
+            font-weight: 600;
+            white-space: nowrap;
+            color: var(--text-primary);
+        }
+
+        .loop-node.top { top: -8px; left: 50%; transform: translateX(-50%); }
+        .loop-node.right { right: -10px; top: 50%; transform: translateY(-50%); }
+        .loop-node.bottom { bottom: -8px; left: 50%; transform: translateX(-50%); }
+        .loop-node.left { left: -10px; top: 50%; transform: translateY(-50%); }
+
+        @keyframes loopSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Architecture diagram */
+        .arch-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(8px, 1.5vw, 16px);
+            flex-wrap: wrap;
+            margin-top: clamp(20px, 4vw, 40px);
+        }
+
+        .arch-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: clamp(8px, 1.5vw, 12px);
+            padding: clamp(12px, 2vw, 20px) clamp(16px, 3vw, 28px);
+            text-align: center;
+        }
+
+        .arch-box .icon {
+            font-size: clamp(28px, 5vw, 40px);
+            margin-bottom: 6px;
+        }
+
+        .arch-box .label {
+            font-size: clamp(11px, 1.6vw, 14px);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .arch-box .sublabel {
+            font-size: clamp(10px, 1.4vw, 12px);
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+
+        .arch-arrow {
+            font-size: clamp(16px, 3vw, 28px);
+            color: var(--accent);
+        }
+
+        .arch-box-accent {
+            background: var(--accent-dim);
+            border: 1px solid rgba(255, 55, 95, 0.3);
+        }
+
+        /* Big number stats */
+        .stat-row {
+            display: flex;
+            gap: clamp(24px, 5vw, 60px);
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: clamp(20px, 4vw, 48px);
+        }
+
+        .stat-item { text-align: center; }
+
+        .stat-number {
+            font-size: clamp(48px, 12vw, 120px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #FF6B8A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: clamp(12px, 1.8vw, 16px);
+            color: var(--text-secondary);
+            margin-top: clamp(4px, 1vw, 8px);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* Feature status badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: clamp(11px, 1.4vw, 13px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: rgba(48, 209, 88, 0.15);
+            color: #30D158;
+            border: 1px solid rgba(48, 209, 88, 0.3);
+        }
+
+        /* Velocity grid */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+            max-width: 800px;
+            margin: clamp(20px, 4vw, 40px) auto 0;
+        }
+
+        .velocity-stat { text-align: center; }
+
+        .velocity-number {
+            font-size: clamp(36px, 8vw, 64px);
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .velocity-label {
+            font-size: clamp(12px, 1.6vw, 15px);
+            color: var(--text-secondary);
+            margin-top: clamp(4px, 1vw, 8px);
+        }
+
+        /* Bridge connector visual */
+        .bridge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: clamp(12px, 2vw, 20px);
+            width: 100%;
+            max-width: 900px;
+            margin-top: clamp(20px, 4vw, 40px);
+        }
+
+        .bridge-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius);
+            padding: clamp(16px, 3vw, 28px);
+            text-align: center;
+            position: relative;
+        }
+
+        .bridge-card .icon {
+            font-size: clamp(32px, 6vw, 48px);
+            margin-bottom: clamp(8px, 1.5vw, 12px);
+        }
+
+        .bridge-card h3 {
+            font-size: clamp(15px, 2.2vw, 20px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .bridge-card p {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .bridge-card .status-tag {
+            display: inline-block;
+            margin-top: clamp(6px, 1vw, 10px);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: clamp(10px, 1.2vw, 11px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tag-active { background: rgba(48, 209, 88, 0.15); color: #30D158; }
+        .tag-progress { background: rgba(255, 214, 10, 0.15); color: #FFD60A; }
+        .tag-planned { background: rgba(100, 210, 255, 0.15); color: #64D2FF; }
+
+        /* Arrow connector between cards */
+        .connector-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(8px, 1.5vw, 16px);
+            margin: clamp(16px, 3vw, 32px) 0;
+            flex-wrap: wrap;
+        }
+
+        .connector-arrow {
+            font-size: clamp(20px, 4vw, 36px);
+            color: var(--accent);
+        }
+
+        /* Vision slide special */
+        .vision-list {
+            list-style: none;
+            margin-top: clamp(20px, 4vw, 40px);
+            max-width: 650px;
+        }
+
+        .vision-list li {
+            font-size: clamp(16px, 2.8vw, 24px);
+            color: var(--text-secondary);
+            padding: clamp(10px, 2vw, 18px) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: clamp(10px, 2vw, 16px);
+        }
+
+        .vision-list li:last-child { border-bottom: none; }
+
+        .vision-list .icon {
+            font-size: clamp(20px, 3.5vw, 32px);
+            flex-shrink: 0;
+        }
+
+        /* Glow accent line */
+        .glow-line {
+            width: clamp(40px, 8vw, 80px);
+            height: 3px;
+            background: var(--accent);
+            border-radius: 2px;
+            box-shadow: 0 0 20px var(--accent-glow);
+            margin: clamp(16px, 3vw, 28px) 0;
+        }
+
+        .center .glow-line { margin: clamp(16px, 3vw, 28px) auto; }
+
+        /* Sources slide */
+        .sources-content {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: 700px;
+        }
+
+        .sources-content strong { color: var(--text-primary); }
+
+        .sources-content ul {
+            margin: 8px 0 16px 20px;
+        }
+
+        .sources-content li {
+            margin-bottom: 6px;
+        }
+
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: clamp(12px, 1.6vw, 14px);
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 32px;
+            right: 24px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+            z-index: 100;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px var(--padding-slide) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+                padding-top: 24px;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide *, .loop-ring, .loop-ring-inner {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Background glow effects */
+        .bg-glow {
+            position: absolute;
+            width: clamp(300px, 60vw, 700px);
+            height: clamp(300px, 60vw, 700px);
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            opacity: 0.4;
+            z-index: 0;
+        }
+
+        .slide > *:not(.bg-glow) { position: relative; z-index: 1; }
+    </style>
+</head>
+<body>
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active center">
+        <div class="bg-glow" style="top: -30%; right: -20%;"></div>
+        <div class="section-label">Amplifier Stories</div>
+        <h1 class="headline wide" style="max-width: 18ch;">The AI That Set Up Its Own Comms</h1>
+        <div class="glow-line"></div>
+        <p class="subhead">One directive. Several hours of collaborative work. A self-hosted Matrix server — orchestrated by an AI agent that knew exactly where its limits were.</p>
+        <div style="margin-top: clamp(16px, 3vw, 28px); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center;">
+            <span class="status-badge">Active</span>
+            <span class="small-text" style="margin: 0;">March 2026</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 2: The Directive -->
+    <div class="slide center">
+        <div class="section-label">The Directive</div>
+        <h2 class="medium-headline">One instruction was given</h2>
+        <div class="directive-card">
+            <div class="quote">Set up a private, self-hosted Matrix.org communication server.</div>
+            <div class="attribution">— The only human instruction provided</div>
+        </div>
+        <p class="subhead" style="margin-top: clamp(20px, 4vw, 36px);">What followed was several hours of collaborative system administration. Amplifier handled what it could directly. When it hit a wall — a web UI it couldn't open, a command requiring sudo it wasn't granted — it stopped, explained exactly what was needed, and waited.</p>
+    </div>
+
+    <!-- SLIDE 3: The Evaluation -->
+    <div class="slide">
+        <div class="section-label">Step One</div>
+        <h2 class="headline wide">Before a single line of config: ~1 hour choosing the right platform</h2>
+        <p class="body-text" style="margin-top: clamp(8px, 1.5vw, 16px);">Five candidates. Twenty-plus criteria. An interactive scoring table built to make the decision systematic rather than instinctive.</p>
+        <div class="grid-2" style="margin-top: clamp(20px, 4vw, 36px);">
+            <div class="card">
+                <div class="icon">🏆</div>
+                <h3>Candidates</h3>
+                <p style="line-height: 2;">Mattermost<br>Matrix / Element<br>Zulip<br>Rocket.Chat<br>ntfy</p>
+            </div>
+            <div class="card">
+                <div class="icon">📋</div>
+                <h3>Criteria categories</h3>
+                <p style="line-height: 2;">Platform &amp; apps<br>Technical (E2E, storage, RAM)<br>Plugins &amp; bridges<br>Messaging features<br>Security &amp; auth<br>Notification privacy</p>
+            </div>
+        </div>
+        <p class="small-text" style="margin-top: clamp(16px, 3vw, 28px);">Top requirements: total privacy with E2E encryption · flexibility (spaces, rooms) · self-hosting · complete freedom from third parties</p>
+    </div>
+
+    <!-- SLIDE 4: Why Matrix Won -->
+    <div class="slide">
+        <div class="section-label">The Decision</div>
+        <h2 class="headline wide">E2E encryption eliminated the field</h2>
+        <p class="body-text" style="margin-top: clamp(8px, 1.5vw, 16px);">The top requirement was non-negotiable: the server must never see message content. That single criterion reduced five candidates to one.</p>
+        <div class="timeline" style="margin-top: clamp(20px, 4vw, 36px);">
+            <div class="timeline-item">
+                <div class="timeline-marker" style="background: rgba(248,113,113,0.15); border-color: #f87171; color: #f87171; font-size: 0.8em;">✗</div>
+                <div class="timeline-content">
+                    <h4>Mattermost — eliminated</h4>
+                    <p>No E2E encryption. Server reads all messages. Push notifications expose plaintext to Mattermost Inc.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker" style="background: rgba(248,113,113,0.15); border-color: #f87171; color: #f87171; font-size: 0.8em;">✗</div>
+                <div class="timeline-content">
+                    <h4>Zulip — eliminated</h4>
+                    <p>No E2E encryption. Server has full access to all content.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker" style="background: rgba(251,191,36,0.15); border-color: #fbbf24; color: #fbbf24; font-size: 0.8em;">~</div>
+                <div class="timeline-content">
+                    <h4>Rocket.Chat — partial</h4>
+                    <p>E2E opt-in per room. Not on by default. Requires explicit configuration for every channel.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker" style="background: rgba(248,113,113,0.15); border-color: #f87171; color: #f87171; font-size: 0.8em;">✗</div>
+                <div class="timeline-content">
+                    <h4>ntfy — wrong category</h4>
+                    <p>A notification sink, not a chat platform. Excluded from full comparison.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker" style="background: rgba(74,222,128,0.15); border-color: #4ade80; color: #4ade80; font-size: 0.8em;">✓</div>
+                <div class="timeline-content">
+                    <h4 style="color: #4ade80;">Matrix / Element — chosen</h4>
+                    <p>E2E on by default. Server never decrypts. Best bridge coverage (WhatsApp, Telegram, Signal, Slack, Teams, Discord). Only platform with federation. One known trade-off: highest self-host effort — which is exactly what Amplifier handles.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: The Problem -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Server setup is brutal</h2>
+        <p class="body-text" style="margin-top: clamp(8px, 1.5vw, 16px);">Self-hosting a federated messaging platform means navigating a maze of interdependent systems — any one of which can silently break everything else.</p>
+        <div class="grid-3">
+            <div class="card">
+                <div class="icon">🔧</div>
+                <h3>Configuration Sprawl</h3>
+                <p>DNS records, reverse proxies, TLS certificates, database credentials — dozens of config files that must all agree with each other.</p>
+            </div>
+            <div class="card">
+                <div class="icon">🔒</div>
+                <h3>Security Surface</h3>
+                <p>SSL certificate provisioning, firewall rules, encrypted database connections — one misstep and you're exposed or locked out.</p>
+            </div>
+            <div class="card">
+                <div class="icon">⏱️</div>
+                <h3>Time Sink</h3>
+                <p>A seasoned sysadmin budgets a full day. For most developers, it's a weekend of Stack Overflow and broken YAML.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: What is Matrix -->
+    <div class="slide">
+        <div class="section-label">The Platform</div>
+        <h2 class="headline wide">What is Matrix?</h2>
+        <p class="body-text" style="margin-top: clamp(8px, 1.5vw, 16px);">An open-source, federated, end-to-end encrypted messaging protocol — like email, but for real-time chat.</p>
+        <div class="grid-2" style="margin-top: clamp(24px, 4vw, 40px);">
+            <div class="card">
+                <div class="icon">🌐</div>
+                <h3>Federated</h3>
+                <p>Servers talk to each other. No single company owns the network. Your data stays on your hardware.</p>
+            </div>
+            <div class="card">
+                <div class="icon">🔐</div>
+                <h3>End-to-End Encrypted</h3>
+                <p>Messages are encrypted on your device. Not even the server operator can read them.</p>
+            </div>
+            <div class="card">
+                <div class="icon">💬</div>
+                <h3>Element Client</h3>
+                <p>A Slack-like interface that runs self-hosted. Full-featured chat with rooms, threads, and file sharing.</p>
+            </div>
+            <div class="card">
+                <div class="icon">🖥️</div>
+                <h3>Self-Hosted</h3>
+                <p>Runs on a mini PC. Complete ownership. No cloud dependency. No subscription fees.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: The Autonomous Work -->
+    <div class="slide">
+        <div class="section-label">The Work</div>
+        <h2 class="headline wide">How the work unfolded</h2>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-marker">A</div>
+                <div class="timeline-content">
+                    <h4>Infrastructure Discovery <span style="font-size: 0.75em; color: var(--text-tertiary); font-weight: 400;">— Amplifier</span></h4>
+                    <p>Told that Cloudflare was available, Amplifier explored the existing system and found Caddy already running. It adapted its plan accordingly — using what was there rather than starting from scratch.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker">✦</div>
+                <div class="timeline-content">
+                    <h4>SSL — Automatic via Cloudflare Tunnel</h4>
+                    <p>No certificate management needed. The Cloudflare tunnel handles HTTPS termination automatically — Amplifier recognized this and skipped the manual provisioning step entirely.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker">A</div>
+                <div class="timeline-content">
+                    <h4>Docker Installation — with a correction <span style="font-size: 0.75em; color: var(--text-tertiary); font-weight: 400;">— Amplifier</span></h4>
+                    <p>When installing Docker on Ubuntu, Amplifier recognized that Ubuntu's default <code style="font-family: monospace; font-size: 0.9em; background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 3px;">docker.io</code> package was not the right choice — and switched to Docker CE from Docker's official repository instead.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker" style="background: rgba(100,210,255,0.15); border-color: #64D2FF; color: #64D2FF;">H</div>
+                <div class="timeline-content">
+                    <h4>Privileged Commands <span style="font-size: 0.75em; color: var(--text-tertiary); font-weight: 400;">— Human action</span></h4>
+                    <p>When a step required <code style="font-family: monospace; font-size: 0.9em; background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 3px;">sudo</code>, Amplifier stopped, explained what needed to run and why, and waited. Root access is not granted to Amplifier — by design.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker">A</div>
+                <div class="timeline-content">
+                    <h4>PostgreSQL + Matrix Homeserver + Element <span style="font-size: 0.75em; color: var(--text-tertiary); font-weight: 400;">— Amplifier</span></h4>
+                    <p>Installed and configured the full stack: PostgreSQL with roles and auth, Synapse wired to the database, federation configured, Element web client deployed.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 6: The Technical Stack -->
+    <div class="slide">
+        <div class="section-label">The Stack</div>
+        <h2 class="medium-headline">A clear division of labor</h2>
+        <p class="body-text">Amplifier handled config files, service wiring, and troubleshooting. It escalated deliberately — web UIs it couldn't open, commands it wasn't trusted to run.</p>
+        <div class="code-block"><span class="code-comment"># What was already there, what Amplifier found, what got built</span>
+
+<span class="code-accent">Already in place (Amplifier discovered):</span>
+  <span class="code-green">├──</span> <span class="code-white">Cloudflare tunnel  </span><span class="code-comment">→ SSL automatic, no cert management needed</span>
+  <span class="code-green">└──</span> <span class="code-white">Caddy running      </span><span class="code-comment">→ Amplifier adapted its plan to use it</span>
+
+<span class="code-accent">Amplifier installed &amp; configured:</span>
+  <span class="code-green">├──</span> <span class="code-white">Docker CE          </span><span class="code-comment">→ rejected Ubuntu's docker.io, used official repo</span>
+  <span class="code-green">├──</span> <span class="code-white">PostgreSQL         </span><span class="code-comment">→ roles, auth, connection tuning</span>
+  <span class="code-green">├──</span> <span class="code-white">Matrix Synapse     </span><span class="code-comment">→ homeserver, federation, PostgreSQL wiring</span>
+  <span class="code-green">└──</span> <span class="code-white">Element            </span><span class="code-comment">→ web client, routed through Caddy</span>
+
+<span class="code-accent">Human executed (at Amplifier's direction):</span>
+  <span class="code-blue">├──</span> <span class="code-white">DNS records        </span><span class="code-comment">→ entered in Cloudflare web UI</span>
+  <span class="code-blue">└──</span> <span class="code-white">sudo commands      </span><span class="code-comment">→ Amplifier explained each one before asking</span>
+
+<span class="code-comment"># Root access not granted to Amplifier — by design</span></div>
+    </div>
+
+    <!-- SLIDE 7: The Moment of Completion -->
+    <div class="slide center">
+        <div class="bg-glow" style="top: 10%; left: 10%;"></div>
+        <div class="section-label">The Moment</div>
+        <div class="stat-number" style="font-size: var(--font-big-number);">✓</div>
+        <h2 class="medium-headline" style="margin-top: clamp(12px, 2vw, 24px);">A working Matrix server.<br>Human + AI.</h2>
+        <div class="glow-line"></div>
+        <p class="subhead">Federated. Encrypted. Self-hosted on a mini PC. Amplifier drove the work — writing configs, provisioning certs, wiring services. The human handled DNS in a web UI and ran the commands that needed sudo.</p>
+    </div>
+
+    <!-- SLIDE 8: The Bridges -->
+    <div class="slide">
+        <div class="section-label">The Bridges</div>
+        <h2 class="headline wide">One interface to rule them all</h2>
+        <p class="body-text" style="margin-top: clamp(8px, 1.5vw, 16px);">After the base server was running, messaging bridges were configured — pulling every conversation into a single private Element interface.</p>
+        <div class="bridge-grid">
+            <div class="bridge-card">
+                <div class="icon">💬</div>
+                <h3>WhatsApp</h3>
+                <p>Personal and group messages bridged to Matrix rooms</p>
+                <span class="status-tag tag-active">Active</span>
+            </div>
+            <div class="bridge-card">
+                <div class="icon">✈️</div>
+                <h3>Telegram</h3>
+                <p>Channels and direct messages flowing through Element</p>
+                <span class="status-tag tag-active">Active</span>
+            </div>
+            <div class="bridge-card">
+                <div class="icon">🏢</div>
+                <h3>Slack</h3>
+                <p>Work conversations unified in the same interface</p>
+                <span class="status-tag tag-progress">In Progress</span>
+            </div>
+            <div class="bridge-card" style="background: var(--accent-dim); border-color: rgba(255,55,95,0.25);">
+                <div class="icon">🤖</div>
+                <h3>Amplifier Agents</h3>
+                <p>AI agents receiving instructions via Matrix rooms</p>
+                <span class="status-tag tag-progress">In Progress</span>
+            </div>
+        </div>
+        <p class="small-text" style="margin-top: clamp(16px, 3vw, 28px); text-align: center; max-width: 600px; margin-left: auto; margin-right: auto;">All messages — personal, work, and AI — consolidated into a single self-hosted, encrypted interface.</p>
+    </div>
+
+    <!-- SLIDE 9: The Recursive Loop -->
+    <div class="slide center">
+        <div class="bg-glow" style="top: 0; left: 50%; transform: translateX(-50%);"></div>
+        <div class="section-label">The Recursion</div>
+        <h2 class="headline wide">The AI built the infrastructure through which humans now direct the AI.</h2>
+        <div class="loop-container">
+            <div class="loop-ring"></div>
+            <div class="loop-ring-inner"></div>
+            <div class="loop-center">
+                <div class="icon">♾️</div>
+                <div class="label">Recursive</div>
+            </div>
+            <div class="loop-node top">🧠 Amplifier builds server</div>
+            <div class="loop-node right">📡 Server goes live</div>
+            <div class="loop-node bottom">💬 Humans send instructions</div>
+            <div class="loop-node left">🤖 Amplifier executes tasks</div>
+        </div>
+    </div>
+
+    <!-- SLIDE 10: Target Architecture -->
+    <div class="slide">
+        <div class="section-label">The Architecture</div>
+        <h2 class="headline wide">One room per agent</h2>
+        <p class="body-text" style="margin-top: clamp(8px, 1.5vw, 16px);">The target architecture: every running AI agent gets a dedicated Matrix chat room. Check in on progress. Ask what it's doing. Issue new instructions. All from your phone.</p>
+        <div class="grid-3" style="margin-top: clamp(24px, 4vw, 40px);">
+            <div class="card-accent">
+                <div class="icon">📱</div>
+                <h3>#agent-code-review</h3>
+                <p>"What file are you on?"<br>"Skip the tests for now, focus on the API layer."</p>
+            </div>
+            <div class="card-accent">
+                <div class="icon">📱</div>
+                <h3>#agent-deployment</h3>
+                <p>"Status?"<br>"Roll back the last change and try the staging config."</p>
+            </div>
+            <div class="card-accent">
+                <div class="icon">📱</div>
+                <h3>#agent-research</h3>
+                <p>"Summarize what you've found so far."<br>"Dig deeper into the auth module."</p>
+            </div>
+        </div>
+        <div class="connector-row">
+            <div class="arch-box">
+                <div class="icon">📱</div>
+                <div class="label">Phone</div>
+            </div>
+            <div class="connector-arrow">→</div>
+            <div class="arch-box" style="background: var(--accent-dim); border-color: rgba(255,55,95,0.3);">
+                <div class="icon">💬</div>
+                <div class="label">Element / Matrix</div>
+                <div class="sublabel">Self-hosted</div>
+            </div>
+            <div class="connector-arrow">→</div>
+            <div class="arch-box">
+                <div class="icon">🤖</div>
+                <div class="label">Amplifier Agents</div>
+                <div class="sublabel">Autonomous tasks</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 11: The Vision -->
+    <div class="slide">
+        <div class="section-label">The Vision</div>
+        <h2 class="headline">Where this goes</h2>
+        <div class="glow-line"></div>
+        <ul class="vision-list">
+            <li>
+                <span class="icon">🗣️</span>
+                <span>Voice-based task management — issue instructions while driving</span>
+            </li>
+            <li>
+                <span class="icon">👀</span>
+                <span>Real-time agent monitoring from any device, anywhere</span>
+            </li>
+            <li>
+                <span class="icon">🔀</span>
+                <span>Multi-agent orchestration through chat room topology</span>
+            </li>
+            <li>
+                <span class="icon">🔒</span>
+                <span>End-to-end encrypted human-AI communication — no cloud intermediary</span>
+            </li>
+            <li>
+                <span class="icon">🌐</span>
+                <span>Federated agent networks — agents on different servers, talking to each other</span>
+            </li>
+        </ul>
+    </div>
+
+    <!-- SLIDE 12: What This Means -->
+    <div class="slide center">
+        <div class="bg-glow" style="bottom: -20%; right: -10%;"></div>
+        <div class="section-label">What This Means</div>
+        <h2 class="headline wide" style="max-width: 22ch;">Most AI stories are about code generation.</h2>
+        <div class="glow-line"></div>
+        <p class="subhead" style="max-width: 50ch;">This is about an AI becoming its own infrastructure team — and then becoming the infrastructure through which it receives orders.</p>
+        <div class="grid-2" style="max-width: 700px; margin-top: clamp(24px, 4vw, 40px);">
+            <div class="card">
+                <h3>Before</h3>
+                <p>AI writes code. Human deploys it. Human manages infrastructure. AI waits for the next prompt.</p>
+            </div>
+            <div class="card-accent">
+                <h3>After</h3>
+                <p>AI drives the infrastructure setup. Human handles the steps that require a web UI or root access. Together they produce a running system — and humans direct it from a chat room Amplifier built.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 13: Sources & Methodology -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Sources &amp; Methodology</h2>
+        <div class="sources-content" style="margin-top: clamp(16px, 3vw, 28px);">
+            <p><strong>Data as of:</strong> March 2026</p>
+            <p><strong>Feature status:</strong> Active — Matrix server operational, bridges running</p>
+            <p style="margin-top: 16px;"><strong>Information sources:</strong></p>
+            <ul>
+                <li>All facts provided directly by the Amplifier team (narrative briefing)</li>
+                <li>No independent git log analysis was performed for this story</li>
+                <li>Bridge status (WhatsApp, Telegram: Active; Slack, Matrix agent bridge: In Progress) as reported by team</li>
+            </ul>
+            <p style="margin-top: 16px;"><strong>Infrastructure details:</strong></p>
+            <ul>
+                <li>Platform: Matrix.org (Synapse homeserver) with Element web client</li>
+                <li>Database: PostgreSQL</li>
+                <li>Hosting: Self-hosted on mini PC hardware</li>
+                <li>Duration: Several hours of autonomous agent work</li>
+            </ul>
+            <p style="margin-top: 16px;"><strong>Accuracy corrections (user-confirmed):</strong></p>
+            <ul>
+                <li>SSL is handled automatically by the Cloudflare tunnel — no manual certificate provisioning was performed by Amplifier or the human</li>
+                <li>Amplifier was told Cloudflare was available; it then discovered Caddy was already running and adapted its plan to use existing infrastructure rather than installing fresh</li>
+                <li>Docker CE was installed from Docker's official repository — Amplifier identified that Ubuntu's default <code>docker.io</code> package was not the right choice and corrected course before installing</li>
+                <li>DNS configuration was performed by the human via the Cloudflare web interface — Amplifier determined the required records and provided instructions</li>
+                <li>Commands requiring <code>sudo</code> were delegated back to the human — Amplifier is not granted root access</li>
+            </ul>
+            <p style="margin-top: 16px;"><strong>Gaps &amp; caveats:</strong></p>
+            <ul>
+                <li>Exact number of sudo escalations and DNS steps not independently counted</li>
+                <li>Total duration of the setup session not independently measured</li>
+                <li>No independent verification of the setup process was performed</li>
+            </ul>
+            <p style="margin-top: 16px;"><strong>Primary contributor:</strong> Amplifier agent (bulk of configuration work), with human handling DNS via web UI and privileged system commands</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 14: CTA -->
+    <div class="slide center">
+        <div class="bg-glow" style="top: -10%; left: 30%;"></div>
+        <div class="section-label">Get Started</div>
+        <h2 class="headline wide">The loop is open.</h2>
+        <div class="glow-line"></div>
+        <p class="subhead">AI that doesn't just write code — it builds the systems it operates within. The recursive future of agentic infrastructure starts here.</p>
+        <div class="grid-3" style="max-width: 700px; margin-top: clamp(24px, 4vw, 40px);">
+            <div class="card" style="text-align: center;">
+                <div class="icon">🌐</div>
+                <h3>Matrix.org</h3>
+                <p>Explore the protocol</p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <div class="icon">💬</div>
+                <h3>Element</h3>
+                <p>Try the client</p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <div class="icon">🤖</div>
+                <h3>Amplifier</h3>
+                <p>Build with agents</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

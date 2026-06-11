@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>/config — Live Session Configuration for Amplifier</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-dim: rgba(255, 55, 95, 0.15);
+            --accent-glow: rgba(255, 55, 95, 0.3);
+
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 16px);
+            --font-small: clamp(12px, 1.8vw, 14px);
+            --font-code: clamp(12px, 2vw, 15px);
+            --font-big-number: clamp(48px, 12vw, 120px);
+
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+
+            --green: #30D158;
+            --red: #FF453A;
+            --yellow: #FFD60A;
+            --blue: #0A84FF;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active { display: flex; }
+
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px var(--padding-slide) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: clamp(8px, 2vw, 16px);
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin-bottom: clamp(16px, 3vw, 32px);
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(700px, 90vw);
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .small-text {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+        }
+
+        /* Layout */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card-icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: clamp(8px, 2vw, 16px);
+        }
+
+        .card h3 {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(6px, 1vw, 10px);
+        }
+
+        .card p {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .card-accent {
+            border-color: var(--accent-glow);
+            background: var(--accent-dim);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 24px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--font-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            max-width: min(900px, 100%);
+        }
+
+        .code-comment { color: rgba(255,255,255,0.4); }
+        .code-command { color: var(--green); }
+        .code-flag { color: var(--accent); }
+        .code-arg { color: var(--yellow); }
+        .code-dim { color: rgba(255,255,255,0.5); }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--font-small);
+            font-weight: 600;
+            padding: clamp(4px, 0.5vw, 6px) clamp(12px, 1.5vw, 16px);
+            border-radius: 100px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .status-active {
+            background: rgba(48, 209, 88, 0.15);
+            color: var(--green);
+            border: 1px solid rgba(48, 209, 88, 0.3);
+        }
+
+        /* Velocity stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+            max-width: min(900px, 100%);
+        }
+
+        .velocity-stat { text-align: center; }
+
+        .velocity-number {
+            font-size: clamp(36px, 8vw, 72px);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .velocity-label {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            margin-top: clamp(4px, 1vw, 8px);
+        }
+
+        /* Dashboard mockup */
+        .dashboard-panel {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: clamp(8px, 1.5vw, 12px);
+            padding: clamp(12px, 2vw, 20px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--font-code);
+            line-height: 1.6;
+        }
+
+        .dash-header {
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: clamp(6px, 1vw, 10px);
+            font-size: clamp(13px, 2vw, 15px);
+        }
+
+        .dash-row {
+            display: flex;
+            align-items: baseline;
+            gap: clamp(6px, 1vw, 10px);
+            padding: 2px 0;
+        }
+
+        .dash-status-on { color: var(--green); }
+        .dash-status-off { color: var(--red); }
+        .dash-name { color: var(--text-primary); }
+        .dash-detail { color: var(--text-tertiary); font-size: clamp(11px, 1.5vw, 13px); }
+
+        /* Flow diagram */
+        .flow {
+            display: flex;
+            align-items: center;
+            gap: clamp(8px, 2vw, 16px);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .flow-step {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: clamp(8px, 1vw, 12px);
+            padding: clamp(10px, 2vw, 16px) clamp(14px, 3vw, 24px);
+            font-size: var(--font-body);
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .flow-arrow {
+            font-size: clamp(16px, 3vw, 24px);
+            color: var(--text-tertiary);
+        }
+
+        .flow-step-accent {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        /* Architecture grid */
+        .arch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+            gap: clamp(8px, 1.5vw, 12px);
+            width: 100%;
+        }
+
+        .arch-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: clamp(8px, 1vw, 12px);
+            padding: clamp(14px, 2.5vw, 20px);
+        }
+
+        .arch-box h4 {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(13px, 2vw, 15px);
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: clamp(4px, 0.8vw, 8px);
+        }
+
+        .arch-box p {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .arch-box .line-count {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            margin-top: clamp(4px, 0.8vw, 8px);
+        }
+
+        /* Provenance diagram */
+        .provenance-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(12px, 2vw, 20px);
+            max-width: min(700px, 100%);
+        }
+
+        .prov-row {
+            display: flex;
+            align-items: center;
+            gap: clamp(8px, 2vw, 16px);
+            flex-wrap: wrap;
+        }
+
+        .prov-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: clamp(6px, 1vw, 8px);
+            padding: clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px);
+            font-size: var(--font-small);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .prov-box-behavior { border-color: var(--blue); color: var(--blue); }
+        .prov-box-tool { border-color: var(--green); color: var(--green); }
+        .prov-box-safe { border-color: var(--green); color: var(--green); background: rgba(48,209,88,0.1); }
+        .prov-box-disabled { border-color: var(--red); color: var(--red); opacity: 0.6; }
+
+        .prov-arrow { color: var(--text-tertiary); font-size: clamp(14px, 2vw, 18px); }
+
+        /* Sources */
+        .sources-content {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: min(800px, 100%);
+        }
+
+        .sources-content strong { color: var(--text-primary); }
+
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(11px, 1.5vw, 13px);
+            background: var(--surface-2);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .sources-content ul {
+            padding-left: clamp(16px, 3vw, 24px);
+            margin: clamp(6px, 1vw, 10px) 0;
+        }
+
+        .sources-content li { margin-bottom: 4px; }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: clamp(20px, 4vw, 32px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: clamp(6px, 1vw, 8px);
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: clamp(8px, 1.2vw, 10px);
+            height: clamp(8px, 1.2vw, 10px);
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .nav-dot.active { background: var(--accent); }
+        .nav-dot:hover { background: rgba(255,255,255,0.4); }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(20px, 4vw, 32px);
+            right: var(--padding-slide);
+            font-size: var(--font-small);
+            color: rgba(255,255,255,0.3);
+            z-index: 100;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Tag */
+        .tag {
+            display: inline-block;
+            font-size: var(--font-small);
+            font-weight: 500;
+            padding: clamp(3px, 0.4vw, 5px) clamp(10px, 1.2vw, 14px);
+            border-radius: 6px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+        }
+
+        /* CTA link */
+        .cta-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid var(--accent-glow);
+        }
+        .cta-link:hover { border-bottom-color: var(--accent); }
+
+        /* Persistence flow */
+        .persist-flow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: clamp(8px, 1.5vw, 16px);
+            width: 100%;
+            max-width: min(900px, 100%);
+        }
+
+        .persist-step {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(10px, 1.5vw, 14px);
+            padding: clamp(14px, 3vw, 24px);
+            text-align: center;
+        }
+
+        .persist-step .step-num {
+            font-size: clamp(20px, 4vw, 32px);
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: clamp(4px, 0.8vw, 8px);
+        }
+
+        .persist-step h4 {
+            font-size: clamp(14px, 2vw, 16px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(4px, 0.8vw, 6px);
+        }
+
+        .persist-step p {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Title -->
+    <div class="slide active center">
+        <div class="section-label">New Feature Announcement</div>
+        <h1 class="headline" style="letter-spacing: -0.04em;">/config</h1>
+        <p class="subhead" style="margin-bottom: clamp(16px, 3vw, 24px);">
+            Live Session Configuration for Amplifier
+        </p>
+        <p class="body-text" style="max-width: min(500px, 85vw); margin-bottom: clamp(20px, 4vw, 32px);">
+            Modify your running session without restarting.<br>
+            Disable tools, toggle behaviors, tune config — all live.
+        </p>
+        <div style="display: flex; gap: clamp(8px, 1.5vw, 12px); flex-wrap: wrap; justify-content: center;">
+            <span class="status-badge status-active">Active</span>
+            <span class="tag">April 2026</span>
+        </div>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Configuration means restarting</h2>
+        <div class="thirds">
+            <div class="card">
+                <div class="card-icon">🛑</div>
+                <h3>Stop what you're doing</h3>
+                <p>You're mid-task and a tool keeps firing that you don't need. Or a context file is confusing the LLM. You have to exit your entire session to change it.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">📝</div>
+                <h3>Edit YAML manually</h3>
+                <p>Open settings.yaml, find the right key, figure out the syntax for overrides, hope you don't break the indentation. Then save.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🔄</div>
+                <h3>Restart and rebuild</h3>
+                <p>Session restarts. Your context reloads. Your mental model resets. You lose your flow — all because you needed one toggle.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: The Solution -->
+    <div class="slide">
+        <div class="section-label">The Solution</div>
+        <h2 class="medium-headline">Modify everything mid-session</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 24px); max-width: min(700px, 100%);">
+            New <code style="color: var(--accent); background: var(--surface-2); padding: 2px 8px; border-radius: 4px; font-family: 'SF Mono', monospace;">/config</code> commands give you full control over your running session — no restart required.
+        </p>
+        <div class="code-block"><span class="code-comment"># See all available commands</span>
+<span class="code-command">/config</span>
+
+<span class="code-comment"># Full live dashboard of your session</span>
+<span class="code-command">/config show</span>
+
+<span class="code-comment"># Disable a noisy tool or irrelevant context</span>
+<span class="code-command">/config tools disable</span> <span class="code-arg">bash</span>
+<span class="code-command">/config context disable</span> <span class="code-arg">coding-standards.md</span>
+<span class="code-command">/config behaviors disable</span> <span class="code-arg">code-review</span>
+
+<span class="code-comment"># See what you've changed</span>
+<span class="code-command">/config diff</span>
+
+<span class="code-comment"># Save preferences for next session</span>
+<span class="code-command">/config save</span></div>
+    </div>
+
+    <!-- Slide 4: The Dashboard -->
+    <div class="slide">
+        <div class="section-label">The Dashboard</div>
+        <h2 class="medium-headline">/config show — your session at a glance</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 24px); max-width: min(700px, 100%);">
+            Every tool, hook, context file, agent, provider, and behavior — with live status, config values, and which behavior contributed each item.
+        </p>
+        <div class="halves">
+            <div class="dashboard-panel">
+                <div class="dash-header">🔧 Tools</div>
+                <div class="dash-row">
+                    <span class="dash-status-on">●</span>
+                    <span class="dash-name">bash</span>
+                    <span class="dash-detail">← core-tools</span>
+                </div>
+                <div class="dash-row">
+                    <span class="dash-status-on">●</span>
+                    <span class="dash-name">read_file</span>
+                    <span class="dash-detail">← core-tools</span>
+                </div>
+                <div class="dash-row">
+                    <span class="dash-status-off">●</span>
+                    <span class="dash-name">web_search</span>
+                    <span class="dash-detail">← research (disabled)</span>
+                </div>
+                <div class="dash-row">
+                    <span class="dash-status-on">●</span>
+                    <span class="dash-name">LSP</span>
+                    <span class="dash-detail">← coding</span>
+                </div>
+                <div class="dash-header" style="margin-top: clamp(12px, 2vw, 16px);">📎 Context</div>
+                <div class="dash-row">
+                    <span class="dash-status-on">●</span>
+                    <span class="dash-name">coding-standards.md</span>
+                </div>
+                <div class="dash-row">
+                    <span class="dash-status-off">●</span>
+                    <span class="dash-name">review-checklist.md</span>
+                    <span class="dash-detail">(disabled)</span>
+                </div>
+            </div>
+            <div class="dashboard-panel">
+                <div class="dash-header">🤖 Agents</div>
+                <div class="dash-row">
+                    <span class="dash-status-on">●</span>
+                    <span class="dash-name">code-intel</span>
+                    <span class="dash-detail">← coding</span>
+                </div>
+                <div class="dash-row">
+                    <span class="dash-status-on">●</span>
+                    <span class="dash-name">explorer</span>
+                    <span class="dash-detail">← core</span>
+                </div>
+                <div class="dash-header" style="margin-top: clamp(12px, 2vw, 16px);">🎭 Behaviors</div>
+                <div class="dash-row">
+                    <span class="dash-status-on">●</span>
+                    <span class="dash-name">core-tools</span>
+                    <span class="dash-detail">6 tools, 2 context</span>
+                </div>
+                <div class="dash-row">
+                    <span class="dash-status-on">●</span>
+                    <span class="dash-name">coding</span>
+                    <span class="dash-detail">3 tools, 1 agent</span>
+                </div>
+                <div class="dash-row">
+                    <span class="dash-status-off">●</span>
+                    <span class="dash-name">research</span>
+                    <span class="dash-detail">2 tools (disabled)</span>
+                </div>
+                <div class="dash-header" style="margin-top: clamp(12px, 2vw, 16px);">⚡ Providers</div>
+                <div class="dash-row">
+                    <span class="dash-status-on">●</span>
+                    <span class="dash-name">anthropic</span>
+                    <span class="dash-detail">model: claude-…</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Smart Shared Ownership -->
+    <div class="slide">
+        <div class="section-label">Intelligent Design</div>
+        <h2 class="medium-headline">Smart shared ownership</h2>
+        <p class="body-text" style="margin-bottom: clamp(20px, 4vw, 32px); max-width: min(700px, 100%);">
+            If two behaviors both contribute the same tool, disabling one won't break the other.
+            The system tracks <em>provenance</em> — which behavior contributed each item — and only
+            removes items exclusively owned by the disabled behavior.
+        </p>
+
+        <div class="provenance-diagram">
+            <p class="body-text" style="margin-bottom: clamp(4px, 1vw, 8px);"><strong style="color: var(--text-primary);">Example:</strong> Both behaviors claim <code style="font-family: 'SF Mono', monospace; background: var(--surface-2); padding: 2px 6px; border-radius: 4px;">bash</code></p>
+            <div class="prov-row">
+                <div class="prov-box prov-box-behavior">core-tools</div>
+                <span class="prov-arrow">→</span>
+                <div class="prov-box prov-box-tool">bash</div>
+                <div class="prov-box prov-box-tool">read_file</div>
+                <div class="prov-box prov-box-tool">write_file</div>
+            </div>
+            <div class="prov-row">
+                <div class="prov-box prov-box-disabled">devops ✕</div>
+                <span class="prov-arrow">→</span>
+                <div class="prov-box prov-box-safe">bash ✓ safe</div>
+                <div class="prov-box prov-box-disabled">kubectl ✕ removed</div>
+            </div>
+            <p class="body-text" style="margin-top: clamp(8px, 1.5vw, 12px);">
+                Disabling <strong style="color: var(--red);">devops</strong> removes <strong>kubectl</strong> (exclusive to devops)
+                but keeps <strong style="color: var(--green);">bash</strong> (still claimed by core-tools).
+            </p>
+        </div>
+    </div>
+
+    <!-- Slide 6: Persistence -->
+    <div class="slide">
+        <div class="section-label">Persistence</div>
+        <h2 class="medium-headline">Save once, apply forever</h2>
+        <p class="body-text" style="margin-bottom: clamp(20px, 4vw, 32px); max-width: min(700px, 100%);">
+            Your runtime tweaks don't have to be temporary. <code style="color: var(--accent); font-family: 'SF Mono', monospace; background: var(--surface-2); padding: 2px 8px; border-radius: 4px;">/config save</code> writes your preferences to settings.yaml.
+            Next session starts with your customizations applied automatically.
+        </p>
+
+        <div class="persist-flow">
+            <div class="persist-step">
+                <div class="step-num">1</div>
+                <h4>Tweak live</h4>
+                <p>Disable tools, toggle behaviors, set config values during your session</p>
+            </div>
+            <div class="persist-step">
+                <div class="step-num">2</div>
+                <h4>Save</h4>
+                <p><code style="font-family: 'SF Mono', monospace; font-size: inherit;">/config save</code> writes disabled items and config overrides to settings.yaml</p>
+            </div>
+            <div class="persist-step">
+                <div class="step-num">3</div>
+                <h4>Auto-apply</h4>
+                <p>Next session reads settings.yaml and applies your saved preferences on startup</p>
+            </div>
+            <div class="persist-step">
+                <div class="step-num">4</div>
+                <h4>Iterate</h4>
+                <p>Re-enable anything anytime. Your config evolves with you.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Architecture -->
+    <div class="slide">
+        <div class="section-label">Under the Hood</div>
+        <h2 class="medium-headline">Clean architecture, zero core changes</h2>
+        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 24px); max-width: min(700px, 100%);">
+            The entire feature is additive — a new library in amplifier-foundation and a new renderer in amplifier-app-cli. No existing APIs were modified.
+        </p>
+
+        <div class="arch-grid">
+            <div class="arch-box">
+                <h4>BundleStateManager</h4>
+                <p>All mutation operations: disable/enable tools, providers, agents, contexts, behaviors. Stash safety for re-enabling. Shared ownership awareness.</p>
+                <div class="line-count">821 lines</div>
+            </div>
+            <div class="arch-box">
+                <h4>BundleInspector</h4>
+                <p>All query operations: list methods for dashboard, namespace resolution, module-to-tool mappings, snapshot and diff.</p>
+                <div class="line-count">479 lines</div>
+            </div>
+            <div class="arch-box">
+                <h4>SessionConfigurator</h4>
+                <p>Public facade that delegates to StateManager and Inspector. Clean API surface for CLI consumption.</p>
+                <div class="line-count">231 lines</div>
+            </div>
+            <div class="arch-box">
+                <h4>DashboardRenderer</h4>
+                <p>Rich-formatted terminal UI. Color-coded status, config value trees, behavior provenance annotations, secret redaction.</p>
+                <div class="line-count">447 lines</div>
+            </div>
+        </div>
+
+        <div class="thirds" style="margin-top: clamp(12px, 2vw, 20px);">
+            <div class="card" style="text-align: center;">
+                <h3 style="color: var(--accent);">configuration:changed</h3>
+                <p>Event emitted on every toggle so modules can react (e.g., skills tool unloads when disabled)</p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3 style="color: var(--green);">333 tests</h3>
+                <p>220 foundation + 113 CLI (per PR descriptions; includes configurator, provenance, and regression suites)</p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3 style="color: var(--yellow);">~2,370 lines</h3>
+                <p>Production code across both repos (1,920 foundation configurator + 447 dashboard renderer)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: Velocity -->
+    <div class="slide center">
+        <div class="section-label">Development Velocity</div>
+        <h2 class="medium-headline">Built in a weekend</h2>
+
+        <div class="velocity-grid" style="margin-bottom: clamp(24px, 4vw, 40px);">
+            <div class="velocity-stat">
+                <div class="velocity-number">2</div>
+                <div class="velocity-label">Repos</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">58</div>
+                <div class="velocity-label">Commits</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">2</div>
+                <div class="velocity-label">PRs merged</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">~2</div>
+                <div class="velocity-label">Days of dev</div>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: clamp(6px, 1vw, 10px); align-items: center;">
+            <p class="body-text">
+                <strong>Timeline:</strong> April 14 (first commit) → April 15 (last commit) → April 16 (PRs merged)
+            </p>
+            <p class="body-text">
+                <strong>Primary contributor:</strong> Brian Krabach (sole author, 100% of commits)
+            </p>
+            <div style="display: flex; gap: clamp(6px, 1vw, 10px); flex-wrap: wrap; justify-content: center; margin-top: clamp(4px, 0.8vw, 8px);">
+                <span class="tag">amplifier-foundation#160</span>
+                <span class="tag">amplifier-app-cli#158</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: Sources & Methodology -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Research Methodology</h2>
+        <div class="sources-content">
+            <p><strong>Data as of:</strong> April 16, 2026</p>
+            <p><strong>Feature status:</strong> Active (both PRs merged)</p>
+            <p style="margin-top: clamp(8px, 1.5vw, 12px);"><strong>Research performed:</strong></p>
+            <ul>
+                <li>Git log analysis: <code>git log --all --grep="configurator|BundleState|BundleInspector" --no-merges</code> — 35 commits in foundation</li>
+                <li>Git log analysis: <code>git log --all --grep="config|configurator|dashboard" --no-merges</code> — 27 /config-specific commits in app-cli</li>
+                <li>PR metadata: <code>gh pr view 160 --json title,body,author,mergedAt,additions,deletions,state</code> (amplifier-foundation)</li>
+                <li>PR metadata: <code>gh pr view 158 --json title,body,author,mergedAt,additions,deletions,state</code> (amplifier-app-cli)</li>
+                <li>Line counts: <code>wc -l</code> on configurator/, _provenance.py, dashboard_renderer.py</li>
+                <li>Test counts: <code>grep -c "def test_"</code> on test files (130 + 20 + 89 = 239 test functions; PR descriptions report 220 + 113 = 333 including parametrized expansions)</li>
+                <li>Contributors: <code>git log --format="%an" --all --grep="configurator"</code> — sole contributor: Brian Krabach</li>
+            </ul>
+            <p style="margin-top: clamp(8px, 1.5vw, 12px);"><strong>Repos:</strong> microsoft/amplifier-foundation, microsoft/amplifier-app-cli</p>
+            <p><strong>Gaps:</strong> Addition/deletion counts from PRs include lock files (166K and 105K respectively) which inflate raw line counts. Production code line counts derived from direct <code>wc -l</code> on source files. Test count discrepancy (239 functions vs 333 PR-reported) likely due to parametrized test expansion.</p>
+            <p><strong>Known limitations from PR:</strong> Hook toggle is read-only (core suspend/resume API needed). Tool module mapping uses heuristics. Shared ownership uses last-writer-wins provenance.</p>
+        </div>
+    </div>
+
+    <!-- Slide 10: CTA -->
+    <div class="slide center">
+        <div class="section-label">Try It Now</div>
+        <h2 class="headline">Available on main</h2>
+        <p class="subhead" style="margin-bottom: clamp(24px, 4vw, 40px);">
+            Update Amplifier and type <code style="color: var(--accent); font-family: 'SF Mono', monospace; background: var(--surface-2); padding: 4px 12px; border-radius: 6px; font-size: inherit;">/config</code> in any session.
+        </p>
+
+        <div class="thirds" style="max-width: min(800px, 100%);">
+            <div class="card card-accent" style="text-align: center;">
+                <div class="card-icon">⚡</div>
+                <h3>/config show</h3>
+                <p>See everything in your session</p>
+            </div>
+            <div class="card card-accent" style="text-align: center;">
+                <div class="card-icon">🎛️</div>
+                <h3>/config tools disable</h3>
+                <p>Toggle tools, contexts, behaviors</p>
+            </div>
+            <div class="card card-accent" style="text-align: center;">
+                <div class="card-icon">💾</div>
+                <h3>/config save</h3>
+                <p>Persist for every future session</p>
+            </div>
+        </div>
+
+        <div style="margin-top: clamp(24px, 4vw, 40px); display: flex; flex-direction: column; gap: clamp(6px, 1vw, 10px); align-items: center;">
+            <p class="body-text">
+                <a href="https://github.com/microsoft/amplifier-foundation/pull/160" class="cta-link">amplifier-foundation#160</a>
+                &nbsp;+&nbsp;
+                <a href="https://github.com/microsoft/amplifier-app-cli/pull/158" class="cta-link">amplifier-app-cli#158</a>
+            </p>
+            <p class="small-text">Both merged April 16, 2026</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = () => showSlide(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
+            if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.target.closest('a')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

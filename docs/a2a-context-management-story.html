@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context at Every Level — Amplifier A2A & Multi-Directory Architecture</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #080E1C;
+    --bg-card:     #0F172A;
+    --bg-card-2:   #162035;
+    --bg-terminal: #060D1A;
+    --accent:      #00C8FF;
+    --accent-dim:  rgba(0, 200, 255, 0.15);
+    --accent-glow: rgba(0, 200, 255, 0.35);
+    --indigo:      #818CF8;
+    --green:       #34D399;
+    --amber:       #FBBF24;
+    --red:         #F87171;
+    --text-1:      #F0F6FF;
+    --text-2:      rgba(240,246,255,0.65);
+    --text-3:      rgba(240,246,255,0.40);
+    --border:      rgba(0, 200, 255, 0.14);
+    --border-2:    rgba(255,255,255,0.07);
+    --mono:        'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+    --sans:        -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+    --radius:      12px;
+    --radius-lg:   20px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-1);
+    font-family: var(--sans);
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── Presentation Shell ── */
+  .deck {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Slides ── */
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: clamp(32px, 5vw, 80px) clamp(40px, 8vw, 120px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateX(40px);
+  }
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+  }
+  .slide.prev {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+
+  /* Ambient background blobs */
+  .slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 15% 20%, rgba(0, 200, 255, 0.04) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 60% at 85% 80%, rgba(129, 140, 248, 0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── Navigation ── */
+  .nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 52px; height: 52px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+    backdrop-filter: blur(8px);
+  }
+  .nav-arrow:hover { background: rgba(0,200,255,0.12); border-color: var(--accent); }
+  .nav-arrow.hidden { opacity: 0; pointer-events: none; }
+  .nav-prev { left: 20px; }
+  .nav-next { right: 20px; }
+  .nav-arrow svg { stroke: var(--text-2); transition: stroke 0.2s; }
+  .nav-arrow:hover svg { stroke: var(--accent); }
+
+  /* ── Dots ── */
+  .nav-dots {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 8px; align-items: center;
+    z-index: 100;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-3);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .dot.active { background: var(--accent); width: 22px; border-radius: 3px; box-shadow: 0 0 8px var(--accent-glow); }
+
+  /* ── Slide Counter ── */
+  .counter {
+    position: fixed;
+    bottom: 28px; right: 36px;
+    font-size: 12px; font-family: var(--mono);
+    color: var(--text-3);
+    z-index: 100;
+  }
+
+  /* ── Typography ── */
+  .slide-label {
+    font-size: clamp(10px, 1.2vw, 13px);
+    font-family: var(--mono);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    opacity: 0.9;
+  }
+
+  h1 {
+    font-size: clamp(36px, 5.5vw, 72px);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    color: var(--text-1);
+  }
+  h1 .accent { color: var(--accent); }
+  h1 .dim    { color: var(--indigo); }
+
+  h2 {
+    font-size: clamp(24px, 3.5vw, 46px);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  h2 .accent { color: var(--accent); }
+  h2 .dim    { color: var(--indigo); }
+
+  .subtitle {
+    font-size: clamp(14px, 1.8vw, 22px);
+    color: var(--text-2);
+    font-weight: 400;
+    line-height: 1.55;
+    max-width: 680px;
+  }
+  .subtitle strong { color: var(--text-1); font-weight: 600; }
+
+  .eyebrow {
+    font-size: clamp(13px, 1.5vw, 18px);
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    margin-bottom: 10px;
+  }
+
+  /* ── Cards ── */
+  .card-grid {
+    display: grid;
+    gap: 16px;
+    width: 100%;
+    max-width: 1100px;
+  }
+  .card-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius);
+    padding: clamp(16px, 2vw, 24px);
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .card.green::before  { background: linear-gradient(90deg, var(--green),  transparent); }
+  .card.indigo::before { background: linear-gradient(90deg, var(--indigo), transparent); }
+  .card.amber::before  { background: linear-gradient(90deg, var(--amber),  transparent); }
+  .card.red::before    { background: linear-gradient(90deg, var(--red),    transparent); }
+
+  .card-icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .card-title {
+    font-size: clamp(13px, 1.5vw, 17px);
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: 6px;
+  }
+  .card-body {
+    font-size: clamp(11px, 1.2vw, 14px);
+    color: var(--text-2);
+    line-height: 1.6;
+  }
+  .card-body strong { color: var(--text-1); }
+
+  /* ── Code / Terminal ── */
+  .terminal {
+    background: var(--bg-terminal);
+    border: 1px solid rgba(0,200,255,0.18);
+    border-radius: var(--radius);
+    font-family: var(--mono);
+    font-size: clamp(10px, 1.2vw, 14px);
+    line-height: 1.7;
+    padding: clamp(16px, 2vw, 24px) clamp(20px, 2.5vw, 32px);
+    color: #A8EDCA;
+    position: relative;
+    white-space: pre;
+    overflow-x: auto;
+    width: 100%;
+  }
+  .terminal::before {
+    content: '● ● ●';
+    position: absolute;
+    top: 10px; left: 16px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 4px;
+  }
+  .terminal .t-comment { color: rgba(168, 237, 202, 0.40); }
+  .terminal .t-cyan    { color: var(--accent); }
+  .terminal .t-white   { color: var(--text-1); }
+  .terminal .t-amber   { color: var(--amber); }
+  .terminal .t-indigo  { color: var(--indigo); }
+  .terminal .t-green   { color: var(--green); }
+  .terminal .t-dim     { color: var(--text-3); }
+  .terminal .t-red     { color: var(--red); }
+
+  /* ── Table ── */
+  .trust-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: clamp(12px, 1.4vw, 16px);
+  }
+  .trust-table th {
+    background: rgba(0,200,255,0.10);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: clamp(11px, 1.2vw, 14px);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 12px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .trust-table td {
+    padding: 14px 20px;
+    color: var(--text-2);
+    border-bottom: 1px solid var(--border-2);
+    line-height: 1.55;
+  }
+  .trust-table tr:last-child td { border-bottom: none; }
+  .trust-table td:first-child {
+    font-family: var(--mono);
+    font-size: clamp(11px, 1.2vw, 14px);
+    font-weight: 700;
+  }
+  .trust-table .tier-known   { color: var(--amber); }
+  .trust-table .tier-trusted { color: var(--green); }
+  .trust-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* ── Check list ── */
+  .checklist { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .checklist li {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: clamp(13px, 1.5vw, 17px);
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+  .checklist li .chk {
+    color: var(--green);
+    font-size: 16px;
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
+  .checklist li strong { color: var(--text-1); }
+
+  /* ── Pill badges ── */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-family: var(--mono);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    border: 1px solid;
+  }
+  .badge.active   { color: var(--green);  border-color: var(--green);  background: rgba(52,211,153,0.1); }
+  .badge.feature  { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+
+  /* ── Two-col layout ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+    max-width: 1100px;
+    align-items: start;
+  }
+
+  /* ── Flow diagram ── */
+  .flow-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 8px;
+  }
+  .flow-node {
+    background: var(--bg-card-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-family: var(--mono);
+    font-size: clamp(10px, 1.2vw, 13px);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .flow-arrow {
+    color: var(--text-3);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* ── Slide 1 specifics ── */
+  #s1 { text-align: center; }
+  #s1 .hero-tree {
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.5vw, 16px);
+    line-height: 2;
+    color: var(--text-2);
+    margin: 28px 0 32px;
+    position: relative;
+  }
+  #s1 .hero-tree .node {
+    display: inline-block;
+    padding: 3px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--accent-dim);
+    color: var(--accent);
+    box-shadow: 0 0 14px var(--accent-glow);
+    animation: pulse 2.8s ease-in-out infinite;
+  }
+  #s1 .hero-tree .node-2 { animation-delay: 0.6s; border-color: rgba(129,140,248,0.3); background: rgba(129,140,248,0.12); color: var(--indigo); box-shadow: 0 0 14px rgba(129,140,248,0.25); }
+  #s1 .hero-tree .node-3 { animation-delay: 1.2s; border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.1); color: var(--green); box-shadow: 0 0 14px rgba(52,211,153,0.2); }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+  #s1 .meta { color: var(--text-3); font-size: 13px; font-family: var(--mono); margin-top: 8px; }
+
+  /* ── Slide 2 specifics ── */
+  .big-quote {
+    font-size: clamp(20px, 2.8vw, 36px);
+    font-weight: 700;
+    color: var(--text-1);
+    border-left: 3px solid var(--accent);
+    padding-left: 20px;
+    margin-bottom: 28px;
+    line-height: 1.3;
+  }
+
+  /* ── Slide 5 diagram ── */
+  .a2a-diagram {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0;
+    align-items: center;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .agent-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: clamp(14px,2vw,22px);
+    text-align: center;
+    position: relative;
+  }
+  .agent-box .port {
+    font-family: var(--mono);
+    font-size: clamp(11px,1.2vw,14px);
+    color: var(--accent);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .agent-box .name {
+    font-size: clamp(13px,1.6vw,18px);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .agent-box .path {
+    font-family: var(--mono);
+    font-size: clamp(9px,1vw,12px);
+    color: var(--text-3);
+  }
+  .a2a-bridge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+  }
+  .a2a-bridge .protocol {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .a2a-bridge .arrow-line {
+    width: 80px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--indigo));
+    position: relative;
+    box-shadow: 0 0 8px var(--accent-glow);
+  }
+  .a2a-bridge .arrow-line::after {
+    content: '⟺';
+    position: absolute;
+    top: -10px; left: 50%;
+    transform: translateX(-50%);
+    color: var(--accent);
+    font-size: 14px;
+  }
+  .agent-box .bundle-tag {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: clamp(9px,1vw,11px);
+    color: var(--text-3);
+    background: rgba(255,255,255,0.04);
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  /* ── Slide 7 trust tier ── */
+  .tier-demo {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    max-width: 1000px;
+    margin-top: 8px;
+  }
+  .tier-col {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+  }
+  .tier-col.known  { border-top: 2px solid var(--amber); }
+  .tier-col.trusted { border-top: 2px solid var(--green); }
+  .tier-col .tier-label {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tier-col.known  .tier-label { color: var(--amber); }
+  .tier-col.trusted .tier-label { color: var(--green); }
+  .tier-col .tier-icon { font-size: 18px; }
+  .tier-col p {
+    font-size: clamp(12px,1.4vw,15px);
+    color: var(--text-2);
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+  .tier-col p strong { color: var(--text-1); }
+  .tier-col .flow-step {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .tier-col .step {
+    font-family: var(--mono);
+    font-size: clamp(9px,1.1vw,12px);
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-2);
+  }
+  .tier-col.known  .step.highlight { background: rgba(251,191,36,0.10); color: var(--amber); }
+  .tier-col.trusted .step.highlight { background: rgba(52,211,153,0.10); color: var(--green); }
+
+  /* ── Divider ── */
+  .divider {
+    width: 48px; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--indigo));
+    border-radius: 2px;
+    margin: 16px 0;
+  }
+
+  /* ── Horizontal rule ── */
+  hr { border: none; border-top: 1px solid var(--border-2); margin: 20px 0; }
+
+  /* ── Slide 9 summary box ── */
+  .takeaway-box {
+    background: linear-gradient(135deg, rgba(0,200,255,0.08), rgba(129,140,248,0.08));
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-lg);
+    padding: clamp(16px,2vw,28px) clamp(20px,3vw,40px);
+    max-width: 900px;
+    width: 100%;
+    box-shadow: 0 0 40px rgba(0,200,255,0.08);
+  }
+  .takeaway-box p {
+    font-size: clamp(13px,1.6vw,18px);
+    line-height: 1.65;
+    color: var(--text-2);
+  }
+  .takeaway-box p strong { color: var(--accent); }
+
+  /* ── Slide 8 issue cards ── */
+  .issue-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+  .issue-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+  }
+  .issue-item .issue-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .issue-item .issue-text { font-size: clamp(11px,1.3vw,14px); color: var(--text-2); line-height: 1.55; }
+  .issue-item .issue-text strong { color: var(--text-1); }
+
+  /* ── Scroll for overflowing slides ── */
+  .slide-scroll {
+    overflow-y: auto;
+    max-height: 90vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding-bottom: 24px;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Inline monospace ── */
+  code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: rgba(0,200,255,0.10);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- ████████████████  SLIDE 1 — Title  ████████████████ -->
+  <div class="slide active" id="s1">
+    <div class="slide-label">Amplifier Architecture</div>
+    <h1><span class="accent">Context</span> at Every Level</h1>
+    <div style="margin-top: 8px; margin-bottom: 4px;">
+      <span class="badge active">Active</span>
+      <span style="display:inline-block; width:8px;"></span>
+      <span class="badge feature">A2A — Agent-to-Agent Protocol</span>
+    </div>
+
+    <p class="subtitle" style="text-align:center; max-width:720px;">
+      How Amplifier's <strong>directory-aware context</strong> and <strong>A2A</strong> (Agent-to-Agent — a protocol for autonomous inter-agent communication) combine to create focused, collaborative multi-agent workspaces.<br><br>
+      <strong>One project. Many agents. Each with the right context — and a way to talk to each other.</strong>
+    </p>
+    <p class="meta" style="margin-top:20px;">February 2026</p>
+  </div>
+
+  <!-- ████████████████  SLIDE 2 — The Big Idea  ████████████████ -->
+  <div class="slide" id="s2">
+    <div style="width:100%; max-width:1000px;">
+      <div class="slide-label">The Big Idea</div>
+      <div class="big-quote">"One project. Many agents.<br>Each with the right context."</div>
+
+      <p class="subtitle" style="margin-bottom:28px;">
+        Amplifier lets you run agents in <strong>different subdirectories</strong> of the same project —
+        and each one gets its own tailored context. Not a compromise. A <em>feature</em>.
+      </p>
+
+      <div class="card-grid cols-3">
+        <div class="card">
+          <span class="card-icon">🌲</span>
+          <div class="card-title">Run from <code>/project</code></div>
+          <div class="card-body">Loads <strong>project-wide</strong> skills, AGENTS.md, and bundle. The top-level orchestrator with full workspace awareness.</div>
+        </div>
+        <div class="card indigo">
+          <span class="card-icon">📁</span>
+          <div class="card-title">Run from <code>/github-local</code></div>
+          <div class="card-body">Loads <strong>github-local-specific</strong> skills, bundle, and AGENTS.md. A specialist that knows only what it needs.</div>
+        </div>
+        <div class="card green">
+          <span class="card-icon">⚡</span>
+          <div class="card-title">Same workspace</div>
+          <div class="card-body"><strong>Completely different</strong> agent personalities and capabilities — wired together via A2A protocol.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ████████████████  SLIDE 3 — Context Layers  ████████████████ -->
+  <div class="slide" id="s3">
+    <div style="width:100%; max-width:1050px;">
+      <div class="slide-label">Context Layers in Practice</div>
+      <h2 style="margin-bottom:6px;">"The workspace has <span class="accent">layers</span>."</h2>
+      <p class="subtitle" style="margin-bottom:20px;">The <code>self-improvement</code> workspace, annotated:</p>
+
+      <div class="terminal">
+<span class="t-comment">
+# Each directory is an independent agent "zone"</span>
+
+<span class="t-white">~/repos/self-improvement/</span>          <span class="t-cyan">← root agent: self-improvement-agent</span>
+  <span class="t-amber">.amplifier/bundle.md</span>             <span class="t-comment">← project-wide bundle, tools, persona</span>
+  <span class="t-amber">AGENTS.md</span>                        <span class="t-comment">← project context for ALL agents</span>
+  <span class="t-amber">.amplifier/settings.yaml</span>         <span class="t-comment">← A2A port 8222, known_agents</span>
+
+  <span class="t-white">github-local/</span>                    <span class="t-indigo">← subdir agent: github-local-agent</span>
+    <span class="t-amber">.amplifier/bundle.md</span>           <span class="t-comment">← github-local specific bundle</span>
+    <span class="t-amber">AGENTS.md</span>                      <span class="t-comment">← github-local specific context</span>
+    <span class="t-amber">.amplifier/settings.yaml</span>       <span class="t-comment">← A2A port 8223</span>
+
+  <span class="t-white">amplifier-resolve/</span>               <span class="t-green">← can have its own .amplifier/ too</span>
+  <span class="t-white">issues-to-brief/</span>
+</div>
+
+      <p style="margin-top:16px; font-size:clamp(12px,1.4vw,15px); color:var(--text-2); line-height:1.6;">
+        Each directory pushes down only what's relevant: skills specific to that service,
+        the right architectural context in <code>AGENTS.md</code>,
+        and modules tuned for that workload.
+      </p>
+    </div>
+  </div>
+
+  <!-- ████████████████  SLIDE 4 — Context Hygiene  ████████████████ -->
+  <div class="slide" id="s4">
+    <div style="width:100%; max-width:1000px;">
+      <div class="slide-label">Why This Is Powerful</div>
+      <h2 style="margin-bottom:6px;">"Stop <span class="accent">polluting</span> your context. <span class="dim">Scope it.</span>"</h2>
+      <p class="subtitle" style="margin-bottom:24px;">
+        In a complex AI workspace, <strong>context pollution is real</strong>:
+      </p>
+
+      <div class="two-col" style="align-items:start;">
+        <div>
+          <div class="card red" style="margin-bottom:14px;">
+            <div class="card-title">The Problem Without Scoping</div>
+            <div class="card-body" style="margin-top:8px;">
+              <div style="margin-bottom:6px;">⚠️ Root-level context knows about the whole pipeline</div>
+              <div style="margin-bottom:6px;">⚠️ <code>github-local</code> agent shouldn't need CXDB internals</div>
+              <div>⚠️ <code>amplifier-resolve</code> needs Docker + GitHub, not storage abstractions</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card green">
+            <div class="card-title">The Solution: Directory-Scoped Context</div>
+            <div style="margin-top:12px;">
+              <ul class="checklist">
+                <li><span class="chk">✓</span> <span>Each agent stays <strong>focused on its domain</strong></span></li>
+                <li><span class="chk">✓</span> <span><strong>Smaller, cheaper, more accurate</strong> LLM calls</span></li>
+                <li><span class="chk">✓</span> <span><code>AGENTS.md</code> evolves <strong>independently</strong> per service</span></li>
+                <li><span class="chk">✓</span> <span>Skills pushed down <strong>only where needed</strong></span></li>
+                <li><span class="chk">✓</span> <span>No monolithic "do everything" context window</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ████████████████  SLIDE 5 — Context Flows Upward  ████████████████ -->
+  <div class="slide" id="s5">
+    <div style="width:100%; max-width:1050px;">
+      <div class="slide-label">Context Can Still Flow</div>
+      <h2 style="margin-bottom:6px;">"Subdirectory ≠ <span class="accent">Isolation.</span>"</h2>
+      <p class="subtitle" style="margin-bottom:22px;">Context pipelines connect everything — via <strong>A2A (Agent-to-Agent)</strong> communication.</p>
+
+      <div class="two-col" style="gap:20px;">
+        <div class="card">
+          <div class="card-title" style="color:var(--accent); margin-bottom:12px;">
+            📥 Pattern 1: Parent → Child
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">Root Agent</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node" style="color:var(--indigo); border-color:rgba(129,140,248,0.3);">Child Agent</div>
+          </div>
+          <p style="font-size:clamp(12px,1.3vw,14px); color:var(--text-2); margin-top:10px; line-height:1.6;">
+            Root holds the high-level plan and project state. Child is delegated a <strong>scoped task</strong> — parent passes relevant context in the delegation message.
+          </p>
+        </div>
+
+        <div class="card indigo">
+          <div class="card-title" style="color:var(--indigo); margin-bottom:12px;">
+            ↔ Pattern 2: Parallel A2A
+          </div>
+          <div class="flow-row">
+            <div class="flow-node" style="color:var(--accent); font-size:11px; padding:8px 12px;">self-improvement-agent<br><span style="color:var(--text-3);">:8222</span></div>
+            <div class="flow-arrow" style="color:var(--indigo);">⟺</div>
+            <div class="flow-node" style="color:var(--indigo); border-color:rgba(129,140,248,0.3); font-size:11px; padding:8px 12px;">github-local-agent<br><span style="color:var(--text-3);">:8223</span></div>
+          </div>
+          <p style="font-size:clamp(12px,1.3vw,14px); color:var(--text-2); margin-top:10px; line-height:1.6;">
+            Agents on the same machine, <strong>different directories</strong>, communicate over A2A. Each maintains its own identity and context — but can <strong>query each other</strong>.
+          </p>
+        </div>
+      </div>
+
+      <div class="takeaway-box" style="margin-top:20px; padding:16px 24px;">
+        <p><strong>Result:</strong> Deep domain focus AND cross-agent awareness — without compromising either.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ████████████████  SLIDE 6 — A2A in Action  ████████████████ -->
+  <div class="slide" id="s6">
+    <div style="width:100%; max-width:1050px;">
+      <div class="slide-label">A2A in Action</div>
+      <h2 style="margin-bottom:6px;">"Two agents. Two ports. One machine. <span class="accent">And they talk.</span>"</h2>
+      <p class="subtitle" style="margin-bottom:20px;">
+        In the <code>self-improvement</code> workspace, cross-directory A2A is wired and live:
+      </p>
+
+      <div class="terminal" style="font-size:clamp(10px,1.15vw,13px);">
+<span class="t-white">self-improvement-agent</span>          <span class="t-indigo">github-local-agent</span>
+<span class="t-cyan">(port 8222)</span>                     <span class="t-indigo">(port 8223)</span>
+<span class="t-dim">/repos/self-improvement/</span>        <span class="t-dim">/repos/self-improvement/github-local/</span>
+<span class="t-dim">.amplifier/bundle.md</span>            <span class="t-dim">.amplifier/bundle.md</span>
+        <span class="t-dim">|</span>                               <span class="t-dim">|</span>
+        <span class="t-dim">|</span>  <span class="t-cyan">← A2A message ──────────────</span> <span class="t-dim">|</span>
+        <span class="t-dim">|</span>  <span class="t-white">"What repos do you have?"</span>   <span class="t-dim">|</span>
+        <span class="t-dim">|</span>  <span class="t-green">← autonomous response ───── </span><span class="t-dim">|</span>
+        <span class="t-dim">└───────────────────────────────┘</span>
+</div>
+
+      <div class="card-grid cols-3" style="margin-top:18px;">
+        <div class="card">
+          <div class="card-title">Autonomous</div>
+          <div class="card-body">The root agent queries the github-local agent <strong>without human intervention</strong> — fully automated pipeline.</div>
+        </div>
+        <div class="card indigo">
+          <div class="card-title">No Context Duplication</div>
+          <div class="card-body">Each agent keeps its own identity. <strong>No shared state leakage</strong>, no monolithic context blob.</div>
+        </div>
+        <div class="card green">
+          <div class="card-title">Cross-Directory Awareness</div>
+          <div class="card-body">Root can ask github-local about its <strong>APIs, repos, capabilities</strong> — on demand, asynchronously.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ████████████████  SLIDE 7 — Trust Tier  ████████████████ -->
+  <div class="slide" id="s7">
+    <div style="width:100%; max-width:1000px;">
+      <div class="slide-label">The Trust Tier Breakthrough</div>
+      <h2 style="margin-bottom:6px;">"<span class="accent">known</span> vs. <span class="dim">trusted</span>: the key to autonomous pipelines."</h2>
+      <p class="subtitle" style="margin-bottom:20px;">
+        A2A has a trust system that controls whether messages need human approval or respond autonomously:
+      </p>
+
+      <div class="tier-demo">
+        <div class="tier-col known">
+          <div class="tier-label"><span class="tier-icon">🔒</span> known tier</div>
+          <p>Message is <strong>queued</strong> → session enters <code>INPUT_REQUIRED</code> state → a human must review and respond before the pipeline continues.</p>
+          <p style="color:var(--amber);">Pre-registered agents in <code>known_agents</code> start here by default.</p>
+          <div class="flow-step">
+            <div class="step">→ A2A message received</div>
+            <div class="step highlight">⏸  INPUT_REQUIRED (blocked)</div>
+            <div class="step">👤 Human reviews &amp; responds</div>
+            <div class="step">→ Pipeline resumes</div>
+          </div>
+        </div>
+        <div class="tier-col trusted">
+          <div class="tier-label"><span class="tier-icon">✅</span> trusted tier</div>
+          <p>An <strong>autonomous child session</strong> is spawned immediately → the agent responds without any human in the loop.</p>
+          <p style="color:var(--green);">Upgrade via <code>a2a trust</code> or direct <code>contacts.json</code> edit.</p>
+          <div class="flow-step">
+            <div class="step">→ A2A message received</div>
+            <div class="step highlight">⚡ Child session spawned</div>
+            <div class="step">🤖 Responds autonomously</div>
+            <div class="step">→ Pipeline continues</div>
+          </div>
+        </div>
+      </div>
+
+      <p style="margin-top:16px; font-size:clamp(12px,1.4vw,15px); color:var(--text-2); text-align:center; line-height:1.6;">
+        Once <code>trusted</code>: the github-local-agent responds autonomously. <strong style="color:var(--green);">Zero human intervention. Full pipeline automation.</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- ████████████████  SLIDE 8 — Issues & Future  ████████████████ -->
+  <div class="slide" id="s8">
+    <div class="slide-scroll">
+      <div style="width:100%; max-width:1050px;">
+        <div class="slide-label">What We Learned</div>
+        <h2 style="margin-bottom:8px;">"Issues encountered — and <span class="accent">what comes next</span>."</h2>
+
+        <div class="issue-list" style="margin-bottom:18px;">
+          <div class="issue-item">
+            <span class="issue-icon">⚠️</span>
+            <div class="issue-text">
+              <strong><code>known_agents</code> in bundle.md only accepts <code>{name, url}</code></strong> — no <code>tier</code> parameter supported.
+              Pre-registered agents always land at <code>"known"</code> tier, requiring a separate manual step to elevate before autonomous communication works.
+            </div>
+          </div>
+          <div class="issue-item">
+            <span class="issue-icon">🔁</span>
+            <div class="issue-text">
+              <strong>First autonomous communication required a manual trust tier upgrade</strong> before the pipeline could run hands-free. One-time setup, but not yet declarative.
+            </div>
+          </div>
+          <div class="issue-item">
+            <span class="issue-icon">⏱</span>
+            <div class="issue-text">
+              <strong>A2A timeout sensitivity</strong> — slow LLM responses in subdirectory agents can cause parent-side timeouts during pipeline runs.
+            </div>
+          </div>
+        </div>
+
+        <div class="two-col" style="gap:16px;">
+          <div class="card green">
+            <div class="card-title">Fix #1 — Direct contacts.json Edit</div>
+            <p style="font-size:12px; color:var(--text-2); margin:8px 0 10px;">One-time setup, persistent across all sessions. Best for stable trusted peers.</p>
+            <div class="terminal" style="font-size:11px; padding:12px 16px;">
+<span class="t-comment"># ~/.amplifier/a2a/contacts.json</span>
+{ <span class="t-green">"tier"</span>: <span class="t-amber">"trusted"</span> }  <span class="t-comment">// was: "known"</span></div>
+          </div>
+          <div class="card indigo">
+            <div class="card-title">Fix #2 — Runtime a2a trust</div>
+            <p style="font-size:12px; color:var(--text-2); margin:8px 0 10px;">Programmatic, works across machines, scriptable. Best for CI or dynamic environments.</p>
+            <div class="terminal" style="font-size:11px; padding:12px 16px;">
+<span class="t-comment"># At session startup:</span>
+<span class="t-cyan">a2a</span>(<span class="t-green">operation</span>=<span class="t-amber">"trust"</span>,
+    <span class="t-green">agent</span>=<span class="t-amber">"self-improvement-agent"</span>,
+    <span class="t-green">tier</span>=<span class="t-amber">"trusted"</span>)</div>
+          </div>
+        </div>
+
+        <div class="takeaway-box" style="margin-top:16px; padding:14px 22px;">
+          <p><strong>The ideal future:</strong> <code>known_agents</code> in bundle.md should support a <code>tier</code> field — trust levels declared once, versioned with your bundle, applied automatically at startup.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ████████████████  SLIDE 9 — Summary  ████████████████ -->
+  <div class="slide" id="s9">
+    <div style="width:100%; max-width:1050px;">
+      <div class="slide-label">The Pattern</div>
+      <h2 style="margin-bottom:16px;">"Directory-aware context. <span class="accent">Pipeline-connected</span> agents."</h2>
+
+      <div class="two-col" style="gap:20px; align-items:start;">
+        <div class="terminal" style="font-size:clamp(10px,1.1vw,13px);">
+<span class="t-white">Project Root</span>
+├── <span class="t-amber">.amplifier/</span>     <span class="t-comment">← whole-project context</span>
+│
+├── <span class="t-cyan">service-a/</span>
+│   └── <span class="t-amber">.amplifier/</span> <span class="t-comment">← only what service-a needs</span>
+│
+└── <span class="t-indigo">service-b/</span>
+    └── <span class="t-amber">.amplifier/</span> <span class="t-comment">← only what service-b needs</span>
+         │
+         └── <span class="t-green">A2A ──→</span> Can still talk to root
+                   or service-a agents
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div class="card">
+            <div class="card-title">🎯 Domain Expertise</div>
+            <div class="card-body">Every agent is a <strong>specialist</strong>, not a generalist. Context is exactly what that agent needs — nothing more.</div>
+          </div>
+          <div class="card indigo">
+            <div class="card-title">🔗 Still Connected</div>
+            <div class="card-body">A2A protocol means specialists can <strong>query each other</strong> without duplicating context or requiring human relay.</div>
+          </div>
+          <div class="card green">
+            <div class="card-title">📐 Architecture Primitive</div>
+            <div class="card-body">Directory resolution isn't a quirk — it's a <strong>first-class design</strong> for building focused agent teams that coordinate seamlessly.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="takeaway-box" style="margin-top:20px;">
+        <p>
+          <strong>The takeaway:</strong> In complex workspaces, Amplifier's directory resolution is the difference between
+          one overloaded agent and a <strong>focused team of specialists</strong> that still coordinate seamlessly.
+          Scope your context. Connect your agents. Ship faster.
+        </p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- Navigation -->
+<button class="nav-arrow nav-prev hidden" id="nav-prev" aria-label="Previous slide">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="15 18 9 12 15 6"></polyline>
+  </svg>
+</button>
+<button class="nav-arrow nav-next" id="nav-next" aria-label="Next slide">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="9 18 15 12 9 6"></polyline>
+  </svg>
+</button>
+
+<div class="nav-dots" id="nav-dots"></div>
+<div class="counter" id="counter">1 / 9</div>
+
+<script>
+  const TOTAL = 9;
+  let current = 0;
+
+  const slides    = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl    = document.getElementById('nav-dots');
+  const counterEl = document.getElementById('counter');
+  const prevBtn   = document.getElementById('nav-prev');
+  const nextBtn   = document.getElementById('nav-next');
+
+  // Build dots
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(d);
+  });
+
+  function goTo(n) {
+    if (n < 0 || n >= TOTAL) return;
+    const dots = dotsEl.querySelectorAll('.dot');
+
+    slides[current].classList.remove('active');
+    slides[current].classList.add('prev');
+    dots[current].classList.remove('active');
+
+    // Reset scroll on slide-scroll containers when leaving
+    const oldScroll = slides[current].querySelector('.slide-scroll');
+    if (oldScroll) oldScroll.scrollTop = 0;
+
+    setTimeout(() => {
+      slides[current].classList.remove('prev');
+      current = n;
+      slides[current].classList.add('active');
+      dots[current].classList.add('active');
+      counterEl.textContent = `${current + 1} / ${TOTAL}`;
+      prevBtn.classList.toggle('hidden', current === 0);
+      nextBtn.classList.toggle('hidden', current === TOTAL - 1);
+    }, 80);
+  }
+
+  prevBtn.addEventListener('click', () => goTo(current - 1));
+  nextBtn.addEventListener('click', () => goTo(current + 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); goTo(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); goTo(current - 1);
+    } else if (e.key === 'Home') { goTo(0); }
+    else if (e.key === 'End')  { goTo(TOTAL - 1); }
+  });
+
+  // Touch/swipe
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) { dx < 0 ? goTo(current + 1) : goTo(current - 1); }
+  });
+</script>
+</body>
+</html>

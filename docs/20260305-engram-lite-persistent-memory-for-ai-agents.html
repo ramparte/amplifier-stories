@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>engram-lite: Persistent Memory for AI Agents</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-surface: rgba(255,255,255,0.05);
+    --bg-surface-2: rgba(255,255,255,0.08);
+    --bg-surface-3: rgba(255,255,255,0.12);
+    --border: rgba(255,255,255,0.10);
+    --border-visible: rgba(255,255,255,0.18);
+    --accent-blue: #3b82f6;
+    --accent-green: #10b981;
+    --accent-purple: #a78bfa;
+    --accent-amber: #f59e0b;
+    --accent-red: #ef4444;
+    --text-primary: #e6edf3;
+    --text-secondary: rgba(230,237,243,0.7);
+    --text-tertiary: rgba(230,237,243,0.5);
+    --font-headline: clamp(36px, 7vw, 68px);
+    --font-medium: clamp(24px, 4.5vw, 44px);
+    --font-subhead: clamp(16px, 2.5vw, 28px);
+    --font-body: clamp(14px, 2vw, 18px);
+    --font-small: clamp(12px, 1.5vw, 14px);
+    --font-code: clamp(12px, 1.8vw, 15px);
+    --padding-slide: clamp(24px, 5vw, 80px);
+    --gap: clamp(16px, 3vw, 32px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .slide {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: var(--padding-slide);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    overflow-y: auto;
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .section-label {
+    font-size: var(--font-small);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--accent-blue);
+    margin-bottom: 16px;
+  }
+
+  .headline {
+    font-size: var(--font-headline);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+    color: var(--text-primary);
+  }
+
+  .medium-headline {
+    font-size: var(--font-medium);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  .subhead {
+    font-size: var(--font-subhead);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    max-width: 720px;
+  }
+
+  .body-text {
+    font-size: var(--font-body);
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: clamp(12px, 2vw, 16px);
+    padding: clamp(18px, 3vw, 28px);
+  }
+
+  .card h3 { color: var(--text-primary); font-size: clamp(16px, 2.5vw, 22px); font-weight: 600; margin-bottom: 8px; }
+  .card p, .card li { color: var(--text-secondary); font-size: var(--font-body); line-height: 1.55; }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: var(--gap);
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    gap: var(--gap);
+  }
+
+  .code-block {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: clamp(14px, 3vw, 22px);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+    font-size: var(--font-code);
+    line-height: 1.65;
+    white-space: pre;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    color: var(--text-secondary);
+  }
+
+  .code-block .kw { color: var(--accent-purple); }
+  .code-block .fn { color: var(--accent-blue); }
+  .code-block .str { color: var(--accent-green); }
+  .code-block .cm { color: var(--text-tertiary); font-style: italic; }
+  .code-block .num { color: var(--accent-amber); }
+  .code-block .op { color: var(--text-secondary); }
+
+  .pull-quote {
+    font-size: clamp(20px, 3.5vw, 32px);
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-primary);
+    border-left: 3px solid var(--accent-blue);
+    padding-left: clamp(16px, 3vw, 28px);
+    max-width: 700px;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: var(--font-small);
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .badge-alpha { background: rgba(245,158,11,0.15); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.3); }
+  .badge-active { background: rgba(16,185,129,0.15); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.3); }
+
+  .accent-blue { color: var(--accent-blue); }
+  .accent-green { color: var(--accent-green); }
+  .accent-purple { color: var(--accent-purple); }
+  .accent-amber { color: var(--accent-amber); }
+
+  .mt-1 { margin-top: 12px; }
+  .mt-2 { margin-top: 20px; }
+  .mt-3 { margin-top: 32px; }
+  .mb-1 { margin-bottom: 12px; }
+  .mb-2 { margin-bottom: 20px; }
+
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .tag {
+    font-size: var(--font-small);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--bg-surface-2);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .forbidden {
+    text-decoration: line-through;
+    color: var(--accent-red);
+    opacity: 0.7;
+  }
+
+  .diagram-box {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: var(--font-small);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Navigation */
+  .nav-dots {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+  }
+  .nav-dot.active {
+    background: var(--accent-blue);
+    box-shadow: 0 0 8px rgba(59,130,246,0.4);
+  }
+
+  .slide-counter {
+    position: fixed;
+    bottom: 24px;
+    right: 32px;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    z-index: 100;
+  }
+
+  /* Responsive tweaks */
+  @media (max-width: 768px) {
+    .slide { padding: clamp(16px, 4vw, 32px); padding-bottom: 60px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .code-block { white-space: pre-wrap; word-break: break-all; }
+  }
+
+  /* Subtle scanline texture */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255,255,255,0.008) 2px,
+      rgba(255,255,255,0.008) 4px
+    );
+    z-index: 1000;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- SLIDE 1: Title                                                -->
+<!-- ============================================================ -->
+<div class="slide active" id="slide-1">
+  <div>
+    <div class="tag-row" style="margin-top:0; margin-bottom: 24px;">
+      <span class="badge badge-alpha">Alpha v0.1.0</span>
+      <span class="badge badge-active">Active Development</span>
+    </div>
+    <div class="section-label" style="margin-bottom: 20px;">Introducing</div>
+    <h1 class="headline" style="margin-bottom: 24px;">
+      engram-lite
+    </h1>
+    <p class="subhead" style="margin-bottom: 32px;">
+      Persistent, vector-backed memory for Claude Code&nbsp;and&nbsp;Amplifier agents.
+      <br>Local SQLite. Dual-route retrieval. Silent by&nbsp;design.
+    </p>
+    <p class="body-text" style="color: var(--text-tertiary); max-width: 520px;">
+      What if your AI coding agent remembered you<br>
+      the way a great colleague does?
+    </p>
+    <div class="tag-row" style="margin-top: 32px;">
+      <span class="tag">Python 3.11+</span>
+      <span class="tag">MIT License</span>
+      <span class="tag">SQLite + sqlite-vec</span>
+      <span class="tag">fastembed / ONNX</span>
+    </div>
+    <p style="font-size: var(--font-small); color: var(--text-tertiary); margin-top: 24px;">
+      Ken Chau &middot; Microsoft &middot; March 2026
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 2: The Repetition Tax                                   -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-2">
+  <div>
+    <div class="section-label">The Problem</div>
+    <h2 class="medium-headline mb-2">The Repetition Tax</h2>
+    <p class="pull-quote mt-2" style="margin-bottom: 36px;">
+      "Human collaborators build shared understanding<br>
+      over time. Without memory, AI agents are<br>
+      perpetual strangers."
+    </p>
+
+    <div class="grid-3 mt-3">
+      <div class="card">
+        <h3><span class="accent-amber">01</span> &nbsp;Re-Explanation</h3>
+        <p>
+          "We use tabs, not spaces." "The API runs on port 8432."
+          "We decided against Redis because&hellip;"
+          Stated once. Restated every session.
+        </p>
+      </div>
+      <div class="card">
+        <h3><span class="accent-amber">02</span> &nbsp;Lost Knowledge</h3>
+        <p>
+          Decisions made three months ago &mdash; why you chose SQLite
+          over Postgres, why the auth module uses that pattern &mdash;
+          evaporate when the session closes.
+        </p>
+      </div>
+      <div class="card">
+        <h3><span class="accent-amber">03</span> &nbsp;No Relationship</h3>
+        <p>
+          A developer who has told their AI "I prefer composition
+          over inheritance" twenty times eventually stops correcting it.
+          The AI cannot learn.
+        </p>
+      </div>
+    </div>
+
+    <p class="body-text mt-3" style="color: var(--text-tertiary); max-width: 600px;">
+      Source: engram-lite PRD &sect;2 &mdash; Problem Statement (2026-03-03)
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 3: The Insight                                          -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-3">
+  <div>
+    <div class="section-label">The Insight</div>
+    <h2 class="headline" style="margin-bottom: 32px;">
+      Two layers.<br>
+      <span class="accent-green">One memory.</span>
+    </h2>
+    <p class="subhead" style="margin-bottom: 40px;">
+      Pipeline RAG is wrong for this problem. The hot stuff should always
+      be there. The deep stuff should be retrieved on demand.
+    </p>
+
+    <div class="grid-2">
+      <div class="card" style="border-left: 3px solid var(--accent-blue);">
+        <h3 style="color: var(--accent-blue);">Layer 1: MEMORY.md</h3>
+        <p class="mt-1" style="font-size: clamp(15px, 2.2vw, 18px); color: var(--text-primary); font-weight: 500;">
+          The Hot Surface
+        </p>
+        <p class="mt-1">
+          Prose narrative injected at every session start. Always present.
+          No retrieval latency. The agent reads it like a colleague
+          reading their notes before a meeting.
+        </p>
+        <div class="tag-row">
+          <span class="tag">Always injected</span>
+          <span class="tag">Prose, not JSON</span>
+          <span class="tag">Agent-authored</span>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 3px solid var(--accent-green);">
+        <h3 style="color: var(--accent-green);">Layer 2: Vector + Graph DB</h3>
+        <p class="mt-1" style="font-size: clamp(15px, 2.2vw, 18px); color: var(--text-primary); font-weight: 500;">
+          The Deep Store
+        </p>
+        <p class="mt-1">
+          SQLite + sqlite-vec + FTS5. Dual-route retrieval: fast vector KNN
+          fused with BM25, plus hierarchical graph traversal for broad queries.
+          Retrieved on demand via tool calls.
+        </p>
+        <div class="tag-row">
+          <span class="tag">On-demand recall</span>
+          <span class="tag">Dual-route</span>
+          <span class="tag">Graph + Vector</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 4: The Brilliant Revert                                 -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-4">
+  <div>
+    <div class="section-label">Design Decision</div>
+    <h2 class="medium-headline mb-2">The Brilliant Revert</h2>
+
+    <div class="grid-2 mt-2">
+      <div>
+        <p class="pull-quote" style="font-size: clamp(18px, 3vw, 26px);">
+          "We tried building a separate LLM to maintain MEMORY.md.
+          Then we realized: the agent reading these instructions
+          already <em>is</em> the LLM."
+        </p>
+        <p class="body-text mt-3" style="max-width: 480px;">
+          Early prototypes had a structured MEMORY.md format with dedicated
+          refresh machinery &mdash; a separate pipeline to rewrite the file.
+          It was scrapped. The agent simply composes its own memory narrative
+          in prose, the same way you'd jot notes for a colleague.
+        </p>
+        <p class="body-text mt-2" style="color: var(--text-tertiary); font-size: var(--font-small);">
+          Evidence: commit <code style="color:var(--accent-blue)">bcdd4c7</code> &mdash;
+          "refactor: remove old structured MEMORY.md format and refresh-now machinery"
+        </p>
+      </div>
+
+      <div>
+        <div class="code-block"><span class="cm"># What MEMORY.md looks like</span>
+<span class="cm"># (authored by the agent, for the agent)</span>
+
+<span class="str">## Ken</span>
+Ken is a principal engineer at Microsoft
+who works on developer tooling. He prefers
+composition over inheritance, uses early
+returns, and considers `any` types a code
+smell. Currently building engram-lite.
+
+<span class="str">## Active Context</span>
+Dual-route retrieval engine is the active
+workstream. System-1 targets &lt;50ms at 10k
+memories. Using sqlite-vec for KNN.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 5: Dual-Route Retrieval                                 -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-5">
+  <div>
+    <div class="section-label">Architecture &mdash; Mnemis-Inspired</div>
+    <h2 class="medium-headline mb-2">Dual-Route Retrieval</h2>
+    <p class="body-text mb-2" style="max-width: 640px;">
+      Adapted from <span class="accent-blue">Mnemis</span>: Dual-Route Retrieval on
+      Hierarchical Graphs for Long-Term LLM Memory
+      (arXiv:2602.15313, Tang&nbsp;et&nbsp;al., 2026).
+      engram-lite adapts the core ideas for individual developer sessions
+      with a local SQLite backend.
+    </p>
+
+    <div class="grid-2 mt-2">
+      <div class="card" style="border-top: 3px solid var(--accent-blue);">
+        <h3>
+          <span style="font-size: clamp(28px, 5vw, 40px); font-weight: 800; color: var(--accent-blue);">S1</span>
+          <span style="margin-left: 8px;">System-1: Fast Path</span>
+        </h3>
+        <p class="mt-1">
+          Vector KNN via sqlite-vec + BM25 full-text via FTS5,
+          fused with <strong>Reciprocal Rank Fusion</strong>.
+        </p>
+        <p class="mt-1" style="color: var(--accent-green); font-weight: 600;">Target: &lt;50ms @ 10k memories</p>
+        <p class="mt-1" style="font-size: var(--font-small); color: var(--text-tertiary);">
+          Best for: "What port does the API run on?"
+        </p>
+      </div>
+
+      <div class="card" style="border-top: 3px solid var(--accent-purple);">
+        <h3>
+          <span style="font-size: clamp(28px, 5vw, 40px); font-weight: 800; color: var(--accent-purple);">S2</span>
+          <span style="margin-left: 8px;">System-2: Deliberate Path</span>
+        </h3>
+        <p class="mt-1">
+          Top-down traversal of a hierarchical semantic graph.
+          Collects structurally related memories that vector search alone
+          would miss.
+        </p>
+        <p class="mt-1" style="color: var(--accent-green); font-weight: 600;">Target: &lt;200ms @ 10k memories</p>
+        <p class="mt-1" style="font-size: var(--font-small); color: var(--text-tertiary);">
+          Best for: "Summarize all security decisions we've made."
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-3" style="max-width: 700px;">
+      <p class="body-text" style="font-weight: 500; color: var(--text-primary); margin-bottom: 8px;">Auto-Routing</p>
+      <div class="code-block" style="font-size: var(--font-small);"><span class="str">"kubernetes timeout"</span>       <span class="cm"> &rarr; vector   (short, specific)</span>
+<span class="str">"HIPAA"</span>                     <span class="cm"> &rarr; keyword  (all-caps acronym)</span>
+<span class="str">"everything about auth"</span>     <span class="cm"> &rarr; graph    (broad signal: "everything")</span>
+<span class="str">"how does rate limiting work?"</span><span class="cm">&rarr; hybrid   (question-form)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 6: The Scoring Engine                                   -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-6">
+  <div>
+    <div class="section-label">Under the Hood</div>
+    <h2 class="medium-headline mb-2">The Scoring Engine</h2>
+
+    <div class="grid-2 mt-2">
+      <div>
+        <p class="body-text" style="font-weight: 500; color: var(--text-primary); margin-bottom: 12px;">
+          Step 1: Reciprocal Rank Fusion
+        </p>
+        <div class="code-block"><span class="cm">// Fuse KNN + BM25 ranked lists</span>
+<span class="cm">// k = 60 (standard RRF constant)</span>
+
+<span class="fn">RRF_score</span>(d) = <span class="num">&Sigma;</span> <span class="num">1</span> / (<span class="num">k</span> + <span class="fn">rank_i</span>(d) + <span class="num">1</span>)</div>
+        <p class="body-text mt-2" style="font-size: var(--font-small);">
+          Scale-invariant: BM25 scores and cosine distances have
+          different scales. RRF uses only rank positions.
+        </p>
+      </div>
+
+      <div>
+        <p class="body-text" style="font-weight: 500; color: var(--text-primary); margin-bottom: 12px;">
+          Step 2: Final Re-Ranking
+        </p>
+        <div class="code-block"><span class="cm">// Four-signal weighted score</span>
+
+final_score =
+  <span class="num">0.40</span> <span class="op">&times;</span> <span class="fn">query_match</span>   <span class="cm">// cosine similarity</span>
++ <span class="num">0.25</span> <span class="op">&times;</span> <span class="fn">confidence</span>    <span class="cm">// 0.0 &ndash; 1.0</span>
++ <span class="num">0.20</span> <span class="op">&times;</span> <span class="fn">importance</span>    <span class="cm">// critical &rarr; 1.0</span>
++ <span class="num">0.15</span> <span class="op">&times;</span> <span class="fn">recency</span>       <span class="cm">// exp decay, 90d half-life</span></div>
+        <p class="body-text mt-2" style="font-size: var(--font-small);">
+          Relevance dominates at 40%. Recency is a tiebreaker, not the primary signal.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <p class="body-text" style="font-weight: 500; color: var(--text-primary); margin-bottom: 12px;">
+        Latency Budget (targets at 10k memories)
+      </p>
+      <div style="display: flex; gap: var(--gap); flex-wrap: wrap;">
+        <div class="card" style="flex: 1; min-width: 140px; text-align: center;">
+          <p style="font-size: clamp(28px, 5vw, 40px); font-weight: 800; color: var(--accent-blue);">&lt;50<span style="font-size: 0.5em;">ms</span></p>
+          <p style="font-size: var(--font-small); color: var(--text-secondary);">System-1 (vector)</p>
+        </div>
+        <div class="card" style="flex: 1; min-width: 140px; text-align: center;">
+          <p style="font-size: clamp(28px, 5vw, 40px); font-weight: 800; color: var(--accent-purple);">&lt;200<span style="font-size: 0.5em;">ms</span></p>
+          <p style="font-size: var(--font-small); color: var(--text-secondary);">System-2 (graph)</p>
+        </div>
+        <div class="card" style="flex: 1; min-width: 140px; text-align: center;">
+          <p style="font-size: clamp(28px, 5vw, 40px); font-weight: 800; color: var(--accent-green);">&lt;30<span style="font-size: 0.5em;">ms</span></p>
+          <p style="font-size: var(--font-small); color: var(--text-secondary);">Keyword (BM25)</p>
+        </div>
+        <div class="card" style="flex: 1; min-width: 140px; text-align: center;">
+          <p style="font-size: clamp(28px, 5vw, 40px); font-weight: 800; color: var(--accent-amber);">&lt;100<span style="font-size: 0.5em;">ms</span></p>
+          <p style="font-size: var(--font-small); color: var(--text-secondary);">Session pre-load</p>
+        </div>
+      </div>
+    </div>
+    <p class="body-text mt-2" style="color: var(--text-tertiary); font-size: var(--font-small);">
+      Source: SPEC-RETRIEVAL &sect;15 &mdash; Performance Targets. These are design targets, not benchmarks.
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 7: Privacy as Architecture                              -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-7">
+  <div>
+    <div class="section-label">Privacy Model</div>
+    <h2 class="medium-headline mb-2">
+      Privacy isn't a policy.<br>
+      <span class="accent-green">It's the filesystem topology.</span>
+    </h2>
+
+    <div class="grid-2 mt-3">
+      <div>
+        <div class="code-block" style="font-size: var(--font-code);"><span class="accent-blue" style="font-weight:700;">~/.engram/</span>                <span class="accent-green" style="font-weight:700;">&lt;project&gt;/.engram/</span>
+<span class="cm">&boxv;</span>                             <span class="cm">&boxv;</span>
+<span class="cm">&boxv;</span> <span class="str">USER SPACE</span>                <span class="cm">&boxv;</span> <span class="str">PROJECT SPACE</span>
+<span class="cm">&boxv;</span>                             <span class="cm">&boxv;</span>
+<span class="cm">&boxv;</span> Your preferences            <span class="cm">&boxv;</span> Architecture decisions
+<span class="cm">&boxv;</span> Personal workflow habits     <span class="cm">&boxv;</span> Project conventions
+<span class="cm">&boxv;</span> Cross-project knowledge      <span class="cm">&boxv;</span> Team patterns
+<span class="cm">&boxv;</span> People &amp; relationships       <span class="cm">&boxv;</span> Why-we-chose-X rationale
+<span class="cm">&boxv;</span>                             <span class="cm">&boxv;</span>
+<span class="cm">&boxv;</span> <span class="accent-red" style="font-weight:600;">NEVER</span> leaves your machine   <span class="cm">&boxv;</span> <span class="accent-green" style="font-weight:600;">Safe to commit</span> to git
+<span class="cm">&boxv;</span> <span class="accent-red" style="font-weight:600;">NEVER</span> leaks into project    <span class="cm">&boxv;</span> Shared via version control</div>
+      </div>
+
+      <div>
+        <div class="card mb-2" style="border-left: 3px solid var(--accent-amber);">
+          <h3>The README Test</h3>
+          <p class="mt-1">
+            Would this content be appropriate in a public README?
+            If not, it's automatically routed to user space.
+            PII, credentials, and private opinions are rejected
+            from project space at the capture boundary.
+          </p>
+        </div>
+
+        <div class="card" style="border-left: 3px solid var(--accent-green);">
+          <h3>Local Embeddings</h3>
+          <p class="mt-1">
+            <strong>fastembed</strong> uses ONNX Runtime &mdash;
+            ~200MB install, no PyTorch, no GPU required.
+            With Ollama, zero data leaves your machine.
+            Default provider (OpenAI) sends only truncated content
+            for embedding &mdash; no metadata, tags, or graph structure.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 8: Zero-Friction Integration                            -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-8">
+  <div>
+    <div class="section-label">Integration</div>
+    <h2 class="medium-headline mb-2">Zero-Friction Design</h2>
+    <p class="subhead mb-2">
+      No pip install. No service to run. No accounts to create.
+    </p>
+
+    <div class="grid-2 mt-2">
+      <div>
+        <p class="body-text" style="font-weight: 500; color: var(--text-primary); margin-bottom: 12px;">
+          Claude Code &mdash; pick one:
+        </p>
+        <div class="code-block"><span class="cm"># Option A: copy .mcp.json</span>
+<span class="fn">cp</span> /path/to/engram-lite/<span class="str">.mcp.json</span> .
+
+<span class="cm"># Option B: register directly</span>
+<span class="fn">claude</span> mcp add --transport stdio \
+  engram-lite -- \
+  <span class="fn">uvx</span> --from \
+    git+https://github.com/kenotron-ms/engram-lite \
+    engram-lite-mcp
+
+<span class="cm"># That's it. Start Claude Code.</span>
+<span class="fn">claude</span></div>
+
+        <p class="body-text mt-2" style="font-weight: 500; color: var(--text-primary); margin-bottom: 8px;">
+          Amplifier:
+        </p>
+        <div class="code-block"><span class="cm"># Add to root bundle.md</span>
+includes:
+  - bundle: <span class="str">git+https://github.com/kenotron-ms/engram-lite@main</span></div>
+      </div>
+
+      <div>
+        <p class="body-text" style="font-weight: 500; color: var(--text-primary); margin-bottom: 12px;">
+          3 Lifecycle Hooks
+        </p>
+        <div class="card mb-2">
+          <h3><span class="accent-blue">SessionStart</span></h3>
+          <p>Inject MEMORY.md hot surface + behavioral protocol into context</p>
+        </div>
+        <div class="card mb-2">
+          <h3><span class="accent-green">UserPromptSubmit</span></h3>
+          <p>Recall nudge &mdash; prompt the agent to check memory. Sync MEMORY.md and vector DB independently (A/B rule).</p>
+        </div>
+        <div class="card mb-2">
+          <h3><span class="accent-purple">Stop</span></h3>
+          <p>Capture reminder &mdash; evaluate what's worth remembering from this exchange</p>
+        </div>
+
+        <p class="body-text" style="font-weight: 500; color: var(--text-primary); margin-bottom: 8px; margin-top: 16px;">
+          8 MCP Tools
+        </p>
+        <div class="tag-row" style="margin-top: 4px;">
+          <span class="tag" style="font-family: 'SF Mono', monospace;">capture</span>
+          <span class="tag" style="font-family: 'SF Mono', monospace;">recall</span>
+          <span class="tag" style="font-family: 'SF Mono', monospace;">search</span>
+          <span class="tag" style="font-family: 'SF Mono', monospace;">update</span>
+          <span class="tag" style="font-family: 'SF Mono', monospace;">forget</span>
+          <span class="tag" style="font-family: 'SF Mono', monospace;">relate</span>
+          <span class="tag" style="font-family: 'SF Mono', monospace;">graph_explore</span>
+          <span class="tag" style="font-family: 'SF Mono', monospace;">stats</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 9: The Behavioral Loop                                  -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-9">
+  <div>
+    <div class="section-label">Behavioral Protocol</div>
+    <h2 class="medium-headline mb-2">RETRIEVE &rarr; RESPOND &rarr; CAPTURE</h2>
+    <p class="subhead mb-2">
+      The three-phase loop runs silently on every conversational turn.
+    </p>
+
+    <div class="code-block mt-2" style="max-width: 720px; font-size: var(--font-code);">  User sends prompt
+        <span class="op">&boxv;</span>
+        <span class="op">&darr;</span>
+  <span class="diagram-box" style="background: rgba(59,130,246,0.15); color: var(--accent-blue); border: 1px solid rgba(59,130,246,0.3);">RETRIEVE</span>    Hook injects recall reminder
+        <span class="op">&boxv;</span>       Agent calls <span class="fn">memory_recall</span> / <span class="fn">memory_search</span>
+        <span class="op">&boxv;</span>       Relevant memories loaded into context
+        <span class="op">&darr;</span>
+  <span class="diagram-box" style="background: rgba(16,185,129,0.15); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.3);">RESPOND</span>     Agent responds using conversation + memories
+        <span class="op">&boxv;</span>       Memory operations are <span class="accent-red">never mentioned</span> to user
+        <span class="op">&darr;</span>
+  <span class="diagram-box" style="background: rgba(167,139,250,0.15); color: var(--accent-purple); border: 1px solid rgba(167,139,250,0.3);">CAPTURE</span>     Hook injects capture reminder
+                Agent evaluates what&rsquo;s worth remembering
+                New knowledge stored with embeddings + graph links</div>
+
+    <div class="card mt-3" style="max-width: 720px; border-left: 3px solid var(--accent-amber);">
+      <h3>The A/B Independence Rule</h3>
+      <p class="mt-1">
+        MEMORY.md (Layer A) and the vector database (Layer B) are synced
+        independently. Don't skip one because you did the other. Hot context
+        and deep recall serve different purposes &mdash; both must stay current.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 10: The Silent Principle                                -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-10">
+  <div>
+    <div class="section-label">Design Philosophy</div>
+    <h2 class="headline" style="margin-bottom: 32px;">
+      Memory is infrastructure,<br>
+      <span style="color: var(--text-tertiary);">not interface.</span>
+    </h2>
+
+    <div class="grid-2 mt-2">
+      <div>
+        <p class="body-text" style="font-weight: 500; color: var(--text-primary); margin-bottom: 16px;">
+          Forbidden phrases:
+        </p>
+        <p class="body-text forbidden" style="font-size: clamp(16px, 2.5vw, 22px); margin-bottom: 10px;">
+          "I'm saving that to memory&hellip;"
+        </p>
+        <p class="body-text forbidden" style="font-size: clamp(16px, 2.5vw, 22px); margin-bottom: 10px;">
+          "Let me check my memory&hellip;"
+        </p>
+        <p class="body-text forbidden" style="font-size: clamp(16px, 2.5vw, 22px); margin-bottom: 10px;">
+          "I've captured that."
+        </p>
+        <p class="body-text forbidden" style="font-size: clamp(16px, 2.5vw, 22px); margin-bottom: 10px;">
+          "Searching memory&hellip;"
+        </p>
+
+        <p class="pull-quote mt-3" style="font-size: clamp(18px, 3vw, 24px);">
+          The AI simply knows things.<br>
+          Like a great colleague.
+        </p>
+      </div>
+
+      <div>
+        <div class="card mb-2" style="border-left: 3px solid var(--accent-red);">
+          <h3 style="color: var(--accent-red);">Before engram-lite</h3>
+          <div class="code-block mt-1" style="font-size: var(--font-small); background: rgba(239,68,68,0.05); border-color: rgba(239,68,68,0.15);"><span class="cm">Session 1:</span> "We use tabs, not spaces."
+<span class="cm">Session 2:</span> "Like I said, tabs not spaces."
+<span class="cm">Session 3:</span> "TABS. NOT SPACES."
+<span class="cm">Session 4:</span> <span class="accent-red">[gives up correcting]</span></div>
+        </div>
+
+        <div class="card" style="border-left: 3px solid var(--accent-green);">
+          <h3 style="color: var(--accent-green);">After engram-lite</h3>
+          <div class="code-block mt-1" style="font-size: var(--font-small); background: rgba(16,185,129,0.05); border-color: rgba(16,185,129,0.15);"><span class="cm">Session 1:</span> "We use tabs, not spaces."
+<span class="cm">Session 2:</span> <span class="accent-green">[agent uses tabs without asking]</span>
+<span class="cm">Session 7:</span> <span class="accent-green">[agent still uses tabs]</span>
+<span class="cm">Session 30:</span> <span class="accent-green">[agent still uses tabs]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 11: Sources & Methodology                               -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-11">
+  <div>
+    <div class="section-label">Appendix</div>
+    <h2 class="medium-headline mb-2">Sources &amp; Methodology</h2>
+
+    <div class="grid-2 mt-2">
+      <div>
+        <div class="card">
+          <h3>Primary Sources</h3>
+          <ul style="list-style: none; padding: 0; margin-top: 8px;">
+            <li class="body-text" style="margin-bottom: 6px;">
+              <span class="accent-blue">&bull;</span> <code>README.md</code> &mdash; project overview, tool reference, quick start
+            </li>
+            <li class="body-text" style="margin-bottom: 6px;">
+              <span class="accent-blue">&bull;</span> <code>pyproject.toml</code> &mdash; package metadata, dependencies, version
+            </li>
+            <li class="body-text" style="margin-bottom: 6px;">
+              <span class="accent-blue">&bull;</span> <code>docs/PRD.md</code> &mdash; product requirements, problem statement
+            </li>
+            <li class="body-text" style="margin-bottom: 6px;">
+              <span class="accent-blue">&bull;</span> <code>docs/ARCHITECTURE.md</code> &mdash; system design, core principles
+            </li>
+            <li class="body-text" style="margin-bottom: 6px;">
+              <span class="accent-blue">&bull;</span> <code>docs/SPEC-RETRIEVAL.md</code> &mdash; dual-route engine, RRF, re-ranking, perf targets
+            </li>
+            <li class="body-text" style="margin-bottom: 6px;">
+              <span class="accent-blue">&bull;</span> <code>docs/SPEC-PROTOCOLS.md</code> &mdash; behavioral loop, silent operation
+            </li>
+            <li class="body-text" style="margin-bottom: 6px;">
+              <span class="accent-blue">&bull;</span> Git log (5 most recent commits on <code>main</code>)
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <div class="card mb-2">
+          <h3>Academic Reference</h3>
+          <p class="mt-1">
+            Tang et al. "Mnemis: Dual-Route Retrieval on Hierarchical Graphs
+            for Long-Term LLM Memory." arXiv:2602.15313, 2026.
+          </p>
+        </div>
+
+        <div class="card mb-2">
+          <h3>Methodology</h3>
+          <p class="mt-1">
+            All numbers (RRF formula, re-ranking weights, latency targets)
+            come directly from spec documents in the repository.
+            Performance figures are <strong>design targets</strong>,
+            not measured benchmarks.
+            Commit references verified against <code>git log</code>.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>Disclosure</h3>
+          <p class="mt-1">
+            <strong>Status:</strong> Alpha (Development Status :: 3 - Alpha).
+            <strong>Author:</strong> Ken Chau, Microsoft (single primary author).
+            <strong>Repo:</strong> <code>kenotron-ms/engram-lite</code> (personal GitHub org, not <code>microsoft/</code>).
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <p class="body-text mt-2" style="color: var(--text-tertiary); font-size: var(--font-small);">
+      Data as of: 2026-03-05. Deck generated from repository at commit <code>31f9272</code> (HEAD of main).
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SLIDE 12: Get Started (CTA)                                   -->
+<!-- ============================================================ -->
+<div class="slide" id="slide-12">
+  <div style="text-align: center; max-width: 700px; margin: 0 auto;">
+    <div class="section-label" style="margin-bottom: 24px;">Get Started</div>
+    <h2 class="headline" style="margin-bottom: 24px;">
+      Two commands.<br>
+      <span class="accent-green">Memory is active.</span>
+    </h2>
+
+    <div class="code-block mt-3" style="text-align: left; max-width: 580px; margin: 0 auto; font-size: var(--font-code);"><span class="cm"># Clone or just grab .mcp.json</span>
+<span class="fn">curl</span> -sO https://raw.githubusercontent.com/\
+  kenotron-ms/engram-lite/main/<span class="str">.mcp.json</span>
+
+<span class="cm"># Start Claude Code</span>
+<span class="fn">claude</span></div>
+
+    <div style="margin-top: 40px;">
+      <p class="body-text" style="color: var(--text-primary); font-size: clamp(16px, 2.5vw, 20px); font-weight: 500;">
+        github.com/kenotron-ms/engram-lite
+      </p>
+      <div class="tag-row" style="justify-content: center; margin-top: 16px;">
+        <span class="badge badge-alpha">Alpha</span>
+        <span class="tag">MIT License</span>
+        <span class="tag">Python 3.11+</span>
+        <span class="tag">Works Today</span>
+      </div>
+    </div>
+
+    <p class="body-text mt-3" style="color: var(--text-tertiary); font-style: italic; max-width: 480px; margin-left: auto; margin-right: auto;">
+      "Instead of starting every conversation as a blank slate,
+      the agent remembers your preferences, past decisions,
+      project context, and working patterns &mdash; and applies
+      them silently."
+    </p>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav-dots" id="nav-dots"></div>
+<div class="slide-counter" id="slide-counter"></div>
+
+<script>
+(function() {
+  const slides = document.querySelectorAll('.slide');
+  const navDots = document.getElementById('nav-dots');
+  const counter = document.getElementById('slide-counter');
+  let current = 0;
+  const total = slides.length;
+
+  // Build nav dots
+  for (let i = 0; i < total; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+    dot.addEventListener('click', () => goTo(i));
+    navDots.appendChild(dot);
+  }
+
+  function goTo(n) {
+    if (n < 0 || n >= total) return;
+    slides[current].classList.remove('active');
+    navDots.children[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    navDots.children[current].classList.add('active');
+    counter.textContent = (current + 1) + ' / ' + total;
+  }
+
+  function next() { goTo(current + 1); }
+  function prev() { goTo(current - 1); }
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+    if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+    if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+  });
+
+  // Click left/right halves
+  document.addEventListener('click', e => {
+    if (e.target.closest('.nav-dots') || e.target.closest('a') || e.target.closest('button') || e.target.closest('code')) return;
+    if (e.clientX > window.innerWidth / 2) next(); else prev();
+  });
+
+  // Touch swipe
+  let touchX = 0;
+  document.addEventListener('touchstart', e => { touchX = e.changedTouches[0].screenX; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const diff = touchX - e.changedTouches[0].screenX;
+    if (Math.abs(diff) > 50) { diff > 0 ? next() : prev(); }
+  }, { passive: true });
+
+  // Init counter
+  counter.textContent = '1 / ' + total;
+})();
+</script>
+
+</body>
+</html>

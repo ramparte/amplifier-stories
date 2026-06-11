@@ -191,4 +191,4 @@ Executive content succeeds when:
 
 ---
 
-@amplifier-module-stories:context/powerpoint-template.md
+@stories:context/powerpoint-template.md

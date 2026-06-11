@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Remote Sync | Slide Presentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: #12121a;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-pink: #ec4899;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #1e293b;
+            --transition-duration: 0.8s;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Slide Container */
+        .slides-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Individual Slide */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem 4rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity var(--transition-duration) ease, 
+                        transform var(--transition-duration) ease,
+                        visibility var(--transition-duration);
+            transform: translateX(30px);
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+            z-index: 10;
+        }
+
+        .slide.prev {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+
+        /* Slide backgrounds */
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .slide-title::before {
+            background: 
+                radial-gradient(ellipse at 30% 30%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 70%, rgba(6, 182, 212, 0.15) 0%, transparent 50%);
+        }
+
+        .slide-content::before {
+            background: 
+                radial-gradient(ellipse at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
+        }
+
+        /* Animated content elements */
+        .slide-content-wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .animate-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .slide.active .animate-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .slide.active .animate-in.delay-1 { transition-delay: 0.2s; }
+        .slide.active .animate-in.delay-2 { transition-delay: 0.4s; }
+        .slide.active .animate-in.delay-3 { transition-delay: 0.6s; }
+        .slide.active .animate-in.delay-4 { transition-delay: 0.8s; }
+        .slide.active .animate-in.delay-5 { transition-delay: 1.0s; }
+        .slide.active .animate-in.delay-6 { transition-delay: 1.2s; }
+
+        /* Typography */
+        .slide-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 50px;
+            font-size: 0.9rem;
+            color: var(--accent-purple);
+            margin-bottom: 1.5rem;
+        }
+
+        .section-badge {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            padding: 0.25rem 0.75rem;
+            background: rgba(6, 182, 212, 0.1);
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-cyan) 50%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: clamp(1.8rem, 4vw, 2.75rem);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .subtitle {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            max-width: 750px;
+            margin: 0 auto 1.5rem;
+        }
+
+        .meta-highlight {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 8px;
+            font-size: 1rem;
+            color: var(--accent-cyan);
+        }
+
+        /* Participants */
+        .participants {
+            display: flex;
+            gap: 3rem;
+            margin-top: 2rem;
+            justify-content: center;
+        }
+
+        .participant {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .participant-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .participant-info {
+            text-align: left;
+        }
+
+        .participant-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .participant-role {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* Quote */
+        .quote-block {
+            background: var(--bg-card);
+            border-left: 4px solid var(--accent-purple);
+            padding: 1.75rem 2rem;
+            border-radius: 0 12px 12px 0;
+            max-width: 850px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .quote-block.cyan { border-left-color: var(--accent-cyan); }
+        .quote-block.green { border-left-color: var(--accent-green); }
+
+        .quote-text {
+            font-size: 1.25rem;
+            font-style: italic;
+            color: var(--text-primary);
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+
+        .quote-author {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .quote-author-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .quote-author-name {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 1.5rem 2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin: 1.5rem auto;
+            max-width: 900px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 0 1rem;
+        }
+
+        .stat-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+            max-width: 950px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .feature-grid.three-col {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .feature-card.green { border-color: var(--accent-green); }
+        .feature-card.orange { border-color: var(--accent-orange); }
+        .feature-card.blue { border-color: var(--accent-blue); }
+        .feature-card.purple { border-color: var(--accent-purple); }
+        .feature-card.cyan { border-color: var(--accent-cyan); }
+        .feature-card.red { border-color: var(--accent-red); }
+
+        .feature-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-icon.green { background: rgba(16, 185, 129, 0.15); }
+        .feature-icon.orange { background: rgba(245, 158, 11, 0.15); }
+        .feature-icon.blue { background: rgba(59, 130, 246, 0.15); }
+        .feature-icon.purple { background: rgba(139, 92, 246, 0.15); }
+        .feature-icon.cyan { background: rgba(6, 182, 212, 0.15); }
+        .feature-icon.red { background: rgba(239, 68, 68, 0.15); }
+
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            font-size: 0.95rem;
+        }
+
+        .feature-title.green { color: var(--accent-green); }
+        .feature-title.orange { color: var(--accent-orange); }
+        .feature-title.blue { color: var(--accent-blue); }
+        .feature-title.purple { color: var(--accent-purple); }
+        .feature-title.cyan { color: var(--accent-cyan); }
+        .feature-title.red { color: var(--accent-red); }
+
+        .feature-description {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Pivot Visual */
+        .pivot-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .pivot-box {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            min-width: 180px;
+            text-align: center;
+        }
+
+        .pivot-box.problem { border-color: var(--accent-red); }
+        .pivot-box.solution { border-color: var(--accent-green); }
+
+        .pivot-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .pivot-title.red { color: var(--accent-red); }
+        .pivot-title.green { color: var(--accent-green); }
+        .pivot-title.cyan { color: var(--accent-cyan); }
+        .pivot-title.purple { color: var(--accent-purple); }
+        .pivot-title.orange { color: var(--accent-orange); }
+
+        .pivot-detail {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .pivot-arrow {
+            font-size: 1.75rem;
+            color: var(--accent-cyan);
+        }
+
+        /* Timeline */
+        .timeline {
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: left;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+
+        .timeline-marker {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .timeline-marker.blue { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .timeline-marker.purple { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); }
+        .timeline-marker.cyan { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); }
+        .timeline-marker.green { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .timeline-marker.orange { background: rgba(245, 158, 11, 0.2); color: var(--accent-orange); }
+        .timeline-marker.pink { background: rgba(236, 72, 153, 0.2); color: var(--accent-pink); }
+
+        .timeline-content h4 {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .timeline-content p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Discovery Cards */
+        .discovery-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+            max-width: 950px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .discovery-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border-top: 3px solid var(--accent-purple);
+        }
+
+        .discovery-card.blue { border-top-color: var(--accent-blue); }
+        .discovery-card.green { border-top-color: var(--accent-green); }
+
+        .discovery-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .discovery-agent {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 4px;
+            color: var(--accent-purple);
+        }
+
+        .discovery-agent.blue { background: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
+        .discovery-agent.green { background: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+
+        .discovery-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .discovery-finding {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Code block */
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(139, 92, 246, 0.1);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: var(--accent-purple);
+        }
+
+        .code-block {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            overflow: hidden;
+            max-width: 500px;
+            margin: 1rem auto 0;
+            text-align: left;
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.6rem 1rem;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .code-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .code-dot.red { background: #ff5f56; }
+        .code-dot.yellow { background: #ffbd2e; }
+        .code-dot.green { background: #27c93f; }
+
+        .code-filename {
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .code-content {
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+
+        .code-content .comment { color: #8b949e; }
+        .code-content .keyword { color: #ff7b72; }
+        .code-content .string { color: #a5d6ff; }
+        .code-content .function { color: #d2a8ff; }
+
+        /* Architecture SVG container */
+        .architecture-container {
+            width: 100%;
+            max-width: 1050px;
+            margin: 0 auto;
+        }
+
+        .architecture-container svg {
+            width: 100%;
+            height: auto;
+        }
+
+        /* Repos */
+        .repo-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+        }
+
+        .repo-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-blue);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--border-color);
+            z-index: 100;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            transition: width 0.3s ease;
+        }
+
+        /* Controls */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 100;
+        }
+
+        .control-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover {
+            background: var(--bg-card);
+            border-color: var(--accent-purple);
+            color: var(--text-primary);
+        }
+
+        .control-btn.active {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+            color: white;
+        }
+
+        /* Slide counter */
+        .slide-counter {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            z-index: 100;
+        }
+
+        /* SVG Animation */
+        .data-path {
+            stroke-dasharray: 5, 5;
+            animation: dataFlow 1s linear infinite;
+        }
+
+        .pulse-dot {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .blink-dot {
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes dataFlow {
+            0% { stroke-dashoffset: 20; }
+            100% { stroke-dashoffset: 0; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.3; }
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .slide {
+                padding: 2rem;
+            }
+            
+            .feature-grid,
+            .discovery-grid,
+            .timeline {
+                grid-template-columns: 1fr;
+            }
+            
+            .feature-grid.three-col {
+                grid-template-columns: 1fr;
+            }
+            
+            .participants {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+            
+            .pivot-visual {
+                flex-direction: column;
+            }
+            
+            .pivot-arrow {
+                transform: rotate(90deg);
+            }
+            
+            .stats-bar {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="slides-container">
+        
+        <!-- Slide 1: Title -->
+        <div class="slide slide-title active" data-slide="1">
+            <div class="slide-content-wrapper">
+                <span class="slide-badge animate-in">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                    A Story of Real-Time AI Collaboration
+                </span>
+                <h1 class="animate-in delay-1">Building Remote Sync</h1>
+                <p class="subtitle animate-in delay-2">
+                    How a video call, parallel Amplifier sessions, and multi-agent orchestration 
+                    compressed weeks of design into hours of iterative discovery.
+                </p>
+                <div class="meta-highlight animate-in delay-3">
+                    Using Amplifier to build Amplifier's session sync
+                </div>
+                <div class="participants animate-in delay-4">
+                    <div class="participant">
+                        <div class="participant-avatar">DC</div>
+                        <div class="participant-info">
+                            <div class="participant-name">Diego Colombo</div>
+                            <div class="participant-role">Architecture Lead</div>
+                        </div>
+                    </div>
+                    <div class="participant">
+                        <div class="participant-avatar">MG</div>
+                        <div class="participant-info">
+                            <div class="participant-name">Marc Goodner</div>
+                            <div class="participant-role">Strategy & Vision</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: The Challenge -->
+        <div class="slide slide-content" data-slide="2">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">The Challenge</span>
+                <h2 class="animate-in delay-1">A Request That Started It All</h2>
+                
+                <div class="quote-block animate-in delay-2">
+                    <p class="quote-text">
+                        "You know what he's really asking? 'I want to know what the whole team is doing. 
+                        Build me a team tracking thing.'"
+                    </p>
+                    <div class="quote-author">
+                        <div class="quote-author-avatar">MG</div>
+                        <span class="quote-author-name">Marc Goodner, on Sam's request</span>
+                    </div>
+                </div>
+
+                <div class="pivot-visual animate-in delay-3">
+                    <div class="pivot-box problem">
+                        <div class="pivot-title red">The Problem</div>
+                        <div class="pivot-detail">
+                            Sessions live only on local machines<br>
+                            No visibility across the team<br>
+                            No way to learn from each other
+                        </div>
+                    </div>
+                    <div class="pivot-arrow">&#8594;</div>
+                    <div class="pivot-box solution">
+                        <div class="pivot-title green">The Goal</div>
+                        <div class="pivot-detail">
+                            Collect sessions from everywhere<br>
+                            Analyze patterns and usage<br>
+                            Build team intelligence
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: The Approach - Thinking Alongside AI -->
+        <div class="slide slide-content" data-slide="3">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">The Approach</span>
+                <h2 class="animate-in delay-1">Thinking Alongside AI</h2>
+                <p class="subtitle animate-in delay-2">Not just talking about architecture&mdash;exploring it in real-time with AI agents working in parallel.</p>
+
+                <div class="architecture-container animate-in delay-3">
+                    <svg viewBox="0 0 900 350" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Video Call Layer -->
+                        <rect x="50" y="30" width="200" height="120" rx="12" fill="#1a1a25" stroke="#8b5cf6" stroke-width="2"/>
+                        <text x="150" y="60" fill="#f8fafc" font-family="Inter, sans-serif" font-size="14" text-anchor="middle" font-weight="600">Video Call</text>
+                        <text x="150" y="85" fill="#94a3b8" font-family="Inter, sans-serif" font-size="11" text-anchor="middle">Diego + Marc</text>
+                        <text x="150" y="105" fill="#8b5cf6" font-family="Inter, sans-serif" font-size="10" text-anchor="middle">Discussing architecture</text>
+                        <text x="150" y="125" fill="#8b5cf6" font-family="Inter, sans-serif" font-size="10" text-anchor="middle">Steering direction</text>
+                        <text x="150" y="145" fill="#8b5cf6" font-family="Inter, sans-serif" font-size="10" text-anchor="middle">Making decisions</text>
+                        
+                        <!-- Parallel Arrow -->
+                        <path d="M260 90 L320 90" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="4,2"/>
+                        <text x="290" y="80" fill="#64748b" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">parallel</text>
+                        
+                        <!-- Amplifier Sessions -->
+                        <rect x="330" y="20" width="250" height="140" rx="12" fill="#1a1a25" stroke="#06b6d4" stroke-width="2"/>
+                        <text x="455" y="50" fill="#f8fafc" font-family="Inter, sans-serif" font-size="14" text-anchor="middle" font-weight="600">Amplifier Sessions</text>
+                        <text x="455" y="75" fill="#94a3b8" font-family="Inter, sans-serif" font-size="11" text-anchor="middle">Running simultaneously</text>
+                        
+                        <!-- Session boxes inside -->
+                        <rect x="345" y="90" width="70" height="55" rx="6" fill="rgba(6, 182, 212, 0.1)" stroke="#06b6d4" stroke-width="1"/>
+                        <text x="380" y="110" fill="#06b6d4" font-family="JetBrains Mono, monospace" font-size="8" text-anchor="middle">Session 1</text>
+                        <circle cx="380" cy="130" r="4" fill="#06b6d4" class="blink-dot"/>
+                        
+                        <rect x="420" y="90" width="70" height="55" rx="6" fill="rgba(139, 92, 246, 0.1)" stroke="#8b5cf6" stroke-width="1"/>
+                        <text x="455" y="110" fill="#8b5cf6" font-family="JetBrains Mono, monospace" font-size="8" text-anchor="middle">Session 2</text>
+                        <circle cx="455" cy="130" r="4" fill="#8b5cf6" class="blink-dot" style="animation-delay: 0.5s"/>
+                        
+                        <rect x="495" y="90" width="70" height="55" rx="6" fill="rgba(16, 185, 129, 0.1)" stroke="#10b981" stroke-width="1"/>
+                        <text x="530" y="110" fill="#10b981" font-family="JetBrains Mono, monospace" font-size="8" text-anchor="middle">Session 3</text>
+                        <circle cx="530" cy="130" r="4" fill="#10b981" class="blink-dot" style="animation-delay: 1s"/>
+
+                        <!-- Delegate to Agents -->
+                        <path d="M455 170 L455 200" stroke="#06b6d4" stroke-width="2"/>
+                        <text x="455" y="215" fill="#64748b" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">delegate</text>
+                        
+                        <!-- Agent Layer -->
+                        <rect x="50" y="230" width="800" height="100" rx="12" fill="rgba(59, 130, 246, 0.05)" stroke="#3b82f6" stroke-width="1" stroke-dasharray="4,2"/>
+                        <text x="100" y="255" fill="#3b82f6" font-family="Inter, sans-serif" font-size="11" font-weight="600">SPECIALIZED AGENTS</text>
+                        
+                        <!-- Agents -->
+                        <rect x="70" y="270" width="120" height="45" rx="8" fill="#1a1a25" stroke="#8b5cf6" stroke-width="1.5"/>
+                        <text x="130" y="290" fill="#8b5cf6" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">zen-architect</text>
+                        <text x="130" y="305" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">5 invocations</text>
+                        
+                        <rect x="210" y="270" width="120" height="45" rx="8" fill="#1a1a25" stroke="#3b82f6" stroke-width="1.5"/>
+                        <text x="270" y="290" fill="#3b82f6" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">amplifier-expert</text>
+                        <text x="270" y="305" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">3 invocations</text>
+                        
+                        <rect x="350" y="270" width="120" height="45" rx="8" fill="#1a1a25" stroke="#10b981" stroke-width="1.5"/>
+                        <text x="410" y="290" fill="#10b981" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">modular-builder</text>
+                        <text x="410" y="305" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">3 invocations</text>
+                        
+                        <rect x="490" y="270" width="100" height="45" rx="8" fill="#1a1a25" stroke="#f59e0b" stroke-width="1.5"/>
+                        <text x="540" y="290" fill="#f59e0b" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">git-ops</text>
+                        <text x="540" y="305" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">4 invocations</text>
+                        
+                        <rect x="610" y="270" width="100" height="45" rx="8" fill="#1a1a25" stroke="#06b6d4" stroke-width="1.5"/>
+                        <text x="660" y="290" fill="#06b6d4" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">core-expert</text>
+                        <text x="660" y="305" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">1 invocation</text>
+                        
+                        <rect x="730" y="270" width="100" height="45" rx="8" fill="#1a1a25" stroke="#ec4899" stroke-width="1.5"/>
+                        <text x="780" y="290" fill="#ec4899" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">explorer</text>
+                        <text x="780" y="305" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">2 invocations</text>
+
+                        <!-- Feedback Loop Arrow -->
+                        <path d="M630 20 C700 20, 750 90, 590 90" stroke="#06b6d4" stroke-width="1.5" stroke-dasharray="4,2" fill="none" class="data-path"/>
+                        <text x="680" y="55" fill="#06b6d4" font-family="Inter, sans-serif" font-size="9">Findings feed back</text>
+                        <text x="680" y="68" fill="#06b6d4" font-family="Inter, sans-serif" font-size="9">to conversation</text>
+
+                        <!-- Real-time indicator -->
+                        <rect x="700" y="130" width="140" height="30" rx="6" fill="rgba(16, 185, 129, 0.1)" stroke="#10b981" stroke-width="1"/>
+                        <circle cx="720" cy="145" r="5" fill="#10b981" class="pulse-dot"/>
+                        <text x="780" y="150" fill="#10b981" font-family="Inter, sans-serif" font-size="10" text-anchor="middle">Real-time exploration</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: The Stats -->
+        <div class="slide slide-content" data-slide="4">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">By The Numbers</span>
+                <h2 class="animate-in delay-1">What We Accomplished</h2>
+                
+                <div class="stats-bar animate-in delay-2">
+                    <div class="stat-item">
+                        <div class="stat-value">24+</div>
+                        <div class="stat-label">Agent Sessions</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">241</div>
+                        <div class="stat-label">Tests Written</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">2,500+</div>
+                        <div class="stat-label">Lines of Code</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">Days Total</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">5</div>
+                        <div class="stat-label">Major Commits</div>
+                    </div>
+                </div>
+
+                <div class="quote-block cyan animate-in delay-3">
+                    <p class="quote-text">
+                        "I'm very happy with this because I think we, through just talking this out and letting 
+                        Amplifier run at this problem while we talk it out... we figured out some things that 
+                        we would not have figured out."
+                    </p>
+                    <div class="quote-author">
+                        <div class="quote-author-avatar">MG</div>
+                        <span class="quote-author-name">Marc Goodner</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: The Discovery - 64KB Limit -->
+        <div class="slide slide-content" data-slide="5">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">The Discovery</span>
+                <h2 class="animate-in delay-1">Key Architectural Pivot</h2>
+                <p class="subtitle animate-in delay-2">Azure Monitor's 64KB field limit forced a fundamental rethinking.</p>
+
+                <div class="pivot-visual animate-in delay-3">
+                    <div class="pivot-box problem">
+                        <div class="pivot-title red">Initial Approach</div>
+                        <div class="pivot-detail">
+                            Everything to Azure Monitor<br><br>
+                            <span style="color: var(--accent-red);">64KB field limit blocks<br>transcripts with images</span>
+                        </div>
+                    </div>
+                    <div class="pivot-arrow">&#8594;</div>
+                    <div class="pivot-box solution">
+                        <div class="pivot-title green">Split Architecture</div>
+                        <div class="pivot-detail">
+                            <strong>Events</strong> &#8594; Azure Monitor<br>
+                            <strong>Transcripts</strong> &#8594; Cosmos DB<br><br>
+                            <span style="color: var(--accent-green);">Right tool for each data type</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: The Juice Quote -->
+        <div class="slide slide-content" data-slide="6">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">Key Insight</span>
+                <h2 class="animate-in delay-1">Where The Value Lives</h2>
+
+                <div class="quote-block animate-in delay-2" style="max-width: 900px;">
+                    <p class="quote-text" style="font-size: 1.4rem;">
+                        "The juice is in the transcripts... It's the transcript that really has all the raw stuff 
+                        that we're really going to want to mine and that's going to be where we're going to 
+                        find all the stuff about what the team is doing."
+                    </p>
+                    <div class="quote-author">
+                        <div class="quote-author-avatar">MG</div>
+                        <span class="quote-author-name">Marc Goodner</span>
+                    </div>
+                </div>
+
+                <div class="pivot-visual animate-in delay-3" style="margin-top: 2rem;">
+                    <div class="pivot-box" style="border-color: var(--accent-orange);">
+                        <div class="pivot-title orange">Events (64KB OK)</div>
+                        <div class="pivot-detail">Metrics, spans<br>Azure Monitor</div>
+                    </div>
+                    <div class="pivot-arrow">+</div>
+                    <div class="pivot-box" style="border-color: var(--accent-green);">
+                        <div class="pivot-title green">Transcripts (Unlimited)</div>
+                        <div class="pivot-detail">Full conversations<br>Cosmos DB</div>
+                    </div>
+                    <div class="pivot-arrow">=</div>
+                    <div class="pivot-box" style="border-color: var(--accent-purple);">
+                        <div class="pivot-title purple">Complete Picture</div>
+                        <div class="pivot-detail">Best of both worlds<br>Right tool for the job</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Agent Discoveries -->
+        <div class="slide slide-content" data-slide="7">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">Agent Discoveries</span>
+                <h2 class="animate-in delay-1">What The Agents Found</h2>
+                <p class="subtitle animate-in delay-2">Each specialized agent uncovered critical insights that shaped the final design.</p>
+
+                <div class="discovery-grid animate-in delay-3">
+                    <div class="discovery-card blue">
+                        <div class="discovery-header">
+                            <span class="discovery-agent blue">amplifier-expert</span>
+                        </div>
+                        <div class="discovery-title">Session File Architecture</div>
+                        <div class="discovery-finding">
+                            Discovered that <code>transcript.jsonl</code> is the resume source of truth, 
+                            not <code>events.jsonl</code>. Only transcript needs immediate sync.
+                        </div>
+                    </div>
+                    <div class="discovery-card">
+                        <div class="discovery-header">
+                            <span class="discovery-agent">zen-architect</span>
+                        </div>
+                        <div class="discovery-title">Block-Based Event Sourcing</div>
+                        <div class="discovery-finding">
+                            Designed immutable <code>SessionBlocks</code> with sequence numbers and 
+                            device IDs for multi-machine conflict detection.
+                        </div>
+                    </div>
+                    <div class="discovery-card">
+                        <div class="discovery-header">
+                            <span class="discovery-agent">zen-architect</span>
+                        </div>
+                        <div class="discovery-title">Three-Layer Storage</div>
+                        <div class="discovery-finding">
+                            HybridBlockStorage: always write to LocalBlockStorage first (fast), 
+                            then background sync to CosmosBlockStorage. Never lose data.
+                        </div>
+                    </div>
+                    <div class="discovery-card green">
+                        <div class="discovery-header">
+                            <span class="discovery-agent green">modular-builder</span>
+                        </div>
+                        <div class="discovery-title">Directory Exclusion System</div>
+                        <div class="discovery-finding">
+                            Glob-based filtering so sensitive directories stay local-only. 
+                            Pattern matching: <code>~/work/private/*</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Privacy Config Example -->
+        <div class="slide slide-content" data-slide="8">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">Privacy First</span>
+                <h2 class="animate-in delay-1">Configuration Example</h2>
+                <p class="subtitle animate-in delay-2">Control exactly what gets synced with flexible exclusion patterns.</p>
+
+                <div class="code-block animate-in delay-3" style="max-width: 600px;">
+                    <div class="code-header">
+                        <div class="code-dot red"></div>
+                        <div class="code-dot yellow"></div>
+                        <div class="code-dot green"></div>
+                        <span class="code-filename">storage_config.yaml</span>
+                    </div>
+                    <div class="code-content">
+<span class="comment"># Privacy-first configuration</span>
+<span class="keyword">storage</span>:
+  <span class="function">mode</span>: <span class="string">hybrid</span>
+  <span class="function">exclusions</span>:
+    - <span class="string">"~/work/private/*"</span>     <span class="comment"># Specific folder</span>
+    - <span class="string">"*/sensitive-*"</span>        <span class="comment"># Pattern matching</span>
+    - <span class="string">"**/confidential/**"</span>   <span class="comment"># Deep matching</span>
+                    </div>
+                </div>
+
+                <div class="feature-grid three-col animate-in delay-4" style="margin-top: 2rem;">
+                    <div class="feature-card purple">
+                        <div class="feature-title purple">Exclude Folders</div>
+                        <div class="feature-description">Mark specific directories as local-only</div>
+                    </div>
+                    <div class="feature-card cyan">
+                        <div class="feature-title cyan">Pattern Matching</div>
+                        <div class="feature-description">Glob patterns for flexible rules</div>
+                    </div>
+                    <div class="feature-card green">
+                        <div class="feature-title green">Deep Paths</div>
+                        <div class="feature-description">Match nested directories anywhere</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: The Pivot - CLI vs Daemon -->
+        <div class="slide slide-content" data-slide="9">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">The Pivot</span>
+                <h2 class="animate-in delay-1">From CLI to Daemon</h2>
+                <p class="subtitle animate-in delay-2">A critical architectural decision that changed everything.</p>
+
+                <div class="pivot-visual animate-in delay-3">
+                    <div class="pivot-box problem">
+                        <div class="pivot-title red">Original Idea</div>
+                        <div class="pivot-detail">
+                            Modify the CLI<br>
+                            Add sync during session<br>
+                            Changes affect everyone
+                        </div>
+                    </div>
+                    <div class="pivot-arrow">&#8594;</div>
+                    <div class="pivot-box solution">
+                        <div class="pivot-title green">Final Design</div>
+                        <div class="pivot-detail">
+                            Standalone Rust daemon<br>
+                            Watches files externally<br>
+                            Zero CLI changes
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quote-block animate-in delay-4" style="margin-top: 1.5rem;">
+                    <p class="quote-text">
+                        "That means also we don't need to touch at all the CLI for the moment. 
+                        We have the libraries... and it's less invasive. That means we're not breaking 
+                        anybody. Full stop."
+                    </p>
+                    <div class="quote-author">
+                        <div class="quote-author-avatar">DC</div>
+                        <span class="quote-author-name">Diego Colombo</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: The Final Architecture (Full SVG) -->
+        <div class="slide slide-content" data-slide="10">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">The Architecture</span>
+                <h2 class="animate-in delay-1">Final Design</h2>
+                <p class="subtitle animate-in delay-2">A daemon-based approach with enterprise infrastructure.</p>
+
+                <div class="architecture-container animate-in delay-3">
+                    <svg viewBox="0 0 1000 380" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- LOCAL LAYER -->
+                        <text x="20" y="25" fill="#64748b" font-family="Inter, sans-serif" font-size="11" font-weight="600">LOCAL MACHINE</text>
+                        <line x1="120" y1="20" x2="400" y2="20" stroke="#1e293b" stroke-width="1"/>
+                        
+                        <!-- Amplifier CLI -->
+                        <rect x="30" y="45" width="150" height="85" rx="10" fill="#1a1a25" stroke="#3b82f6" stroke-width="2"/>
+                        <text x="105" y="75" fill="#f8fafc" font-family="Inter, sans-serif" font-size="12" text-anchor="middle" font-weight="600">Amplifier CLI</text>
+                        <text x="105" y="95" fill="#94a3b8" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Interactive Sessions</text>
+                        <text x="105" y="115" fill="#3b82f6" font-family="JetBrains Mono, monospace" font-size="8" text-anchor="middle">amplifier run</text>
+                        
+                        <!-- Local Storage -->
+                        <rect x="210" y="45" width="150" height="85" rx="10" fill="#1a1a25" stroke="#8b5cf6" stroke-width="2"/>
+                        <text x="285" y="75" fill="#f8fafc" font-family="Inter, sans-serif" font-size="12" text-anchor="middle" font-weight="600">Local Storage</text>
+                        <text x="285" y="95" fill="#94a3b8" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">HybridBlockStorage</text>
+                        <text x="285" y="115" fill="#8b5cf6" font-family="JetBrains Mono, monospace" font-size="8" text-anchor="middle">~/.amplifier/projects/</text>
+                        
+                        <!-- Arrow CLI to Storage -->
+                        <path d="M180 87 L200 87" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrowhead-blue)"/>
+                        
+                        <!-- OTel Hook -->
+                        <rect x="30" y="155" width="150" height="55" rx="10" fill="#1a1a25" stroke="#f59e0b" stroke-width="2"/>
+                        <text x="105" y="180" fill="#f8fafc" font-family="Inter, sans-serif" font-size="11" text-anchor="middle" font-weight="600">OTel Hook</text>
+                        <text x="105" y="198" fill="#94a3b8" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Kernel Events</text>
+                        
+                        <!-- Arrow CLI to OTel Hook -->
+                        <path d="M105 130 L105 145" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,2"/>
+                        <text x="115" y="142" fill="#64748b" font-family="Inter, sans-serif" font-size="7">events</text>
+                        
+                        <!-- Sync Daemon -->
+                        <rect x="210" y="155" width="150" height="85" rx="10" fill="#1a1a25" stroke="#06b6d4" stroke-width="2"/>
+                        <text x="285" y="180" fill="#f8fafc" font-family="Inter, sans-serif" font-size="11" text-anchor="middle" font-weight="600">Sync Daemon</text>
+                        <text x="285" y="198" fill="#94a3b8" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Rust, File Watcher</text>
+                        <text x="285" y="215" fill="#06b6d4" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Privacy filters</text>
+                        <text x="285" y="230" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Cross-platform</text>
+                        
+                        <!-- Arrow Storage to Daemon -->
+                        <path d="M285 130 L285 155" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="4,2"/>
+                        <text x="295" y="145" fill="#64748b" font-family="Inter, sans-serif" font-size="7">watch</text>
+                        
+                        <!-- CLOUD LAYER -->
+                        <text x="430" y="25" fill="#64748b" font-family="Inter, sans-serif" font-size="11" font-weight="600">CLOUD SERVICES</text>
+                        <line x1="530" y1="20" x2="980" y2="20" stroke="#1e293b" stroke-width="1"/>
+                        
+                        <!-- Cloud Service -->
+                        <rect x="430" y="100" width="150" height="95" rx="10" fill="#1a1a25" stroke="#ec4899" stroke-width="2"/>
+                        <text x="505" y="125" fill="#f8fafc" font-family="Inter, sans-serif" font-size="11" text-anchor="middle" font-weight="600">Cloud Service</text>
+                        <text x="505" y="145" fill="#94a3b8" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Python + Managed ID</text>
+                        <text x="505" y="165" fill="#ec4899" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Auth bridge to storage</text>
+                        <text x="505" y="182" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Future: Amplifier Runtime</text>
+                        
+                        <!-- Arrow Daemon to Cloud Service -->
+                        <path d="M370 195 L420 150" stroke="#06b6d4" stroke-width="2" class="data-path"/>
+                        <text x="385" y="160" fill="#06b6d4" font-family="Inter, sans-serif" font-size="8">HTTP</text>
+                        <circle cx="395" cy="172" r="3" fill="#06b6d4" class="pulse-dot"/>
+                        
+                        <!-- Cosmos DB -->
+                        <rect x="620" y="45" width="160" height="90" rx="10" fill="#1a1a25" stroke="#10b981" stroke-width="2"/>
+                        <text x="700" y="72" fill="#f8fafc" font-family="Inter, sans-serif" font-size="12" text-anchor="middle" font-weight="600">Cosmos DB</text>
+                        <text x="700" y="92" fill="#94a3b8" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Session Transcripts</text>
+                        <text x="700" y="110" fill="#10b981" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Partitioned by user_id</text>
+                        <text x="700" y="125" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">No size limits</text>
+                        
+                        <!-- Azure Monitor -->
+                        <rect x="620" y="155" width="160" height="90" rx="10" fill="#1a1a25" stroke="#f59e0b" stroke-width="2"/>
+                        <text x="700" y="182" fill="#f8fafc" font-family="Inter, sans-serif" font-size="12" text-anchor="middle" font-weight="600">Azure Monitor</text>
+                        <text x="700" y="202" fill="#94a3b8" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">OpenTelemetry</text>
+                        <text x="700" y="220" fill="#f59e0b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Metrics, Spans, Events</text>
+                        <text x="700" y="235" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">W3C Trace Compatible</text>
+                        
+                        <!-- Arrow Cloud Service to Cosmos -->
+                        <path d="M590 130 L610 95" stroke="#10b981" stroke-width="2" class="data-path"/>
+                        <text x="575" y="105" fill="#10b981" font-family="Inter, sans-serif" font-size="8">transcripts</text>
+                        
+                        <!-- Arrow OTel Hook to Azure Monitor -->
+                        <path d="M105 210 L105 260 L590 260 L620 245" stroke="#f59e0b" stroke-width="2" class="data-path"/>
+                        <text x="350" y="275" fill="#f59e0b" font-family="Inter, sans-serif" font-size="8">telemetry</text>
+                        <circle cx="350" cy="260" r="3" fill="#f59e0b" class="pulse-dot" style="animation-delay: 0.5s"/>
+                        
+                        <!-- Analysis Service -->
+                        <rect x="820" y="80" width="160" height="130" rx="10" fill="#1a1a25" stroke="#8b5cf6" stroke-width="2"/>
+                        <text x="900" y="110" fill="#f8fafc" font-family="Inter, sans-serif" font-size="12" text-anchor="middle" font-weight="600">Analysis Service</text>
+                        <text x="900" y="130" fill="#94a3b8" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Team Analytics</text>
+                        <text x="900" y="150" fill="#8b5cf6" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Pattern Discovery</text>
+                        <text x="900" y="170" fill="#8b5cf6" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Session Queries</text>
+                        <text x="900" y="195" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">"What is the team doing?"</text>
+                        
+                        <!-- Arrows from Data Stores to Analysis Service -->
+                        <path d="M790 90 L810 120" stroke="#10b981" stroke-width="2" class="data-path"/>
+                        <path d="M790 200 L810 170" stroke="#f59e0b" stroke-width="2" class="data-path"/>
+                        
+                        <!-- V1 Label -->
+                        <rect x="855" y="55" width="30" height="16" rx="3" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981" stroke-width="1"/>
+                        <text x="870" y="66" fill="#10b981" font-family="Inter, sans-serif" font-size="8" text-anchor="middle" font-weight="600">V1</text>
+                        
+                        <!-- One-Way Flow Indicator -->
+                        <text x="180" y="280" fill="#64748b" font-family="Inter, sans-serif" font-size="10" font-weight="500">V1: One-way sync (collect only)</text>
+                        <rect x="30" y="295" width="330" height="55" rx="8" fill="rgba(16, 185, 129, 0.05)" stroke="#10b981" stroke-width="1" stroke-dasharray="4,2"/>
+                        <text x="195" y="315" fill="#10b981" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Sessions flow TO cloud for analysis</text>
+                        <text x="195" y="332" fill="#64748b" font-family="Inter, sans-serif" font-size="8" text-anchor="middle">Session restoration from cloud = future version</text>
+                        
+                        <defs>
+                            <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Architecture Features -->
+        <div class="slide slide-content" data-slide="11">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">Key Features</span>
+                <h2 class="animate-in delay-1">Architecture Highlights</h2>
+
+                <div class="feature-grid three-col animate-in delay-2">
+                    <div class="feature-card blue">
+                        <div class="feature-icon blue">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title blue">Zero CLI Impact</div>
+                        <div class="feature-description">Daemon runs separately. Users never see sync errors in their sessions.</div>
+                    </div>
+                    <div class="feature-card purple">
+                        <div class="feature-icon purple">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title purple">Privacy First</div>
+                        <div class="feature-description">Exclude folders, mark sessions local-only. Multi-tenant with opt-out.</div>
+                    </div>
+                    <div class="feature-card cyan">
+                        <div class="feature-icon cyan">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title cyan">W3C Trace Compatible</div>
+                        <div class="feature-description">Full hierarchical tracing with OpenTelemetry Gen AI conventions.</div>
+                    </div>
+                    <div class="feature-card green">
+                        <div class="feature-icon green">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title green">Session Rehydration</div>
+                        <div class="feature-description">Resume sessions from any machine. Your sessions are protected.</div>
+                    </div>
+                    <div class="feature-card orange">
+                        <div class="feature-icon orange">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title orange">Offline-First</div>
+                        <div class="feature-description">Write to disk first, sync in background. Never lose data.</div>
+                    </div>
+                    <div class="feature-card red">
+                        <div class="feature-icon red">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+                                <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title red">Cross-Platform</div>
+                        <div class="feature-description">Rust daemon for macOS, Windows, Linux. No runtime deps.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Evolution Timeline -->
+        <div class="slide slide-content" data-slide="12">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">The Evolution</span>
+                <h2 class="animate-in delay-1">Design Through Iteration</h2>
+                <p class="subtitle animate-in delay-2">Each phase built on the discoveries of the previous, guided by continuous AI exploration.</p>
+
+                <div class="timeline animate-in delay-3">
+                    <div class="timeline-item">
+                        <div class="timeline-marker blue">1</div>
+                        <div class="timeline-content">
+                            <h4>Requirements</h4>
+                            <p>amplifier-expert explained session architecture. Identified constraints: 2MB Cosmos limit, 100k+ token events.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker purple">2</div>
+                        <div class="timeline-content">
+                            <h4>Architecture</h4>
+                            <p>zen-architect produced 1,600+ lines of specs. Key: offline-first, sequence-based ordering.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker green">3</div>
+                        <div class="timeline-content">
+                            <h4>Implementation</h4>
+                            <p>modular-builder created storage backends. Tests grew from 168 to 241.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker orange">4</div>
+                        <div class="timeline-content">
+                            <h4>Course Correction</h4>
+                            <p>Discovered tool_module approach was incorrect. This is a foundational library, not a tool.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker cyan">5</div>
+                        <div class="timeline-content">
+                            <h4>Agent Access</h4>
+                            <p>SessionTool with safety guarantees. Never return full event data (100k+ tokens).</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker pink">6</div>
+                        <div class="timeline-content">
+                            <h4>Integration</h4>
+                            <p>DirectoryExclusionFilter, HybridSessionStore, settings integration. Final: 1,873 insertions.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: V1 Scope -->
+        <div class="slide slide-content" data-slide="13">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">V1 Scope</span>
+                <h2 class="animate-in delay-1">Collect First, Restore Later</h2>
+                <p class="subtitle animate-in delay-2">The first iteration focuses on one-way sync for analysis.</p>
+
+                <div class="feature-grid animate-in delay-3">
+                    <div class="feature-card green">
+                        <div class="feature-icon green">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title green">V1: One-Way Sync</div>
+                        <div class="feature-description">Sessions pump TO Cosmos DB. Daemon watches local files and uploads transcripts.</div>
+                    </div>
+                    <div class="feature-card green">
+                        <div class="feature-icon green">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title green">V1: Analysis Service</div>
+                        <div class="feature-description">Understand what the team is building. Query sessions, surface patterns.</div>
+                    </div>
+                    <div class="feature-card green">
+                        <div class="feature-icon green">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title green">V1: Multi-Device Collection</div>
+                        <div class="feature-description">Work anywhere&mdash;laptop, desktop. Sessions sync from everywhere.</div>
+                    </div>
+                    <div class="feature-card orange">
+                        <div class="feature-icon orange">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title orange">Future: Session Rehydration</div>
+                        <div class="feature-description">Restore sessions from cloud. Start on laptop, continue on desktop.</div>
+                    </div>
+                </div>
+
+                <div class="pivot-visual animate-in delay-4" style="margin-top: 1.5rem;">
+                    <div class="pivot-box" style="border-color: var(--accent-cyan);">
+                        <div class="pivot-title cyan">V1 Delivers</div>
+                        <div class="pivot-detail">Collect, Analyze, Privacy, Zero CLI impact</div>
+                    </div>
+                    <div class="pivot-arrow">&#8594;</div>
+                    <div class="pivot-box" style="border-color: var(--accent-purple);">
+                        <div class="pivot-title purple">V1 Enables Later</div>
+                        <div class="pivot-detail">Resume, Share, Collaborate, Replay</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: What This Enables -->
+        <div class="slide slide-content" data-slide="14">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">The Vision</span>
+                <h2 class="animate-in delay-1">What This Enables</h2>
+                <p class="subtitle animate-in delay-2">With session data flowing to the cloud, entirely new capabilities become possible.</p>
+
+                <div class="feature-grid animate-in delay-3">
+                    <div class="feature-card blue">
+                        <div class="feature-icon blue">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title blue">Team Learning (V1)</div>
+                        <div class="feature-description">Understand what the team is building. Surface patterns, find solutions already discovered.</div>
+                    </div>
+                    <div class="feature-card purple">
+                        <div class="feature-icon purple">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2">
+                                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title purple">Agent Analytics (V1)</div>
+                        <div class="feature-description">Which agents use the most tokens? Which converge fastest? Data-driven optimization.</div>
+                    </div>
+                    <div class="feature-card orange">
+                        <div class="feature-icon orange">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title orange">Cross-Machine Continuity (Future)</div>
+                        <div class="feature-description">Start on laptop, continue on desktop. Your sessions follow you.</div>
+                    </div>
+                    <div class="feature-card green">
+                        <div class="feature-icon green">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                            </svg>
+                        </div>
+                        <div class="feature-title green">Bundle Discovery (V1)</div>
+                        <div class="feature-description">Know what bundles people use. Ecosystem intelligence for better recommendations.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: The Repositories -->
+        <div class="slide slide-content" data-slide="15">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">The Ecosystem</span>
+                <h2 class="animate-in delay-1">Repositories Involved</h2>
+                <p class="subtitle animate-in delay-2">The work touched multiple parts of the Amplifier ecosystem.</p>
+
+                <div class="repo-tags animate-in delay-3">
+                    <span class="repo-tag">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                        </svg>
+                        amplifier-core
+                    </span>
+                    <span class="repo-tag">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                        </svg>
+                        amplifier-foundation
+                    </span>
+                    <span class="repo-tag">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                        </svg>
+                        amplifier-storage-session
+                    </span>
+                    <span class="repo-tag">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                        </svg>
+                        amplifier-module-hooks-otel
+                    </span>
+                    <span class="repo-tag">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                        </svg>
+                        amplifier-app-cli
+                    </span>
+                </div>
+
+                <div class="quote-block green animate-in delay-4" style="margin-top: 2rem;">
+                    <p class="quote-text">
+                        "I'm happy because we did this in a couple of hours and with all this iteration 
+                        we already done, probably would have wasted at least a week of 'oh, this doesn't work.'"
+                    </p>
+                    <div class="quote-author">
+                        <div class="quote-author-avatar">DC</div>
+                        <span class="quote-author-name">Diego Colombo</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 16: The Meta-Story -->
+        <div class="slide slide-content" data-slide="16">
+            <div class="slide-content-wrapper">
+                <span class="section-badge animate-in">The Meta-Story</span>
+                <h2 class="animate-in delay-1">Using Amplifier to Build Amplifier</h2>
+
+                <div class="quote-block animate-in delay-2" style="max-width: 900px;">
+                    <p class="quote-text" style="font-size: 1.35rem;">
+                        "I'm very happy with this because I think we, through just talking this out and 
+                        letting Amplifier run at this problem while we talk it out... we figured out some 
+                        things that we would not have figured out."
+                    </p>
+                    <div class="quote-author">
+                        <div class="quote-author-avatar">MG</div>
+                        <span class="quote-author-name">Marc Goodner</span>
+                    </div>
+                </div>
+
+                <div class="pivot-visual animate-in delay-3" style="margin-top: 2rem;">
+                    <div class="pivot-box" style="border-color: var(--accent-blue);">
+                        <div class="pivot-title blue">Human Direction</div>
+                        <div class="pivot-detail">Strategy, Vision<br>Key Decisions<br>Course Correction</div>
+                    </div>
+                    <div class="pivot-arrow">+</div>
+                    <div class="pivot-box" style="border-color: var(--accent-cyan);">
+                        <div class="pivot-title cyan">AI Exploration</div>
+                        <div class="pivot-detail">Parallel Discovery<br>Implementation<br>Real-time Feedback</div>
+                    </div>
+                    <div class="pivot-arrow">=</div>
+                    <div class="pivot-box" style="border-color: var(--accent-green);">
+                        <div class="pivot-title green">Rapid Results</div>
+                        <div class="pivot-detail">3 Days, Not Weeks<br>241 Tests<br>Production-Ready</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 17: Conclusion -->
+        <div class="slide slide-title" data-slide="17">
+            <div class="slide-content-wrapper">
+                <h2 class="animate-in" style="font-size: clamp(2rem, 5vw, 3.25rem);">Iterative Design at AI Speed</h2>
+                <p class="subtitle animate-in delay-1" style="max-width: 850px;">
+                    What started as a conversation became a fully designed, implemented, and tested 
+                    system&mdash;with AI agents exploring in parallel, feeding discoveries back into 
+                    the discussion, and building incrementally as the architecture crystallized.
+                </p>
+                <p class="animate-in delay-2" style="color: var(--text-muted); margin-top: 1.5rem; font-size: 1.1rem;">
+                    The future of software design isn't AI replacing humans.<br>
+                    It's humans and AI thinking together, in real-time,<br>
+                    with feedback loops measured in minutes.
+                </p>
+                <div class="meta-highlight animate-in delay-3" style="margin-top: 2rem;">
+                    github.com/microsoft/amplifier
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Slide Counter -->
+    <div class="slide-counter">
+        <span id="currentSlide">1</span> / <span id="totalSlides">17</span>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button class="control-btn" id="prevBtn" title="Previous (Left Arrow)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+        </button>
+        <button class="control-btn" id="playBtn" title="Auto-play (Space)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="playIcon">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="pauseIcon" style="display: none;">
+                <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+            </svg>
+        </button>
+        <button class="control-btn" id="nextBtn" title="Next (Right Arrow)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const progressBar = document.getElementById('progressBar');
+        const currentSlideEl = document.getElementById('currentSlide');
+        const totalSlidesEl = document.getElementById('totalSlides');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+
+        let currentIndex = 0;
+        let isPlaying = false;
+        let autoPlayInterval = null;
+        const autoPlayDelay = 7000;
+
+        totalSlidesEl.textContent = slides.length;
+
+        function updateProgress() {
+            const progress = ((currentIndex + 1) / slides.length) * 100;
+            progressBar.style.width = `${progress}%`;
+            currentSlideEl.textContent = currentIndex + 1;
+        }
+
+        function goToSlide(index) {
+            if (index < 0 || index >= slides.length) return;
+
+            slides[currentIndex].classList.remove('active');
+            slides[currentIndex].classList.add('prev');
+
+            currentIndex = index;
+
+            slides[currentIndex].classList.remove('prev');
+            slides[currentIndex].classList.add('active');
+
+            setTimeout(() => {
+                slides.forEach((slide, i) => {
+                    if (i !== currentIndex) {
+                        slide.classList.remove('prev');
+                    }
+                });
+            }, 800);
+
+            updateProgress();
+        }
+
+        function nextSlide() {
+            if (currentIndex < slides.length - 1) {
+                goToSlide(currentIndex + 1);
+            } else if (isPlaying) {
+                stopAutoPlay();
+            }
+        }
+
+        function prevSlide() {
+            if (currentIndex > 0) {
+                goToSlide(currentIndex - 1);
+            }
+        }
+
+        function startAutoPlay() {
+            isPlaying = true;
+            playBtn.classList.add('active');
+            playIcon.style.display = 'none';
+            pauseIcon.style.display = 'block';
+            autoPlayInterval = setInterval(nextSlide, autoPlayDelay);
+        }
+
+        function stopAutoPlay() {
+            isPlaying = false;
+            playBtn.classList.remove('active');
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+            }
+        }
+
+        function toggleAutoPlay() {
+            if (isPlaying) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+        prevBtn.addEventListener('click', () => {
+            stopAutoPlay();
+            prevSlide();
+        });
+
+        nextBtn.addEventListener('click', () => {
+            stopAutoPlay();
+            nextSlide();
+        });
+
+        playBtn.addEventListener('click', toggleAutoPlay);
+
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowRight':
+                case 'ArrowDown':
+                    stopAutoPlay();
+                    nextSlide();
+                    break;
+                case 'ArrowLeft':
+                case 'ArrowUp':
+                    stopAutoPlay();
+                    prevSlide();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    toggleAutoPlay();
+                    break;
+                case 'Home':
+                    stopAutoPlay();
+                    goToSlide(0);
+                    break;
+                case 'End':
+                    stopAutoPlay();
+                    goToSlide(slides.length - 1);
+                    break;
+            }
+        });
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > swipeThreshold) {
+                stopAutoPlay();
+                if (diff > 0) {
+                    nextSlide();
+                } else {
+                    prevSlide();
+                }
+            }
+        }
+
+        updateProgress();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>amplifier-bundle-terminal-tester — AI That Can See Your TUI</title>
+    <style>
+        :root {
+            --accent: #FF375F;
+            --accent-dim: rgba(255, 55, 95, 0.15);
+            --accent-glow: rgba(255, 55, 95, 0.3);
+
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2vw, 18px);
+            --font-small: clamp(12px, 1.8vw, 14px);
+            --font-big-number: clamp(48px, 14vw, 120px);
+
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 40px);
+
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            gap: clamp(20px, 4vw, 40px);
+        }
+
+        .slide.active { display: flex; }
+
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px var(--padding-slide) 60px;
+                gap: clamp(12px, 2vw, 20px);
+            }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: clamp(-1px, -0.03em, -2px);
+            line-height: 1.1;
+            color: var(--text-primary);
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            color: var(--text-primary);
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: 800px;
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .small-text {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+        }
+
+        /* Big numbers */
+        .big-number {
+            font-size: var(--font-big-number);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #FF6B8A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+        .card h3, .card h4 { color: var(--text-primary); }
+        .card p, .card li { color: var(--text-secondary); }
+
+        .card-accent {
+            border-color: rgba(255, 55, 95, 0.25);
+            background: var(--accent-dim);
+        }
+
+        .card-icon {
+            font-size: clamp(28px, 5vw, 42px);
+            margin-bottom: clamp(8px, 1.5vw, 12px);
+        }
+
+        .card-title {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(4px, 1vw, 8px);
+        }
+
+        .card-body {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Grids */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        .bug-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: clamp(10px, 2vw, 16px);
+            width: 100%;
+        }
+
+        /* Stats */
+        .stat-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 3vw, 28px);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: clamp(32px, 8vw, 64px);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            color: var(--accent);
+            margin-bottom: clamp(4px, 1vw, 8px);
+        }
+
+        .stat-label {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stat-detail {
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--text-tertiary);
+            margin-top: clamp(2px, 0.5vw, 4px);
+        }
+
+        /* Quote */
+        .quote-block {
+            background: var(--surface-1);
+            border-left: 4px solid var(--accent);
+            border-radius: 0 clamp(12px, 2vw, 16px) clamp(12px, 2vw, 16px) 0;
+            padding: clamp(20px, 4vw, 36px);
+            max-width: 900px;
+        }
+
+        .quote-text {
+            font-size: clamp(16px, 3vw, 24px);
+            font-style: italic;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .quote-attr {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            margin-top: clamp(8px, 2vw, 16px);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.8vw, 15px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .code-green { color: #30D158; }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-accent { color: var(--accent); }
+        .code-blue { color: #64D2FF; }
+        .code-yellow { color: #FFD60A; }
+
+        /* Flow diagram */
+        .flow {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: clamp(8px, 1.5vw, 16px);
+            justify-content: center;
+        }
+
+        .flow-step {
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(8px, 1.5vw, 12px);
+            padding: clamp(8px, 2vw, 14px) clamp(12px, 2.5vw, 20px);
+            font-size: clamp(12px, 1.8vw, 15px);
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        .flow-step.highlight {
+            background: var(--accent-dim);
+            border-color: rgba(255, 55, 95, 0.3);
+            color: var(--accent);
+        }
+
+        .flow-arrow {
+            font-size: clamp(14px, 2vw, 20px);
+            color: var(--text-tertiary);
+        }
+
+        /* Bug cards */
+        .bug-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(10px, 1.5vw, 14px);
+            padding: clamp(12px, 2.5vw, 20px);
+        }
+
+        .bug-card-title {
+            font-size: clamp(13px, 2vw, 16px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(4px, 0.8vw, 6px);
+        }
+
+        .bug-card-desc {
+            font-size: clamp(12px, 1.6vw, 14px);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .bug-number {
+            font-size: clamp(11px, 1.5vw, 13px);
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: clamp(4px, 0.8vw, 6px);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            font-size: clamp(10px, 1.3vw, 12px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: rgba(48, 209, 88, 0.15);
+            color: #30D158;
+            border: 1px solid rgba(48, 209, 88, 0.3);
+        }
+
+        .badge-new {
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-color: rgba(255, 55, 95, 0.3);
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: clamp(10px, 1.3vw, 12px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 4px 14px;
+            border-radius: 20px;
+        }
+
+        .status-active {
+            background: rgba(48, 209, 88, 0.15);
+            color: #30D158;
+            border: 1px solid rgba(48, 209, 88, 0.3);
+        }
+
+        /* Credits */
+        .credit-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 3vw, 24px);
+        }
+
+        .credit-name {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(4px, 1vw, 8px);
+        }
+
+        .credit-role {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .credit-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: var(--font-small);
+        }
+        .credit-link:hover { text-decoration: underline; }
+
+        /* Install block */
+        .install-block {
+            background: var(--surface-2);
+            border: 1px solid var(--accent);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(20px, 4vw, 32px);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .install-label {
+            font-size: var(--font-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: clamp(8px, 1.5vw, 12px);
+        }
+
+        .install-cmd {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.6vw, 15px);
+            color: var(--text-primary);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Prereq list */
+        .prereq-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .prereq-list li {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            padding: clamp(4px, 1vw, 8px) 0;
+            padding-left: clamp(20px, 3vw, 28px);
+            position: relative;
+        }
+
+        .prereq-list li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+
+        /* Separator */
+        .separator {
+            width: 60px;
+            height: 3px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        /* Tag */
+        .tag {
+            display: inline-block;
+            font-size: clamp(11px, 1.4vw, 13px);
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 6px;
+            background: var(--surface-2);
+            color: var(--text-secondary);
+            margin-right: 6px;
+            margin-bottom: 4px;
+        }
+
+        /* Sources */
+        .sources-content {
+            font-size: var(--font-small);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: 800px;
+        }
+
+        .sources-content strong {
+            color: var(--text-primary);
+        }
+
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: clamp(11px, 1.4vw, 13px);
+            background: var(--surface-2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--accent);
+        }
+
+        .sources-content ul {
+            list-style: none;
+            padding-left: clamp(12px, 2vw, 20px);
+        }
+
+        .sources-content li {
+            padding: 3px 0;
+        }
+
+        .sources-content li::before {
+            content: '→ ';
+            color: var(--accent);
+        }
+
+        /* Nav */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .nav-dot:hover { background: rgba(255,255,255,0.4); }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: clamp(11px, 1.3vw, 13px);
+            color: rgba(255,255,255,0.3);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            z-index: 100;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Links */
+        a.inline-link {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        a.inline-link:hover { text-decoration: underline; }
+
+        /* Accent highlight text */
+        .accent { color: var(--accent); }
+        .accent-bold { color: var(--accent); font-weight: 700; }
+
+        /* Monospace inline */
+        .mono {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== SLIDE 1: TITLE ==================== -->
+    <div class="slide active center">
+        <div class="section-label">Amplifier Bundle</div>
+        <h1 class="headline" style="max-width: 900px;">
+            AI That Can <span class="accent">See</span><br>Your Terminal
+        </h1>
+        <div class="separator" style="margin: clamp(8px, 2vw, 16px) auto;"></div>
+        <p class="subhead" style="max-width: 680px;">
+            <span class="mono">amplifier-bundle-terminal-tester</span><br>
+            Spawn, inspect, and interact with TUI applications — from inside an AI agent.
+        </p>
+        <div style="display: flex; gap: 12px; align-items: center; margin-top: clamp(8px, 2vw, 16px); flex-wrap: wrap; justify-content: center;">
+            <span class="status-badge status-active">Active</span>
+            <span class="badge badge-new">New</span>
+            <span class="small-text">March 2026</span>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 2: THE PROBLEM ==================== -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="medium-headline">835 tests passing.<br><span class="accent">UI visibly broken.</span></h2>
+
+        <div class="quote-block">
+            <div class="quote-text">"Let's pause and find a way for you to be able to inspect the interactive side of the TUI, since there are very obvious issues with it once you load it up, but since you couldn't see it you have no idea and I cannot be the one to test and report it all back to you."</div>
+            <div class="quote-attr">— Turn 89 of an 89-turn Amplifier TUI session</div>
+        </div>
+
+        <div class="halves">
+            <div class="card">
+                <div class="card-icon">🔇</div>
+                <div class="card-title">Blind AI</div>
+                <div class="card-body">The AI was building a Rust/Ratatui terminal interface, but had no way to see the rendered output. Unit tests passed. Integration tests passed. The actual screen? Broken.</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🧑‍💻</div>
+                <div class="card-title">Human bottleneck</div>
+                <div class="card-body">Every visual bug required a human to launch the app, spot the issue, describe it in text, and relay it back. The developer became the sole QA tester for an AI-built application.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 3: THE SOLUTION ==================== -->
+    <div class="slide">
+        <div class="section-label">The Solution</div>
+        <h2 class="medium-headline">One tool. Two capture modes.<br><span class="accent">Any terminal app.</span></h2>
+
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="card-icon">📸</div>
+                <div class="card-title">Screen-Dump Mode</div>
+                <div class="card-body">Reads Ratatui's own render buffer via <span class="mono">--screen-dump-path</span>. Pixel-perfect, frame-numbered, zero ANSI parsing.</div>
+                <div style="margin-top: clamp(8px, 1.5vw, 12px);">
+                    <span class="tag">Ratatui</span>
+                    <span class="tag">crossterm</span>
+                </div>
+            </div>
+            <div class="card card-accent">
+                <div class="card-icon">🖥️</div>
+                <div class="card-title">PTY Mode</div>
+                <div class="card-body">Universal VT100 terminal emulation via pyte. Works with any terminal app — Textual, Bubble Tea, urwid, plain CLI tools.</div>
+                <div style="margin-top: clamp(8px, 1.5vw, 12px);">
+                    <span class="tag">Universal</span>
+                    <span class="tag">pyte</span>
+                </div>
+            </div>
+            <div class="card card-accent">
+                <div class="card-icon">🧠</div>
+                <div class="card-title">Auto-Detection</div>
+                <div class="card-body">If the command includes <span class="mono">--screen-dump-path</span>, it uses dump mode. Otherwise, PTY. Zero config for the agent.</div>
+                <div style="margin-top: clamp(8px, 1.5vw, 12px);">
+                    <span class="tag">Zero-config</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="code-block"><span class="code-comment"># 1 tool, 9 operations</span>
+<span class="code-accent">terminal_inspector</span>  <span class="code-blue">spawn</span> | <span class="code-blue">screenshot</span> | <span class="code-blue">send_keys</span> | <span class="code-blue">send_text</span>
+                     <span class="code-blue">find_text</span> | <span class="code-blue">wait_for_text</span> | <span class="code-blue">resize</span> | <span class="code-blue">close</span> | <span class="code-blue">list</span></div>
+    </div>
+
+    <!-- ==================== SLIDE 4: THREE AGENTS ==================== -->
+    <div class="slide">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">Three specialist agents</h2>
+
+        <div class="thirds">
+            <div class="card">
+                <div class="card-icon">🤖</div>
+                <div class="card-title">terminal-operator</div>
+                <div class="card-body">Launches apps, drives interaction, verifies results. Follows a 6-step workflow with a 3-attempt failure budget before escalating.</div>
+                <div style="margin-top: clamp(8px, 1.5vw, 12px);">
+                    <span class="tag">Launch</span>
+                    <span class="tag">Interact</span>
+                    <span class="tag">Verify</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">📐</div>
+                <div class="card-title">terminal-visual-tester</div>
+                <div class="card-body">Responsive layout testing across 6 breakpoints (60→200 columns). Runs visual quality checklists against every screen state.</div>
+                <div style="margin-top: clamp(8px, 1.5vw, 12px);">
+                    <span class="tag">6 breakpoints</span>
+                    <span class="tag">Layout</span>
+                    <span class="tag">Responsive</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🔬</div>
+                <div class="card-title">terminal-debugger</div>
+                <div class="card-body">Frame-by-frame analysis, keystroke-response verification, root-cause identification with file:line citations and confidence ratings.</div>
+                <div style="margin-top: clamp(8px, 1.5vw, 12px);">
+                    <span class="tag">Root cause</span>
+                    <span class="tag">Frame analysis</span>
+                </div>
+            </div>
+        </div>
+
+        <p class="body-text" style="max-width: 700px;">Repo: <a class="inline-link" href="https://github.com/microsoft/amplifier-bundle-terminal-tester">microsoft/amplifier-bundle-terminal-tester</a></p>
+    </div>
+
+    <!-- ==================== SLIDE 5: THE NUMBERS ==================== -->
+    <div class="slide">
+        <div class="section-label">By The Numbers</div>
+        <h2 class="medium-headline">Real usage across two projects over <span class="accent">4 days</span></h2>
+
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-number">~1,700</div>
+                <div class="stat-label">terminal_inspector operations</div>
+                <div class="stat-detail">across 37 sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">37+</div>
+                <div class="stat-label">bugs discovered</div>
+                <div class="stat-detail">invisible to unit tests</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">8+</div>
+                <div class="stat-label">autonomous fix-verify cycles</div>
+                <div class="stat-detail">end-to-end, no human</div>
+            </div>
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-number">254</div>
+                <div class="stat-label">send_keys</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">252</div>
+                <div class="stat-label">screenshots</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">33</div>
+                <div class="stat-label">wait_for_text gates</div>
+            </div>
+        </div>
+
+        <p class="body-text" style="text-align: center;">Used as the QA gate in an autonomous dev-machine: <span class="accent-bold">53 iterations</span> + <span class="accent-bold">23 QA rounds</span></p>
+    </div>
+
+    <!-- ==================== SLIDE 6: BUG CATCHES ==================== -->
+    <div class="slide">
+        <div class="section-label">Impact</div>
+        <h2 class="medium-headline">Bugs only <span class="accent">terminal_inspector</span> could find</h2>
+
+        <div class="bug-grid">
+            <div class="bug-card">
+                <div class="bug-number">#01</div>
+                <div class="bug-card-title">Response text doubling</div>
+                <div class="bug-card-desc">AI responses rendered twice. Confirmed across 4 prompts + vision model analysis of screenshots.</div>
+            </div>
+            <div class="bug-card">
+                <div class="bug-number">#02</div>
+                <div class="bug-card-title">Ctrl+C inserting literal ^C</div>
+                <div class="bug-card-desc">Instead of quitting the app. Regressed 3 times during development.</div>
+            </div>
+            <div class="bug-card">
+                <div class="bug-number">#03</div>
+                <div class="bug-card-title">ANSI escape sequence leak</div>
+                <div class="bug-card-desc">"OQ" characters appearing from rapid ESC+F2 keystrokes.</div>
+            </div>
+            <div class="bug-card">
+                <div class="bug-number">#04</div>
+                <div class="bug-card-title">Stray border artifact</div>
+                <div class="bug-card-desc">Visible at specific screen coordinates after the sidebar closes.</div>
+            </div>
+            <div class="bug-card">
+                <div class="bug-number">#05</div>
+                <div class="bug-card-title">Settings panel inaccessible</div>
+                <div class="bug-card-desc">5 of 6 settings sections unreachable via keyboard navigation.</div>
+            </div>
+            <div class="bug-card">
+                <div class="bug-number">#06</div>
+                <div class="bug-card-title">Token counter frozen at zero</div>
+                <div class="bug-card-desc">Despite real API usage, the token display never updated.</div>
+            </div>
+            <div class="bug-card">
+                <div class="bug-number">#07</div>
+                <div class="bug-card-title">Status bar stuck on "working"</div>
+                <div class="bug-card-desc">Status indicator never reset after response completion.</div>
+            </div>
+            <div class="bug-card">
+                <div class="bug-number">#08</div>
+                <div class="bug-card-title">"Brutally honest" product audit</div>
+                <div class="bug-card-desc">Session resume was cosmetic-only, settings disconnected from runtime.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 7: DEV-MACHINE INTEGRATION ==================== -->
+    <div class="slide">
+        <div class="section-label">Autonomous QA</div>
+        <h2 class="medium-headline">The AI verifies its own <span class="accent">visual output</span></h2>
+
+        <div class="flow">
+            <div class="flow-step">Build</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Compile</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step highlight">Test visually</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">File bugs</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Dev-machine</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">Rebuild</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step highlight">Retest</div>
+        </div>
+
+        <div class="halves">
+            <div class="card">
+                <div class="card-icon">🔄</div>
+                <div class="card-title">53 + 23</div>
+                <div class="card-body">53 dev-machine iterations and 23 terminal-tester QA rounds. No human in the loop for visual verification. The terminal-tester became the quality gate in an autonomous build-test-fix cycle.</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">👁️</div>
+                <div class="card-title">AI verifying AI</div>
+                <div class="card-body">Found the response-doubling bug, confirmed it across 4 prompts, then <strong style="color: var(--text-primary);">called a vision model to analyze its own screenshots</strong> to prove it wasn't a PTY artifact.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 8: DEBUGGER MASTERCLASS ==================== -->
+    <div class="slide">
+        <div class="section-label">Deep Debugging</div>
+        <h2 class="medium-headline">From visual symptom<br>to <span class="accent">exact line of Rust</span></h2>
+
+        <div class="halves">
+            <div class="card" style="border-color: var(--accent-glow);">
+                <div class="card-icon">🔬</div>
+                <div class="card-title">terminal-debugger in action</div>
+                <div class="card-body" style="line-height: 1.7;">
+                    The debugger agent combined live terminal inspection with Rust source code analysis:
+                    <br><br>
+                    ▸ Traced a markdown rendering bug from its visual symptom to <strong style="color: var(--text-primary);">two specific lines of Rust code</strong>
+                    <br><br>
+                    ▸ Used frame counter analysis to detect whether keys were received, handled, or just not re-rendering
+                    <br><br>
+                    ▸ Produced structured root-cause reports with <span class="mono">file:line</span> citations, suggested fixes, and confidence ratings
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: var(--gap-grid);">
+                <div class="code-block"><span class="code-comment">// Debugger output structure</span>
+{
+  <span class="code-accent">"symptom"</span>: <span class="code-green">"Markdown not rendering"</span>,
+  <span class="code-accent">"root_cause"</span>: {
+    <span class="code-blue">"file"</span>: <span class="code-green">"src/ui/chat.rs"</span>,
+    <span class="code-blue">"lines"</span>: [<span class="code-yellow">142</span>, <span class="code-yellow">147</span>],
+    <span class="code-blue">"issue"</span>: <span class="code-green">"Raw text passed instead
+             of parsed spans"</span>
+  },
+  <span class="code-accent">"confidence"</span>: <span class="code-yellow">0.92</span>,
+  <span class="code-accent">"fix"</span>: <span class="code-green">"Replace raw &amp; with
+        markdown::parse()"</span>
+}</div>
+                <div class="card" style="background: var(--surface-2);">
+                    <div class="card-body" style="text-align: center;">
+                        Visual bug → Frame analysis → Source trace → <span class="accent-bold">Fix with confidence rating</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 9: ATTRIBUTION ==================== -->
+    <div class="slide">
+        <div class="section-label">Credits</div>
+        <h2 class="medium-headline">Standing on shoulders</h2>
+
+        <div class="thirds">
+            <div class="credit-card">
+                <div class="card-icon">🧪</div>
+                <div class="credit-name">PTY + pyte approach</div>
+                <div class="credit-role">Diego Colombo (<span class="mono">@colombod</span>) pioneered the PTY/pyte approach for AI terminal testing.</div>
+                <div style="margin-top: clamp(8px, 1.5vw, 12px);">
+                    <a class="credit-link" href="https://github.com/colombod/amplifier-bundle-tui-tester">colombod/amplifier-bundle-tui-tester</a>
+                </div>
+            </div>
+            <div class="credit-card">
+                <div class="card-icon">📸</div>
+                <div class="credit-name">Screen-dump approach</div>
+                <div class="credit-role">Developed during Amplifier TUI Phase 6. Reads Ratatui's native render buffer for pixel-perfect captures.</div>
+            </div>
+            <div class="credit-card">
+                <div class="card-icon">🏗️</div>
+                <div class="credit-name">Bundle structure</div>
+                <div class="credit-role">Modeled after the browser-tester bundle pattern for consistent Amplifier ecosystem integration.</div>
+                <div style="margin-top: clamp(8px, 1.5vw, 12px);">
+                    <a class="credit-link" href="https://github.com/microsoft/amplifier-bundle-browser-tester">microsoft/amplifier-bundle-browser-tester</a>
+                </div>
+            </div>
+        </div>
+
+        <p class="body-text">Diego Colombo is credited as co-author in the git history.</p>
+    </div>
+
+    <!-- ==================== SLIDE 10: SOURCES ==================== -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Data &amp; Methodology</h2>
+
+        <div class="sources-content">
+            <p><strong>Data as of:</strong> March 2026</p>
+            <p><strong>Feature status:</strong> Active — <code>microsoft/amplifier-bundle-terminal-tester</code></p>
+            <br>
+            <p><strong>Data sources:</strong></p>
+            <ul>
+                <li>Usage metrics (~1,700 operations, 37 sessions, 254 send_keys, 252 screenshots, 33 wait_for_text) from session logs across two projects over 4 days</li>
+                <li>Bug count (37+) from tracked issues found exclusively via terminal_inspector during Amplifier TUI development</li>
+                <li>Autonomous cycle counts (53 dev-machine iterations, 23 QA rounds, 8+ fix-verify cycles) from session records</li>
+                <li>The quoted conversation is from a real 89-turn Amplifier TUI development session</li>
+            </ul>
+            <br>
+            <p><strong>Qualifiers preserved:</strong></p>
+            <ul>
+                <li>"~1,700" (approximate — aggregated across multiple session logs)</li>
+                <li>"37+" and "8+" (minimum confirmed counts — actual numbers may be higher)</li>
+            </ul>
+            <br>
+            <p><strong>Prior art:</strong> Diego Colombo's <code>amplifier-bundle-tui-tester</code> (PTY/pyte approach)</p>
+            <p><strong>Gaps:</strong> Exact per-session operation breakdowns not individually verified. Bug severity classification is qualitative.</p>
+        </div>
+    </div>
+
+    <!-- ==================== SLIDE 11: CTA ==================== -->
+    <div class="slide center">
+        <div class="section-label">Get Started</div>
+        <h2 class="headline" style="max-width: 800px;">Try it <span class="accent">now</span></h2>
+
+        <div class="install-block">
+            <div class="install-label">Install</div>
+            <div class="install-cmd">amplifier bundle add \
+  git+https://github.com/microsoft/amplifier-bundle-terminal-tester@main\
+#subdirectory=behaviors/terminal-tester.yaml \
+  --app</div>
+        </div>
+
+        <div style="max-width: 600px; width: 100%; margin-top: clamp(12px, 3vw, 24px);">
+            <ul class="prereq-list">
+                <li><span class="mono">tmux</span> — required for screen-dump mode</li>
+                <li><span class="mono">pip install pyte Pillow</span> — required for PTY mode</li>
+            </ul>
+        </div>
+
+        <div style="margin-top: clamp(16px, 3vw, 32px); display: flex; flex-direction: column; align-items: center; gap: clamp(8px, 1.5vw, 12px);">
+            <a class="inline-link" href="https://github.com/microsoft/amplifier-bundle-terminal-tester" style="font-size: var(--font-body); font-weight: 600;">
+                github.com/microsoft/amplifier-bundle-terminal-tester
+            </a>
+            <p class="small-text">Spawn. Screenshot. Ship.</p>
+        </div>
+    </div>
+
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            // Scroll to top of new slide
+            slides[currentSlide].scrollTop = 0;
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

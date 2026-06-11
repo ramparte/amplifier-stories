@@ -75,10 +75,11 @@ Start with this structure:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Deck Title</title>
+    <script>document.documentElement.classList.add('js')</script>
     <style>
         /* Core slide CSS - CRITICAL for preventing content clipping */
         .slide {
-            display: none;
+            display: flex;         /* Default: visible (no-JS scrollable fallback) */
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
@@ -92,6 +93,25 @@ Start with this structure:
         .slide.active {
             display: flex;
         }
+
+        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
 
         /* Centering is OPT-IN for title/short slides only */
         .center {
@@ -152,6 +172,17 @@ Start with this structure:
 </body>
 </html>
 ```
+
+**Progressive Enhancement (REQUIRED):** All decks must include:
+1. `<script>document.documentElement.classList.add('js')</script>` in `<head>` before `<style>`
+2. `.slide { display: flex; }` as default (NOT `display: none`)
+3. `html:not(.js) .slide` block forcing all slides visible for no-JS fallback
+4. `html.js .slide { display: none; }` and `html.js .slide.active { display: flex; }` for JS mode
+5. `html.js body { overflow: hidden; }` (NOT on body directly)
+
+**Why:** Teams/SharePoint may block or strip JavaScript (SafeLinks, CSP, iframe sandbox).
+Without progressive enhancement, users see only the first slide and cannot navigate.
+With it, no-JS users get a scrollable single-page document; JS users get normal slides.
 
 ### Navigation JavaScript
 
@@ -306,10 +337,52 @@ command --flag value
 </div>
 ```
 
+**Sources & Methodology Slide (REQUIRED):**
+```html
+<div class="slide">
+    <div class="section-label">Sources</div>
+    <h2 class="medium-headline">Research Methodology</h2>
+    <div class="small-text" style="opacity: 0.7; line-height: 1.6;">
+        <p><strong>Data as of:</strong> February 20, 2026</p>
+        <p><strong>Feature status:</strong> Active</p>
+        <p><strong>Research performed:</strong></p>
+        <ul>
+            <li>Git log analysis: <code>git log --oneline repo-name</code> (N commits found)</li>
+            <li>PR history: <code>gh pr list --repo org/repo</code> (N PRs found)</li>
+            <li>Line counts: <code>find . -name "*.py" | xargs wc -l</code></li>
+            <li>Contributors: extracted from git log --format="%an"</li>
+        </ul>
+        <p><strong>Gaps:</strong> [List any data that was unavailable or estimated]</p>
+        <p><strong>Primary contributors:</strong> [Name(s) with commit %]</p>
+    </div>
+</div>
+```
+
+This slide is mandatory on every deck. It serves as the audit trail. If a reader
+questions any metric in the deck, this slide tells them how it was derived.
+
 ## Quality Checklist
 
-Before presenting to user:
+Before presenting to user, verify ALL items in both sections:
 
+### Accuracy (verify FIRST — a beautiful deck with wrong numbers is worse than ugly truth)
+
+- [ ] **Research was performed** — story-researcher agent was invoked and returned structured data
+- [ ] **Every metric traces to research output** — no number appears without evidence
+- [ ] **No round-number inflation** — real numbers used, qualifiers preserved (~, approximately)
+- [ ] **Timeline dates verified against git commits** — not narrative estimates
+- [ ] **Impact claims have baselines** — "X% faster than Y, measured by Z"
+- [ ] **Feature status badge present** — Active / Experimental / Archived / Disabled
+- [ ] **Repository org is correct** — microsoft/ vs ramparte/ vs personal repos stated accurately
+- [ ] **Contributors attributed** — primary author(s) named with approximate commit share
+- [ ] **No self-validating claims** — removed "our tool says we're excellent" type statements
+- [ ] **Sources & Methodology slide present** — with data-as-of date, commands run, gaps noted
+- [ ] **Velocity slide numbers match research output** — cross-checked, not approximated
+
+### Visual & Technical
+
+- [ ] **Progressive enhancement present** — `<script>...classList.add('js')</script>` before `<style>`, `html.js`/`html:not(.js)` scoped rules, `.slide { display: flex }` default
+- [ ] **No-JS fallback works** — without JS, all slides visible and scrollable as a single page
 - [ ] Navigation works (arrows, click, dots, **swipe on mobile**)
 - [ ] Slide counter updates correctly
 - [ ] No horizontal scrolling on any slide
@@ -318,12 +391,17 @@ Before presenting to user:
 - [ ] **`justify-content: center` only on `.slide.center` classes**
 - [ ] Code blocks don't overflow (use `pre-wrap`)
 - [ ] Consistent color scheme throughout
-- [ ] Velocity slide has accurate numbers
 - [ ] All links are correct
 - [ ] "More Amplifier Stories" link present (links to index.html)
 - [ ] **Responsive: Text readable on mobile without zooming**
 - [ ] **Responsive: Grids collapse to single column on narrow screens**
 - [ ] **Responsive: Touch targets ≥44px for tappable elements**
+- [ ] **Maximum 20 inline style attributes in the entire deck** (use CSS classes with clamp values)
+- [ ] **No inline font-size values** — all sizing must use clamp() via CSS classes
+- [ ] **All text meets WCAG AA contrast** (4.5:1 for normal text, 3:1 for large text on its background)
+- [ ] **Card backgrounds visually distinct from body** (cards must be visible, not invisible-on-black)
+- [ ] **Icons >= 28px minimum** in card layouts (use .icon-card or .icon-feature classes)
+- [ ] **No text opacity below 0.5** for any content that must be read
 
 ## Deployment Workflow
 

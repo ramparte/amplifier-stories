@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amplifier Meets the Desktop: A Python Sidecar Story</title>
+<style>
+  /* ─── Reset & Base ─── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent:        #5E5CE6;
+    --accent-bright: #7B79FF;
+    --accent-glow:   rgba(94, 92, 230, 0.35);
+    --accent-dim:    rgba(94, 92, 230, 0.15);
+
+    --bg:            #0a0a0f;
+    --surface-1:     #111118;
+    --surface-2:     #1a1a26;
+    --surface-3:     #22223a;
+    --border:        rgba(94, 92, 230, 0.2);
+    --border-subtle: rgba(255,255,255,0.07);
+
+    --text-primary:   rgba(255,255,255,0.95);
+    --text-secondary: rgba(255,255,255,0.70);
+    --text-tertiary:  rgba(255,255,255,0.45);
+
+    --green:   #30D158;
+    --red:     #FF6B6B;
+    --yellow:  #FFD60A;
+    --teal:    #64D2FF;
+    --orange:  #FF9F0A;
+
+    --radius-sm: 6px;
+    --radius:    12px;
+    --radius-lg: 20px;
+
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Deck Container ─── */
+  #deck {
+    width: 100vw; height: 100vh;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ─── Slides ─── */
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: clamp(32px, 5vw, 72px) clamp(48px, 7vw, 120px);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(40px);
+    transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .slide.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
+  .slide.exit-left {
+    opacity: 0;
+    transform: translateX(-40px);
+    transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ─── Background Grid ─── */
+  .slide::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(94, 92, 230, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(94, 92, 230, 0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  /* ─── Slide Inner ─── */
+  .slide-inner {
+    width: 100%; max-width: 1100px;
+    position: relative; z-index: 1;
+  }
+
+  /* ─── Typography ─── */
+  .kicker {
+    font-size: clamp(10px, 1.1vw, 13px);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-bright);
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-size: clamp(32px, 5vw, 64px);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+  }
+
+  h2 {
+    font-size: clamp(26px, 3.5vw, 48px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    margin-bottom: clamp(20px, 3vh, 36px);
+  }
+
+  h3 {
+    font-size: clamp(14px, 1.6vw, 20px);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  p {
+    font-size: clamp(13px, 1.4vw, 17px);
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+
+  .subtitle {
+    font-size: clamp(15px, 1.8vw, 22px);
+    color: var(--text-secondary);
+    margin-top: 16px;
+    line-height: 1.5;
+  }
+
+  /* ─── Accent Divider ─── */
+  .divider {
+    width: 56px; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+    border-radius: 2px;
+    margin-bottom: 28px;
+  }
+
+  /* ─── Cards Grid ─── */
+  .cards {
+    display: grid;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .cards-2 { grid-template-columns: 1fr 1fr; }
+  .cards-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cards-4 { grid-template-columns: 1fr 1fr; }
+
+  .card {
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: clamp(16px, 2vh, 24px) clamp(18px, 2vw, 28px);
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+
+  .card-accent {
+    border-color: var(--border);
+    background: var(--accent-dim);
+  }
+  .card-accent::before {
+    background: linear-gradient(90deg, var(--accent-bright), var(--accent));
+    opacity: 0.9;
+  }
+
+  .card .icon {
+    font-size: clamp(22px, 2.8vw, 34px);
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  /* ─── Bullet Lists ─── */
+  .bullet-list {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .bullet-list li {
+    font-size: clamp(13px, 1.45vw, 17px);
+    color: var(--text-secondary);
+    line-height: 1.55;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .bullet-list li::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent-bright);
+    flex-shrink: 0;
+    margin-top: 7px;
+  }
+  .bullet-list li strong { color: var(--text-primary); }
+
+  /* ─── Code Blocks ─── */
+  .code-block {
+    background: #0d0d14;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    font-family: var(--font-mono);
+    font-size: clamp(11px, 1.1vw, 14px);
+    line-height: 1.75;
+    overflow-x: auto;
+    position: relative;
+    white-space: pre;
+  }
+  .code-block .lang-badge {
+    position: absolute;
+    top: 10px; right: 14px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    font-family: var(--font-sans);
+  }
+
+  /* Syntax colors */
+  .kw  { color: #C792EA; }
+  .fn  { color: #82AAFF; }
+  .str { color: #C3E88D; }
+  .cm  { color: #546E7A; }
+  .num { color: #F78C6C; }
+  .op  { color: var(--accent-bright); }
+  .err-line { color: var(--red); }
+  .ok-line  { color: var(--green); }
+  .dim      { color: var(--text-tertiary); }
+
+  /* ─── Architecture Diagram ─── */
+  .arch-diagram {
+    background: #0d0d14;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 36px;
+    font-family: var(--font-mono);
+    font-size: clamp(12px, 1.2vw, 15px);
+  }
+
+  .arch-box {
+    display: inline-block;
+    padding: 5px 18px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: clamp(12px, 1.2vw, 15px);
+  }
+  .arch-box-primary {
+    background: linear-gradient(135deg, var(--accent), #7B79FF);
+    color: #fff;
+  }
+  .arch-box-secondary {
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .arch-arrow {
+    color: var(--accent-bright);
+    display: block;
+    padding: 4px 0 4px 20px;
+    font-size: 1em;
+    line-height: 1.6;
+  }
+  .arch-label {
+    color: var(--text-tertiary);
+    font-size: 0.82em;
+    font-family: var(--font-sans);
+    font-weight: 400;
+  }
+
+  /* ─── Comparison Table ─── */
+  .comp-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: clamp(12px, 1.2vw, 15px);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .comp-table th {
+    padding: 14px 20px;
+    text-align: left;
+    font-weight: 700;
+    font-size: clamp(11px, 1.1vw, 14px);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: var(--surface-3);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+  }
+  .comp-table th.col-bad  { color: var(--red); }
+  .comp-table th.col-good { color: var(--green); }
+
+  .comp-table td {
+    padding: 11px 20px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface-1);
+    vertical-align: middle;
+  }
+  .comp-table tr:last-child td { border-bottom: none; }
+  .comp-table tr:nth-child(even) td { background: var(--surface-2); }
+  .comp-table td:first-child { font-weight: 600; color: var(--text-primary); }
+
+  .tick  { color: var(--green); font-weight: 700; }
+  .cross { color: var(--red); font-weight: 700; }
+  .val-good { color: var(--green); font-weight: 600; }
+  .val-bad  { color: var(--red); font-weight: 600; }
+
+  /* ─── Step Process ─── */
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+  .step  { display: flex; gap: 16px; align-items: flex-start; }
+  .step-num {
+    width: 28px; height: 28px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    color: var(--accent-bright);
+    margin-top: 1px;
+  }
+  .step-content { flex: 1; }
+  .step-content strong { color: var(--text-primary); font-size: clamp(13px, 1.35vw, 16px); display: block; margin-bottom: 2px; }
+  .step-content p { font-size: clamp(12px, 1.2vw, 15px); }
+
+  /* ─── Insight Callout ─── */
+  .callout {
+    background: var(--accent-dim);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent-bright);
+    border-radius: var(--radius);
+    padding: 16px 22px;
+    font-size: clamp(13px, 1.35vw, 16px);
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .callout strong { color: var(--text-primary); }
+
+  /* ─── Metric Chips ─── */
+  .metric-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .metric-chip {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .metric-chip .val {
+    font-size: clamp(20px, 2.5vw, 32px);
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-bright), #A78BFA);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .metric-chip .lbl {
+    font-size: clamp(11px, 1vw, 13px);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  /* ─── Badge ─── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    border-radius: 100px;
+    font-size: clamp(10px, 1vw, 12px);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .badge-active {
+    background: rgba(48, 209, 88, 0.12);
+    border: 1px solid rgba(48, 209, 88, 0.3);
+    color: var(--green);
+  }
+  .badge-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* ─── Title Slide ─── */
+  .title-slide { text-align: center; }
+  .title-slide h1 { font-size: clamp(36px, 5.5vw, 72px); }
+  .title-glow {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(94,92,230,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ─── Closing Slide ─── */
+  .closing-quote {
+    font-size: clamp(18px, 2.8vw, 36px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+    color: var(--text-primary);
+    text-align: center;
+    max-width: 820px;
+    margin: 0 auto;
+  }
+  .closing-quote em {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--accent-bright), #A78BFA);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── Two-Column Layouts ─── */
+  .two-col      { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+  .two-col-wide { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 28px; align-items: start; }
+
+  /* ─── Protocol Map ─── */
+  .protocol-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+  }
+  .protocol-from {
+    font-family: var(--font-mono);
+    font-size: clamp(11px, 1.1vw, 14px);
+    color: var(--accent-bright);
+    font-weight: 600;
+    min-width: 190px;
+  }
+  .protocol-arrow { color: var(--text-tertiary); font-size: 14px; }
+  .protocol-to {
+    font-family: var(--font-mono);
+    font-size: clamp(11px, 1.1vw, 14px);
+    color: var(--teal);
+    font-weight: 600;
+  }
+
+  /* ─── Navigation ─── */
+  .nav-btn {
+    position: fixed;
+    top: 50%; transform: translateY(-50%);
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    color: var(--text-secondary);
+    font-size: 20px;
+    line-height: 1;
+  }
+  .nav-btn:hover {
+    background: var(--surface-3);
+    border-color: var(--accent);
+    color: var(--text-primary);
+    transform: translateY(-50%) scale(1.08);
+  }
+  .nav-btn:disabled { opacity: 0.2; cursor: default; }
+  .nav-btn:disabled:hover { transform: translateY(-50%) scale(1); background: var(--surface-2); border-color: var(--border); }
+  #prev-btn { left: 20px; }
+  #next-btn { right: 20px; }
+
+  /* ─── Slide Counter ─── */
+  #slide-counter {
+    position: fixed;
+    bottom: 20px; right: 24px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    z-index: 100;
+  }
+
+  /* ─── Nav Dots ─── */
+  #nav-dots {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 7px;
+    z-index: 100;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    cursor: pointer;
+    transition: background 0.25s, transform 0.25s;
+  }
+  .dot.active {
+    background: var(--accent-bright);
+    transform: scale(1.4);
+  }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 900px) {
+    .two-col, .two-col-wide { grid-template-columns: 1fr; }
+    .cards-3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 600px) {
+    .cards-2, .cards-3, .cards-4 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="deck">
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 1 — TITLE
+  ══════════════════════════════════════════════ -->
+  <div class="slide title-slide active" id="slide-1">
+    <div class="title-glow"></div>
+    <div class="slide-inner" style="text-align:center;">
+      <div style="margin-bottom:24px; display:flex; justify-content:center; gap:10px; align-items:center; flex-wrap:wrap;">
+        <span class="badge badge-active"><span class="badge-dot"></span>Technical Case Study</span>
+        <span style="color:var(--text-tertiary); font-size:13px;">· 2026</span>
+      </div>
+      <h1>Amplifier Meets the Desktop</h1>
+      <h1 style="background:linear-gradient(135deg,var(--accent-bright),#A78BFA); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">A Python Sidecar Story</h1>
+      <p class="subtitle">From PyInstaller binaries to portable Python distributions</p>
+      <div style="margin:36px auto 0; width:56px; height:3px; background:linear-gradient(90deg,var(--accent),var(--accent-bright)); border-radius:2px;"></div>
+      <p style="margin-top:28px; font-size:clamp(12px,1.2vw,15px); color:var(--text-tertiary);">Architectural decisions &amp; lessons learned from embedding a Python AI agent framework in a cross-platform desktop app</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 2 — THE CHALLENGE
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-2">
+    <div class="slide-inner">
+      <div class="kicker">The Problem</div>
+      <h2>Two Worlds, One App</h2>
+      <div class="two-col">
+        <div>
+          <div class="cards" style="grid-template-columns:1fr; margin-bottom:0;">
+            <div class="card">
+              <span class="icon">🖥️</span>
+              <h3>The Desktop App</h3>
+              <p>Built with <strong style="color:var(--teal);">Electron</strong> — JavaScript all the way down. Great for cross-platform UI. But JavaScript isn't Python.</p>
+            </div>
+            <div class="card">
+              <span class="icon">🐍</span>
+              <h3>Amplifier Runtime</h3>
+              <p><strong style="color:var(--accent-bright);">Python</strong> through and through. A modular AI agent framework that relies deeply on Python's packaging ecosystem.</p>
+            </div>
+          </div>
+        </div>
+        <div>
+          <ul class="bullet-list" style="margin-bottom:20px;">
+            <li><strong>Can't run Python in-process</strong> inside an Electron renderer or main process</li>
+            <li><strong>Users shouldn't need Python installed</strong> — the app must be self-contained out of the box</li>
+            <li><strong>Package modules must be discoverable</strong> — Amplifier's entire architecture depends on this</li>
+            <li><strong>Must work cross-platform</strong> — macOS, Windows, Linux — no OS-specific hacks</li>
+          </ul>
+          <div class="callout">
+            The solution: run Amplifier as a <strong>child process</strong> — a "sidecar" — and bridge the two worlds over HTTP.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 3 — THE ARCHITECTURE
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-3">
+    <div class="slide-inner">
+      <div class="kicker">System Design</div>
+      <h2>The Sidecar Architecture</h2>
+      <div class="two-col-wide">
+        <div class="arch-diagram">
+          <div style="margin-bottom:6px;"><span class="arch-box arch-box-primary">Desktop App (Electron)</span></div>
+          <div class="arch-arrow">↓ &nbsp;<span class="arch-label">spawns child process</span></div>
+          <div style="margin-bottom:6px;"><span class="arch-box arch-box-secondary">Amplifier Runtime (Python)</span></div>
+          <div class="arch-arrow">↓ &nbsp;<span class="arch-label">serves HTTP / SSE on localhost</span></div>
+          <div style="margin-bottom:6px;"><span class="arch-box arch-box-secondary">Backend (Node.js API)</span></div>
+          <div class="arch-arrow">↓ &nbsp;<span class="arch-label">streams responses via SSE</span></div>
+          <div><span class="arch-box arch-box-secondary">Frontend (React UI)</span></div>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <strong>Electron spawns Python</strong>
+              <p>Starts the Amplifier runtime as a child process, passes a port number via CLI args</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <strong>Python starts HTTP server</strong>
+              <p>Amplifier runtime binds to localhost and signals readiness via stdout</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <strong>Backend connects</strong>
+              <p>The Node.js backend discovers the port and proxies requests to Amplifier</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <strong>UI streams responses</strong>
+              <p>React frontend receives SSE events and renders agent output in real time</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 4 — PYINSTALLER APPROACH
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-4">
+    <div class="slide-inner">
+      <div class="kicker">First Attempt</div>
+      <h2>The PyInstaller Approach</h2>
+      <div class="two-col">
+        <div>
+          <div class="callout" style="margin-bottom:20px; border-left-color:var(--yellow);">
+            "One binary, no Python required" — sounded perfect for a desktop app.
+          </div>
+          <ul class="bullet-list">
+            <li><strong>Collect all Python modules</strong> — PyInstaller traces imports and bundles all dependencies</li>
+            <li><strong>Compile to a single executable</strong> — users run one file, no install step needed</li>
+            <li><strong>~43 MB final binary</strong> — reasonably compact for distribution</li>
+            <li><strong>Great track record</strong> — widely used for shipping Python CLI tools and scripts</li>
+          </ul>
+        </div>
+        <div>
+          <div class="code-block" style="margin-bottom:16px;"><span class="lang-badge">build</span><span class="cm"># PyInstaller bundles everything into
+# a single self-extracting binary</span>
+
+<span class="kw">pyinstaller</span> <span class="fn">amplifier_cli.py</span> \
+  <span class="op">--onefile</span> \
+  <span class="op">--hidden-import</span> <span class="str">amplifier_core</span> \
+  <span class="op">--hidden-import</span> <span class="str">amplifier_foundation</span> \
+  <span class="op">--collect-all</span> <span class="str">amplifier_module_loop_streaming</span></div>
+          <div class="card card-accent">
+            <p style="font-size:clamp(12px,1.2vw,15px);">On paper: bundle Amplifier's Python packages into a frozen binary, ship it as an Electron resource, spawn at runtime. The plan was clean. The execution… was not.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 5 — THE FAILURE
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-5">
+    <div class="slide-inner">
+      <div class="kicker">The Failure</div>
+      <h2>Module Discovery Fails at Startup</h2>
+      <div class="code-block" style="margin-bottom:24px;"><span class="lang-badge">stderr</span><span class="err-line">RuntimeError: Cannot initialize without orchestrator:
+Module 'loop-streaming' has no valid Python package at
+/tmp/_MEI81mChB/amplifier_module_loop_streaming-1.0.0.dist-info</span>
+
+<span class="dim">Traceback (most recent call last):
+  File "amplifier_app_runtime/cli.py", line 42, in &lt;main&gt;
+  File "amplifier_core/bootstrap.py", line 118, in initialize</span>
+<span class="err-line">RuntimeError: Cannot initialize without orchestrator</span></div>
+      <div class="cards cards-3">
+        <div class="card">
+          <span class="icon">🔍</span>
+          <h3>What happened?</h3>
+          <p>The Amplifier agent never loaded. The runtime binary started, then immediately crashed before initializing.</p>
+        </div>
+        <div class="card">
+          <span class="icon">📂</span>
+          <h3>The clue</h3>
+          <p>Notice <code style="color:var(--accent-bright); font-family:var(--font-mono);">/tmp/_MEI81mChB/</code> — that's PyInstaller's temporary extraction directory at runtime.</p>
+        </div>
+        <div class="card">
+          <span class="icon">🧩</span>
+          <h3>The gap</h3>
+          <p>The path points to a <code style="color:var(--red); font-family:var(--font-mono);">.dist-info</code> directory, not a Python package. Something fundamental is broken.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 6 — ROOT CAUSE
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-6">
+    <div class="slide-inner">
+      <div class="kicker">Root Cause Analysis</div>
+      <h2>PyInstaller vs <code style="font-size:0.85em; color:var(--accent-bright);">importlib.metadata</code></h2>
+      <div class="two-col-wide">
+        <div>
+          <p style="margin-bottom:16px; font-size:clamp(13px,1.3vw,16px);">How <strong>amplifier-core discovers modules</strong> at startup:</p>
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <strong>Reads <code style="font-family:var(--font-mono); color:var(--accent-bright);">dist-info/RECORD</code></strong>
+                <p>Inspects the installed package manifest via <code style="font-family:var(--font-mono);">importlib.metadata</code></p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <strong>Filters for source files</strong>
+                <p>Looks for <code style="font-family:var(--font-mono);">.py</code> package entries, skips <code style="font-family:var(--font-mono);">.dist-info</code> entries</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <strong>Empty result → fallback</strong>
+                <p>Falls back to using the <code style="font-family:var(--font-mono);">.dist-info</code> directory itself as the module root</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <strong>Searches for <code style="font-family:var(--font-mono);">__init__.py</code></strong>
+                <p>Tries to find a Python package inside a dist-info folder. Fails.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num" style="background:rgba(255,107,107,0.15); border-color:var(--red); color:var(--red);">✗</div>
+              <div class="step-content">
+                <strong style="color:var(--red);">"No valid Python package"</strong>
+                <p>Runtime crashes before any agent loads</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="callout" style="margin-bottom:16px; border-left-color:var(--red);">
+            <strong>PyInstaller strips RECORD file paths</strong> when bundling bytecode into the binary. The metadata structure exists but the file path entries point nowhere meaningful.
+          </div>
+          <div class="card" style="background:var(--surface-1);">
+            <h3 style="color:var(--yellow); margin-bottom:8px;">⚠️ The Core Tension</h3>
+            <p>PyInstaller <em>freezes</em> Python — converts source to bytecode, strips the filesystem structure. But <code style="font-family:var(--font-mono); color:var(--accent-bright);">importlib.metadata</code> relies on that filesystem structure being real.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 7 — THE INSIGHT
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-7">
+    <div class="slide-inner" style="max-width:940px;">
+      <div class="kicker">The Insight</div>
+      <h2>Amplifier's Architecture is Built on Python Packaging</h2>
+      <div class="cards cards-2" style="margin-bottom:24px;">
+        <div class="card card-accent">
+          <span class="icon">🔌</span>
+          <h3>The Philosophy</h3>
+          <p>Amplifier discovers modules via <strong>Python entry points</strong> and <code style="font-family:var(--font-mono); color:var(--accent-bright);">importlib.metadata</code>. You can <code style="font-family:var(--font-mono); font-size:0.9em;">pip install amplifier-module-provider-anthropic</code> and it just appears — no configuration needed.</p>
+        </div>
+        <div class="card card-accent">
+          <span class="icon">📦</span>
+          <h3>The Dependency</h3>
+          <p>The modular, swappable architecture depends on <strong>Python packaging being alive and intact</strong> — real dist-info directories, real RECORD files, real <code style="font-family:var(--font-mono); color:var(--accent-bright);">site-packages</code> paths on disk.</p>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>PyInstaller "freezes" this ecosystem.</strong> It's the wrong tool for a framework that treats Python packaging as a first-class runtime feature. We needed an approach that works <em>with</em> Python's package system, not around it.
+      </div>
+      <div style="margin-top:20px; padding:16px 20px; background:var(--surface-2); border-radius:var(--radius); border:1px solid var(--border-subtle);">
+        <p style="font-size:clamp(12px,1.2vw,15px); color:var(--text-secondary);">The question shifted: from <em>"how do we freeze Python?"</em> → <em>"how do we ship a real Python installation that users don't have to install themselves?"</em></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 8 — THE RIGHT APPROACH
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-8">
+    <div class="slide-inner">
+      <div class="kicker">The Solution</div>
+      <h2>python-build-standalone: Ship a Real Python</h2>
+      <div class="two-col">
+        <div>
+          <div class="cards" style="grid-template-columns:1fr; margin-bottom:0;">
+            <div class="card card-accent">
+              <span class="icon">🐍</span>
+              <h3>python-build-standalone</h3>
+              <p>A portable Python distribution that finds its standard library <strong>relative to itself</strong> — no system-wide installation, no PATH dependencies, no conflicts with a user's own Python.</p>
+            </div>
+            <div class="card">
+              <span class="icon">📁</span>
+              <h3>Real site-packages</h3>
+              <p>Install Amplifier's packages <em>normally</em> into site-packages. Full metadata, full RECORD files, full entry points. <code style="font-family:var(--font-mono); color:var(--green);">importlib.metadata</code> works perfectly.</p>
+            </div>
+            <div class="card">
+              <span class="icon">📦</span>
+              <h3>Bundle as app resource</h3>
+              <p>Copy the entire directory tree as an Electron <code style="font-family:var(--font-mono); color:var(--teal);">extraResource</code>. Spawn by absolute path at runtime.</p>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="code-block"><span class="lang-badge">electron main</span><span class="cm">// At runtime in Electron main process</span>
+
+<span class="kw">const</span> pythonBin = <span class="fn">path</span>.<span class="fn">join</span>(
+  resourcesPath,
+  <span class="str">'python-runtime'</span>,
+  <span class="str">'bin'</span>,
+  <span class="str">'python3'</span>
+);
+
+<span class="kw">const</span> proc = <span class="fn">spawn</span>(pythonBin, [
+  <span class="str">'-m'</span>,
+  <span class="str">'amplifier_app_runtime.cli'</span>,
+  <span class="str">'--port'</span>,
+  port
+]);
+
+<span class="cm">// No system Python needed.
+// No PATH. No conflicts. Just works.</span></div>
+          <div style="margin-top:14px;" class="metric-row">
+            <div class="metric-chip">
+              <span class="val">~156 MB</span>
+              <span class="lbl">Bundle size</span>
+            </div>
+            <div class="metric-chip">
+              <span class="val" style="color:var(--green); -webkit-text-fill-color:var(--green);">100%</span>
+              <span class="lbl">Metadata intact</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 9 — BUILD PROCESS
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-9">
+    <div class="slide-inner">
+      <div class="kicker">Build Process</div>
+      <h2>From Source to Bundled Runtime</h2>
+      <div class="two-col-wide">
+        <div>
+          <div class="code-block"><span class="lang-badge">bash</span><span class="cm"># Step 1: Get python-build-standalone</span>
+<span class="kw">uv</span> python install <span class="str">cpython-3.13</span>
+<span class="cm"># Downloads a relocatable Python binary</span>
+
+<span class="cm"># Step 2: Create venv &amp; install packages</span>
+<span class="kw">uv</span> venv <span class="str">./python-runtime</span>
+<span class="kw">uv</span> pip install <span class="str">.</span>
+<span class="cm"># Full metadata written to site-packages</span>
+
+<span class="cm"># Step 3: Verify before bundling</span>
+<span class="kw">python</span> <span class="op">-c</span> <span class="str">"
+import importlib.metadata as m
+for pkg in required_packages:
+    files = m.files(pkg)
+    assert files, f'RECORD missing for {pkg}'
+    print(f'✅ {pkg}: {len(files)} recorded files')
+"</span>
+
+<span class="cm"># Step 4: Copy to Electron resources</span>
+<span class="kw">cp</span> <span class="op">-r</span> <span class="str">./python-runtime</span> <span class="str">./electron/resources/</span></div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px;">
+            <h3 style="margin-bottom:12px;">Why <code style="font-family:var(--font-mono); color:var(--teal);">uv</code>?</h3>
+            <ul class="bullet-list">
+              <li><code style="font-family:var(--font-mono);">uv python install</code> downloads exactly python-build-standalone distributions</li>
+              <li>Reproducible — same Python version on every CI run</li>
+              <li>Fast — written in Rust, installs in seconds</li>
+              <li>Venvs created by <code style="font-family:var(--font-mono);">uv</code> use the standalone Python as base</li>
+            </ul>
+          </div>
+          <div class="callout" style="border-left-color:var(--green);">
+            The build script <strong>verifies <code style="font-family:var(--font-mono);">importlib.metadata</code> works correctly</strong> before bundling. If verification fails, the build fails. Ship only what you've proven works.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 10 — VERIFICATION
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-10">
+    <div class="slide-inner" style="max-width:920px;">
+      <div class="kicker">Build Verification</div>
+      <h2>Confidence Before Shipping</h2>
+      <div class="code-block" style="margin-bottom:28px; font-size:clamp(12px,1.25vw,15px);"><span class="lang-badge">build output</span><span class="dim">▶ Verifying importlib.metadata integrity...</span>
+
+<span class="ok-line">✅ amplifier-core == 1.0.9  (65 recorded files)</span>
+<span class="ok-line">✅ amplifier-foundation == 1.0.0  (57 recorded files)</span>
+<span class="ok-line">✅ amplifier-module-loop-streaming == 1.0.0  (10 recorded files)</span>
+<span class="ok-line">✅ amplifier-module-provider-anthropic == 1.0.0  (8 recorded files)</span>
+<span class="ok-line">✅ amplifier-module-hooks == 1.0.0  (12 recorded files)</span>
+
+<span class="ok-line">All packages verified — importlib.metadata works correctly.</span>
+<span class="dim">▶ Copying runtime to electron/resources/python-runtime...</span>
+<span class="ok-line">✅ Build complete. Bundle size: 156 MB</span></div>
+      <div class="cards cards-3">
+        <div class="card">
+          <span class="icon">🔐</span>
+          <h3>Verified at build time</h3>
+          <p>Not "works on my machine" — the exact metadata structure used at runtime is validated in CI before packaging.</p>
+        </div>
+        <div class="card">
+          <span class="icon">📋</span>
+          <h3>File count as signal</h3>
+          <p>Recording how many files are in each package's RECORD catches partial installs and truncated metadata.</p>
+        </div>
+        <div class="card">
+          <span class="icon">🚫</span>
+          <h3>Fail the build, not the user</h3>
+          <p>If any package lacks valid metadata, the build exits non-zero. Users never see the <code style="font-family:var(--font-mono); color:var(--red);">RuntimeError</code>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 11 — COMPARISON TABLE
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-11">
+    <div class="slide-inner" style="max-width:980px;">
+      <div class="kicker">Trade-offs</div>
+      <h2>PyInstaller vs Portable Venv</h2>
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th style="width:26%;">Dimension</th>
+            <th class="col-bad" style="width:37%;">PyInstaller Binary</th>
+            <th class="col-good" style="width:37%;">Portable Venv</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Bundle size</td>
+            <td><span class="val-good">~43 MB</span> &nbsp;compact</td>
+            <td><span style="color:var(--yellow);">~150–160 MB</span> &nbsp;larger but functional</td>
+          </tr>
+          <tr>
+            <td>Module discovery</td>
+            <td><span class="cross">✗ Broken</span> &nbsp;RECORD paths invalid</td>
+            <td><span class="tick">✓ Works</span> &nbsp;full importlib.metadata</td>
+          </tr>
+          <tr>
+            <td>Upgrade one module</td>
+            <td><span class="cross">✗ Full recompile</span> &nbsp;rebuild entire binary</td>
+            <td><span class="tick">✓ Replace one package</span> &nbsp;in site-packages</td>
+          </tr>
+          <tr>
+            <td>Amplifier bundles</td>
+            <td><span class="cross">✗ Fragile</span> &nbsp;entry points break</td>
+            <td><span class="tick">✓ Full support</span> &nbsp;all bundles load</td>
+          </tr>
+          <tr>
+            <td>Debugging crashes</td>
+            <td><span class="cross">✗ Opaque</span> &nbsp;frozen bytecode, no source</td>
+            <td><span class="tick">✓ Real Python files</span> &nbsp;readable source</td>
+          </tr>
+          <tr>
+            <td>Startup speed</td>
+            <td>Extracts to <code style="font-family:var(--font-mono);">/tmp</code> on each launch</td>
+            <td>Direct execution, no extraction step</td>
+          </tr>
+          <tr>
+            <td>CI reproducibility</td>
+            <td>Compiled binary, hard to inspect</td>
+            <td><span class="tick">✓ Verifiable</span> &nbsp;file hashes + metadata check</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top:14px; font-size:clamp(11px,1.1vw,14px); color:var(--text-tertiary);">The size tradeoff is real — but a broken 43 MB binary is less useful than a working 156 MB one.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 12 — SIDECAR PATTERN
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-12">
+    <div class="slide-inner">
+      <div class="kicker">Design Pattern</div>
+      <h2>Mapping Amplifier's Protocol Boundary to HTTP</h2>
+      <p style="margin-bottom:20px;">When integrating Amplifier across language boundaries, its core abstractions map cleanly to HTTP primitives:</p>
+      <div class="two-col">
+        <div>
+          <div class="protocol-row">
+            <span class="protocol-from">DisplaySystem</span>
+            <span class="protocol-arrow">→</span>
+            <span class="protocol-to">SSE stream</span>
+          </div>
+          <div class="protocol-row">
+            <span class="protocol-from">ApprovalSystem</span>
+            <span class="protocol-arrow">→</span>
+            <span class="protocol-to">REST endpoint</span>
+          </div>
+          <div class="protocol-row">
+            <span class="protocol-from">StreamingHook</span>
+            <span class="protocol-arrow">→</span>
+            <span class="protocol-to">WebSocket / SSE events</span>
+          </div>
+          <div class="protocol-row">
+            <span class="protocol-from">SpawnCapability</span>
+            <span class="protocol-arrow">→</span>
+            <span class="protocol-to">REST call</span>
+          </div>
+          <div class="protocol-row">
+            <span class="protocol-from">Session lifecycle</span>
+            <span class="protocol-arrow">→</span>
+            <span class="protocol-to">Resource URLs + DELETE</span>
+          </div>
+        </div>
+        <div>
+          <div class="card card-accent" style="margin-bottom:16px;">
+            <h3>The spirit is preserved</h3>
+            <p style="margin-top:8px;">Amplifier's architecture is about <em>mechanisms, not policies</em> — pluggable systems, clear interfaces, composable modules. HTTP is just another boundary to cross. The philosophy travels.</p>
+          </div>
+          <div class="callout">
+            The host language doesn't need to understand Amplifier internals. It just makes HTTP calls. The Python side handles everything else.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 13 — KEY TAKEAWAYS
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="slide-13">
+    <div class="slide-inner" style="max-width:1000px;">
+      <div class="kicker">Lessons Learned</div>
+      <h2>Key Takeaways</h2>
+      <div class="cards cards-2">
+        <div class="card card-accent">
+          <span class="icon">📦</span>
+          <h3>Preserve the Python packaging ecosystem</h3>
+          <p>Amplifier's module discovery depends on real <code style="font-family:var(--font-mono); color:var(--accent-bright);">dist-info</code> directories and intact RECORD files. Any distribution approach that strips or virtualizes this will break module loading.</p>
+        </div>
+        <div class="card card-accent">
+          <span class="icon">🚢</span>
+          <h3>Don't freeze — ship</h3>
+          <p>python-build-standalone gives you a portable, self-contained Python without PyInstaller's tradeoffs. The extra ~110 MB buys you a fully functional runtime that behaves exactly like development.</p>
+        </div>
+        <div class="card card-accent">
+          <span class="icon">🌉</span>
+          <h3>The sidecar pattern works</h3>
+          <p>Running Amplifier as a child process with an HTTP API cleanly bridges the language gap. Electron speaks HTTP. Amplifier speaks HTTP. No FFI, no shared memory, no complexity.</p>
+        </div>
+        <div class="card card-accent">
+          <span class="icon">🔮</span>
+          <h3>Amplifier's philosophy applies cross-language</h3>
+          <p>Mechanisms, not policies — even when your host app is JavaScript. The protocol boundary maps naturally to HTTP. The modularity is preserved. The sidecar is still <em>Amplifier</em>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 14 — CLOSING
+  ══════════════════════════════════════════════ -->
+  <div class="slide title-slide" id="slide-14">
+    <div class="title-glow"></div>
+    <div class="slide-inner" style="text-align:center;">
+      <div class="kicker" style="margin-bottom:36px;">The Bottom Line</div>
+      <p class="closing-quote">
+        "Amplifier's modular design works because it <em>trusts Python's package ecosystem</em>. Work with it, not around it."
+      </p>
+      <div style="margin:40px auto; width:56px; height:3px; background:linear-gradient(90deg,var(--accent),var(--accent-bright)); border-radius:2px;"></div>
+      <div class="cards-2 cards" style="max-width:700px; margin:0 auto;">
+        <div class="card" style="text-align:left;">
+          <span class="icon">📚</span>
+          <h3>python-build-standalone</h3>
+          <p>github.com/indygreg/python-build-standalone</p>
+        </div>
+        <div class="card" style="text-align:left;">
+          <span class="icon">⚡</span>
+          <h3>uv package manager</h3>
+          <p>docs.astral.sh/uv — fast Python tooling in Rust</p>
+        </div>
+      </div>
+      <p style="margin-top:32px; font-size:clamp(12px,1.1vw,14px); color:var(--text-tertiary);">
+        Technical Case Study · Cross-Platform Desktop Integration · Amplifier AI Agent Framework
+      </p>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- Navigation Buttons -->
+<button class="nav-btn" id="prev-btn" aria-label="Previous slide" disabled>‹</button>
+<button class="nav-btn" id="next-btn" aria-label="Next slide">›</button>
+
+<!-- Slide Counter -->
+<div id="slide-counter">1 / 14</div>
+
+<!-- Nav Dots -->
+<div id="nav-dots"></div>
+
+<script>
+  const TOTAL = 14;
+  let current = 1;
+  let isAnimating = false;
+
+  const counter = document.getElementById('slide-counter');
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  const dotsContainer = document.getElementById('nav-dots');
+
+  // Build dots
+  for (let i = 1; i <= TOTAL; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 1 ? ' active' : '');
+    dot.setAttribute('aria-label', 'Go to slide ' + i);
+    dot.addEventListener('click', () => goTo(i));
+    dotsContainer.appendChild(dot);
+  }
+
+  function goTo(n) {
+    if (isAnimating || n === current || n < 1 || n > TOTAL) return;
+    isAnimating = true;
+
+    const oldSlide = document.getElementById('slide-' + current);
+    const newSlide = document.getElementById('slide-' + n);
+
+    // Exit old slide
+    oldSlide.classList.remove('active');
+    oldSlide.classList.add('exit-left');
+
+    // Prepare new slide off-screen right
+    newSlide.style.transform = 'translateX(40px)';
+    newSlide.style.opacity = '0';
+    newSlide.classList.add('active');
+
+    // Force reflow
+    void newSlide.getBoundingClientRect();
+
+    // Animate in
+    requestAnimationFrame(() => {
+      newSlide.style.transform = '';
+      newSlide.style.opacity = '';
+    });
+
+    setTimeout(() => {
+      oldSlide.classList.remove('exit-left');
+      isAnimating = false;
+    }, 460);
+
+    current = n;
+    updateUI();
+  }
+
+  function updateUI() {
+    counter.textContent = current + ' / ' + TOTAL;
+    prevBtn.disabled = current === 1;
+    nextBtn.disabled = current === TOTAL;
+    document.querySelectorAll('.dot').forEach((d, i) => {
+      d.classList.toggle('active', i + 1 === current);
+    });
+  }
+
+  prevBtn.addEventListener('click', () => goTo(current - 1));
+  nextBtn.addEventListener('click', () => goTo(current + 1));
+
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); goTo(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); goTo(current - 1);
+    } else if (e.key === 'Home') {
+      e.preventDefault(); goTo(1);
+    } else if (e.key === 'End') {
+      e.preventDefault(); goTo(TOTAL);
+    }
+  });
+
+  // Touch / swipe
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) {
+      if (dx < 0) goTo(current + 1); else goTo(current - 1);
+    }
+  });
+</script>
+</body>
+</html>

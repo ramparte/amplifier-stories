@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Self-Maintaining Docs System — Amplifier</title>
+<script>document.documentElement.classList.add('js')</script>
+
+<style>
+  /* ─── Reset & Base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:         #08080F;
+    --surface:    #10101C;
+    --surface2:   #181828;
+    --border:     #1F1F38;
+    --accent:     #5E5CE6;
+    --accent-dim: #3D3BAF;
+    --accent-glow:#5E5CE640;
+    --text:       #EEEEF8;
+    --muted:      #7878A8;
+    --subtle:     #3D3D58;
+    --green:      #30D158;
+    --red:        #FF453A;
+    --amber:      #FFD60A;
+    --blue:       #2FB4FF;
+    --purple:     #BF5AF2;
+    --teal:       #5AC8FA;
+    --slide-w:    1400px;
+    --slide-h:    787px;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #000;
+    font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+    color: var(--text);
+  }
+
+  /* ─── Deck Shell ─────────────────────────────────────────── */
+  #deck {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #viewport {
+    position: relative;
+    width: var(--slide-w);
+    height: var(--slide-h);
+    background: var(--bg);
+    overflow: hidden;
+    border-radius: 4px;
+    box-shadow: 0 40px 120px #00000090;
+  }
+
+  /* ─── Scale to fit ───────────────────────────────────────── */
+  @media screen {
+    #viewport {
+      transform-origin: center center;
+    }
+  }
+
+  /* ─── Slides ─────────────────────────────────────────────── */
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 72px 80px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateX(60px);
+    will-change: opacity, transform;
+  }
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+  }
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+
+  /* ─── Typography ─────────────────────────────────────────── */
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  .eyebrow.green  { color: var(--green); }
+  .eyebrow.amber  { color: var(--amber); }
+  .eyebrow.red    { color: var(--red); }
+  .eyebrow.blue   { color: var(--blue); }
+  .eyebrow.purple { color: var(--purple); }
+
+  h1 {
+    font-size: 68px;
+    font-weight: 700;
+    line-height: 1.0;
+    letter-spacing: -0.025em;
+    color: var(--text);
+  }
+  h2 {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  h3 {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  p, li {
+    font-size: 20px;
+    line-height: 1.65;
+    color: var(--muted);
+  }
+  p.lead {
+    font-size: 26px;
+    line-height: 1.55;
+    color: #BBBBD8;
+  }
+  strong { color: var(--text); font-weight: 600; }
+  em { color: var(--accent); font-style: normal; }
+
+  /* ─── Layout helpers ─────────────────────────────────────── */
+  .cols {
+    display: grid;
+    gap: 32px;
+  }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-5 { grid-template-columns: repeat(5,1fr); }
+  .cols-7 { grid-template-columns: repeat(7,1fr); }
+  .flex { display: flex; }
+  .flex-col { flex-direction: column; }
+  .gap-8  { gap: 8px; }
+  .gap-12 { gap: 12px; }
+  .gap-16 { gap: 16px; }
+  .gap-20 { gap: 20px; }
+  .gap-24 { gap: 24px; }
+  .gap-32 { gap: 32px; }
+  .gap-40 { gap: 40px; }
+  .mt-auto { margin-top: auto; }
+  .mt-8  { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .mt-24 { margin-top: 24px; }
+  .mt-32 { margin-top: 32px; }
+  .mt-40 { margin-top: 40px; }
+  .mt-48 { margin-top: 48px; }
+  .center { text-align: center; }
+  .align-center { align-items: center; }
+
+  /* ─── Cards ──────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+  }
+  .card.accent-border {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent-glow);
+  }
+  .card.green-border  { border-color: var(--green);  box-shadow: 0 0 0 1px #30D15820; }
+  .card.red-border    { border-color: var(--red);    box-shadow: 0 0 0 1px #FF453A20; }
+  .card.amber-border  { border-color: var(--amber);  box-shadow: 0 0 0 1px #FFD60A20; }
+
+  /* ─── Stat Block ─────────────────────────────────────────── */
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px 20px;
+    text-align: center;
+  }
+  .stat-number {
+    font-size: 56px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent) 0%, #9B99FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-number.green  {
+    background: linear-gradient(135deg, var(--green) 0%, #5AF2A0 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-number.amber  {
+    background: linear-gradient(135deg, var(--amber) 0%, #FFB800 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-label {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
+  /* ─── Divider ────────────────────────────────────────────── */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 24px 0;
+  }
+
+  /* ─── Tag / Badge ────────────────────────────────────────── */
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--accent-glow);
+    color: #A0A0FF;
+    border: 1px solid var(--accent-dim);
+  }
+  .tag.green  { background: #30D15820; color: var(--green);  border-color: #30D15840; }
+  .tag.amber  { background: #FFD60A20; color: var(--amber);  border-color: #FFD60A40; }
+  .tag.red    { background: #FF453A20; color: var(--red);    border-color: #FF453A40; }
+
+  /* ─── Code Block ─────────────────────────────────────────── */
+  .code-block {
+    background: #08080F;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 15px;
+    line-height: 1.7;
+    color: #B0B0D0;
+    overflow: hidden;
+  }
+  .code-block .hl-del {
+    display: block;
+    background: #FF453A18;
+    color: #FF6B6B;
+    border-radius: 4px;
+    padding: 0 4px;
+    margin: 0 -4px;
+  }
+  .code-block .hl-add {
+    display: block;
+    background: #30D15820;
+    color: #5AF298;
+    border-radius: 4px;
+    padding: 0 4px;
+    margin: 0 -4px;
+  }
+  .code-block .dim { color: var(--subtle); }
+  .code-block .key { color: #9B99FF; }
+  .code-block .val { color: #FFD580; }
+
+  /* ─── Pipeline Flow ──────────────────────────────────────── */
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-top: 8px;
+  }
+  .pipe-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 14px 20px;
+    border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    position: relative;
+    text-align: center;
+  }
+  .pipe-step + .pipe-step {
+    margin-left: 2px;
+    border-radius: 0 14px 14px 0;
+  }
+  .pipe-step:first-child {
+    border-radius: 14px 0 0 14px;
+  }
+  .pipe-arrow {
+    display: flex;
+    align-items: center;
+    color: var(--subtle);
+    font-size: 18px;
+    padding: 0 2px;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+  .pipe-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+    line-height: 1;
+  }
+  .pipe-name {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .pipe-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .pipe-step.s1 { border-color: #5E5CE680; }
+  .pipe-step.s1 .pipe-name { color: #8B8BF0; }
+  .pipe-step.s2 { border-color: #2FB4FF80; }
+  .pipe-step.s2 .pipe-name { color: var(--blue); }
+  .pipe-step.s3 { border-color: #30D15880; }
+  .pipe-step.s3 .pipe-name { color: var(--green); }
+  .pipe-step.s4 { border-color: #FF9F0A80; }
+  .pipe-step.s4 .pipe-name { color: #FF9F0A; }
+  .pipe-step.s5 { border-color: #BF5AF280; }
+  .pipe-step.s5 .pipe-name { color: var(--purple); }
+
+  /* ─── Step list ──────────────────────────────────────────── */
+  .step-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .step-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    font-size: 19px;
+    color: #BBBBD8;
+    line-height: 1.5;
+  }
+  .step-list .num {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent-glow);
+    border: 1px solid var(--accent);
+    color: #A0A0FF;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+
+  /* ─── Before/After ───────────────────────────────────────── */
+  .ba-wrap {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0;
+    align-items: stretch;
+  }
+  .ba-col {
+    border-radius: 16px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ba-col.before {
+    background: #1A0A0A;
+    border: 1px solid #FF453A40;
+  }
+  .ba-col.after {
+    background: #0A1A0F;
+    border: 1px solid #30D15840;
+  }
+  .ba-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    color: var(--subtle);
+    font-size: 20px;
+  }
+  .ba-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .ba-col.before .ba-label { color: var(--red); }
+  .ba-col.after  .ba-label { color: var(--green); }
+
+  /* ─── Accent line ────────────────────────────────────────── */
+  .accent-line {
+    width: 56px;
+    height: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin-bottom: 28px;
+  }
+  .accent-line.green  { background: var(--green); }
+  .accent-line.amber  { background: var(--amber); }
+  .accent-line.purple { background: var(--purple); }
+
+  /* ─── Quote ──────────────────────────────────────────────── */
+  .quote {
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .quote em {
+    background: linear-gradient(135deg, var(--accent) 0%, #9B99FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── Decorative BG elements ─────────────────────────────── */
+  .bg-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .slide > * { position: relative; z-index: 1; }
+
+  /* ─── Navigation ─────────────────────────────────────────── */
+  #nav-dots {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #FFFFFF30;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+  }
+  .dot.active {
+    background: var(--accent);
+    transform: scale(1.3);
+  }
+
+  #slide-counter {
+    position: fixed;
+    bottom: 22px;
+    right: 36px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #FFFFFF25;
+    z-index: 100;
+    letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #nav-hint {
+    position: fixed;
+    bottom: 22px;
+    left: 36px;
+    font-size: 11px;
+    color: #FFFFFF20;
+    z-index: 100;
+    letter-spacing: 0.06em;
+  }
+
+  /* ─── Click zones ────────────────────────────────────────── */
+  #zone-prev, #zone-next {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 15%;
+    z-index: 50;
+    cursor: pointer;
+  }
+  #zone-prev { left: 0; }
+  #zone-next { right: 0; }
+
+  /* ─── Title slide specific ───────────────────────────────── */
+  .slide-title {
+    justify-content: center;
+  }
+  .slide-title h1 {
+    font-size: 72px;
+    max-width: 700px;
+  }
+  .wordmark {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 40px;
+  }
+  .wordmark span {
+    color: var(--accent);
+  }
+  .date-tag {
+    font-size: 13px;
+    color: var(--subtle);
+    letter-spacing: 0.08em;
+    margin-top: 32px;
+  }
+
+  /* ─── Full-bleed statement slide ─────────────────────────── */
+  .slide-statement {
+    justify-content: center;
+  }
+  .slide-statement .oversize {
+    font-size: 88px;
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -0.04em;
+    color: var(--text);
+    max-width: 900px;
+  }
+  .slide-statement .oversize .cross {
+    color: var(--red);
+    text-decoration: line-through;
+    text-decoration-color: var(--red);
+    text-decoration-thickness: 5px;
+  }
+
+  /* ─── Meta moment title ──────────────────────────────────── */
+  .big-moment {
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #A0A0FF 0%, #5E5CE6 40%, #BF5AF2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── Closing provocation ────────────────────────────────── */
+  .provocation {
+    font-size: 52px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    max-width: 900px;
+  }
+
+  /* ─── Scrollable content override ───────────────────────── */
+  .pipe-compact .pipe-step {
+    padding: 18px 10px 16px;
+  }
+  .pipe-compact .pipe-icon {
+    font-size: 22px;
+    margin-bottom: 7px;
+  }
+  .pipe-compact .pipe-name {
+    font-size: 11px;
+  }
+  .pipe-compact .pipe-desc {
+    font-size: 11px;
+  }
+
+
+        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+    </style>
+</head>
+<body>
+
+<div id="deck">
+<div id="viewport">
+
+  <!-- ─── BG GLOW LAYER (shared) ───────────────────────────── -->
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 1 — Title
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide slide-title active" id="s1">
+    <div class="bg-glow" style="width:600px;height:600px;background:#5E5CE618;top:-100px;left:-80px;"></div>
+    <div class="bg-glow" style="width:400px;height:400px;background:#BF5AF210;bottom:-80px;right:0;"></div>
+
+    <div class="wordmark">⬡ <span>Amplifier</span></div>
+
+    <div class="accent-line"></div>
+    <p class="eyebrow">Infrastructure &amp; Automation</p>
+    <h1>The Self-Maintaining<br>Docs System</h1>
+
+    <p class="lead mt-32" style="max-width:560px;">
+      How Amplifier used itself to build a pipeline that<br>
+      keeps documentation truthful — automatically, every day.
+    </p>
+
+    <div class="date-tag mt-auto">February 20, 2026 &nbsp;·&nbsp; Production Deployment</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 2 — The Hook: Documentation Lies
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide slide-statement" id="s2">
+    <div class="bg-glow" style="width:500px;height:500px;background:#FF453A10;top:50px;right:50px;"></div>
+
+    <p class="eyebrow red">The Hook</p>
+    <div class="oversize">Documentation<br><span class="cross">lies.</span></div>
+
+    <div class="mt-40" style="max-width:680px;">
+      <div class="flex gap-32">
+        <div>
+          <p class="lead">The moment code ships, the docs start drifting.</p>
+          <p style="margin-top:16px; font-size:19px; color:var(--muted); line-height:1.6;">
+            Model names go stale. Config keys get renamed. Default values change.
+            Nobody has time to keep up. The result: engineers trust the code, not the docs.
+            <strong>Docs become decoration.</strong>
+          </p>
+        </div>
+        <div style="flex-shrink:0; width:280px;">
+          <div class="card" style="padding:24px;">
+            <p style="font-size:13px; color:var(--muted); margin-bottom:16px; letter-spacing:0.06em; text-transform:uppercase; font-weight:600;">Sound familiar?</p>
+            <div class="flex flex-col gap-12">
+              <div style="display:flex; gap:10px; align-items:flex-start;">
+                <span style="color:var(--red); font-size:15px; flex-shrink:0;">✗</span>
+                <p style="font-size:15px; color:#BBBBD8;">API docs reference a renamed endpoint</p>
+              </div>
+              <div style="display:flex; gap:10px; align-items:flex-start;">
+                <span style="color:var(--red); font-size:15px; flex-shrink:0;">✗</span>
+                <p style="font-size:15px; color:#BBBBD8;">Config example uses a deleted key</p>
+              </div>
+              <div style="display:flex; gap:10px; align-items:flex-start;">
+                <span style="color:var(--red); font-size:15px; flex-shrink:0;">✗</span>
+                <p style="font-size:15px; color:#BBBBD8;">Model name in the quickstart is two versions old</p>
+              </div>
+              <div style="display:flex; gap:10px; align-items:flex-start;">
+                <span style="color:var(--red); font-size:15px; flex-shrink:0;">✗</span>
+                <p style="font-size:15px; color:#BBBBD8;">Filed issue sits open for 3 months</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 3 — The Problem at Scale
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s3">
+    <div class="bg-glow" style="width:600px;height:400px;background:#5E5CE610;bottom:0;right:0;"></div>
+
+    <p class="eyebrow">Act 1 &nbsp;—&nbsp; The Old Way</p>
+    <h2>Manual updates don't scale.<br>They don't even keep up.</h2>
+
+    <div class="cols cols-2 mt-40 gap-32">
+      <div class="flex flex-col gap-20">
+        <div class="card">
+          <p style="font-size:13px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:12px;">The manual process</p>
+          <ul class="step-list">
+            <li><span class="num">1</span><span>Engineer notices a doc is wrong</span></li>
+            <li><span class="num">2</span><span>Files an issue (if they have time)</span></li>
+            <li><span class="num">3</span><span>Issue sits in the backlog</span></li>
+            <li><span class="num">4</span><span>Someone eventually updates it</span></li>
+            <li><span class="num">5</span><span>Other sections stay wrong</span></li>
+          </ul>
+        </div>
+        <div class="card amber-border">
+          <p style="font-size:15px; color:var(--muted);">Manual updates: <strong>30–60 min per change set</strong>, done infrequently, always incomplete. Engineers route around docs. Trust erodes.</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-20">
+        <p style="font-size:15px; color:var(--muted); font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">Amplifier's scale</p>
+        <div class="cols cols-2 gap-16">
+          <div class="stat">
+            <div class="stat-number">34</div>
+            <div class="stat-label">source repos</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">83</div>
+            <div class="stat-label">documented sections</div>
+          </div>
+        </div>
+        <div class="card">
+          <p style="font-size:18px; color:#BBBBD8; line-height:1.6;">
+            Keeping 83 sections accurate across 34 moving repos manually would require
+            <strong>constant vigilance by a dedicated person.</strong>
+            Nobody does it consistently. Nobody can.
+          </p>
+        </div>
+        <div class="card accent-border">
+          <p style="font-size:15px; color:var(--muted);">
+            There had to be a better way.
+            <br><br>
+            <strong style="color:#A0A0FF;">We decided to build it — using Amplifier itself.</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 4 — The Meta Moment
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide slide-statement" id="s4">
+    <div class="bg-glow" style="width:700px;height:700px;background:#5E5CE615;top:-100px;left:-100px;"></div>
+    <div class="bg-glow" style="width:400px;height:400px;background:#BF5AF215;bottom:0;right:50px;"></div>
+
+    <p class="eyebrow purple">Act 2 &nbsp;—&nbsp; The Meta Moment</p>
+    <div class="big-moment" style="max-width:900px;">
+      We used Amplifier to automate<br>Amplifier's own documentation.
+    </div>
+
+    <p class="lead mt-32" style="max-width:700px; color:var(--muted);">
+      In a single session, Amplifier designed the system, built the plan,
+      executed every task, diagnosed its own failures, fixed them, deployed
+      the pipeline, and ran it.
+    </p>
+
+    <div class="flex gap-16 mt-32 align-center">
+      <div class="tag">Brainstorm mode</div>
+      <span style="color:var(--subtle);">→</span>
+      <div class="tag">Write-plan mode</div>
+      <span style="color:var(--subtle);">→</span>
+      <div class="tag">Execute-plan mode</div>
+      <span style="color:var(--subtle);">→</span>
+      <div class="tag">Self-diagnosis</div>
+      <span style="color:var(--subtle);">→</span>
+      <div class="tag green">Deployed &amp; running</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 5 — What Happened In One Session
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s5">
+    <div class="bg-glow" style="width:500px;height:500px;background:#5E5CE612;bottom:-100px;right:-50px;"></div>
+
+    <p class="eyebrow">One Session — Start to Finish</p>
+    <h2>Amplifier built the system<br>that maintains Amplifier.</h2>
+
+    <div class="cols cols-2 mt-32 gap-40">
+      <ul class="step-list">
+        <li>
+          <span class="num">1</span>
+          <span><strong>Designed the architecture</strong><br>Brainstorm mode → validated design doc</span>
+        </li>
+        <li>
+          <span class="num">2</span>
+          <span><strong>Built the implementation plan</strong><br>Write-plan mode → 12 scoped tasks</span>
+        </li>
+        <li>
+          <span class="num">3</span>
+          <span><strong>Executed all 12 tasks</strong><br>Execute-plan mode ran autonomously</span>
+        </li>
+        <li>
+          <span class="num">4</span>
+          <span><strong>Diagnosed its own failures</strong><br>Session analyst agent found 4 interference points</span>
+        </li>
+      </ul>
+      <ul class="step-list">
+        <li>
+          <span class="num">5</span>
+          <span><strong>Fixed the interference points</strong><br>Recipe author agent applied targeted fixes</span>
+        </li>
+        <li>
+          <span class="num">6</span>
+          <span><strong>Deployed the CI pipeline</strong><br>GitHub Actions workflow committed and live</span>
+        </li>
+        <li>
+          <span class="num">7</span>
+          <span><strong>Ran it — and it worked</strong><br>342 claims verified. 1 error found. Fixed. Committed.</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="card accent-border mt-24" style="padding:18px 24px;">
+      <p style="font-size:16px; color:#BBBBD8; font-style:italic;">
+        "The system ate its own cooking." &nbsp;—&nbsp;
+        <span style="color:var(--muted); font-style:normal;">Amplifier used the same agentic loop to build the automation that now runs daily.</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 6 — How It Works: The Pipeline
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s6">
+    <div class="bg-glow" style="width:700px;height:350px;background:#5E5CE610;top:200px;left:50%;transform:translateX(-50%);"></div>
+
+    <p class="eyebrow">Act 3 &nbsp;—&nbsp; How It Works</p>
+    <h2>Five stages. Zero human intervention.</h2>
+
+    <div class="pipeline pipe-compact mt-32">
+      <div class="pipe-step s1">
+        <div class="pipe-icon">🔍</div>
+        <div class="pipe-name">Detect</div>
+        <div class="pipe-desc">Clone 34 repos. Compute content hashes. Diff against baseline. Only process what changed.</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step s2">
+        <div class="pipe-icon">✏️</div>
+        <div class="pipe-name">Regenerate</div>
+        <div class="pipe-desc">AI surgically rewrites only drifted sections. Everything accurate stays untouched.</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step s3">
+        <div class="pipe-icon">🔬</div>
+        <div class="pipe-name">Verify</div>
+        <div class="pipe-desc">Second AI pass checks every factual claim against source code. Every commit is evidence-grounded.</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step s4">
+        <div class="pipe-icon">🚦</div>
+        <div class="pipe-name">Filter</div>
+        <div class="pipe-desc">Cosmetic prose rewrites rejected. Only meaningful content changes get through.</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step s5">
+        <div class="pipe-icon">✅</div>
+        <div class="pipe-name">Commit &amp; Alert</div>
+        <div class="pipe-desc">Changes commit atomically with updated hashes. Missing sources become tracked GitHub issues.</div>
+      </div>
+    </div>
+
+    <div class="cols cols-3 mt-32 gap-20">
+      <div class="card" style="padding:18px 22px;">
+        <p style="font-size:12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#8B8BF0; margin-bottom:8px;">Detect</p>
+        <p style="font-size:14px; color:var(--muted);">Content hashing means only genuinely changed sections trigger downstream work. No wasted compute.</p>
+      </div>
+      <div class="card" style="padding:18px 22px;">
+        <p style="font-size:12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--green); margin-bottom:8px;">Verify</p>
+        <p style="font-size:14px; color:var(--muted);">Not just AI-generated — AI-verified. Wrong model name? Fix it. Stale config key? Remove it.</p>
+      </div>
+      <div class="card" style="padding:18px 22px;">
+        <p style="font-size:12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--purple); margin-bottom:8px;">Filter bypass</p>
+        <p style="font-size:14px; color:var(--muted);">Factual corrections skip the semantic diff threshold. A one-character model name fix ships regardless.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 7 — It Caught a Real Error
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s7">
+    <div class="bg-glow" style="width:500px;height:400px;background:#30D15810;bottom:0;right:0;"></div>
+
+    <p class="eyebrow green">Act 4 &nbsp;—&nbsp; First Real Run</p>
+    <h2>On day one, it caught something<br>nobody asked it to find.</h2>
+
+    <div class="ba-wrap mt-32" style="gap:16px;">
+      <div class="ba-col before">
+        <div class="ba-label">Before — what was committed</div>
+        <div class="code-block">
+<span class="dim"># providers/anthropic.md</span>
+<span class="dim">## Recommended model</span>
+&nbsp;
+<span class="key">model</span><span class="dim">:</span> <span class="hl-del">  claude-opus-4-1</span>
+<span class="dim">context_window</span><span class="dim">:</span> <span class="val">200k</span>
+<span class="dim">supports_vision</span><span class="dim">:</span> <span class="val">true</span>
+        </div>
+        <p style="font-size:14px; color:var(--red); margin-top:4px;">
+          Wrong model name. Silent for weeks.
+        </p>
+      </div>
+
+      <div class="ba-divider">
+        <div style="text-align:center;">
+          <div style="font-size:28px; color:var(--accent);">→</div>
+          <div style="font-size:11px; color:var(--subtle); letter-spacing:0.08em; text-transform:uppercase; margin-top:6px;">Auto-fixed</div>
+        </div>
+      </div>
+
+      <div class="ba-col after">
+        <div class="ba-label">After — pipeline commit</div>
+        <div class="code-block">
+<span class="dim"># providers/anthropic.md</span>
+<span class="dim">## Recommended model</span>
+&nbsp;
+<span class="key">model</span><span class="dim">:</span> <span class="hl-add">  claude-opus-4-6</span>
+<span class="dim">context_window</span><span class="dim">:</span> <span class="val">200k</span>
+<span class="dim">supports_vision</span><span class="dim">:</span> <span class="val">true</span>
+        </div>
+        <p style="font-size:14px; color:var(--green); margin-top:4px;">
+          Verified against source. Committed automatically.
+        </p>
+      </div>
+    </div>
+
+    <div class="cols cols-3 mt-24 gap-20">
+      <div class="stat" style="padding:24px 16px;">
+        <div class="stat-number" style="font-size:48px;">342</div>
+        <div class="stat-label">claims evidence-checked</div>
+      </div>
+      <div class="stat" style="padding:24px 16px;">
+        <div class="stat-number green" style="font-size:48px;">341</div>
+        <div class="stat-label">verified correct</div>
+      </div>
+      <div class="stat" style="padding:24px 16px;">
+        <div class="stat-number amber" style="font-size:48px;">1</div>
+        <div class="stat-label">factual error found &amp; fixed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 8 — The Numbers
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s8">
+    <div class="bg-glow" style="width:800px;height:500px;background:#5E5CE60C;top:50%;left:50%;transform:translate(-50%,-50%);"></div>
+
+    <p class="eyebrow">Act 5 &nbsp;—&nbsp; The Outcome</p>
+    <h2>The numbers that matter.</h2>
+
+    <div class="cols cols-3 mt-32 gap-20">
+      <div class="stat" style="padding:36px 20px;">
+        <div class="stat-number" style="font-size:64px;">34</div>
+        <div class="stat-label">source repos monitored daily</div>
+      </div>
+      <div class="stat" style="padding:36px 20px;">
+        <div class="stat-number" style="font-size:64px;">83</div>
+        <div class="stat-label">sections tracked by hash</div>
+      </div>
+      <div class="stat" style="padding:36px 20px;">
+        <div class="stat-number green" style="font-size:64px;">&lt;24h</div>
+        <div class="stat-label">until any drift is corrected</div>
+      </div>
+      <div class="stat" style="padding:36px 20px;">
+        <div class="stat-number green" style="font-size:64px;">0</div>
+        <div class="stat-label">human hours for routine updates</div>
+      </div>
+      <div class="stat" style="padding:36px 20px;">
+        <div class="stat-number amber" style="font-size:64px;">12</div>
+        <div class="stat-label">tasks executed autonomously to build it</div>
+      </div>
+      <div class="stat" style="padding:36px 20px;">
+        <div class="stat-number amber" style="font-size:64px;">4</div>
+        <div class="stat-label">interference points self-diagnosed and fixed</div>
+      </div>
+    </div>
+
+    <div class="flex align-center gap-16 mt-24">
+      <span style="font-size:13px; color:var(--muted);">Runs every day at</span>
+      <div class="tag">6:00 AM UTC</div>
+      <span style="font-size:13px; color:var(--muted);">· No human required · Scales automatically as the codebase grows</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 9 — Time Savings
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s9">
+    <div class="bg-glow" style="width:500px;height:400px;background:#30D15810;bottom:0;left:0;"></div>
+
+    <p class="eyebrow green">Time Saved</p>
+    <h2>From hours of manual effort<br>to zero.</h2>
+
+    <div class="ba-wrap mt-36" style="gap:20px; grid-template-columns:1fr 60px 1fr;">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="padding:4px 0 16px;">
+          <div class="ba-label" style="color:var(--muted); font-size:13px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; margin-bottom:16px;">Before automation</div>
+        </div>
+        <div class="card red-border" style="padding:22px 24px;">
+          <p style="font-size:16px; font-weight:600; color:var(--text); margin-bottom:8px;">⏱ 30–60 min per change set</p>
+          <p style="font-size:14px; color:var(--muted);">Manual updates done infrequently, always incomplete</p>
+        </div>
+        <div class="card red-border" style="padding:22px 24px;">
+          <p style="font-size:16px; font-weight:600; color:var(--text); margin-bottom:8px;">👁 Human vigilance required</p>
+          <p style="font-size:14px; color:var(--muted);">Someone has to notice, file, triage, and assign each update</p>
+        </div>
+        <div class="card red-border" style="padding:22px 24px;">
+          <p style="font-size:16px; font-weight:600; color:var(--text); margin-bottom:8px;">🕳 Errors ship silently</p>
+          <p style="font-size:14px; color:var(--muted);">No systematic verification — wrong info stays until someone notices</p>
+        </div>
+      </div>
+
+      <div class="ba-divider">
+        <div style="font-size:22px; color:var(--accent);">→</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="padding:4px 0 16px;">
+          <div class="ba-label" style="color:var(--green); font-size:13px; letter-spacing:0.1em; text-transform:uppercase; font-weight:700; margin-bottom:16px;">After automation</div>
+        </div>
+        <div class="card green-border" style="padding:22px 24px;">
+          <p style="font-size:16px; font-weight:600; color:var(--text); margin-bottom:8px;">⚡ Zero human time</p>
+          <p style="font-size:14px; color:var(--muted);">Routine updates handled entirely by the daily pipeline</p>
+        </div>
+        <div class="card green-border" style="padding:22px 24px;">
+          <p style="font-size:16px; font-weight:600; color:var(--text); margin-bottom:8px;">🔁 Daily, automatic, complete</p>
+          <p style="font-size:14px; color:var(--muted);">Every drift caught within 24 hours across all 34 repos</p>
+        </div>
+        <div class="card green-border" style="padding:22px 24px;">
+          <p style="font-size:16px; font-weight:600; color:var(--text); margin-bottom:8px;">🔬 Evidence-backed commits</p>
+          <p style="font-size:14px; color:var(--muted);">10+ factual errors caught in the first session. Nothing ships unverified.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 10 — Trust at Scale
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s10">
+    <div class="bg-glow" style="width:600px;height:500px;background:#5E5CE610;top:-50px;right:-100px;"></div>
+
+    <p class="eyebrow">Trust</p>
+    <h2>Docs you can actually trust.</h2>
+
+    <div class="cols cols-3 mt-40 gap-24">
+      <div class="card" style="padding:28px 24px; display:flex; flex-direction:column; gap:14px;">
+        <div style="font-size:32px;">🔗</div>
+        <h3 style="font-size:20px;">Evidence-backed</h3>
+        <p style="font-size:15px;">Every committed doc is verified against source code — not just AI-generated, but AI-verified. No claim ships without a source to back it.</p>
+      </div>
+      <div class="card" style="padding:28px 24px; display:flex; flex-direction:column; gap:14px;">
+        <div style="font-size:32px;">🚦</div>
+        <h3 style="font-size:20px;">Factual first</h3>
+        <p style="font-size:15px;">The cosmetic filter won't stop a one-character model name fix. Factual corrections bypass the threshold. Accuracy always wins over brevity.</p>
+      </div>
+      <div class="card" style="padding:28px 24px; display:flex; flex-direction:column; gap:14px;">
+        <div style="font-size:32px;">🔔</div>
+        <h3 style="font-size:20px;">Nothing disappears silently</h3>
+        <p style="font-size:15px;">Missing sources surface as tracked GitHub issues. Every warning has an owner and a paper trail. The system tells you what it couldn't fix.</p>
+      </div>
+    </div>
+
+    <div class="card accent-border mt-32" style="padding:24px 28px;">
+      <div class="flex align-center gap-24">
+        <div style="font-size:40px; flex-shrink:0;">📊</div>
+        <div>
+          <p style="font-size:20px; color:var(--text); font-weight:600; margin-bottom:6px;">From decoration to infrastructure</p>
+          <p style="font-size:16px; color:var(--muted); line-height:1.6;">
+            Documentation isn't a side project anymore. It's a first-class artifact with the same integrity guarantees as the code itself.
+            When the pipeline says it's correct, <strong>it's correct.</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 11 — The Pattern
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s11">
+    <div class="bg-glow" style="width:700px;height:700px;background:#BF5AF210;bottom:-200px;right:-150px;"></div>
+
+    <p class="eyebrow purple">The Closer</p>
+    <h2>This isn't a docs tool.<br>It's a pattern.</h2>
+
+    <div class="cols cols-2 mt-36 gap-32">
+      <div>
+        <p class="lead">Any artifact that should stay in sync with code can be maintained the same way.</p>
+        <p style="margin-top:20px; font-size:18px; color:var(--muted); line-height:1.7;">
+          The system Amplifier built for itself can be replicated across any project that has the same problem:
+          <strong>things that should reflect the code, but don't.</strong>
+        </p>
+      </div>
+      <div class="flex flex-col gap-12">
+        <p style="font-size:12px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:4px;">What else fits the pattern?</p>
+        <div class="card" style="padding:16px 20px;">
+          <div class="flex align-center gap-12">
+            <span style="font-size:20px;">📖</span>
+            <div>
+              <p style="font-size:15px; font-weight:600; color:var(--text);">API references</p>
+              <p style="font-size:13px; color:var(--muted);">Endpoints, parameters, response schemas</p>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding:16px 20px;">
+          <div class="flex align-center gap-12">
+            <span style="font-size:20px;">📋</span>
+            <div>
+              <p style="font-size:15px; font-weight:600; color:var(--text);">Runbooks</p>
+              <p style="font-size:13px; color:var(--muted);">Deployment steps that reflect actual infra config</p>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding:16px 20px;">
+          <div class="flex align-center gap-12">
+            <span style="font-size:20px;">📝</span>
+            <div>
+              <p style="font-size:15px; font-weight:600; color:var(--text);">Changelogs</p>
+              <p style="font-size:13px; color:var(--muted);">Auto-generated from commits, verified against releases</p>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding:16px 20px;">
+          <div class="flex align-center gap-12">
+            <span style="font-size:20px;">🏗</span>
+            <div>
+              <p style="font-size:15px; font-weight:600; color:var(--text);">Architecture diagrams</p>
+              <p style="font-size:13px; color:var(--muted);">Service maps that reflect the actual running system</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 12 — The Provocation / Closer
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide slide-statement" id="s12">
+    <div class="bg-glow" style="width:800px;height:800px;background:#5E5CE614;top:50%;left:50%;transform:translate(-50%,-55%);"></div>
+    <div class="bg-glow" style="width:300px;height:300px;background:#BF5AF218;bottom:0;right:100px;"></div>
+
+    <p class="eyebrow">The Question Worth Asking</p>
+
+    <div class="provocation mt-16">
+      The question isn't whether AI<br>
+      can maintain your documentation.<br>
+      <span style="background:linear-gradient(135deg,var(--accent) 0%,#9B99FF 50%,#BF5AF2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">It already can.</span>
+    </div>
+
+    <div class="mt-36" style="max-width:760px;">
+      <p class="lead">
+        The question is:
+        <strong style="font-size:28px;color:var(--text);">what else should it be maintaining?</strong>
+      </p>
+    </div>
+
+    <div class="mt-auto flex align-center gap-24">
+      <div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">Built with</p>
+        <p style="font-size:16px; color:var(--text); font-weight:600;">Amplifier — agentic automation for engineering teams</p>
+      </div>
+      <div style="width:1px;height:40px;background:var(--border);flex-shrink:0;"></div>
+      <div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">Status</p>
+        <div class="flex align-center gap-8">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);flex-shrink:0;display:block;"></span>
+          <p style="font-size:16px; color:var(--green); font-weight:600;">Production · Running daily</p>
+        </div>
+      </div>
+      <div style="width:1px;height:40px;background:var(--border);flex-shrink:0;"></div>
+      <div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;">Deployed</p>
+        <p style="font-size:16px; color:var(--text); font-weight:600;">February 20, 2026</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SLIDE 13 — CTA / Learn More
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s13">
+    <div class="bg-glow" style="width:600px;height:400px;background:#5E5CE612;top:0;right:0;"></div>
+
+    <p class="eyebrow">Try It</p>
+    <h2>Where to go next.</h2>
+
+    <div class="cols cols-2 mt-36 gap-32">
+      <div class="flex flex-col gap-20">
+        <div class="card accent-border" style="padding:24px 28px; flex:1;">
+          <p style="font-size:13px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#8B8BF0; margin-bottom:12px;">For builders</p>
+          <p style="font-size:16px; color:var(--text); font-weight:600; margin-bottom:8px;">The pipeline is fully open</p>
+          <p style="font-size:15px; color:var(--muted); line-height:1.6;">
+            The docs-sync recipe, CI workflow, evidence validator, and semantic diff filter are all part of the Amplifier ecosystem.
+            Fork, adapt, run it on your own repos.
+          </p>
+          <div class="flex gap-12 mt-16">
+            <div class="tag">docs-sync recipe</div>
+            <div class="tag">evidence-validator</div>
+            <div class="tag">semantic-diff</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-16">
+        <div class="card" style="padding:22px 24px; display:flex; gap:16px; align-items:flex-start;">
+          <span style="font-size:24px; flex-shrink:0;">📑</span>
+          <div>
+            <p style="font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px;">Design document</p>
+            <p style="font-size:14px; color:var(--muted);">The brainstorm-mode output that seeded the implementation. Read the full architecture decision.</p>
+          </div>
+        </div>
+        <div class="card" style="padding:22px 24px; display:flex; gap:16px; align-items:flex-start;">
+          <span style="font-size:24px; flex-shrink:0;">🔁</span>
+          <div>
+            <p style="font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px;">Recipe: docs-sync</p>
+            <p style="font-size:14px; color:var(--muted);">The Amplifier recipe that runs daily. Configurable per-repo with custom source mappings.</p>
+          </div>
+        </div>
+        <div class="card" style="padding:22px 24px; display:flex; gap:16px; align-items:flex-start;">
+          <span style="font-size:24px; flex-shrink:0;">📈</span>
+          <div>
+            <p style="font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px;">DOC_GENERATION.md</p>
+            <p style="font-size:14px; color:var(--muted);">The living spec for how Amplifier's own documentation is generated and maintained.</p>
+          </div>
+        </div>
+        <div class="card" style="padding:22px 24px; display:flex; gap:16px; align-items:flex-start;">
+          <span style="font-size:24px; flex-shrink:0;">💬</span>
+          <div>
+            <p style="font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px;">Ask Amplifier</p>
+            <p style="font-size:14px; color:var(--muted);">Start a session: <em style="font-family:monospace; font-size:13px; color:#9B99FF;">"Set up docs-sync for my project"</em></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /viewport -->
+</div><!-- /deck -->
+
+<!-- ─── Navigation UI ─────────────────────────────────────── -->
+<div id="nav-dots"></div>
+<div id="slide-counter"></div>
+<div id="nav-hint">← → to navigate</div>
+<div id="zone-prev" onclick="prev()"></div>
+<div id="zone-next" onclick="next()"></div>
+
+<script>
+  const TOTAL = 13;
+  let current = 1;
+
+  // ── Scale to fit window ──────────────────────────────────
+  const vp = document.getElementById('viewport');
+  function scaleViewport() {
+    const W = vp.offsetWidth, H = vp.offsetHeight;
+    const wRatio = window.innerWidth  / W;
+    const hRatio = window.innerHeight / H;
+    const scale  = Math.min(wRatio, hRatio) * 0.97;
+    vp.style.transform = `scale(${scale})`;
+  }
+  scaleViewport();
+  window.addEventListener('resize', scaleViewport);
+
+  // ── Dots ─────────────────────────────────────────────────
+  const dotsEl = document.getElementById('nav-dots');
+  for (let i = 1; i <= TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 1 ? ' active' : '');
+    d.dataset.n = i;
+    d.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(d);
+  }
+
+  // ── Counter ───────────────────────────────────────────────
+  const counterEl = document.getElementById('slide-counter');
+  function updateUI() {
+    counterEl.textContent = `${String(current).padStart(2,'0')} / ${String(TOTAL).padStart(2,'0')}`;
+    document.querySelectorAll('.dot').forEach(d => {
+      d.classList.toggle('active', +d.dataset.n === current);
+    });
+  }
+
+  // ── Navigation ────────────────────────────────────────────
+  function goTo(n, dir) {
+    if (n < 1 || n > TOTAL || n === current) return;
+    const prev_slide = document.getElementById('s' + current);
+    const next_slide = document.getElementById('s' + n);
+    if (!prev_slide || !next_slide) return;
+
+    // determine direction
+    const forward = n > current;
+    prev_slide.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+    prev_slide.style.opacity = '0';
+    prev_slide.style.transform = forward ? 'translateX(-50px)' : 'translateX(50px)';
+    prev_slide.classList.remove('active');
+
+    next_slide.style.transition = 'none';
+    next_slide.style.opacity = '0';
+    next_slide.style.transform = forward ? 'translateX(50px)' : 'translateX(-50px)';
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        next_slide.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        next_slide.style.opacity = '1';
+        next_slide.style.transform = 'translateX(0)';
+        next_slide.classList.add('active');
+      });
+    });
+
+    setTimeout(() => {
+      prev_slide.style.transition = '';
+      prev_slide.style.transform = 'translateX(60px)';
+    }, 400);
+
+    current = n;
+    updateUI();
+  }
+
+  function next() { goTo(current + 1); }
+  function prev() { goTo(current - 1); }
+
+  // ── Keyboard ──────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ')  { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); prev(); }
+    if (e.key === 'Home') goTo(1);
+    if (e.key === 'End')  goTo(TOTAL);
+  });
+
+  // ── Touch ─────────────────────────────────────────────────
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) dx < 0 ? next() : prev();
+  }, {passive:true});
+
+  updateUI();
+</script>
+</body>
+</html>

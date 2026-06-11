@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Amplifier IPC &mdash; Every Component, Its Own Container</title>
+    <style>
+        :root {
+            --accent: #42A5F5;
+            --accent-dim: rgba(66, 165, 245, 0.15);
+            --accent-glow: rgba(66, 165, 245, 0.3);
+
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Typography scale */
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 36px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 16px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 1.8vw, 15px);
+
+            /* Spacing */
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Slide base */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin-bottom: var(--space-md);
+        }
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: var(--space-md);
+        }
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(680px, 90vw);
+        }
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-sm);
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: 100px;
+            background: rgba(48, 209, 88, 0.15);
+            color: #30D158;
+            margin-top: var(--space-sm);
+        }
+
+        /* Grids */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .quads {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .card h3, .card h4 {
+            color: var(--text-primary);
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.5;
+        }
+        .card .icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Card with accent border top */
+        .card-accent {
+            border-top: 2px solid var(--accent);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: #BFC0C5;
+            margin-top: var(--space-md);
+        }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-cmd { color: #30D158; }
+        .code-flag { color: #42A5F5; }
+        .code-string { color: #FF9F0A; }
+        .code-var { color: #64D2FF; }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            max-width: min(800px, 95vw);
+        }
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+        }
+        .flow-number {
+            flex-shrink: 0;
+            width: clamp(36px, 5vw, 48px);
+            height: clamp(36px, 5vw, 48px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--fs-body);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .flow-content h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .flow-content p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .flow-arrow {
+            width: 2px;
+            height: var(--space-sm);
+            background: var(--accent-dim);
+            margin-left: clamp(17px, 2.3vw, 23px);
+        }
+
+        /* Architecture diagram */
+        .arch-entities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .entity-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+        .entity-box .icon {
+            font-size: clamp(32px, 6vw, 56px);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box h4 {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Velocity stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+        .velocity-stat { text-align: center; }
+        .velocity-number {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #BF5AF2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .velocity-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-top: var(--space-lg);
+            max-width: min(700px, 95vw);
+        }
+        .timeline-item {
+            display: flex;
+            gap: var(--space-md);
+            padding-bottom: var(--space-md);
+            position: relative;
+        }
+        .timeline-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: clamp(30px, 4vw, 40px);
+            top: clamp(36px, 5vw, 48px);
+            bottom: 0;
+            width: 2px;
+            background: var(--accent-dim);
+        }
+        .timeline-date {
+            flex-shrink: 0;
+            width: clamp(60px, 8vw, 80px);
+            height: clamp(60px, 8vw, 80px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .timeline-date .day {
+            font-size: var(--fs-h3);
+            color: var(--accent);
+            line-height: 1;
+        }
+        .timeline-date .month {
+            font-size: var(--fs-small);
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+        .timeline-text h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .timeline-text p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Quote / callout box */
+        .callout {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            margin-top: var(--space-md);
+            max-width: min(700px, 95vw);
+        }
+        .callout p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            font-style: italic;
+        }
+        .callout .attribution {
+            font-style: normal;
+            color: var(--text-tertiary);
+            font-size: var(--fs-small);
+            margin-top: var(--space-xs);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        /* Sources slide specifics */
+        .sources-content {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            max-width: min(800px, 95vw);
+        }
+        .sources-content strong {
+            color: var(--text-primary);
+        }
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .sources-content ul {
+            padding-left: var(--space-md);
+            margin: var(--space-xs) 0;
+        }
+        .sources-content li {
+            margin-bottom: var(--space-xs);
+        }
+
+        /* More stories link */
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Touch targets */
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+
+        /* Highlight accent text */
+        .accent { color: var(--accent); }
+
+        /* Inline list with subtle bullets */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding-left: var(--space-md);
+            position: relative;
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-xs);
+        }
+        .feature-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 1: TITLE                                                -->
+    <!-- ============================================================ -->
+    <div class="slide active center">
+        <div class="section-label">Architecture & Philosophy &middot; Amplifier IPC</div>
+        <h1 class="headline">Every Component,<br>Its Own Container</h1>
+        <p class="subhead">Decomposing the AI agent monolith into composable microservices &mdash; JSON-RPC today, Dapr-native containers tomorrow.</p>
+        <div class="status-badge">Active &middot; Rapid Development</div>
+        <div class="small-text">May 2026 &middot; payneio/amplifier-ipc</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 2: THE PROBLEM                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">The monolith<br>trap</h2>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F517;</div>
+                <h3>Dependency Hell</h3>
+                <p>Every tool, hook, and provider shares a single process. One package conflict breaks everything. Anthropic SDK pins clash with OpenAI pins.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F512;</div>
+                <h3>Python-Only Lock-In</h3>
+                <p>Dynamic <code>import_and_create()</code> machinery ties every component to Python. No path to Rust tools, Go providers, or TypeScript hooks.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F4A5;</div>
+                <h3>Blast Radius</h3>
+                <p>A crashing tool takes down the entire agent session. No process isolation means no fault boundaries.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>The in-process architecture that got Amplifier to v1 becomes the ceiling that prevents v2. Every component shares memory, shares dependencies, shares fate.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 3: THE SOLUTION                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Solution</div>
+        <h2 class="headline">IPC service<br>architecture</h2>
+        <p class="subhead">Every component runs as its own subprocess. A central Host routes messages over JSON-RPC 2.0 via stdio. Fresh processes per turn &mdash; no stale state, no concurrency bugs.</p>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div class="flow-content">
+                    <h4>Spawn</h4>
+                    <p>Host spawns all service subprocesses from isolated <code>uv</code> virtualenvs. Each service gets its own dependency tree. ~200ms startup cost, paid once per turn.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div class="flow-content">
+                    <h4>Discover</h4>
+                    <p>Host sends <code>describe</code> to every service &mdash; builds a routing table of tools, hooks, providers, and content manifests. No static config needed.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div class="flow-content">
+                    <h4>Route</h4>
+                    <p>Orchestrator drives the agent loop. All tool calls, provider requests, and hook events flow through the Host as a dumb message bus. Fan-out, chaining, parallel dispatch.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">4</div>
+                <div class="flow-content">
+                    <h4>Tear Down</h4>
+                    <p>Turn completes. SIGTERM all services, SIGKILL after timeout. Next turn starts fresh &mdash; clean processes, clean state, zero stale memory.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 4: ARCHITECTURE                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">Host as dumb router, orchestrator drives all logic</h2>
+        <div class="arch-entities">
+            <div class="entity-box">
+                <div class="icon">&#x1F3AF;</div>
+                <h4>CLI / REPL</h4>
+                <p>User-facing entry point &mdash; Click + Rich + prompt-toolkit</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F4E1;</div>
+                <h4>Host</h4>
+                <p>Dumb message bus &mdash; spawns services, routes requests, persists transcripts</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F9E0;</div>
+                <h4>Orchestrator</h4>
+                <p>Agent loop driver &mdash; calls providers, tools, hooks via JSON-RPC</p>
+            </div>
+        </div>
+        <div class="thirds">
+            <div class="card">
+                <h4 class="accent">Provider Services</h4>
+                <p>LLM adapters &mdash; Anthropic, OpenAI, Azure, Gemini, Ollama, and more. Each in its own subprocess with its own SDK version.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Tool Services</h4>
+                <p>File I/O, search, bash, web, delegation, tasks, todos. Parallel dispatch via <code>asyncio.gather</code> across service boundaries.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Hook Services</h4>
+                <p>Logging, redaction, modes, routing, progress monitoring. Priority-ordered fan-out with DENY/MODIFY/INJECT semantics.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>The Host does NOT interpret hook results, drive the agent loop, hold conversation state, or call LLMs. It's a router. The orchestrator owns all logic.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 5: THE SERVICE CATALOG                                  -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Service Catalog</div>
+        <h2 class="medium-headline">13 services, one mono-repo</h2>
+        <div class="quads">
+            <div class="card card-accent">
+                <h4>amplifier-foundation</h4>
+                <p>Orchestrator, context manager, core tools, hooks &mdash; the kitchen sink behavior</p>
+            </div>
+            <div class="card card-accent">
+                <h4>amplifier-providers</h4>
+                <p>8 LLM provider adapters with streaming support</p>
+            </div>
+            <div class="card card-accent">
+                <h4>amplifier-modes</h4>
+                <p>Runtime mode overlays &mdash; tool + hook for mode switching</p>
+            </div>
+            <div class="card card-accent">
+                <h4>amplifier-skills</h4>
+                <p>Domain knowledge discovery and loading</p>
+            </div>
+            <div class="card card-accent">
+                <h4>amplifier-routing-matrix</h4>
+                <p>Model routing via curated matrices</p>
+            </div>
+            <div class="card card-accent">
+                <h4>amplifier-recipes</h4>
+                <p>Content-only &mdash; recipe definitions</p>
+            </div>
+            <div class="card card-accent">
+                <h4>amplifier-core</h4>
+                <p>Content-only &mdash; core context docs</p>
+            </div>
+            <div class="card card-accent">
+                <h4>+ 6 more</h4>
+                <p>amplifier-amplifier, filesystem, browser-tester, design-intelligence, superpowers, system-design-intelligence</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>A service is a Python package that exposes components via decorators. The host discovers components automatically &mdash; no YAML registration of individual tools. Just decorate your classes and <code>describe</code> finds them.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 6: THE DAPR FUTURE                                      -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Dapr Future</div>
+        <h2 class="headline">From stdio<br>to service mesh</h2>
+        <p class="subhead">The next evolution: replace the entire IPC layer with Dapr-native microservices. Every behavior becomes its own container.</p>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Why Dapr</h3>
+                <ul class="feature-list">
+                    <li>Service invocation with mTLS, retries, circuit breakers</li>
+                    <li>Pub/sub for streaming tokens and hook fan-out</li>
+                    <li>State store for session persistence (Redis)</li>
+                    <li>Built-in observability and tracing</li>
+                    <li>Language-agnostic &mdash; any HTTP server works</li>
+                </ul>
+            </div>
+            <div class="card card-accent">
+                <h3>The Decomposition</h3>
+                <ul class="feature-list">
+                    <li>~28 application containers from today's 13 services</li>
+                    <li>Foundation alone splits into 14 behavior containers</li>
+                    <li>Shared base image + thin SDK keeps overhead minimal</li>
+                    <li>Content-only services: zero custom code needed</li>
+                    <li>Standard HTTP endpoints &mdash; no custom protocol</li>
+                </ul>
+            </div>
+        </div>
+        <div class="code-block"><span class="code-comment"># Three communication patterns cover all interactions:</span>
+
+<span class="code-flag">Pattern 1:</span> <span class="code-var">Request/Response</span>  <span class="code-comment"># tools, providers, /describe</span>
+<span class="code-flag">Pattern 2:</span> <span class="code-var">Pub/Sub Streaming</span> <span class="code-comment"># LLM tokens -> orchestrator -> CLI</span>
+<span class="code-flag">Pattern 3:</span> <span class="code-var">Pub/Sub Hooks</span>     <span class="code-comment"># lifecycle events, parallel fan-out</span></div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 7: BY THE NUMBERS                                       -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">By the Numbers</div>
+        <h2 class="medium-headline">10 days of focused building</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">407</div>
+                <div class="velocity-label">Commits</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">13</div>
+                <div class="velocity-label">Services</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">26K</div>
+                <div class="velocity-label">Lines of Source</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">28K</div>
+                <div class="velocity-label">Lines of Tests</div>
+            </div>
+        </div>
+        <div class="halves" style="max-width: min(800px, 95vw);">
+            <div class="card">
+                <h4 class="accent">Test Ratio: &gt;1:1</h4>
+                <p>28,262 lines of tests covering 26,300 lines of source across 147 test files. The protocol library has zero external dependencies &mdash; pure Python.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Solo Sprint</h4>
+                <p>394 of 407 commits by Paul Payne (payneio) between March 20&ndash;30, 2026 &mdash; a complete IPC rewrite in 10 days, with AI-assisted development.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 8: DESIGN PRINCIPLES                                    -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Design Principles</div>
+        <h2 class="medium-headline">What the architecture enforces</h2>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F50C;</div>
+                <h3>Process Isolation</h3>
+                <p>A crashing tool can't take down the orchestrator. Each service has its own memory space, its own dependencies, its own fault boundary.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F504;</div>
+                <h3>Spawn-Per-Turn</h3>
+                <p>Services are born fresh and die clean every turn. No stale state, no memory leaks, no concurrency bugs. Process startup (~200ms) is the only cost.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F310;</div>
+                <h3>Language Agnostic</h3>
+                <p>JSON-RPC 2.0 over stdio today, standard HTTP tomorrow. Write tools in Rust, hooks in Go, providers in TypeScript. The wire format doesn't care.</p>
+            </div>
+        </div>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F3D7;&#xFE0F;</div>
+                <h3>Composable Agents</h3>
+                <p>Agent definitions compose behaviors by URL. Each behavior activates components from services. Mix and match orchestrators, tools, and hooks freely.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F4E6;</div>
+                <h3>Dependency Freedom</h3>
+                <p>Each service gets its own <code>uv</code> virtualenv. Anthropic SDK v0.40 and OpenAI SDK v1.60 coexist without conflict. No diamond dependency problem.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F6E3;&#xFE0F;</div>
+                <h3>Migration Path</h3>
+                <p>The IPC boundary is the future network boundary. Today's subprocess becomes tomorrow's container. Business logic doesn't change &mdash; only the transport.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 9: QUICK START                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Quick Start</div>
+        <h2 class="medium-headline">Install, discover, run</h2>
+        <div class="code-block"><span class="code-comment"># Install</span>
+<span class="code-cmd">uv tool install</span> <span class="code-string">git+https://github.com/payneio/amplifier-ipc</span>
+
+<span class="code-comment"># Discover and register services from a path</span>
+<span class="code-cmd">amplifier-ipc discover</span> <span class="code-string">./services/amplifier-foundation</span> \
+  <span class="code-flag">--register</span> <span class="code-flag">--install</span>
+
+<span class="code-comment"># Or register a single agent definition</span>
+<span class="code-cmd">amplifier-ipc register</span> <span class="code-string">./definitions/foundation-agent.yaml</span> \
+  <span class="code-flag">--install</span>
+
+<span class="code-comment"># Run interactively</span>
+<span class="code-cmd">amplifier-ipc run</span> <span class="code-flag">--agent</span> <span class="code-var">foundation</span>
+
+<span class="code-comment"># Or single-shot</span>
+<span class="code-cmd">amplifier-ipc run</span> <span class="code-flag">--agent</span> <span class="code-var">foundation</span> <span class="code-string">"What files are here?"</span></div>
+        <div class="halves">
+            <div class="card">
+                <h4 class="accent">Session Persistence</h4>
+                <p>Sessions survive across turns. Resume with <code>amplifier-ipc session resume &lt;id&gt;</code>. Full transcript history in <code>~/.amplifier/sessions</code>.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">3-Tier Config</h4>
+                <p>Settings merge from global (<code>~/.amplifier/settings.yaml</code>), project (<code>.amplifier/settings.yaml</code>), and local (<code>.amplifier/settings.local.yaml</code>).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 10: SOURCES & METHODOLOGY                               -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Sources & Methodology</div>
+        <h2 class="medium-headline">How this deck was built</h2>
+        <div class="sources-content">
+            <p><strong>Repository:</strong> <code>payneio/amplifier-ipc</code> (GitHub)</p>
+            <ul>
+                <li><strong>README.md</strong> &mdash; project overview, quick start, service writing guide</li>
+                <li><strong>docs/specs/amplifier-ipc-spec.md</strong> &mdash; 1,612-line authoritative specification covering architecture, wire protocol, component types, registration, and session lifecycle</li>
+                <li><strong>docs/design/amplifier-ipc-microservices-design.md</strong> &mdash; Dapr migration design document detailing the ~28-container decomposition plan</li>
+                <li><strong>pyproject.toml</strong> &mdash; root package and <code>amplifier-ipc-protocol</code> sub-package definitions</li>
+            </ul>
+            <p><strong>Code analysis:</strong></p>
+            <ul>
+                <li>318 Python files total &mdash; 170 source files (26,300 lines), 147 test files (28,262 lines)</li>
+                <li>Key modules: <code>host/host.py</code> (1,295 lines), <code>protocol/server.py</code> (884 lines), <code>host/spawner.py</code> (560 lines), <code>host/router.py</code> (295 lines)</li>
+                <li>13 service directories under <code>services/</code>, each with its own <code>pyproject.toml</code></li>
+            </ul>
+            <p><strong>Git history:</strong> <code>git log --all</code> &mdash; 407 commits, March 20&ndash;30, 2026. 394 by Paul Payne, 13 by Amplifier Implementer.</p>
+            <p><strong>Team knowledge:</strong> Amplifier team knowledge base &mdash; capability entries for all 13 IPC services plus the <code>amplifier-ipc-protocol</code> package, and the architecture overview DOT diagram.</p>
+            <p><strong>Category:</strong> Architecture & Philosophy &middot; <strong>Primary contributor:</strong> payneio &middot; <strong>Accent:</strong> #42A5F5 (infrastructure blue)</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

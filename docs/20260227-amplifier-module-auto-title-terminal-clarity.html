@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>amplifier-module-auto-title — Terminal Clarity</title>
+<style>
+  :root {
+    --accent: #FF2D55;
+    --accent-dim: rgba(255, 45, 85, 0.15);
+    --accent-glow: rgba(255, 45, 85, 0.35);
+    --bg: #000000;
+    --surface-1: #0d0d0d;
+    --surface-2: #1a1a1a;
+    --surface-3: #242424;
+    --surface-4: #2e2e2e;
+    --text-primary: rgba(255,255,255,0.95);
+    --text-secondary: rgba(255,255,255,0.72);
+    --text-tertiary: rgba(255,255,255,0.45);
+    --green: #30D158;
+    --blue: #0A84FF;
+    --yellow: #FFD60A;
+    --purple: #BF5AF2;
+    --teal: #5AC8FA;
+    --orange: #FF9F0A;
+    --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Cascadia Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Deck container ── */
+  .deck {
+    width: 100vw; height: 100vh;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── Slides ── */
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: clamp(32px, 5vw, 72px) clamp(40px, 7vw, 120px);
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.45s cubic-bezier(.4,0,.2,1), transform 0.45s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+  }
+  .slide.active {
+    opacity: 1; transform: translateX(0);
+    pointer-events: all;
+  }
+  .slide.exit {
+    opacity: 0; transform: translateX(-60px);
+  }
+
+  /* ── Typography ── */
+  .eyebrow {
+    font-size: clamp(11px, 1.2vw, 14px);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  .headline {
+    font-size: clamp(32px, 5.5vw, 72px);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+  }
+  .subhead {
+    font-size: clamp(15px, 1.8vw, 22px);
+    font-weight: 400;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    max-width: 760px;
+  }
+  .accent-word { color: var(--accent); }
+  .green-word { color: var(--green); }
+  .blue-word { color: var(--blue); }
+  .yellow-word { color: var(--yellow); }
+  .purple-word { color: var(--purple); }
+
+  /* ── Layout helpers ── */
+  .full-width { width: 100%; max-width: 1200px; }
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; width: 100%; max-width: 1200px; }
+  .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; width: 100%; max-width: 1200px; }
+  .cols-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; max-width: 1200px; }
+  .center { text-align: center; align-items: center; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface-2);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .card-accent {
+    border-top: 2px solid var(--accent);
+  }
+  .card-green { border-top: 2px solid var(--green); }
+  .card-blue  { border-top: 2px solid var(--blue); }
+  .card-yellow{ border-top: 2px solid var(--yellow); }
+  .card-purple{ border-top: 2px solid var(--purple); }
+  .card-teal  { border-top: 2px solid var(--teal); }
+  .card-orange{ border-top: 2px solid var(--orange); }
+  .card h3 {
+    font-size: clamp(13px, 1.4vw, 17px);
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+  .card p, .card li {
+    font-size: clamp(12px, 1.2vw, 15px);
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .card ul { padding-left: 18px; }
+  .card li { margin-bottom: 4px; }
+
+  /* ── Terminal mockup ── */
+  .terminal {
+    background: #0d1117;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    width: 100%;
+  }
+  .terminal-bar {
+    background: #1c1c1e;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .terminal-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+  }
+  .terminal-dot.red    { background: #FF5F57; }
+  .terminal-dot.yellow { background: #FFBD2E; }
+  .terminal-dot.green  { background: #27C93F; }
+  .terminal-tabs {
+    margin-left: 12px;
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .terminal-tab {
+    padding: 4px 12px;
+    border-radius: 6px 6px 0 0;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+  }
+  .terminal-tab.dull {
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.45);
+  }
+  .terminal-tab.bright {
+    background: rgba(255, 45, 85, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(255, 45, 85, 0.3);
+  }
+  .terminal-tab.alt-1 {
+    background: rgba(48, 209, 88, 0.12);
+    color: var(--green);
+    border: 1px solid rgba(48, 209, 88, 0.25);
+  }
+  .terminal-tab.alt-2 {
+    background: rgba(10, 132, 255, 0.12);
+    color: var(--blue);
+    border: 1px solid rgba(10, 132, 255, 0.25);
+  }
+  .terminal-body {
+    padding: 18px 20px;
+    min-height: 80px;
+  }
+  .terminal-line {
+    font-size: clamp(11px, 1.1vw, 13px);
+    line-height: 1.8;
+    color: rgba(255,255,255,0.75);
+  }
+  .terminal-prompt { color: var(--accent); }
+  .terminal-cmd { color: rgba(255,255,255,0.85); }
+  .terminal-comment { color: rgba(255,255,255,0.35); }
+  .terminal-output { color: var(--green); }
+
+  /* ── Code block ── */
+  .code-block {
+    background: #0d1117;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-left: 3px solid var(--accent);
+    border-radius: 12px;
+    padding: 20px 24px;
+    font-family: var(--font-mono);
+    font-size: clamp(11px, 1.15vw, 14px);
+    line-height: 1.75;
+    color: rgba(255,255,255,0.82);
+    width: 100%;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .code-block .kw   { color: #FF7AB2; }   /* keywords */
+  .code-block .str  { color: #FC6A5D; }   /* strings / escape */
+  .code-block .fn   { color: #41A1C0; }   /* functions */
+  .code-block .var  { color: #FFA14F; }   /* variables */
+  .code-block .cmt  { color: rgba(255,255,255,0.32); } /* comments */
+  .code-block .hl   { color: var(--green); } /* highlighted / output */
+
+  /* ── Step list ── */
+  .step-list { width: 100%; max-width: 920px; }
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 18px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .step:last-child { border-bottom: none; }
+  .step-num {
+    width: 36px; height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-glow);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+    color: var(--accent);
+    margin-top: 2px;
+  }
+  .step-content h4 {
+    font-size: clamp(14px, 1.5vw, 17px);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .step-content p {
+    font-size: clamp(12px, 1.2vw, 14px);
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* ── Tag pill ── */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .tag-active   { background: rgba(48,209,88,0.15);  color: var(--green);  border: 1px solid rgba(48,209,88,0.3); }
+  .tag-module   { background: rgba(255,45,85,0.12);   color: var(--accent); border: 1px solid rgba(255,45,85,0.25); }
+  .tag-mit      { background: rgba(255,255,255,0.06); color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.12); }
+
+  /* ── Verb table ── */
+  .verb-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    width: 100%; max-width: 1100px;
+  }
+  .verb-card {
+    background: var(--surface-2);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .verb-label {
+    font-family: var(--font-mono);
+    font-size: clamp(13px, 1.3vw, 16px);
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .verb-desc {
+    font-size: clamp(11px, 1.1vw, 13px);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* ── Rule rows (do / don't) ── */
+  .rule-group {
+    width: 100%; max-width: 960px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+  }
+  .rule-col h3 {
+    font-size: clamp(13px, 1.3vw, 16px);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .rule-col.do h3   { color: var(--green); }
+  .rule-col.dont h3 { color: var(--accent); }
+  .rule-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: clamp(12px, 1.2vw, 15px);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .rule-item:last-child { border-bottom: none; }
+  .rule-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+
+  /* ── File tree ── */
+  .file-tree {
+    background: var(--surface-2);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 24px 28px;
+    font-family: var(--font-mono);
+    font-size: clamp(12px, 1.2vw, 15px);
+    line-height: 2;
+    width: 100%; max-width: 640px;
+  }
+  .file-dir  { color: var(--blue); font-weight: 600; }
+  .file-name { color: rgba(255,255,255,0.8); }
+  .file-note { color: rgba(255,255,255,0.32); font-size: 0.85em; }
+  .file-indent { padding-left: 20px; }
+  .file-indent2 { padding-left: 40px; }
+  .file-indent3 { padding-left: 60px; }
+
+  /* ── Big stat ── */
+  .big-stat { text-align: center; }
+  .big-stat .number {
+    font-size: clamp(52px, 9vw, 120px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent) 0%, #FF6B8E 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .big-stat .label {
+    font-size: clamp(14px, 1.5vw, 18px);
+    color: var(--text-secondary);
+    margin-top: 8px;
+    font-weight: 500;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    width: 48px; height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin: 20px 0;
+  }
+
+  /* ── Navigation ── */
+  .nav-dots {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .nav-dot.active {
+    width: 22px;
+    border-radius: 4px;
+    background: var(--accent);
+  }
+
+  .slide-counter {
+    position: fixed;
+    bottom: 22px; right: 32px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    z-index: 100;
+  }
+
+  .nav-arrow {
+    position: fixed;
+    top: 50%; transform: translateY(-50%);
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.2s ease;
+    color: var(--text-secondary);
+    font-size: 18px;
+    line-height: 1;
+    user-select: none;
+  }
+  .nav-arrow:hover { background: rgba(255,45,85,0.15); border-color: var(--accent); color: var(--accent); }
+  .nav-arrow.prev { left: 20px; }
+  .nav-arrow.next { right: 20px; }
+
+  /* ── Background accents ── */
+  .bg-glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.06;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .slide > * { position: relative; z-index: 1; }
+
+  /* ── Specific slide styles ── */
+
+  /* Title */
+  #s01 { justify-content: center; }
+  .title-badge-row {
+    display: flex; gap: 10px; align-items: center;
+    margin-bottom: 28px;
+  }
+  .title-module-name {
+    font-family: var(--font-mono);
+    font-size: clamp(22px, 3.5vw, 44px);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+  .title-tagline {
+    font-size: clamp(18px, 2.8vw, 38px);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.25;
+  }
+  .title-meta {
+    font-size: clamp(12px, 1.2vw, 15px);
+    color: var(--text-tertiary);
+    display: flex; gap: 24px; align-items: center;
+  }
+  .title-meta span { display: flex; align-items: center; gap: 6px; }
+
+  /* Spacers */
+  .mt-8  { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .mt-16 { margin-top: 16px; }
+  .mt-20 { margin-top: 20px; }
+  .mt-28 { margin-top: 28px; }
+  .mt-32 { margin-top: 32px; }
+  .mb-8  { margin-bottom: 8px; }
+  .mb-12 { margin-bottom: 12px; }
+  .mb-16 { margin-bottom: 16px; }
+  .mb-20 { margin-bottom: 20px; }
+  .mb-24 { margin-bottom: 24px; }
+  .mb-28 { margin-bottom: 28px; }
+</style>
+</head>
+<body>
+
+<!-- Background glows -->
+<div class="bg-glow" style="width:600px;height:600px;top:-100px;right:-100px;background:var(--accent);"></div>
+<div class="bg-glow" style="width:500px;height:500px;bottom:-150px;left:-100px;background:#BF5AF2;"></div>
+
+<div class="deck" id="deck">
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 01 — TITLE
+  ════════════════════════════════════════════════ -->
+  <div class="slide active center" id="s01">
+    <div class="title-badge-row">
+      <span class="tag tag-active">● Active</span>
+      <span class="tag tag-module">Behavior Bundle</span>
+      <span class="tag tag-mit">MIT License</span>
+    </div>
+    <div class="title-module-name">amplifier-module-auto-title</div>
+    <div class="title-tagline">Your terminal tabs,<br><span class="accent-word">finally useful.</span></div>
+    <div style="width:56px;height:3px;background:var(--accent);border-radius:2px;margin:0 auto 28px;"></div>
+    <div class="subhead center" style="max-width:680px;">
+      One printf. Zero runtime overhead. Infinite clarity across
+      every AI session you run simultaneously.
+    </div>
+    <div class="title-meta mt-28">
+      <span>✦ Ken Chau (@kenotron)</span>
+      <span>·</span>
+      <span>kenotron/amplifier-module-auto-title</span>
+      <span>·</span>
+      <span>February 2026</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 02 — THE PROBLEM
+  ════════════════════════════════════════════════ -->
+  <div class="slide" id="s02">
+    <div class="full-width">
+      <div class="eyebrow">The Problem</div>
+      <div class="headline" style="max-width:780px;">Multi-terminal chaos is <span class="accent-word">real.</span></div>
+      <div class="subhead mb-28" style="max-width:700px;">
+        Running multiple AI sessions simultaneously? You're flying blind.
+        Every tab looks exactly the same.
+      </div>
+
+      <!-- Before: all identical tabs -->
+      <div class="terminal" style="max-width:900px;">
+        <div class="terminal-bar">
+          <div class="terminal-dot red"></div>
+          <div class="terminal-dot yellow"></div>
+          <div class="terminal-dot green"></div>
+          <div class="terminal-tabs">
+            <div class="terminal-tab dull">zsh</div>
+            <div class="terminal-tab dull">zsh</div>
+            <div class="terminal-tab dull">zsh</div>
+            <div class="terminal-tab dull">zsh</div>
+          </div>
+        </div>
+        <div class="terminal-body">
+          <div class="terminal-line"><span class="terminal-comment">↑ Which one is debugging auth? Which is building the UI?</span></div>
+          <div class="terminal-line"><span class="terminal-comment">   Which is the infra session? You have to click each one to find out.</span></div>
+        </div>
+      </div>
+
+      <div class="cols-3 mt-28" style="max-width:860px;">
+        <div class="card card-accent">
+          <h3>🔀 Context Switching</h3>
+          <p>Click-to-discover every time you need to switch focus. Seconds lost, flow state broken.</p>
+        </div>
+        <div class="card card-accent">
+          <h3>🔍 Zero Signal</h3>
+          <p>The terminal title tells you the shell name. Not the task. Not the project. Nothing useful.</p>
+        </div>
+        <div class="card card-accent">
+          <h3>⚡️ Multiply by N</h3>
+          <p>One session is fine. Three? Painful. Five concurrent AI sessions? Chaos.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 03 — BEFORE / AFTER
+  ════════════════════════════════════════════════ -->
+  <div class="slide" id="s03">
+    <div class="full-width">
+      <div class="eyebrow">The Transformation</div>
+      <div class="headline">Before <span class="accent-word">vs.</span> After</div>
+
+      <div class="cols-2" style="max-width:1100px;gap:40px;">
+        <!-- Before -->
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-tertiary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px;">Without the module</div>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <div class="terminal-dot red"></div>
+              <div class="terminal-dot yellow"></div>
+              <div class="terminal-dot green"></div>
+              <div class="terminal-tabs">
+                <div class="terminal-tab dull">zsh</div>
+                <div class="terminal-tab dull">zsh</div>
+                <div class="terminal-tab dull">zsh</div>
+              </div>
+            </div>
+            <div class="terminal-body">
+              <div class="terminal-line" style="color:rgba(255,255,255,0.35);">Which one is which?</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- After -->
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--green);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px;">With amplifier-module-auto-title</div>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <div class="terminal-dot red"></div>
+              <div class="terminal-dot yellow"></div>
+              <div class="terminal-dot green"></div>
+              <div class="terminal-tabs">
+                <div class="terminal-tab bright">my-api | Debug: Auth Flow</div>
+                <div class="terminal-tab alt-1">dashboard | Build: UI</div>
+                <div class="terminal-tab alt-2">infra | Infra: K8s</div>
+              </div>
+            </div>
+            <div class="terminal-body">
+              <div class="terminal-line" style="color:var(--green);">Instant context. No clicking required.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Example formats -->
+      <div class="mt-32 full-width" style="max-width:900px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text-tertiary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:16px;">Title format: <span style="color:var(--accent);font-family:var(--font-mono);">[project] | [Action]: [Specific Focus]</span></div>
+        <div class="code-block" style="border-left-color:var(--green);">amplifier-module-auto-title  | <span class="hl">Debug: Auth Flow</span>
+my-project                   | <span style="color:var(--blue);">Build: Dashboard UI</span>
+my-api                       | <span style="color:var(--yellow);">Test: Payment Module</span>
+infra-repo                   | <span style="color:var(--purple);">Infra: Docker Compose</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 04 — HOW IT WORKS
+  ════════════════════════════════════════════════ -->
+  <div class="slide" id="s04">
+    <div class="full-width" style="max-width:960px;">
+      <div class="eyebrow">Mechanism</div>
+      <div class="headline">Elegantly <span class="accent-word">minimal.</span></div>
+
+      <div class="step-list">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>Awareness context injected at session start</h4>
+            <p>A tiny 11-line context file is loaded. It doesn't carry full rules — just enough to trigger the next step.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>Agent calls <span style="font-family:var(--font-mono);color:var(--accent);">load_skill("terminal-title")</span> on demand</h4>
+            <p>Full instructions materialize only when needed. The skill-on-demand pattern keeps base context lean.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Agent learns the when/how rulebook</h4>
+            <p>Title format, verb vocabulary, and anti-chatter rules are loaded into the active session context.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h4>Single inline bash <span style="font-family:var(--font-mono);color:var(--accent);">printf</span> sets the title</h4>
+            <p>One ANSI OSC escape sequence. No daemon, no polling, no server. Ephemeral and instantaneous.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <h4>Re-triggered on major task switches</h4>
+            <p>Frontend → backend, auth → payments — meaningful transitions update the title. Small follow-ups don't.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 05 — THE CORE MECHANISM
+  ════════════════════════════════════════════════ -->
+  <div class="slide center" id="s05">
+    <div class="full-width" style="max-width:900px;text-align:left;">
+      <div class="eyebrow">The Entire Feature</div>
+      <div class="headline" style="max-width:700px;">One command. <span class="accent-word">No dependencies.</span></div>
+      <div class="subhead mb-28">Everything reduces to a single printf with a universally supported ANSI OSC escape sequence.</div>
+
+      <div class="code-block">
+<span class="cmt"># The complete mechanism — one line of bash</span>
+<span class="fn">printf</span> <span class="str">'\033]0;%s | %s\007'</span> <span class="str">"$(basename "$PWD")"</span> <span class="str">"Debug: Auth Flow"</span>
+
+<span class="cmt"># ANSI OSC sequence breakdown:
+#   \033]0;  →  OSC set title
+#   %s | %s  →  "project | Action: Focus"  
+#   \007     →  BEL terminator (universally supported)
+#
+# Supported by: macOS Terminal, iTerm2, Alacritty, xterm,
+#               rxvt, tmux, screen — virtually everything</span></div>
+
+      <div class="cols-3 mt-28">
+        <div class="card card-green">
+          <h3>Zero runtime overhead</h3>
+          <p>No daemon, no background process, no polling. The title is set and instantly forgotten.</p>
+        </div>
+        <div class="card card-blue">
+          <h3>No Python needed</h3>
+          <p>Pure bash. The skill+context system extends naturally to any toolchain.</p>
+        </div>
+        <div class="card" style="border-top:2px solid var(--purple);">
+          <h3>Optional prefix</h3>
+          <p style="font-family:var(--font-mono);font-size:12px;">export CLAUDE_TITLE_PREFIX="🤖"<br>→ 🤖 my-project | Build: UI</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 06 — SKILL-ON-DEMAND ARCHITECTURE
+  ════════════════════════════════════════════════ -->
+  <div class="slide" id="s06">
+    <div class="full-width" style="max-width:1100px;">
+      <div class="eyebrow">Architecture Pattern</div>
+      <div class="headline">Skill-on-demand. <span class="accent-word">Lazy by design.</span></div>
+
+      <div class="cols-2" style="gap:40px;">
+        <div>
+          <div class="subhead mb-20">The awareness context file is just 11 lines. Full rules only materialize when the session actually needs them — keeping base context lean.</div>
+
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--surface-2);border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
+              <div style="width:42px;height:42px;border-radius:10px;background:rgba(255,45,85,0.15);border:1px solid rgba(255,45,85,0.3);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📄</div>
+              <div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);">terminal-title-awareness.md</div>
+                <div style="font-size:12px;color:var(--text-secondary);">11 lines · always loaded · triggers load_skill()</div>
+              </div>
+            </div>
+            <div style="text-align:center;color:var(--text-tertiary);font-size:18px;">↓ calls</div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--surface-2);border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
+              <div style="width:42px;height:42px;border-radius:10px;background:rgba(10,132,255,0.15);border:1px solid rgba(10,132,255,0.3);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">⚡</div>
+              <div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);">terminal-title/SKILL.md</div>
+                <div style="font-size:12px;color:var(--text-secondary);">Full rulebook · loaded on demand only</div>
+              </div>
+            </div>
+            <div style="text-align:center;color:var(--text-tertiary);font-size:18px;">↓ runs</div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--surface-2);border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
+              <div style="width:42px;height:42px;border-radius:10px;background:rgba(48,209,88,0.15);border:1px solid rgba(48,209,88,0.3);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🖥️</div>
+              <div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);">printf '\033]0;...\007'</div>
+                <div style="font-size:12px;color:var(--text-secondary);">One bash call · title updated instantly</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-tertiary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:16px;">Why this pattern matters</div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div class="card card-green">
+              <h3>🪶 Lean by default</h3>
+              <p>Every session starts lightweight. The full skill only materializes when the agent actually uses it — not just because the feature is installed.</p>
+            </div>
+            <div class="card card-blue">
+              <h3>📐 Principle of least privilege</h3>
+              <p>Context is a resource. Load only what you need, when you need it. This pattern scales to any behavior bundle.</p>
+            </div>
+            <div class="card card-accent">
+              <h3>🔁 Reusable pattern</h3>
+              <p>The awareness-triggers-skill pattern is a teachable architecture, not a one-off hack. Any module can adopt it.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 07 — ANTI-CHATTER DISCIPLINE
+  ════════════════════════════════════════════════ -->
+  <div class="slide center" id="s07">
+    <div style="max-width:960px;width:100%;text-align:left;">
+      <div class="eyebrow">UX Discipline</div>
+      <div class="headline">Knowing when <span class="accent-word">not</span> to act.</div>
+      <div class="subhead mb-32" style="max-width:700px;">
+        The skill's most important feature isn't the title update — it's the explicit rules for when to stay silent. Anti-chatter discipline baked in.
+      </div>
+
+      <div class="rule-group">
+        <div class="rule-col do">
+          <h3>✅ Update the title when…</h3>
+          <div class="rule-item">
+            <span class="rule-icon">🚀</span>
+            <span>Session starts for the first time — set the initial context</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-icon">🔀</span>
+            <span>Major task switch — frontend → backend, auth → payments</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-icon">🧱</span>
+            <span>Pivoting to a distinctly different concern in the same session</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-icon">🐛</span>
+            <span>Shifting mode — from building to debugging, from coding to reviewing</span>
+          </div>
+        </div>
+
+        <div class="rule-col dont">
+          <h3>🚫 Don't update for…</h3>
+          <div class="rule-item">
+            <span class="rule-icon">💬</span>
+            <span>Follow-up questions on the same topic</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-icon">🔧</span>
+            <span>Small refinements or minor clarifications</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-icon">🔁</span>
+            <span>Iterating on the same component or function</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-icon">📝</span>
+            <span>Routine assistant turns within a continuous task</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface-2);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 20px;margin-top:28px;max-width:700px;">
+        <div style="font-size:13px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Design Principle</div>
+        <div style="font-size:15px;color:var(--text-secondary);line-height:1.6;">A title that updates too often becomes noise. A title that never updates is useless. The skill codifies exactly where that line is — and commits to staying on the right side of it.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 08 — VERB SYSTEM
+  ════════════════════════════════════════════════ -->
+  <div class="slide center" id="s08">
+    <div style="max-width:1100px;width:100%;text-align:left;">
+      <div class="eyebrow">Title Format System</div>
+      <div class="headline">A verb for <span class="accent-word">every mode.</span></div>
+      <div class="subhead mb-28">Present-tense. Specific. Always scannable at a glance.</div>
+
+      <div class="verb-grid">
+        <div class="verb-card" style="border-top:2px solid var(--blue);">
+          <div class="verb-label">Build:</div>
+          <div class="verb-desc">Active feature development — adding new functionality</div>
+        </div>
+        <div class="verb-card" style="border-top:2px solid var(--accent);">
+          <div class="verb-label">Debug:</div>
+          <div class="verb-desc">Tracking down bugs, diagnosing unexpected behavior</div>
+        </div>
+        <div class="verb-card" style="border-top:2px solid var(--green);">
+          <div class="verb-label">Test:</div>
+          <div class="verb-desc">Writing or running test suites, verifying behavior</div>
+        </div>
+        <div class="verb-card" style="border-top:2px solid var(--purple);">
+          <div class="verb-label">Refactor:</div>
+          <div class="verb-desc">Cleaning up code, improving structure without behavior change</div>
+        </div>
+        <div class="verb-card" style="border-top:2px solid var(--orange);">
+          <div class="verb-label">Fix:</div>
+          <div class="verb-desc">Addressing a known issue or reported bug</div>
+        </div>
+        <div class="verb-card" style="border-top:2px solid var(--teal);">
+          <div class="verb-label">Explore:</div>
+          <div class="verb-desc">Getting oriented in a new codebase or unfamiliar area</div>
+        </div>
+        <div class="verb-card" style="border-top:2px solid var(--yellow);">
+          <div class="verb-label">Infra:</div>
+          <div class="verb-desc">Docker, CI/CD pipelines, cloud configuration</div>
+        </div>
+        <div class="verb-card" style="border-top:2px solid rgba(255,255,255,0.3);">
+          <div class="verb-label">Review:</div>
+          <div class="verb-desc">Code review, PR analysis, architectural assessment</div>
+        </div>
+      </div>
+
+      <div class="mt-24 code-block" style="max-width:780px;border-left-color:var(--text-tertiary);">
+<span class="cmt">Pattern: [project-name] | [Verb]: [Specific Focus]
+
+Examples:
+  auth-service  | <span style="color:var(--accent);">Debug: JWT Refresh Token</span>
+  payments-ui   | <span style="color:var(--blue);">Build: Checkout Form</span>
+  backend-api   | <span style="color:var(--green);">Test: Rate Limiting</span>
+  legacy-app    | <span style="color:var(--yellow);">Explore: Data Models</span></span></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 09 — COMPOSABLE BY DESIGN
+  ════════════════════════════════════════════════ -->
+  <div class="slide" id="s09">
+    <div class="full-width" style="max-width:1100px;">
+      <div class="eyebrow">Integration</div>
+      <div class="headline">Composable at the <span class="accent-word">behavior level.</span></div>
+      <div class="subhead mb-28">Any Amplifier bundle can adopt just this one behavior, or include the whole module. Two lines of YAML.</div>
+
+      <div class="cols-2" style="gap:36px;align-items:start;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-tertiary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;">Behavior-only drop-in (recommended)</div>
+          <div class="code-block" style="font-size:13px;">
+<span class="cmt"># In your bundle.yaml or bundle.md</span>
+<span class="kw">includes</span><span class="fn">:</span>
+  - <span class="kw">bundle</span><span class="fn">:</span> <span class="str">git+https://github.com/kenotron/</span>
+      <span class="str">  amplifier-module-auto-title@main</span>
+      <span class="str">  #subdirectory=behaviors/terminal-title.yaml</span></div>
+
+          <div style="font-size:13px;font-weight:600;color:var(--text-tertiary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;margin-top:24px;">Full bundle (everything included)</div>
+          <div class="code-block" style="font-size:13px;">
+<span class="cmt"># Gets you: context + skill + script</span>
+<span class="kw">includes</span><span class="fn">:</span>
+  - <span class="kw">bundle</span><span class="fn">:</span> <span class="str">git+https://github.com/kenotron/</span>
+      <span class="str">  amplifier-module-auto-title@main</span></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="card card-green">
+            <h3>🧩 The <code style="font-family:var(--font-mono);font-size:12px;">#subdirectory=</code> pattern</h3>
+            <p>Cherry-pick just the terminal-title behavior file from the repository. Your bundle stays minimal — you only compose what you need.</p>
+          </div>
+          <div class="card card-blue">
+            <h3>🔌 Drop-in, no config required</h3>
+            <p>Zero configuration needed. The behavior activates automatically. Works on day one.</p>
+          </div>
+          <div class="card card-accent">
+            <h3>🐾 Self-dogfooding</h3>
+            <p>The module's own <code style="font-family:var(--font-mono);font-size:12px;">.amplifier/bundle.md</code> includes the behavior. Ken eats his own cooking.</p>
+          </div>
+          <div style="background:var(--surface-2);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 18px;">
+            <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Also published as</div>
+            <div style="font-family:var(--font-mono);font-size:14px;color:var(--text-primary);">amplifier-bundle-terminal-title</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Same module, registry-friendly package name</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 10 — CODE STRUCTURE / VELOCITY
+  ════════════════════════════════════════════════ -->
+  <div class="slide" id="s10">
+    <div class="full-width" style="max-width:1100px;">
+      <div class="eyebrow">Scope & Structure</div>
+      <div class="headline">7 files. <span class="accent-word">Remarkably minimal.</span></div>
+
+      <div class="cols-2" style="gap:48px;align-items:start;">
+        <div>
+          <div class="subhead mb-20" style="max-width:480px;">
+            The entire module fits in your head. No sprawling abstractions, no hidden complexity.
+          </div>
+          <div class="file-tree">
+<span class="file-dir">amplifier-module-auto-title/</span>
+<div class="file-indent"><span class="file-name">bundle.md</span>  <span class="file-note">← root bundle</span></div>
+<div class="file-indent"><span class="file-dir">behaviors/</span></div>
+<div class="file-indent2"><span class="file-name">terminal-title.yaml</span>  <span class="file-note">← composable unit</span></div>
+<div class="file-indent"><span class="file-dir">context/</span></div>
+<div class="file-indent2"><span class="file-name">terminal-title-awareness.md</span>  <span class="file-note">← 11 lines!</span></div>
+<div class="file-indent"><span class="file-dir">skills/</span></div>
+<div class="file-indent2"><span class="file-dir">terminal-title/</span></div>
+<div class="file-indent3"><span class="file-name">SKILL.md</span>  <span class="file-note">← full rulebook</span></div>
+<div class="file-indent"><span class="file-dir">scripts/</span></div>
+<div class="file-indent2"><span class="file-name">set_title.sh</span>  <span class="file-note">← optional helper</span></div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:24px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="big-stat">
+              <div class="number">7</div>
+              <div class="label">meaningful files</div>
+            </div>
+            <div class="big-stat">
+              <div class="number" style="background:linear-gradient(135deg,var(--green) 0%,#5AC8FA 100%);-webkit-background-clip:text;background-clip:text;">11</div>
+              <div class="label">lines in awareness context</div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="card card-green">
+              <h3>✍️ Author</h3>
+              <p>Ken Chau (<span style="font-family:var(--font-mono);color:var(--accent);">@kenotron</span>)</p>
+            </div>
+            <div class="card card-blue">
+              <h3>🌱 Community lineage</h3>
+              <p>Adapted from <span style="font-family:var(--font-mono);color:var(--teal);">claude-code-terminal-title</span> by <span style="font-family:var(--font-mono);color:var(--text-secondary);">@bluzername</span> — a real example of community work flowing into the ecosystem.</p>
+            </div>
+            <div class="card card-accent">
+              <h3>📜 License</h3>
+              <p>MIT — use freely, modify, compose into any bundle</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 11 — COMMUNITY LINEAGE
+  ════════════════════════════════════════════════ -->
+  <div class="slide center" id="s11">
+    <div style="max-width:900px;width:100%;text-align:left;">
+      <div class="eyebrow">Community → Ecosystem Pipeline</div>
+      <div class="headline" style="max-width:740px;">Great ideas start in the <span class="accent-word">community.</span></div>
+      <div class="subhead mb-32" style="max-width:700px;">
+        This module demonstrates how community-discovered patterns get formalized, composed, and made available to the entire Amplifier ecosystem.
+      </div>
+
+      <!-- Timeline -->
+      <div style="position:relative;">
+        <div style="position:absolute;left:28px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--accent),var(--purple),var(--blue));border-radius:1px;"></div>
+
+        <div style="display:flex;flex-direction:column;gap:0;">
+          <div style="display:flex;gap:24px;align-items:flex-start;padding-bottom:28px;">
+            <div style="width:58px;height:58px;border-radius:50%;background:rgba(255,45,85,0.15);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;z-index:1;">💡</div>
+            <div style="padding-top:12px;">
+              <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Community Discovery</div>
+              <div style="font-size:14px;color:var(--text-secondary);line-height:1.6;"><span style="font-family:var(--font-mono);color:var(--teal);">@bluzername</span> publishes <code style="font-family:var(--font-mono);color:var(--text-secondary);">claude-code-terminal-title</code> — a standalone script to set the terminal title. Solves the problem elegantly but lives outside any framework.</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:24px;align-items:flex-start;padding-bottom:28px;">
+            <div style="width:58px;height:58px;border-radius:50%;background:rgba(191,90,242,0.15);border:2px solid var(--purple);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;z-index:1;">🔧</div>
+            <div style="padding-top:12px;">
+              <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Ecosystem Adaptation</div>
+              <div style="font-size:14px;color:var(--text-secondary);line-height:1.6;"><span style="font-family:var(--font-mono);color:var(--accent);">@kenotron</span> ports it into Amplifier — restructuring into the skill-on-demand pattern, adding anti-chatter rules, formalizing the verb vocabulary, and making it composable via <code style="font-family:var(--font-mono);color:var(--text-secondary);">#subdirectory=</code>.</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:24px;align-items:flex-start;">
+            <div style="width:58px;height:58px;border-radius:50%;background:rgba(10,132,255,0.15);border:2px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;z-index:1;">🌍</div>
+            <div style="padding-top:12px;">
+              <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Ecosystem Availability</div>
+              <div style="font-size:14px;color:var(--text-secondary);line-height:1.6;">Published as <code style="font-family:var(--font-mono);color:var(--accent);">amplifier-module-auto-title</code> and <code style="font-family:var(--font-mono);color:var(--accent);">amplifier-bundle-terminal-title</code>. Any bundle, anywhere, can include it in two lines of YAML.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 12 — SOURCES & METHODOLOGY
+  ════════════════════════════════════════════════ -->
+  <div class="slide" id="s12">
+    <div class="full-width" style="max-width:960px;">
+      <div class="eyebrow">Transparency</div>
+      <div class="headline" style="font-size:clamp(24px,3.5vw,44px);">Sources <span class="accent-word">&</span> Methodology</div>
+
+      <div class="cols-2" style="gap:32px;align-items:start;margin-top:24px;">
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="card">
+            <h3>📋 Primary Source</h3>
+            <p>All data, claims, architecture details, and code examples in this deck were sourced directly from a comprehensive author-provided specification for <code style="font-family:var(--font-mono);font-size:11px;">amplifier-module-auto-title</code>. No external research was performed; no numbers were inferred or invented.</p>
+          </div>
+          <div class="card">
+            <h3>🔗 Repository</h3>
+            <p style="font-family:var(--font-mono);font-size:12px;color:var(--accent);">github.com/kenotron/amplifier-module-auto-title</p>
+            <p class="mt-8">Published under MIT license. Primary author: Ken Chau (@kenotron). Community lineage from @bluzername's <code style="font-family:var(--font-mono);font-size:11px;">claude-code-terminal-title</code>.</p>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="card">
+            <h3>📊 What was and wasn't measured</h3>
+            <p>This deck makes <em>no quantitative performance claims</em> (no "X% faster" benchmarks, no download counts). All metrics cited ("11 lines," "7 files," "1 printf") are direct structural facts from the module, not benchmark results.</p>
+          </div>
+          <div class="card">
+            <h3>✅ Feature Status at Time of Deck</h3>
+            <p>Active — confirmed by the module's own .amplifier/bundle.md including the terminal-title behavior (self-dogfooding). No archived or experimental caveats applicable.</p>
+          </div>
+          <div style="background:var(--surface-2);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 18px;">
+            <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Data as of</div>
+            <div style="font-size:15px;color:var(--text-primary);margin-top:4px;font-family:var(--font-mono);">February 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       SLIDE 13 — CTA
+  ════════════════════════════════════════════════ -->
+  <div class="slide center" id="s13">
+    <div style="text-align:center;max-width:760px;">
+      <div style="font-size:64px;margin-bottom:24px;">🖥️</div>
+      <div class="eyebrow">Try it today</div>
+      <div class="headline" style="font-size:clamp(28px,5vw,60px);">See your work,<br><span class="accent-word">not your shell.</span></div>
+      <div class="divider" style="margin:20px auto;"></div>
+      <div class="subhead center mb-32" style="max-width:600px;">Two lines of YAML. Zero configuration. Instant clarity across every terminal tab you'll ever open.</div>
+
+      <div class="code-block" style="text-align:left;max-width:640px;margin:0 auto 32px;">
+<span class="cmt"># Add to your bundle</span>
+<span class="kw">includes</span><span class="fn">:</span>
+  - <span class="kw">bundle</span><span class="fn">:</span> <span class="str">git+https://github.com/kenotron/</span>
+      <span class="str">  amplifier-module-auto-title@main</span>
+      <span class="str">  #subdirectory=behaviors/terminal-title.yaml</span></div>
+
+      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+        <div style="padding:14px 28px;background:var(--accent);border-radius:12px;font-size:16px;font-weight:700;color:white;cursor:default;">
+          github.com/kenotron/amplifier-module-auto-title
+        </div>
+      </div>
+
+      <div class="title-meta mt-28" style="justify-content:center;">
+        <span>amplifier-module-auto-title</span>
+        <span>·</span>
+        <span>MIT License</span>
+        <span>·</span>
+        <span>@kenotron</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- Navigation -->
+<div class="nav-dots" id="navDots"></div>
+<div class="slide-counter" id="slideCounter">1 / 13</div>
+<div class="nav-arrow prev" id="prevBtn">‹</div>
+<div class="nav-arrow next" id="nextBtn">›</div>
+
+<script>
+(function () {
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsContainer = document.getElementById('navDots');
+  const counter = document.getElementById('slideCounter');
+  const total = slides.length;
+  let current = 0;
+  let animating = false;
+
+  // Build dots
+  slides.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.addEventListener('click', () => goTo(i));
+    dotsContainer.appendChild(dot);
+  });
+
+  function updateDots(idx) {
+    document.querySelectorAll('.nav-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === idx);
+    });
+    counter.textContent = (idx + 1) + ' / ' + total;
+  }
+
+  function goTo(idx) {
+    if (animating || idx === current || idx < 0 || idx >= total) return;
+    animating = true;
+    const prev = current;
+    const next = idx;
+
+    slides[prev].classList.add('exit');
+    slides[prev].classList.remove('active');
+
+    // If going backward, override transform direction
+    if (next < prev) {
+      slides[prev].style.transform = 'translateX(60px)';
+      slides[next].style.transform = 'translateX(-60px)';
+    } else {
+      slides[prev].style.transform = '';
+      slides[next].style.transform = '';
+    }
+
+    requestAnimationFrame(() => {
+      slides[next].classList.add('active');
+      current = next;
+      updateDots(current);
+      setTimeout(() => {
+        slides[prev].classList.remove('exit');
+        slides[prev].style.transform = '';
+        slides[next].style.transform = '';
+        animating = false;
+      }, 480);
+    });
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => goTo(current - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => goTo(current + 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); goTo(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); goTo(current - 1);
+    }
+  });
+
+  // Touch/swipe
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) dx < 0 ? goTo(current + 1) : goTo(current - 1);
+  }, { passive: true });
+
+  updateDots(0);
+})();
+</script>
+</body>
+</html>

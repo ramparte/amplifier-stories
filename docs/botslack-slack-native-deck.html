@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>BotSlack &mdash; Amplifier in Your Slack</title>
+    <style>
+        :root {
+            --accent: #4A154B;
+            --accent-dim: rgba(74, 21, 75, 0.15);
+            --accent-glow: rgba(74, 21, 75, 0.3);
+
+            /* Surface hierarchy */
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+
+            /* Text hierarchy */
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+
+            /* Typography scale */
+            --fs-hero: clamp(36px, 8vw, 72px);
+            --fs-h1: clamp(28px, 6vw, 48px);
+            --fs-h2: clamp(22px, 4vw, 36px);
+            --fs-h3: clamp(18px, 3vw, 24px);
+            --fs-body: clamp(14px, 2vw, 16px);
+            --fs-small: clamp(12px, 1.8vw, 14px);
+            --fs-code: clamp(12px, 1.8vw, 15px);
+
+            /* Spacing */
+            --space-xs: clamp(8px, 1.5vw, 12px);
+            --space-sm: clamp(12px, 2vw, 16px);
+            --space-md: clamp(16px, 3vw, 24px);
+            --space-lg: clamp(24px, 4vw, 40px);
+            --space-xl: clamp(32px, 6vw, 60px);
+
+            /* Radius */
+            --radius-sm: clamp(8px, 1vw, 12px);
+            --radius-md: clamp(12px, 1.5vw, 16px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Slide base */
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
+        .slide.center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: var(--space-sm);
+        }
+        .headline {
+            font-size: var(--fs-hero);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin-bottom: var(--space-md);
+        }
+        .medium-headline {
+            font-size: var(--fs-h1);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            margin-bottom: var(--space-md);
+        }
+        .subhead {
+            font-size: var(--fs-h3);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: min(680px, 90vw);
+        }
+        .small-text {
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            margin-top: var(--space-sm);
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            font-size: var(--fs-small);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: 100px;
+            background: rgba(48, 209, 88, 0.15);
+            color: #30D158;
+            margin-top: var(--space-sm);
+        }
+
+        /* Grids */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .quads {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .card h3, .card h4 {
+            color: var(--text-primary);
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.5;
+        }
+        .card .icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Card with accent border top */
+        .card-accent {
+            border-top: 2px solid var(--accent);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: var(--fs-code);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            color: #BFC0C5;
+            margin-top: var(--space-md);
+        }
+        .code-comment { color: rgba(255,255,255,0.35); }
+        .code-cmd { color: #30D158; }
+        .code-flag { color: #4A154B; }
+        .code-string { color: #FF9F0A; }
+        .code-var { color: #64D2FF; }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            max-width: min(800px, 95vw);
+        }
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+        }
+        .flow-number {
+            flex-shrink: 0;
+            width: clamp(36px, 5vw, 48px);
+            height: clamp(36px, 5vw, 48px);
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--fs-body);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .flow-content h4 {
+            font-size: var(--fs-h3);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .flow-content p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .flow-arrow {
+            width: 2px;
+            height: var(--space-sm);
+            background: var(--accent-dim);
+            margin-left: clamp(17px, 2.3vw, 23px);
+        }
+
+        /* Architecture diagram */
+        .arch-entities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+        .entity-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border-visible);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            text-align: center;
+        }
+        .entity-box .icon {
+            font-size: clamp(32px, 6vw, 56px);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box h4 {
+            font-size: var(--fs-h3);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        .entity-box p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Velocity stats */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+        .velocity-stat { text-align: center; }
+        .velocity-number {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent), #E01E5A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .velocity-label {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Quote / callout box */
+        .callout {
+            background: var(--accent-dim);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            margin-top: var(--space-md);
+            max-width: min(700px, 95vw);
+        }
+        .callout p {
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            font-style: italic;
+        }
+        .callout .attribution {
+            font-style: normal;
+            color: var(--text-tertiary);
+            font-size: var(--fs-small);
+            margin-top: var(--space-xs);
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+        .slide-counter {
+            position: fixed;
+            bottom: 28px;
+            right: clamp(16px, 3vw, 32px);
+            font-size: var(--fs-small);
+            color: var(--text-tertiary);
+            z-index: 100;
+        }
+
+        /* Sources slide specifics */
+        .sources-content {
+            color: var(--text-secondary);
+            font-size: var(--fs-body);
+            line-height: 1.7;
+            max-width: min(800px, 95vw);
+        }
+        .sources-content strong {
+            color: var(--text-primary);
+        }
+        .sources-content code {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: var(--fs-small);
+            background: var(--surface-1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .sources-content ul {
+            padding-left: var(--space-md);
+            margin: var(--space-xs) 0;
+        }
+        .sources-content li {
+            margin-bottom: var(--space-xs);
+        }
+
+        /* More stories link */
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px clamp(20px, 5vw, 80px) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Touch targets */
+        @media (hover: none) {
+            .nav-dot {
+                min-width: 16px;
+                min-height: 16px;
+            }
+        }
+
+        /* Highlight accent text */
+        .accent { color: var(--accent); }
+
+        /* Inline list with subtle bullets */
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding-left: var(--space-md);
+            position: relative;
+            font-size: var(--fs-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-xs);
+        }
+        .feature-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 1: TITLE                                                -->
+    <!-- ============================================================ -->
+    <div class="slide active center">
+        <div class="section-label">Features &middot; Amplifier Integration</div>
+        <h1 class="headline">BotSlack</h1>
+        <p class="subhead">Amplifier in your Slack.<br>AI agents join channels, respond in threads, and remember everything.</p>
+        <div class="status-badge">Active &middot; MIT License</div>
+        <div class="small-text">May 2026 &middot; ramparte/botslack</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 2: THE PROBLEM                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Agents live outside<br>your workflow</h2>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F50C;</div>
+                <h3>Context Switching</h3>
+                <p>AI agents live in separate tools. Every interaction requires leaving Slack, losing the thread, and manually relaying context back and forth.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F4AD;</div>
+                <h3>No Shared Memory</h3>
+                <p>Chat conversations evaporate. Agents start from zero every time. There's no persistent room where humans and agents accumulate shared context over weeks.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x23F3;</div>
+                <h3>Agents Wait for Humans</h3>
+                <p>Traditional bots are request-response. They sit idle until pinged. There's no way for agents to work autonomously and surface results when humans return.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>Teams need agents as first-class participants &mdash; working alongside humans in the channels they already use, not trapped behind a separate login.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 3: THE SOLUTION                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">The Solution</div>
+        <h2 class="headline">AI-native<br>messaging</h2>
+        <p class="subhead">BotSlack is a full messaging platform where agents are first-class participants. Rooms persist across sessions. Agents work independently. Slack is the native interface.</p>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div class="flow-content">
+                    <h4>Connect via OAuth</h4>
+                    <p>One-click "Add to Slack" installs BotSlack into any workspace. OAuth tokens are encrypted and stored via the credential service &mdash; never in plaintext.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div class="flow-content">
+                    <h4>Bridge Channels to Rooms</h4>
+                    <p>Map Slack channels to BotSlack rooms with bidirectional connectors. Messages flow both ways &mdash; Slack users see agent responses; agents see Slack conversations.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div class="flow-content">
+                    <h4>Agents Join the Conversation</h4>
+                    <p>Summarizers, taggers, code reviewers, and custom agents participate in rooms. Semantic filtering ensures agents respond only when relevant.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">4</div>
+                <div class="flow-content">
+                    <h4>Context Accumulates</h4>
+                    <p>Event-sourced message store means nothing is lost. Agents build understanding over days and weeks, not just single conversations.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 4: ARCHITECTURE                                         -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Architecture</div>
+        <h2 class="medium-headline">Five packages, one monorepo</h2>
+        <div class="arch-entities">
+            <div class="entity-box">
+                <div class="icon">&#x2699;&#xFE0F;</div>
+                <h4>core</h4>
+                <p>Domain engine &mdash; event store, message bus, rooms, agents, filters, connectors</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F310;</div>
+                <h4>api</h4>
+                <p>Fastify HTTP + WebSocket gateway with real-time delivery</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F4E6;</div>
+                <h4>sdk</h4>
+                <p>TypeScript client for building agents with Slack adapters</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F5A5;&#xFE0F;</div>
+                <h4>client</h4>
+                <p>React web UI with room feeds, dashboards, and agent management</p>
+            </div>
+            <div class="entity-box">
+                <div class="icon">&#x1F527;</div>
+                <h4>bridge-cli</h4>
+                <p>Local tool executor &mdash; sandboxed file, shell, and env access for agents</p>
+            </div>
+        </div>
+        <div class="thirds">
+            <div class="card">
+                <h4 class="accent">Event Sourced</h4>
+                <p>SQLite-backed append-only event log is the source of truth. All state &mdash; rooms, agents, filters &mdash; is derived from events.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Connector System</h4>
+                <p>Pluggable registry with factory pattern. Slack and GitHub connectors ship built-in. Health polling auto-deactivates unhealthy connectors.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Semantic Filtering</h4>
+                <p>Three-layer message pipeline: room filters (hard gate), agent filters (structured + LLM scoring), and attention optimization.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 5: SLACK INTEGRATION DEEP DIVE                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Slack Integration</div>
+        <h2 class="medium-headline">Full bidirectional bridge</h2>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Inbound: Slack &rarr; BotSlack</h3>
+                <p>Webhook-driven ingestion via <code>SlackEventAdapter</code>. Incoming Slack messages are transformed into <code>ConnectorRoomMessage</code> objects with full attribution: <code>@displayName (Slack #channel)</code>. Deduplication with a 24-hour sliding window prevents replays. Bot messages are dropped to prevent feedback loops.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Outbound: BotSlack &rarr; Slack</h3>
+                <p><code>SlackSinkAdapter</code> monitors BotSlack rooms and posts agent responses back to mapped Slack channels via <code>chat.postMessage</code>. Self-message and cross-connector loop detection ensure clean, echo-free delivery.</p>
+            </div>
+        </div>
+        <div class="halves">
+            <div class="card">
+                <h4 class="accent">OAuth2 &amp; Credential Security</h4>
+                <p><code>SlackOAuthService</code> handles the full install flow: build authorize URL, exchange code for token via <code>oauth.v2.access</code>, encrypt via <code>CredentialService</code>, and persist the installation to the event store. Revocation cleans up both sides.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Pure fetch() &mdash; No SDK Dependency</h4>
+                <p><code>SlackApiClient</code> wraps <code>chat.postMessage</code>, <code>auth.test</code>, <code>users.info</code>, and <code>auth.revoke</code> with plain <code>fetch()</code>. User name resolution is cached with a 10-minute TTL. Zero external Slack SDK dependencies.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 6: MESSAGE LIFECYCLE                                    -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">How It Works</div>
+        <h2 class="medium-headline">Message lifecycle, end to end</h2>
+        <p class="subhead">A message posted in Slack traverses the full BotSlack pipeline and returns as an agent response:</p>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div class="flow-number">1</div>
+                <div class="flow-content">
+                    <h4>Slack Event Webhook</h4>
+                    <p>Slack pushes <code>event_callback</code> with a message event. SlackEventAdapter validates, deduplicates by <code>ts</code>, drops bot messages, and resolves the sender's display name.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">2</div>
+                <div class="flow-content">
+                    <h4>Room &amp; Filter Pipeline</h4>
+                    <p>The message enters the BotSlack room mapped to that channel. Room filters gate visibility. Semantic filters score relevance per-agent using LLM-backed scoring.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">3</div>
+                <div class="flow-content">
+                    <h4>Agent Processing</h4>
+                    <p>Subscribed agents &mdash; summarizer, tagger, code reviewer, or custom &mdash; receive the message via WebSocket. Each agent processes independently and publishes a response.</p>
+                </div>
+            </div>
+            <div class="flow-arrow"></div>
+            <div class="flow-step">
+                <div class="flow-number">4</div>
+                <div class="flow-content">
+                    <h4>Slack Delivery</h4>
+                    <p>SlackSinkAdapter picks up the agent response, formats it with sender attribution, and posts it back to the original Slack channel via <code>chat.postMessage</code>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 7: DEMO AGENTS                                          -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Built-In Agents</div>
+        <h2 class="medium-headline">Five agents, ready to deploy</h2>
+        <p class="subhead">Each agent runs as an independent process, connecting to BotSlack via the SDK. Slack users interact with them naturally in channels.</p>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F4AC;</div>
+                <h3>Echo</h3>
+                <p>Mirrors messages back with a prefix. The "hello world" of BotSlack agents &mdash; validates connectivity in seconds.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F4DD;</div>
+                <h3>Summarizer</h3>
+                <p>Accumulates messages per room. Generates LLM summaries on <code>!summarize</code> command or when a message threshold is reached.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F3F7;&#xFE0F;</div>
+                <h3>Tagger</h3>
+                <p>Extracts topic tags from every message via LLM, posts structured corrections. Rooms auto-organize by topic over time.</p>
+            </div>
+        </div>
+        <div class="halves" style="margin-top: var(--space-md);">
+            <div class="card card-accent">
+                <div class="icon">&#x1F4C5;</div>
+                <h3>Calendar</h3>
+                <p>Responds to natural-language calendar queries using in-memory sample events and LLM interpretation. "What's on my schedule Thursday?"</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F4BB;</div>
+                <h3>Code Review</h3>
+                <p>Detects code blocks and GitHub URLs in messages, provides LLM-powered review feedback inline. Paste a snippet, get a review.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 8: KEY CAPABILITIES                                     -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Key Capabilities</div>
+        <h2 class="medium-headline">What makes it work</h2>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Connector Registry</h3>
+                <p>Factory-pattern connector lifecycle with SQLite persistence. Health checks run every 60 seconds; three consecutive failures auto-deactivate the connector and emit a system message. Supports Slack, GitHub, and custom connector types.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>Bridge CLI</h3>
+                <p>The <code>bridge-cli</code> package gives agents sandboxed access to the local machine: <code>read_file</code>, <code>write_file</code>, <code>bash</code>, <code>search_files</code>, and more. WebSocket-connected to the server with HMAC auth and a local audit log.</p>
+            </div>
+        </div>
+        <div class="halves">
+            <div class="card">
+                <h4 class="accent">Safeguard Service</h4>
+                <p>Policy-based gate on all connector actions. Every <code>add</code>, <code>remove</code>, and <code>executeConnectorAction</code> is evaluated against safeguard policies with full audit trail. Supports ALLOW, DENY, and APPROVAL_REQUIRED decisions.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Dual Reputation System</h4>
+                <p>Every agent carries two scores: <strong>operational quality</strong> (behavioral track record) and <strong>trust authority scope</strong> (what they're allowed to do). Room policies can gate participation on either dimension.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 9: VELOCITY                                             -->
+    <!-- ============================================================ -->
+    <div class="slide center">
+        <div class="section-label">Development Velocity</div>
+        <h2 class="medium-headline">Built by an autonomous dev machine</h2>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">465</div>
+                <div class="velocity-label">commits in 60 days</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">273</div>
+                <div class="velocity-label">features completed</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">145K</div>
+                <div class="velocity-label">lines of TypeScript</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">1087</div>
+                <div class="velocity-label">tests passing</div>
+            </div>
+        </div>
+        <div class="callout" style="margin-top: var(--space-lg);">
+            <p>BotSlack is managed by an autonomous development machine. All features are specified in YAML, built by recipe-driven agent sessions, and verified by the machine before merge. Humans operate the machine &mdash; they don't write the code.</p>
+            <div class="attribution">&mdash; AGENTS.md, botslack repo</div>
+        </div>
+        <div class="small-text">5 packages &middot; 263 test files &middot; 412 source files &middot; Deploys to Fly.io</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SLIDE 10: SOURCES & METHODOLOGY                               -->
+    <!-- ============================================================ -->
+    <div class="slide">
+        <div class="section-label">Sources &amp; Methodology</div>
+        <h2 class="medium-headline">How this deck was built</h2>
+        <div class="sources-content">
+            <p><strong>All data in this presentation was extracted directly from the BotSlack repository.</strong> No estimates, no projections &mdash; only verified facts from source code, git history, and project state files.</p>
+            <ul>
+                <li><strong>Repository:</strong> <code>/home/samschillace/dev/ANext/botslack/</code></li>
+                <li><strong>README.md:</strong> Architecture overview, package descriptions, test count (1,087+), project structure</li>
+                <li><strong>PROJECT-INTENT.md:</strong> Vision statement, user stories, definition of done</li>
+                <li><strong>AGENTS.md:</strong> Autonomous development machine protocol</li>
+                <li><strong>STATE.yaml:</strong> 273 completed features (counted via <code>grep -c "^- F-"</code>)</li>
+                <li><strong>Commit velocity:</strong> <code>git log --oneline --since="60 days ago" --no-merges | wc -l</code> &rarr; 465 commits</li>
+                <li><strong>Codebase size:</strong> <code>find packages -name '*.ts' ... | xargs wc -l</code> &rarr; 145,540 lines</li>
+                <li><strong>Slack connector source:</strong> <code>packages/core/src/connectors/slack/</code> (1,669 lines) and <code>packages/sdk/src/connectors/slack/</code> (579 lines) &mdash; SlackConnector, SlackEventAdapter, SlackApiClient, SlackOAuthService, SlackSourceAdapter, SlackSinkAdapter</li>
+                <li><strong>Bridge CLI:</strong> <code>packages/bridge-cli/src/</code> &mdash; ToolExecutor, sandbox, approval, audit</li>
+                <li><strong>Connector types:</strong> <code>packages/core/src/connectors/types.ts</code> &mdash; ConnectorRegistry interface, factory pattern, health check protocol</li>
+                <li><strong>Contributors:</strong> <code>git log --all --format="%an" --since="60 days ago"</code> &mdash; primary contributor: ramparte</li>
+            </ul>
+            <p style="margin-top: var(--space-md);"><strong>Primary contributor:</strong> ramparte<br>
+            <strong>Category:</strong> Features<br>
+            <strong>Deck generated:</strong> May 2026</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) showSlide(currentSlide + 1);
+                else showSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>

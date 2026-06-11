@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>The Meta-Skill: How to Create Template-Based Amplifier Skills</title>
+    <style>
+        :root {
+            --accent: #5E5CE6;
+            --accent-dim: rgba(94, 92, 230, 0.15);
+            --accent-glow: rgba(94, 92, 230, 0.3);
+            --surface-1: rgba(255,255,255,0.06);
+            --surface-2: rgba(255,255,255,0.10);
+            --surface-3: rgba(255,255,255,0.15);
+            --border-subtle: rgba(255,255,255,0.12);
+            --border-visible: rgba(255,255,255,0.20);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-tertiary: rgba(255,255,255,0.5);
+            --font-headline: clamp(36px, 8vw, 72px);
+            --font-medium-headline: clamp(24px, 5vw, 48px);
+            --font-subhead: clamp(16px, 3vw, 28px);
+            --font-body: clamp(14px, 2.2vw, 18px);
+            --font-small: clamp(12px, 1.8vw, 14px);
+            --font-big-number: clamp(48px, 15vw, 140px);
+            --padding-slide: clamp(20px, 5vw, 80px);
+            --gap-grid: clamp(16px, 3vw, 32px);
+            --green: #30D158;
+            --red: #FF453A;
+            --orange: #FF9F0A;
+            --teal: #64D2FF;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            gap: clamp(20px, 4vw, 40px);
+        }
+
+        .slide.active { display: flex; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide {
+                padding: 16px var(--padding-slide) 60px;
+            }
+            .slide.center {
+                justify-content: flex-start;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* Typography */
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+        }
+
+        .headline {
+            font-size: var(--font-headline);
+            font-weight: 700;
+            letter-spacing: clamp(-1px, -0.03em, -2px);
+            line-height: 1.1;
+        }
+
+        .medium-headline {
+            font-size: var(--font-medium-headline);
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            line-height: 1.15;
+        }
+
+        .subhead {
+            font-size: var(--font-subhead);
+            color: var(--text-secondary);
+            line-height: 1.4;
+            max-width: 700px;
+        }
+
+        .body-text {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .small-text {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+        }
+
+        /* Layout */
+        .thirds {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        .halves {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+        }
+
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(16px, 4vw, 28px);
+        }
+
+        .card h3 {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: clamp(6px, 1vw, 12px);
+        }
+
+        .card p, .card li {
+            color: var(--text-secondary);
+            font-size: var(--font-body);
+            line-height: 1.5;
+        }
+
+        .card-icon {
+            font-size: clamp(28px, 5vw, 48px);
+            margin-bottom: clamp(8px, 1.5vw, 16px);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: clamp(12px, 3vw, 24px) clamp(16px, 4vw, 28px);
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(12px, 1.8vw, 15px);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+
+        .code-comment { color: rgba(255,255,255,0.4); }
+        .code-accent { color: var(--accent); }
+        .code-green { color: var(--green); }
+        .code-orange { color: var(--orange); }
+        .code-teal { color: var(--teal); }
+
+        /* Blockquote */
+        .quote-block {
+            border-left: 3px solid var(--accent);
+            padding: clamp(16px, 3vw, 28px) clamp(20px, 4vw, 36px);
+            background: var(--accent-dim);
+            border-radius: 0 12px 12px 0;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .quote-text {
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-style: italic;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .quote-attribution {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            margin-top: clamp(8px, 1.5vw, 16px);
+        }
+
+        /* Timeline */
+        .timeline-item {
+            display: flex;
+            gap: clamp(16px, 3vw, 28px);
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .timeline-date {
+            font-size: var(--font-small);
+            font-weight: 600;
+            color: var(--accent);
+            min-width: clamp(60px, 10vw, 100px);
+            text-align: right;
+            padding-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .timeline-content {
+            border-left: 2px solid var(--accent-glow);
+            padding-left: clamp(16px, 3vw, 24px);
+            padding-bottom: clamp(12px, 2vw, 20px);
+        }
+
+        .timeline-title {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .timeline-desc {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Directory tree */
+        .tree {
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: clamp(13px, 2vw, 16px);
+            line-height: 1.8;
+            color: var(--text-secondary);
+        }
+
+        .tree-label {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .tree-highlight {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .tree-comment {
+            color: var(--text-tertiary);
+            font-style: italic;
+        }
+
+        /* Comparison columns */
+        .compare-col {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: clamp(12px, 2vw, 16px);
+            padding: clamp(20px, 4vw, 32px);
+        }
+
+        .compare-header {
+            display: flex;
+            align-items: center;
+            gap: clamp(8px, 1.5vw, 12px);
+            margin-bottom: clamp(12px, 2vw, 20px);
+        }
+
+        .compare-badge {
+            font-size: var(--font-small);
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .badge-v1 {
+            background: rgba(255, 69, 58, 0.2);
+            color: var(--red);
+        }
+
+        .badge-v2 {
+            background: rgba(48, 209, 88, 0.2);
+            color: var(--green);
+        }
+
+        /* Methodology cards */
+        .method-number {
+            font-size: clamp(28px, 5vw, 44px);
+            font-weight: 800;
+            color: var(--accent);
+            opacity: 0.4;
+            line-height: 1;
+            margin-bottom: clamp(4px, 1vw, 8px);
+        }
+
+        .method-title {
+            font-size: clamp(16px, 2.5vw, 20px);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: clamp(4px, 1vw, 8px);
+        }
+
+        .method-desc {
+            font-size: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Velocity grid */
+        .velocity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+            gap: var(--gap-grid);
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .velocity-stat { text-align: center; }
+
+        .velocity-number {
+            font-size: clamp(36px, 10vw, 72px);
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), var(--teal));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+        }
+
+        .velocity-label {
+            font-size: var(--font-small);
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: var(--font-small);
+            font-weight: 600;
+            padding: 4px 14px;
+            border-radius: 20px;
+            background: rgba(48, 209, 88, 0.15);
+            color: var(--green);
+            border: 1px solid rgba(48, 209, 88, 0.3);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+        }
+
+        /* Arrow connector */
+        .arrow-connector {
+            font-size: clamp(24px, 5vw, 40px);
+            color: var(--accent);
+            text-align: center;
+            opacity: 0.6;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: clamp(16px, 3vw, 30px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: clamp(16px, 3vw, 30px);
+            right: clamp(16px, 3vw, 30px);
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: rgba(255,255,255,0.3);
+            font-variant-numeric: tabular-nums;
+            z-index: 100;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+            display: none;
+        }
+        .more-stories:hover {
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Highlight token */
+        .token {
+            background: var(--accent-dim);
+            color: var(--accent);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 0.9em;
+            border: 1px solid var(--accent-glow);
+        }
+
+        /* Inline list for cards */
+        .card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .card ul li {
+            padding: clamp(2px, 0.5vw, 4px) 0;
+        }
+
+        .card ul li::before {
+            content: "→ ";
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Accent underline */
+        .accent-underline {
+            text-decoration: underline;
+            text-decoration-color: var(--accent);
+            text-underline-offset: 4px;
+        }
+
+        /* Fade-in for slide content */
+        .slide.active > * {
+            animation: fadeUp 0.4s ease-out both;
+        }
+
+        .slide.active > *:nth-child(1) { animation-delay: 0s; }
+        .slide.active > *:nth-child(2) { animation-delay: 0.08s; }
+        .slide.active > *:nth-child(3) { animation-delay: 0.16s; }
+        .slide.active > *:nth-child(4) { animation-delay: 0.22s; }
+        .slide.active > *:nth-child(5) { animation-delay: 0.28s; }
+        .slide.active > *:nth-child(6) { animation-delay: 0.34s; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Punchline glow */
+        .glow-text {
+            text-shadow: 0 0 40px var(--accent-glow), 0 0 80px rgba(94, 92, 230, 0.15);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Title -->
+    <div class="slide active center">
+        <div class="section-label">Amplifier Skills</div>
+        <h1 class="headline glow-text" style="max-width: 900px;">The Meta-Skill</h1>
+        <p class="subhead" style="text-align: center;">How to create template-based Amplifier skills &mdash; a methodology extracted from building <span class="accent-underline">scaffold-new-service</span></p>
+        <div style="display: flex; align-items: center; gap: clamp(12px, 2vw, 20px); margin-top: clamp(8px, 2vw, 16px); flex-wrap: wrap; justify-content: center;">
+            <span class="small-text">Feb 13 &ndash; Mar 4, 2026</span>
+            <span class="status-badge"><span class="status-dot"></span> Active Methodology</span>
+        </div>
+    </div>
+
+    <!-- Slide 2: The Problem -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="headline">Copy, paste, forget, debug.</h2>
+        <div class="thirds">
+            <div class="card">
+                <h3>Repetitive Scaffolding</h3>
+                <p>Every new FastAPI microservice required the same boilerplate: project structure, auth middleware, Docker config, frontend setup, CI scripts.</p>
+            </div>
+            <div class="card">
+                <h3>Tribal Knowledge</h3>
+                <p>The right way to stand up a service lived in the developer&rsquo;s head and in scattered reference implementations &mdash; not in any teachable artifact.</p>
+            </div>
+            <div class="card">
+                <h3>Time Sink</h3>
+                <p>Each new service was built by hand. Same patterns, same mistakes, same debugging session every time.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: Genesis -->
+    <div class="slide">
+        <div class="section-label">Act 1 &middot; Feb 13</div>
+        <h2 class="medium-headline">Genesis: &ldquo;Transfer over all the scaffolding&rdquo;</h2>
+        <div class="quote-block">
+            <div class="quote-text">&ldquo;I want to create a new skill that stands up a new service&hellip; Make sure ALL the changes needed are captured.&rdquo;</div>
+            <div class="quote-attribution">&mdash; The user, recognizing the pattern after building 3 services by hand</div>
+        </div>
+        <p class="body-text" style="max-width: 800px;">The key insight: don&rsquo;t design a skill in a vacuum. Build real things first, then extract the reusable pattern. The user had lived through the pain of manual scaffolding three times &mdash; enough to know what should be automated.</p>
+    </div>
+
+    <!-- Slide 4: Act 1 Process (merged slides 4+5) -->
+    <div class="slide">
+        <div class="section-label">Act 1 &middot; The Process</div>
+        <h2 class="medium-headline">Explore, Decide, Ship V1</h2>
+        <div class="thirds">
+            <div class="card">
+                <h3>Explore</h3>
+                <p>The AI read every file in two reference services in parallel, mapping project structure, config patterns, middleware chains, and deployment scripts.</p>
+            </div>
+            <div class="card">
+                <h3>Inventory &amp; Ask</h3>
+                <p>Produced a full artifact list, then asked 6 design questions before writing anything: auth optional or required? Templates or instructions? Monorepo or standalone?</p>
+            </div>
+            <div class="card">
+                <h3>Result: V1</h3>
+                <p>A single SKILL.md &mdash; 365 lines, 11 sections. Pure instructions referencing live files in <code style="color: var(--accent);">gh-issues-local/</code>. Deliberately minimal.</p>
+            </div>
+        </div>
+        <div class="card" style="max-width: 900px; border-color: var(--orange); border-width: 2px;">
+            <h3 style="color: var(--orange);">The Hidden Fragility</h3>
+            <p>The skill didn&rsquo;t contain the knowledge &mdash; it contained <strong>pointers</strong> to the knowledge. Every section said: <em>&ldquo;See gh-issues-local/src/app.py for reference.&rdquo;</em> Those pointers assumed gh-issues-local would always exist, unchanged, in the same location.</p>
+        </div>
+    </div>
+
+    <!-- Slide 5: Proving Ground (merged slides 7+8) -->
+    <div class="slide">
+        <div class="section-label">Act 2 &middot; Feb 17 &ndash; Mar 3</div>
+        <h2 class="medium-headline">The Proving Ground</h2>
+        <div style="display: flex; flex-direction: column; gap: clamp(16px, 3vw, 28px); width: 100%; max-width: 800px;">
+            <div class="timeline-item">
+                <div class="timeline-date">Feb 17</div>
+                <div class="timeline-content">
+                    <div class="timeline-title" style="color: var(--green);">&#x2713; First real test: nl-spec-generator</div>
+                    <div class="timeline-desc">Four days after creation, the skill got its first use. A new service scaffolded by the AI following the SKILL.md instructions. Validation passed.</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-date">Feb&ndash;Mar</div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Workspace evolves</div>
+                    <div class="timeline-desc">Infrastructure shifted: github-local was retired, Gitea replaced it. Services were refactored, moved, renamed. The codebase was a moving target.</div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-date">Mar 3</div>
+                <div class="timeline-content">
+                    <div class="timeline-title" style="color: var(--red);">&#x2717; ~30 references break</div>
+                    <div class="timeline-desc">During the Gitea migration, the AI discovered ~30 stale references in SKILL.md &mdash; all pointing to the now-retired gh-issues-local. Every &ldquo;see gh-issues-local/&hellip;&rdquo; instruction was a dead link.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: The Pivot (merged slides 9+12) -->
+    <div class="slide">
+        <div class="section-label">Act 3 &middot; Mar 4</div>
+        <h2 class="medium-headline">The Pivot: Self-Contained Templates</h2>
+        <div class="quote-block">
+            <div class="quote-text">&ldquo;Come up with a plan to store sample files in that directory, so we are not reliant on any service.&rdquo;</div>
+            <div class="quote-attribution">&mdash; The user, articulating the core insight</div>
+        </div>
+        <div class="halves" style="max-width: 1000px;">
+            <div class="card" style="border-color: var(--accent); border-width: 2px;">
+                <h3 style="color: var(--accent);">AI&rsquo;s Response</h3>
+                <p>Proposed 26 template files with placeholder tokens. Extracted from issues-to-brief (backend) and recovered from the retired github-local&rsquo;s git cache (frontend). Even dead code was resurrected as reusable templates.</p>
+            </div>
+            <div class="card" style="border-color: var(--green);">
+                <h3 style="color: var(--green);">Same-Day Validation</h3>
+                <p>Hours after the V2 conversion, the template skill was used to build The Garden&rsquo;s web frontend. The AI loaded the skill, read templates from <span class="token">templates/web/</span>, and used them as the foundation. It worked immediately.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Token System (trimmed) -->
+    <div class="slide">
+        <div class="section-label">Act 3 &middot; The Mechanism</div>
+        <h2 class="medium-headline">Placeholder Tokens as Abstraction Layer</h2>
+        <div class="code-block" style="max-width: 900px;"><span class="code-comment"># pyproject.toml template</span>
+[project]
+name = "<span class="code-accent">{{PACKAGE_NAME}}</span>"
+version = "0.1.0"
+
+[project.scripts]
+start = "<span class="code-accent">{{PACKAGE_NAME}}</span>.app:main"
+
+<span class="code-comment"># vite.config.ts template</span>
+export default defineConfig({
+  server: {
+    port: <span class="code-accent">{{PORT_BASE_PLUS_1}}</span>,
+    proxy: {
+      '/api': 'http://localhost:<span class="code-accent">{{PORT_BASE}}</span>'
+    }
+  }
+})</div>
+        <div class="thirds" style="margin-top: clamp(8px, 2vw, 16px);">
+            <div class="card" style="text-align: center;">
+                <h3><span class="token">{{SERVICE_NAME}}</span></h3>
+                <p>Directory name, display strings</p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3><span class="token">{{PACKAGE_NAME}}</span></h3>
+                <p>Python package, imports</p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3><span class="token">{{PORT_BASE}}</span></h3>
+                <p>Backend port, frontend proxy</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: V1->V2 Evolution (trimmed) -->
+    <div class="slide">
+        <div class="section-label">The Evolution</div>
+        <h2 class="medium-headline">V1 &rarr; V2: From Pointers to Packages</h2>
+        <div class="halves" style="max-width: 1000px; align-items: start;">
+            <div class="compare-col">
+                <div class="compare-header">
+                    <span class="compare-badge badge-v1">V1</span>
+                    <span class="small-text">Feb 13</span>
+                </div>
+                <div class="tree"><span class="tree-highlight">scaffold-new-service/</span>
+  \-- SKILL.md <span class="tree-comment">(365 lines)</span>
+
+<span class="code-comment">References &rarr; gh-issues-local/</span>
+<span class="code-comment">"See gh-issues-local/src/app.py"</span>
+<span class="code-comment">"See gh-issues-local/pyproject.toml"</span>
+
+<span style="color: var(--red);">&#x2717; Fragile: depends on external code</span>
+<span style="color: var(--red);">&#x2717; ~30 stale pointers after migration</span></div>
+            </div>
+            <div class="compare-col">
+                <div class="compare-header">
+                    <span class="compare-badge badge-v2">V2</span>
+                    <span class="small-text">Mar 4</span>
+                </div>
+                <div class="tree"><span class="tree-highlight">scaffold-new-service/</span>
+  +-- SKILL.md <span class="tree-comment">(255 lines, more concise)</span>
+  \-- <span class="tree-highlight">templates/</span>
+      +-- pyproject.toml
+      +-- src/app.py
+      +-- src/auth.py
+      +-- scripts/smoke_test.py
+      +-- web/package.json
+      +-- web/vite.config.ts
+      \-- <span class="tree-comment">... (26 files total)</span>
+
+<span style="color: var(--green);">&#x2713; Self-contained, portable &amp; parameterized</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: Methodology (merged slides 13+14, 6 items) -->
+    <div class="slide">
+        <div class="section-label">The Repeatable Process</div>
+        <h2 class="medium-headline">The Meta-Methodology</h2>
+        <div class="thirds">
+            <div class="card">
+                <div class="method-number">01</div>
+                <div class="method-title">Build First, Extract Later</div>
+                <div class="method-desc">Don&rsquo;t design skills in the abstract. Build something real by hand, then look back and ask &ldquo;what&rsquo;s the reusable pattern here?&rdquo; The skill was extracted from 3 real services &mdash; not designed top-down.</div>
+            </div>
+            <div class="card">
+                <div class="method-number">02</div>
+                <div class="method-title">AI as Pattern Miner</div>
+                <div class="method-desc">Ask the AI to explore existing implementations and propose what a generalized skill should contain. It reads every file, produces artifact inventories, and asks clarifying questions.</div>
+            </div>
+            <div class="card">
+                <div class="method-number">03</div>
+                <div class="method-title">Human Directs, AI Executes</div>
+                <div class="method-desc">The AI proposes options; the human makes architectural choices. &ldquo;Pure instructions vs. templates&rdquo; was a human call. &ldquo;Auth is optional&rdquo; was a human call. Design decisions stay human-driven.</div>
+            </div>
+            <div class="card">
+                <div class="method-number">04</div>
+                <div class="method-title">Start Minimal, Upgrade When Pain Emerges</div>
+                <div class="method-desc">V1 was deliberately minimal. Only when references broke did the user invest in templates. The upgrade wasn&rsquo;t premature &mdash; it was motivated by a real failure mode.</div>
+            </div>
+            <div class="card">
+                <div class="method-number">05</div>
+                <div class="method-title">Self-Contained &gt; Cross-References</div>
+                <div class="method-desc">Bundle template files with <span class="token">{{PLACEHOLDER}}</span> tokens so the skill is independent of any service&rsquo;s existence. Skills that reference live code are fragile; skills that carry their own templates are not.</div>
+            </div>
+            <div class="card">
+                <div class="method-number">06</div>
+                <div class="method-title">Validate Immediately</div>
+                <div class="method-desc">Use the skill right away on a real task. V1 was validated 4 days later on nl-spec-generator. V2 was validated the same evening on The Garden. If it doesn&rsquo;t work in practice, iterate.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 10: Anatomy of a Skill (no Key Structural Rules card) -->
+    <div class="slide">
+        <div class="section-label">Skill Structure</div>
+        <h2 class="medium-headline">Anatomy of an Amplifier Skill</h2>
+        <p class="body-text" style="max-width: 800px;">Skills follow the <a href="https://agentskills.io/specification" style="color: var(--accent); text-decoration: underline;">Agent Skills specification</a>. The directory name must match the <code style="color: var(--accent);">name</code> field in SKILL.md. Here&rsquo;s the standard structure and how scaffold-new-service maps to it.</p>
+        <div class="halves" style="max-width: 1000px; align-items: start;">
+            <div>
+                <div class="code-block"><span class="tree-label">Standard Skill Structure</span>
+
+<span class="tree-highlight">my-skill/</span>
+  <span class="tree-highlight">SKILL.md</span>         <span class="tree-comment"># Required: frontmatter + instructions</span>
+  references/       <span class="tree-comment"># Optional: additional docs</span>
+  assets/           <span class="tree-comment"># Optional: templates, data files</span>
+  scripts/          <span class="tree-comment"># Optional: executable code</span>
+
+<span class="code-comment">--- SKILL.md frontmatter ---</span>
+<span class="code-accent">name:</span> my-skill
+<span class="code-accent">description:</span> Apply X when Y happens
+<span class="code-comment">---</span>
+<span class="code-comment"># Then markdown body: steps, examples,</span>
+<span class="code-comment"># templates, edge cases</span></div>
+            </div>
+            <div>
+                <div class="code-block"><span class="tree-label">scaffold-new-service (V2)</span>
+
+<span class="tree-highlight">scaffold-new-service/</span>
+  <span class="tree-highlight">SKILL.md</span>         <span class="tree-comment"># 255 lines, 11 steps</span>
+  <span class="tree-highlight">templates/</span>       <span class="tree-comment"># 26 files (= assets)</span>
+    pyproject.toml  <span class="tree-comment"># {{PACKAGE_NAME}}</span>
+    src/app.py      <span class="tree-comment"># FastAPI factory</span>
+    src/auth.py     <span class="tree-comment"># Bearer middleware</span>
+    web/            <span class="tree-comment"># React + Vite frontend</span>
+    scripts/        <span class="tree-comment"># smoke_test.py</span>
+    ...
+
+<span class="code-comment"># SKILL.md uses read_file(skill_directory</span>
+<span class="code-comment"># + "/templates/foo") to load templates</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 11: Writing an Effective SKILL.md (simplified) -->
+    <div class="slide">
+        <div class="section-label">Skill Structure</div>
+        <h2 class="medium-headline">Writing an Effective SKILL.md</h2>
+        <div class="thirds">
+            <div class="card">
+                <div class="card-icon" style="font-size: clamp(20px, 4vw, 36px);">YAML</div>
+                <h3>Frontmatter: name + description</h3>
+                <p>The <code style="color: var(--accent);">description</code> is critical &mdash; it&rsquo;s how the agent decides whether to load your skill. Write triggering conditions, not a workflow summary.</p>
+                <div style="margin-top: 12px; font-family: monospace; font-size: var(--font-small); color: var(--text-tertiary); line-height: 1.6;">
+                    <div style="color: var(--red);">&#x2717; &ldquo;Scaffolds a new FastAPI service with auth&rdquo;</div>
+                    <div style="color: var(--green);">&#x2713; &ldquo;Use when standing up a new service in this workspace&rdquo;</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon" style="font-size: clamp(20px, 4vw, 36px);">MD</div>
+                <h3>Body: Steps + Tokens + Branches</h3>
+                <p>Start with an overview and a placeholder token table. Then numbered steps the agent follows in order. Include conditional branches (e.g. &ldquo;if auth requested&rdquo;, &ldquo;if web UI requested&rdquo;) and edge cases.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon" style="font-size: clamp(20px, 4vw, 36px);">REF</div>
+                <h3>Companion Files: Templates &amp; Assets</h3>
+                <p>Heavy content goes in separate files. Keep the main SKILL.md scannable (&lt;500 lines). The agent loads companions on demand via <code style="color: var(--accent);">read_file(skill_directory + &ldquo;/templates/foo&rdquo;)</code>.</p>
+            </div>
+        </div>
+        <div class="card" style="max-width: 1000px; border-color: var(--orange);">
+            <h3 style="color: var(--orange);">Amplifier vs Claude.ai</h3>
+            <p>Both follow the same Agent Skills specification. Amplifier skills live in <code style="color: var(--accent);">.amplifier/skills/</code> (project) or <code style="color: var(--accent);">~/.amplifier/skills/</code> (global), are discovered via <code style="color: var(--accent);">load_skill()</code>, and can be bundled with <code style="color: var(--accent);">tool-skills</code> config. Claude.ai skills are uploaded as ZIP files with descriptions capped at 200 chars and support declared pip/npm script dependencies in frontmatter.</p>
+        </div>
+    </div>
+
+    <!-- Slide 12: The Punchline -->
+    <div class="slide center">
+        <div class="section-label">The Punchline</div>
+        <h2 class="headline glow-text" style="max-width: 800px;">This process is itself a skill.</h2>
+        <p class="subhead" style="text-align: center; max-width: 650px;">The methodology for creating template-based skills &mdash; build, extract, mine, decide, validate, harden &mdash; is a repeatable, teachable pattern. Which is exactly what a skill is.</p>
+        <div class="card" style="max-width: 600px; margin-top: clamp(8px, 2vw, 16px); text-align: center; border-color: var(--accent);">
+            <h3 style="color: var(--accent);">Try the Process</h3>
+            <p><strong>1.</strong> Build something real by hand, at least twice</p>
+            <p><strong>2.</strong> Ask the AI to mine the pattern</p>
+            <p><strong>3.</strong> Make the design decisions yourself</p>
+            <p><strong>4.</strong> Start with instructions, upgrade to templates when the pain demands it</p>
+            <p><strong>5.</strong> Validate immediately on a new project</p>
+        </div>
+        <p class="small-text" style="margin-top: clamp(8px, 2vw, 20px);"></p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + slides.length) % slides.length;
+            slides[currentSlide].classList.add('active');
+            updateNav();
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+        });
+
+        // Click navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav') || e.target.closest('a')) return;
+            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        });
+
+        // Touch/swipe navigation
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > 50) showSlide(currentSlide + (diff > 0 ? 1 : -1));
+        }, { passive: true });
+
+        updateNav();
+    </script>
+</body>
+</html>
