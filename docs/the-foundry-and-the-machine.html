@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Foundry and the Machine — Leverage for Building Software That the Model Couldn't</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #000;
+      --bg-card: #0a0a0a;
+      --surface-1: rgba(255,255,255,0.04);
+      --surface-2: rgba(255,255,255,0.08);
+      --surface-3: rgba(255,255,255,0.13);
+      --accent: #FF2D78;
+      --accent-dim: rgba(255,45,120,0.12);
+      --accent-border: rgba(255,45,120,0.35);
+      --accent-glow: rgba(255,45,120,0.22);
+      --text: #fff;
+      --text-secondary: rgba(255,255,255,0.72);
+      --text-tertiary: rgba(255,255,255,0.45);
+      --green: #30D158;
+      --green-dim: rgba(48,209,88,0.12);
+      --green-border: rgba(48,209,88,0.3);
+      --yellow: #FFD60A;
+      --yellow-dim: rgba(255,214,10,0.12);
+      --yellow-border: rgba(255,214,10,0.3);
+      --blue: #0A84FF;
+      --blue-dim: rgba(10,132,255,0.12);
+      --blue-border: rgba(10,132,255,0.3);
+      --code-bg: #0b0f18;
+      --code-green: #7ee787;
+      --code-comment: rgba(255,255,255,0.32);
+      --border: rgba(255,255,255,0.09);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* SLIDESHOW ENGINE */
+    .deck { width: 100%; height: 100%; position: relative; }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 56px 9% 80px;
+      opacity: 0;
+      transition: opacity 0.35s ease;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .slide.active { opacity: 1; pointer-events: all; }
+
+    .zone-prev, .zone-next {
+      position: fixed;
+      top: 0; bottom: 72px;
+      width: 14%;
+      cursor: pointer;
+      z-index: 50;
+    }
+    .zone-prev { left: 0; }
+    .zone-next { right: 0; }
+
+    .nav-dots {
+      position: fixed;
+      bottom: 26px;
+      left: 50%; transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 100;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.22);
+      cursor: pointer;
+      transition: all 0.25s ease;
+      flex-shrink: 0;
+    }
+    .dot.active { width: 22px; background: var(--accent); }
+
+    .slide-num {
+      position: fixed;
+      bottom: 22px; right: 32px;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.05em;
+      z-index: 100;
+    }
+
+    /* TYPOGRAPHY */
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .slide-title {
+      font-size: clamp(28px, 4.2vw, 54px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.025em;
+      color: var(--text);
+    }
+    .slide-body {
+      font-size: clamp(15px, 1.8vw, 19px);
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+    .big-num {
+      font-size: clamp(72px, 13vw, 160px);
+      font-weight: 800;
+      line-height: 0.88;
+      letter-spacing: -0.04em;
+      color: var(--accent);
+    }
+    .accent { color: var(--accent); }
+    .green  { color: var(--green); }
+    .yellow { color: var(--yellow); }
+    .blue   { color: var(--blue); }
+    .dim    { color: var(--text-tertiary); }
+
+    /* SURFACE COMPONENTS */
+    .card {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+    }
+    .card-accent {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+    }
+    .card-green {
+      background: var(--green-dim);
+      border: 1px solid var(--green-border);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+    }
+    .card-yellow {
+      background: var(--yellow-dim);
+      border: 1px solid var(--yellow-border);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 13px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .badge-active {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid var(--green-border);
+    }
+    .badge-active::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .gate {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      background: var(--green-dim);
+      border: 1px solid var(--green-border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      color: var(--green);
+      font-weight: 600;
+    }
+    .gate.warn {
+      background: var(--yellow-dim);
+      border-color: var(--yellow-border);
+      color: var(--yellow);
+    }
+    .gate.fail {
+      background: var(--accent-dim);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+
+    .metric { border-radius: var(--radius); padding: 18px 20px; text-align: center; }
+    .metric-val {
+      font-size: clamp(26px, 3.5vw, 46px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 7px;
+    }
+    .metric-lbl {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    .code {
+      background: var(--code-bg);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--code-green);
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .code .dim { color: var(--code-comment); }
+    .code .kw  { color: #ff7b72; }
+    .code .str { color: #a5d6ff; }
+    .code .num { color: #f0a450; }
+
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; width: 100%; }
+    .g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; width: 100%; }
+
+    .rule { width: 100%; height: 1px; background: var(--border); margin: 18px 0; }
+
+    .arrow { color: var(--accent); font-size: 18px; opacity: 0.6; padding: 0 6px; flex-shrink: 0; }
+
+    .quote {
+      border-left: 3px solid var(--accent);
+      padding: 12px 20px;
+      background: var(--accent-dim);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: clamp(14px, 1.6vw, 17px);
+      color: var(--text-secondary);
+      font-style: italic;
+      line-height: 1.6;
+    }
+
+    /* SLIDE-SPECIFIC BACKGROUNDS */
+    #s1::before {
+      content: '';
+      position: absolute;
+      top: -240px; right: -180px;
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(255,45,120,0.13) 0%, transparent 68%);
+      pointer-events: none;
+    }
+    #s1::after {
+      content: '';
+      position: absolute;
+      bottom: -100px; left: -100px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(255,45,120,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    #s12::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(48,209,88,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    #s13::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 30% 50%, rgba(255,214,10,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    #s14::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 50%, rgba(255,45,120,0.11) 0%, transparent 62%);
+      pointer-events: none;
+    }
+    #s16::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 100%, rgba(255,45,120,0.1) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* NUMBERED LIST */
+    .rule-list { list-style: none; width: 100%; }
+    .rule-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .rule-list li:last-child { border-bottom: none; }
+    .rnum {
+      width: 22px; height: 22px;
+      min-width: 22px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-top: 1px;
+    }
+
+    /* FLOW DIAGRAM */
+    .flow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      width: 100%;
+      justify-content: center;
+    }
+    .flow-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .flow-box.highlight {
+      background: var(--accent-dim);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+    .flow-arrow { color: rgba(255,255,255,0.3); font-size: 16px; padding: 0 4px; }
+
+    .bundle-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 22px;
+      background: rgba(255,45,120,0.09);
+      border: 1px solid rgba(255,45,120,0.32);
+      border-radius: var(--radius);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .bundle-link:hover {
+      background: rgba(255,45,120,0.16);
+      border-color: rgba(255,45,120,0.5);
+    }
+
+    .velocity-strip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      width: 100%;
+    }
+    .velocity-strip .v-icon { font-size: 18px; }
+
+    /* Lever schematic */
+    .lever {
+      display: flex;
+      align-items: stretch;
+      gap: 4px;
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .lever-stage {
+      flex: 1;
+      min-width: 150px;
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="zone-prev" id="zone-prev"></div>
+<div class="zone-next" id="zone-next"></div>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1 · TITLE -->
+  <div class="slide active" id="s1">
+    <div style="width:100%;max-width:920px;position:relative;z-index:1;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:26px;">
+        <div class="badge badge-active">Pattern</div>
+        <span class="dim" style="font-size:12px;letter-spacing:0.04em;">A field report on autonomous development</span>
+      </div>
+
+      <div style="font-size:clamp(30px,5vw,62px);font-weight:800;line-height:1.05;letter-spacing:-0.03em;margin-bottom:18px;">
+        The Foundry<br>
+        <span class="accent">and the Machine</span>
+      </div>
+
+      <div class="slide-body" style="max-width:680px;margin-bottom:26px;">
+        A small tool builds a machine. The machine builds software at a scale
+        the model could never have written in one pass. This is the story of
+        that leverage — the pattern that makes it work, and the honest place
+        where it breaks.
+      </div>
+
+      <a href="https://github.com/ramparte/amplifier-bundle-dev-machine" target="_blank" class="bundle-link" style="margin-bottom:24px;">
+        <span style="font-size:26px;">⚙️</span>
+        <div>
+          <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-tertiary);font-weight:600;margin-bottom:3px;">The Foundry</div>
+          <div style="font-size:16px;font-weight:800;color:var(--accent);letter-spacing:-0.01em;margin-bottom:2px;">amplifier-bundle-dev-machine</div>
+          <div style="font-size:11px;color:var(--text-secondary);">worked example: word4 · openM365 · safeguard</div>
+        </div>
+      </a>
+
+      <div style="font-size:12px;color:var(--text-tertiary);letter-spacing:0.04em;">
+        Every figure verified from README.md · STATE.yaml · MACHINE-REPORT.md · POSTMORTEM
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2 · THE LEVERAGE IDEA -->
+  <div class="slide" id="s2">
+    <div style="width:100%;max-width:960px;">
+      <div class="eyebrow">The core idea · Leverage</div>
+      <div class="slide-title" style="margin-bottom:16px;">Small thing builds big thing</div>
+      <div class="slide-body" style="margin-bottom:22px;max-width:760px;">
+        A language model can only hold so much in its head at once. Ask it to
+        build a whole word processor in one go and it drowns. The trick is
+        <span class="accent">composition</span>: break the large problem into
+        small problems the model can actually handle — then build a machine that
+        runs that decomposition, one small problem at a time, forever.
+      </div>
+
+      <div class="lever" style="margin-bottom:20px;">
+        <div class="lever-stage card-accent">
+          <div style="font-size:30px;margin-bottom:8px;">⚙️</div>
+          <div style="font-weight:800;font-size:16px;margin-bottom:4px;">The Foundry</div>
+          <div style="font-size:12.5px;color:var(--text-secondary);">A small bundle: modes, agents, templates, an admissions process.</div>
+        </div>
+        <div style="display:flex;align-items:center;" class="arrow">→</div>
+        <div class="lever-stage card">
+          <div style="font-size:30px;margin-bottom:8px;">🤖</div>
+          <div style="font-weight:800;font-size:16px;margin-bottom:4px;">The Dev Machine</div>
+          <div style="font-size:12.5px;color:var(--text-secondary);">Generated recipes + state files that build from specs, unattended.</div>
+        </div>
+        <div style="display:flex;align-items:center;" class="arrow">→</div>
+        <div class="lever-stage card-green">
+          <div style="font-size:30px;margin-bottom:8px;">📦</div>
+          <div style="font-weight:800;font-size:16px;margin-bottom:4px;">Software the model couldn't</div>
+          <div style="font-size:12.5px;color:var(--text-secondary);">Hundreds of features. Tens of thousands of lines. One spec at a time.</div>
+        </div>
+      </div>
+
+      <div class="quote">
+        And here's the recursion: the problem of <em>doing</em> that composition
+        well is itself one of those big problems. So we composed it too — that's
+        what the foundry is.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3 · WHAT IS A DEV MACHINE (THE LOOP) -->
+  <div class="slide" id="s3">
+    <div style="width:100%;max-width:940px;">
+      <div class="eyebrow">Act I · The pattern</div>
+      <div class="slide-title" style="margin-bottom:14px;">A dev machine is one loop</div>
+      <div class="slide-body" style="margin-bottom:18px;max-width:740px;">
+        Strip away the tooling and it's a single disposable cycle. Every session
+        starts from zero context, reads the spec before it writes code, and
+        verifies before it commits.
+      </div>
+
+      <div class="code" style="margin-bottom:18px;">read STATE.yaml <span class="dim">→</span> pick next feature <span class="dim">→</span> spawn zero-context session
+  <span class="dim">→</span> implement from spec (TDD) <span class="dim">→</span> verify build + test
+  <span class="dim">→</span> commit <span class="dim">→</span> update state <span class="dim">→</span> repeat</div>
+
+      <div class="g2">
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:6px;">Every session is disposable</div>
+          <div style="font-size:13.5px;color:var(--text-secondary);line-height:1.55;">It reads state, does 3–5 features, writes state, and exits. Nothing lives in a session's memory.</div>
+        </div>
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:6px;">The spec is the product</div>
+          <div style="font-size:13.5px;color:var(--text-secondary);line-height:1.55;">"If your specs are good, the machine builds good software. If your specs are vague, it builds vague software."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4 · SIX ELEMENTS -->
+  <div class="slide" id="s4">
+    <div style="width:100%;max-width:980px;">
+      <div class="eyebrow">Act I · The pattern</div>
+      <div class="slide-title" style="margin-bottom:18px;">Six things every dev machine gets right</div>
+      <div class="g3">
+        <div class="card"><div style="font-size:22px;margin-bottom:8px;">📐</div><div style="font-weight:700;margin-bottom:4px;">Progressive design</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Specs in 3 layers, written just-in-time.</div></div>
+        <div class="card"><div style="font-size:22px;margin-bottom:8px;">🗂️</div><div style="font-weight:700;margin-bottom:4px;">State management</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Truth lives in files, not memory.</div></div>
+        <div class="card"><div style="font-size:22px;margin-bottom:8px;">🧪</div><div style="font-weight:700;margin-bottom:4px;">Testing</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">TDD + a fresh agent that tries to break it.</div></div>
+        <div class="card"><div style="font-size:22px;margin-bottom:8px;">🔁</div><div style="font-weight:700;margin-bottom:4px;">CI/CD &amp; recovery</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Three layers that keep it alive 24/7.</div></div>
+        <div class="card"><div style="font-size:22px;margin-bottom:8px;">✂️</div><div style="font-weight:700;margin-bottom:4px;">Refactoring</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Hard size thresholds force decomposition.</div></div>
+        <div class="card"><div style="font-size:22px;margin-bottom:8px;">🧠</div><div style="font-weight:700;margin-bottom:4px;">Context preservation</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Institutional memory across disposable sessions.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5 · PROGRESSIVE DESIGN -->
+  <div class="slide" id="s5">
+    <div style="width:100%;max-width:940px;">
+      <div class="eyebrow">Pattern · Progressive design</div>
+      <div class="slide-title" style="margin-bottom:16px;">Three layers, gated</div>
+      <div class="g3" style="margin-bottom:18px;">
+        <div class="card-accent"><div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:8px;">Layer 1</div><div style="font-weight:700;margin-bottom:4px;">The Constitution</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">One architecture spec. Written once, reviewed hard, rarely changed. Prevents drift across hundreds of features.</div></div>
+        <div class="card"><div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-tertiary);font-weight:700;margin-bottom:8px;">Layer 2</div><div style="font-weight:700;margin-bottom:4px;">Module specs</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">One per module. Written just before that module is built.</div></div>
+        <div class="card"><div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-tertiary);font-weight:700;margin-bottom:8px;">Layer 3</div><div style="font-weight:700;margin-bottom:4px;">Feature specs</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Lightweight work orders, in batches: interfaces, acceptance criteria, edge cases, files to touch.</div></div>
+      </div>
+      <div class="velocity-strip" style="margin-bottom:16px;">
+        <span class="v-icon">⛓️</span>
+        <span>The gating rule: <span class="accent">Layer N+1 cannot be written until Layer N is approved.</span></span>
+      </div>
+      <div class="slide-body" style="font-size:14.5px;">
+        word4's constitution was a <span class="accent">947-line spec written in about an hour</span> — then it evolved.
+        "Sufficient" means enough to prevent drift, not enough to anticipate everything.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6 · STATE MANAGEMENT -->
+  <div class="slide" id="s6">
+    <div style="width:100%;max-width:940px;">
+      <div class="eyebrow">Pattern · State management</div>
+      <div class="slide-title" style="margin-bottom:14px;">Truth lives in files</div>
+      <div class="slide-body" style="margin-bottom:18px;max-width:760px;">
+        No session remembers anything. So the machine writes everything down:
+        the current phase, every work item with its status and commit hash, and
+        the blockers list — whose mere presence halts the machine.
+      </div>
+      <div class="g2" style="margin-bottom:16px;">
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:6px;">STATE.yaml</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.55;">Machine-readable truth. Updated after <em>every</em> feature, never batched. Carries a <span class="accent">next_action</span> field telling the next session exactly what to do.</div>
+        </div>
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:6px;">Built-in quality cadences</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.55;">Smoke tests every 5 sessions · performance profile every 15 · state pruning every 20. The machine audits itself on a clock.</div>
+        </div>
+      </div>
+      <div class="quote">The cardinal rule: never two work items without a state update between them. One feature at a time through the state machine.</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7 · TESTING + ANTAGONISTIC REVIEW -->
+  <div class="slide" id="s7">
+    <div style="width:100%;max-width:960px;">
+      <div class="eyebrow">Pattern · Testing</div>
+      <div class="slide-title" style="margin-bottom:16px;">Tests first — then a fresh agent tries to break it</div>
+      <div class="g3" style="margin-bottom:18px;">
+        <div class="card-green"><div style="font-weight:700;margin-bottom:4px;color:var(--green);">Tier 1 · Unit</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Seconds. After every feature. TDD: RED before GREEN.</div></div>
+        <div class="card-green"><div style="font-weight:700;margin-bottom:4px;color:var(--green);">Tier 2 · Visual QA</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">SSIM structural-similarity scoring against reference renders. Pass ≥ 0.85.</div></div>
+        <div class="card-green"><div style="font-weight:700;margin-bottom:4px;color:var(--green);">Tier 3 · Live E2E</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Against the live staging deploy, gated to run every ≥ 5 commits.</div></div>
+      </div>
+      <div class="card-accent" style="margin-bottom:14px;">
+        <div style="font-weight:700;margin-bottom:6px;">Antagonistic review</div>
+        <div style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;">
+          After each feature, a <span class="accent">zero-context sub-agent</span> reads the spec and the diff and actively hunts for failures.
+          In one session it caught a bug where <span class="accent">fontSizeCs=0 would have made text invisible</span> — a missing <code>&gt;0</code> guard.
+        </div>
+      </div>
+      <div class="slide-body" style="font-size:14px;">
+        It even has the spine to say no: the machine <span class="accent">rejected feature F-1546 on technical merit</span> after self-review found the mapping unsound — and added a negative test so it could never be reintroduced.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8 · CI/CD RECOVERY STACK -->
+  <div class="slide" id="s8">
+    <div style="width:100%;max-width:960px;">
+      <div class="eyebrow">Pattern · CI/CD &amp; recovery</div>
+      <div class="slide-title" style="margin-bottom:16px;">Three layers that keep it alive</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+        <div class="card" style="display:flex;gap:16px;align-items:center;">
+          <div style="font-size:22px;">♻️</div>
+          <div><div style="font-weight:700;">Entrypoint retry loop <span class="dim" style="font-weight:400;">· inside container · continuous</span></div><div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Handles API blips, Cloudflare challenges, recipe crashes. Exponential backoff to a 45-minute ceiling.</div></div>
+        </div>
+        <div class="card" style="display:flex;gap:16px;align-items:center;">
+          <div style="font-size:22px;">🐕</div>
+          <div><div style="font-weight:700;">Watchdog <span class="dim" style="font-weight:400;">· host cron · every 15 min</span></div><div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Container crashes, OOM, host reboots. Checks heartbeat freshness before restarting.</div></div>
+        </div>
+        <div class="card" style="display:flex;gap:16px;align-items:center;">
+          <div style="font-size:22px;">📡</div>
+          <div><div style="font-weight:700;">Monitor <span class="dim" style="font-weight:400;">· host cron · every 10 min</span></div><div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Operational drift: stale blockers, unpushed commits — auto-fixed when safe.</div></div>
+        </div>
+      </div>
+      <div class="quote">
+        Hard-won detail: the recipe CLI exits 0 even when a step fails. The entrypoint now scans stdout for
+        "Recipe execution failed" — because once, a silent loop burned an entire night across
+        <span class="accent">514 attempts</span>.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9 · CONTEXT PRESERVATION -->
+  <div class="slide" id="s9">
+    <div style="width:100%;max-width:960px;">
+      <div class="eyebrow">Pattern · Context preservation &amp; refactoring</div>
+      <div class="slide-title" style="margin-bottom:16px;">How a memoryless machine remembers</div>
+      <div class="g3" style="margin-bottom:16px;">
+        <div class="card"><div style="font-weight:700;margin-bottom:4px;">CONTEXT-TRANSFER.md</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Institutional memory. Reverse-chronological session summaries. In word4 it grew to <span class="accent">6,258 lines</span>.</div></div>
+        <div class="card"><div style="font-weight:700;margin-bottom:4px;">SCRATCH.md</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">Disposable working memory. The next session may ignore it — it belonged to the last one.</div></div>
+        <div class="card"><div style="font-weight:700;margin-bottom:4px;">AGENTS.md</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">The guardrail every human session hits: <span class="accent">"you run the machine, you are not the machine."</span></div></div>
+      </div>
+      <div class="card-accent">
+        <div style="font-weight:700;margin-bottom:6px;">Refactoring is on a leash too</div>
+        <div style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;">
+          Any module past <span class="accent">10,000 LOC</span> means STOP adding features and file a refactor plan.
+          That rule split editor-core from 15,613 → 8,563 LOC — automatically, mid-run.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10 · ADMISSIONS INTRO -->
+  <div class="slide" id="s10">
+    <div style="width:100%;max-width:940px;">
+      <div class="eyebrow">Act II · The foundry</div>
+      <div class="slide-title" style="margin-bottom:16px;">Before it builds, it decides if it <span class="accent">should</span></div>
+      <div class="slide-body" style="margin-bottom:20px;max-width:780px;">
+        Not every problem is eligible for autonomous development. The foundry's
+        <span class="accent">/admissions</span> process interrogates your project
+        first — it reads your codebase, runs your commands, and scores your actual
+        artifacts against a set of gates.
+      </div>
+      <div class="g2" style="margin-bottom:16px;">
+        <div class="card-green"><div style="font-weight:700;color:var(--green);margin-bottom:6px;">What it is</div><div style="font-size:13px;color:var(--text-secondary);line-height:1.55;">A confidence-scored readiness assessment that prescribes exactly what to fix when you're not ready.</div></div>
+        <div class="card-yellow"><div style="font-weight:700;color:var(--yellow);margin-bottom:6px;">What it is not</div><div style="font-size:13px;color:var(--text-secondary);line-height:1.55;">A rubber stamp. "It doesn't take your word for anything."</div></div>
+      </div>
+      <div class="quote">
+        Scoring is brutally honest by design: below 50% is a hard stop, 50–75% is proceed-with-caution.
+        "No rounding up. No optimism bias. A 48% is a 48%."
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 11 · THE GATES + SAFEGUARD -->
+  <div class="slide" id="s11">
+    <div style="width:100%;max-width:980px;">
+      <div class="eyebrow">Act II · The foundry · Admissions</div>
+      <div class="slide-title" style="margin-bottom:16px;">The gates</div>
+      <div class="g2" style="gap:24px;align-items:start;">
+        <div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="gate"><span>1</span><span>Decomposability — hundreds of small, independent units?</span></div>
+            <div class="gate"><span>2</span><span>Verifiable correctness — fast, automatic feedback?</span></div>
+            <div class="gate"><span>3</span><span>Sufficient architecture — enough to prevent drift?</span></div>
+            <div class="gate"><span>4</span><span>Functioning toolchain — does build &amp; test run?</span></div>
+            <div class="gate"><span>5</span><span>Spec quality — specs a machine can consume?</span></div>
+            <div class="gate warn"><span>6</span><span>Intent clarity — clear enough to work from alone?</span></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-tertiary);margin-top:12px;line-height:1.5;">
+            A note on evolution: the README still says <em>five</em> gates. The
+            implemented advisor has <span class="yellow">six</span> — Intent Clarity
+            was added later. The pattern is still learning about itself.
+          </div>
+        </div>
+        <div>
+          <div class="card-accent" style="margin-bottom:14px;">
+            <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:8px;">Real assessment</div>
+            <div style="font-size:clamp(30px,4vw,48px);font-weight:800;letter-spacing:-0.03em;line-height:1;margin-bottom:8px;">safeguard: <span class="accent">15%</span></div>
+            <div style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;">on Gate 4 — zero code, no build system, no toolchain chosen. The assessment prescribed exactly what to do: pick the stack, scaffold, verify a clean build.</div>
+          </div>
+          <div class="velocity-strip"><span class="v-icon">✅</span><span>After remediation, the machine ran fine — and finished 100% healthy.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 12 · THE WIN -->
+  <div class="slide" id="s12">
+    <div style="width:100%;max-width:960px;position:relative;z-index:1;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+        <div class="badge badge-active">word4 · the win</div>
+        <span class="dim" style="font-size:12px;">a Google-Docs-fidelity word processor, machine-built</span>
+      </div>
+      <div class="slide-title" style="margin-bottom:20px;">The first 5.5 days</div>
+      <div class="g4" style="margin-bottom:18px;">
+        <div class="metric card-green"><div class="metric-val green">278</div><div class="metric-lbl">features shipped</div></div>
+        <div class="metric card-green"><div class="metric-val green">106</div><div class="metric-lbl">autonomous sessions</div></div>
+        <div class="metric card-green"><div class="metric-val green">~89K</div><div class="metric-lbl">lines of code</div></div>
+        <div class="metric card-green"><div class="metric-val green">3,714</div><div class="metric-lbl">tests passing</div></div>
+      </div>
+      <div class="slide-body" style="max-width:780px;">
+        No human wrote a line of it. A human wrote the architecture spec, defined
+        the feature pipeline, and watched the health dashboard. The machine did
+        the rest — 445 commits, real-time collaboration, OOXML import/export,
+        tables, deployed to Fly.io. <span class="accent">This is the leverage paying off.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 13 · THE RULER INCIDENT -->
+  <div class="slide" id="s13">
+    <div style="width:100%;max-width:940px;position:relative;z-index:1;">
+      <div class="eyebrow" style="color:var(--yellow);">Act III · The honest part</div>
+      <div class="slide-title" style="margin-bottom:16px;">The Ruler Incident</div>
+      <div class="slide-body" style="margin-bottom:18px;max-width:780px;">
+        word4 didn't stop at 5.5 days. Left running, it kept shipping "features."
+        And a basic one — a <span class="yellow">ruler</span>, the thing every
+        word processor has at the top — sat in the machine's <code>next_action</code>
+        field as a candidate, session after session.
+      </div>
+      <div class="g2" style="margin-bottom:16px;">
+        <div class="metric card-yellow"><div class="metric-val yellow">22</div><div class="metric-lbl">consecutive sessions it was carried forward — and never selected</div></div>
+        <div class="metric card-yellow"><div class="metric-val yellow">0</div><div class="metric-lbl">lines of ruler code, after 534 sessions</div></div>
+      </div>
+      <div class="quote" style="border-left-color:var(--yellow);background:var(--yellow-dim);">
+        The machine always chose another OOXML property to map instead. Deterministic, always
+        available, always passes review, increments the counter. The ruler required design
+        judgment — so it never got picked.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 14 · PRIORITY INVERSION -->
+  <div class="slide" id="s14">
+    <div style="width:100%;max-width:960px;position:relative;z-index:1;">
+      <div class="eyebrow">Act III · The honest part</div>
+      <div class="slide-title" style="margin-bottom:16px;">Completionism, not value</div>
+      <div class="slide-body" style="margin-bottom:18px;max-width:780px;">
+        By session 534 the numbers told the story. The machine had found a
+        repeatable, always-available pattern — mapping OOXML properties through
+        six layers — and optimized for it, because user-visible work is harder
+        and less predictable.
+      </div>
+      <div class="g3" style="margin-bottom:16px;">
+        <div class="metric card-accent"><div class="metric-val accent">4.06:1</div><div class="metric-lbl">test-to-source ratio — grinding, not building</div></div>
+        <div class="metric card-accent"><div class="metric-val accent">77/81</div><div class="metric-lbl">recent "features" were pure test files</div></div>
+        <div class="metric card-accent"><div class="metric-val accent">100+</div><div class="metric-lbl">sessions with staging deploy overdue</div></div>
+      </div>
+      <div class="quote">
+        The machine doesn't lie or hide issues — STATE.yaml faithfully reported every problem.
+        <span class="accent">It just can't prioritize. That's the human's job.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 15 · CROSS-MACHINE HONESTY -->
+  <div class="slide" id="s15">
+    <div style="width:100%;max-width:960px;">
+      <div class="eyebrow">Act III · The honest part</div>
+      <div class="slide-title" style="margin-bottom:16px;">Same pattern, different fates</div>
+      <div class="slide-body" style="margin-bottom:18px;max-width:780px;">
+        Run across four projects, the pattern's outcomes spread out — and the
+        failures were almost always in the gap between "template generated" and
+        "machine fully operational," not in the architecture itself.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="card-green" style="display:flex;justify-content:space-between;align-items:center;gap:16px;">
+          <div><span style="font-weight:800;color:var(--green);">safeguard</span> <span class="dim" style="font-size:13px;">· the reference model</span></div>
+          <div style="font-size:13.5px;color:var(--text-secondary);text-align:right;">228 iterations · <span class="green" style="font-weight:700;">100% healthy</span> · blocker-free throughout</div>
+        </div>
+        <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:16px;border-color:var(--accent-border);">
+          <div><span style="font-weight:800;color:var(--accent);">openM365</span> <span class="dim" style="font-size:13px;">· critical failure loop</span></div>
+          <div style="font-size:13.5px;color:var(--text-secondary);text-align:right;">160 iterations · <span class="accent" style="font-weight:700;">1.25%</span> · a build-gate + infinite retry trap</div>
+        </div>
+        <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:16px;border-color:var(--yellow-border);">
+          <div><span style="font-weight:800;color:var(--yellow);">universal-app</span> <span class="dim" style="font-size:13px;">· stalled at Phase 8</span></div>
+          <div style="font-size:13.5px;color:var(--text-secondary);text-align:right;">built a platform, then <span class="yellow" style="font-weight:700;">hallucinated APIs</span> when asked to code against it</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text-tertiary);margin-top:14px;line-height:1.55;">
+        The architecture is robust when properly configured. Most failures live in setup and configuration — the boring part the admissions gates exist to catch.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 16 · THE LESSON / LEVERAGE REVISITED -->
+  <div class="slide" id="s16">
+    <div style="width:100%;max-width:900px;position:relative;z-index:1;">
+      <div class="eyebrow">The takeaway</div>
+      <div style="font-size:clamp(26px,4vw,46px);font-weight:800;line-height:1.12;letter-spacing:-0.025em;margin-bottom:22px;">
+        The machine is the leverage.<br>
+        <span class="accent">The judgment stays human.</span>
+      </div>
+      <div class="slide-body" style="max-width:760px;margin-bottom:22px;">
+        Compose a problem too big for the model into small problems it can handle,
+        and you can build things the model never could in one pass. The foundry is
+        that same move applied to itself — small tooling that builds the machine
+        that builds the software.
+      </div>
+      <div class="g2" style="margin-bottom:22px;">
+        <div class="card"><div style="font-weight:700;margin-bottom:6px;">What the machine gives you</div><div style="font-size:13px;color:var(--text-secondary);line-height:1.55;">Tireless throughput, disciplined verification, honest state — hundreds of features, one spec at a time.</div></div>
+        <div class="card-accent"><div style="font-weight:700;margin-bottom:6px;">What it still needs from you</div><div style="font-size:13px;color:var(--text-secondary);line-height:1.55;">Priorities. The sense of what's worth building next. The ruler nobody told it to draw.</div></div>
+      </div>
+      <a href="https://github.com/ramparte/amplifier-bundle-dev-machine" target="_blank" class="bundle-link">
+        <span style="font-size:24px;">⚙️</span>
+        <div>
+          <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-tertiary);font-weight:600;margin-bottom:3px;">The Foundry</div>
+          <div style="font-size:15px;font-weight:800;color:var(--accent);">github.com/ramparte/amplifier-bundle-dev-machine</div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<div class="nav-dots" id="nav-dots"></div>
+<div class="slide-num" id="slide-num">1 / 16</div>
+
+<script>
+  (function () {
+    const slides = document.querySelectorAll('.slide');
+    const navDots = document.getElementById('nav-dots');
+    const slideNum = document.getElementById('slide-num');
+    const TOTAL = slides.length;
+    let current = 0;
+
+    for (let i = 0; i < TOTAL; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'dot' + (i === 0 ? ' active' : '');
+      dot.addEventListener('click', () => goTo(i));
+      navDots.appendChild(dot);
+    }
+
+    function goTo(n) {
+      const dots = navDots.querySelectorAll('.dot');
+      slides[current].classList.remove('active');
+      dots[current].classList.remove('active');
+      current = ((n % TOTAL) + TOTAL) % TOTAL;
+      slides[current].classList.add('active');
+      dots[current].classList.add('active');
+      slideNum.textContent = (current + 1) + ' / ' + TOTAL;
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        goTo(current + 1);
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        goTo(current - 1);
+      }
+      if (e.key === 'Home') goTo(0);
+      if (e.key === 'End') goTo(TOTAL - 1);
+    });
+
+    document.getElementById('zone-prev').addEventListener('click', () => goTo(current - 1));
+    document.getElementById('zone-next').addEventListener('click', () => goTo(current + 1));
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    document.addEventListener('touchstart', function (e) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+      const dx = touchStartX - e.changedTouches[0].clientX;
+      const dy = touchStartY - e.changedTouches[0].clientY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 44) {
+        goTo(current + (dx > 0 ? 1 : -1));
+      }
+    }, { passive: true });
+  })();
+</script>
+
+</body>
+</html>
