@@ -2,6 +2,81 @@
 
 Detailed guidance for creating presentation decks.
 
+## Narrative Layer (READ FIRST)
+
+A deck is a **narrative**, not a feature catalog. Before anything else, build the
+spine; then map it 1:1 to slides; then make each slide well-formed. These three
+contracts are mandatory. A deck that is pretty and accurate but not compelling
+has failed.
+
+### Contract 1 — The narrative spine (produce this BEFORE any slides)
+
+Write the spine first, as an explicit artifact. It has three parts:
+
+- **One-line ABT** — a single sentence in **And / But / Therefore** form:
+  the stable situation (*And*), the complication (*But*), the resulting point
+  (*Therefore*). This is the throughline of the whole deck.
+- **Payoff, named up front** — state, in the spine, what the deck is driving
+  toward. You must know the payoff before you write slide one.
+- **Ordered list of beats** — proof-first. Each beat has a `role` from:
+  `proof | tension | mechanism | turn | payoff | takeaway`, and an
+  **`advances:` note** saying how it serves the ABT.
+
+**Spine rules (hard):**
+
+- **(a) Proof-first:** `beats[0].role == proof`. Open on the payoff/evidence,
+  not a title card. The only exception is an explicit
+  `proof_deferred_reason:` written into the spine.
+- **(b) Every beat must advance the ABT:** each beat carries an `advances:` note.
+  **No `advances`, no beat.** This is what kills random supporting material.
+- **(c) Mechanism is capped, one claim each:** `mechanism` beats are limited in
+  number and each makes exactly ONE claim. A 6-tile "here's everything it does"
+  catalog beat is not representable — split it or cut it.
+
+**Example spine (Foundry deck):**
+
+```
+ABT: AND a small tool builds a machine that writes software the model never
+     could in one pass; BUT left running it can't tell what's worth building
+     (it grinds tests instead of drawing a ruler); THEREFORE the machine is the
+     leverage — judgment stays human.
+Payoff: the "ruler incident" — the machine grinding tests while a human draws
+        the ruler in seconds.
+Beats:
+  1. proof     — the machine shipped 89K lines in one run.   advances: establishes the AND (real leverage)
+  2. tension   — but it couldn't tell what was worth doing.  advances: establishes the BUT
+  3. mechanism — the dev-machine loop, one claim.            advances: shows HOW the leverage works
+  4. turn      — the ruler incident.                         advances: the pivot from AND to THEREFORE
+  5. payoff    — machine = leverage, judgment stays human.   advances: lands the THEREFORE
+  6. takeaway  — the pattern, generalized.                   advances: what the audience keeps
+```
+
+### Contract 2 — The deck contract (beat → slide)
+
+- Slides render **1:1 from beats**. One beat = one slide.
+- **If it's not a beat, it's not a slide.** No slide exists without a beat.
+- **Payoff lands before the midpoint** of the deck — never buried near the end
+  (the Foundry deck's payoff was at slide 13/16; that is the failure mode).
+- The mandatory **Sources & Methodology** slide is the one allowed exception to
+  1:1 (it is an audit-trail slide, not a beat) and sits at the end.
+
+### Contract 3 — The slide contract (each slide must be well-formed)
+
+Every content slide must:
+
+- **(a) Name the beat it serves.** State which beat/role this slide is (an HTML
+  comment `<!-- beat N: role -->` at the top of the slide is enough).
+- **(b) Lead with a CLAIM as its headline** — an assertion that advances the
+  beat (e.g. *"The machine wrote 89K lines it couldn't judge"*), **never a bare
+  topic label** like *"Metrics"*, *"Architecture"*, *"Overview"*, *"Features"*.
+- **(c) Earn every fact/number/visual on it** — each supporting element must
+  make THAT ONE claim land harder. If it doesn't, cut it.
+- **(d) Hand off** — end pointed at the next beat, so the deck reads as a
+  throughline, not islands.
+- **(e) No default tile-grid** — a pile of co-equal tiles is banned as a layout
+  default. Mechanism gets one claim per slide, shown not catalogued. If you find
+  yourself making 4+ co-equal tiles, you are cataloguing, not narrating.
+
 ## Research Phase
 
 Before creating a deck, gather:
@@ -364,6 +439,16 @@ questions any metric in the deck, this slide tells them how it was derived.
 ## Quality Checklist
 
 Before presenting to user, verify ALL items in both sections:
+
+### Narrative (verify FIRST — a pretty, accurate, non-compelling deck has failed)
+
+- [ ] **Spine written before slides** — ABT (And/But/Therefore) + named payoff + ordered beats exist as an artifact (see "Narrative Layer")
+- [ ] **Proof-first** — first content slide is the `proof` beat (or an explicit `proof_deferred_reason` is stated)
+- [ ] **Every beat advances the ABT** — each beat has an `advances:` note; no orphan beats
+- [ ] **Slides are 1:1 with beats** — slide count == beat count (excluding the Sources slide)
+- [ ] **Payoff lands before the midpoint** — not buried at the end
+- [ ] **Every slide headline is a CLAIM, not a topic label** — no "Metrics"/"Architecture"/"Overview" title slides
+- [ ] **No co-equal tile-grid catalog slides** — mechanism is one claim per slide, not a 4+ tile pile
 
 ### Accuracy (verify FIRST — a beautiful deck with wrong numbers is worse than ugly truth)
 
