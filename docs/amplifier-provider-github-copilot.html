@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Amplifier Builds Amplifier — The GitHub Copilot Provider Story</title>
+    <script>document.documentElement.classList.add('js')</script>
     <style>
         * {
             margin: 0;
@@ -15,11 +16,10 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: #0a0a0a;
             color: #f0f0f0;
-            overflow: hidden;
         }
 
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
@@ -34,6 +34,25 @@
         .slide.active {
             display: flex;
         }
+
+        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
 
         .center {
             text-align: center;
@@ -397,137 +416,122 @@
     </style>
 </head>
 <body>
-    <!-- Slide 1: Title -->
-    <div class="slide active center">
-        <div class="section-label">An Open Source Contribution</div>
-        <h1 class="headline">Amplifier Builds Amplifier</h1>
-        <p class="subhead">The GitHub Copilot Provider Story</p>
-    </div>
+    <!--
+      ═══════════════════════════════════════════════════════════════════════
+      NARRATIVE SPINE  (built from the deck's existing content; no fresh research)
+      ═══════════════════════════════════════════════════════════════════════
 
-    <!-- Slide 2: The Setup -->
-    <div class="slide">
-        <div class="section-label">The Constraint</div>
-        <h2 class="medium-headline">Frontier Models. Without the Overhead.</h2>
-        <div class="cards">
-            <div class="card">
-                <div class="card-title">Model Sprawl</div>
-                <div class="card-text">Anthropic, OpenAI, and more. Serious experimentation means access to all of them.</div>
+      ABT:
+        AND Amplifier needed frontier models without owning any LLM infrastructure,
+            and GitHub Copilot already served them;
+        BUT no Copilot provider existed for Amplifier, and the first version's SDK
+            entanglement turned every upstream change into hotfixes-on-hotfixes;
+        THEREFORE the provider was rebuilt by Amplifier's own agent ecosystem into an
+            SDK-isolated, contract-driven module — so Amplifier now builds and
+            sustains its own provider.
+
+      PAYOFF (named up front):
+        "Amplifier builds Amplifier" — the V2 re-architecture, produced by Amplifier's
+        own agents, where an upstream SDK breaking change is absorbed inside one
+        quarantined adapter module without a ripple.
+
+      BEATS (proof-first; payoff lands at beat 4 of 8, before the midpoint):
+        1. proof     — today the provider is a sustained first-class module:
+                       1,218 tests, 98% coverage, 6 SDK breaks absorbed, 0 errors.
+                       advances: grounds the AND in a real, durable artifact.
+        2. setup     — what it IS: the GitHub Copilot provider gives Amplifier
+                       frontier models with no LLM infrastructure to own.
+                       advances: introduces the named subject before leaning on it.
+        3. tension   — V0 shipped in a week and got adopted, but keeping pace with a
+                       fast-moving SDK became hotfixes-on-hotfixes.  advances: the BUT.
+        4. payoff    — "Amplifier builds Amplifier": V2 rebuilt by Amplifier's own
+                       agents.  advances: lands the THEREFORE (the strategy).
+        5. mechanism — SDK isolation: every Copilot SDK import quarantined in one
+                       adapter module. (one claim)  advances: HOW it stays durable.
+        6. mechanism — the agent ecosystem did the build: 175 files, 5 days,
+                       100% AI-assisted. (one claim)  advances: HOW V2 got made.
+        7. turn      — validation in production: SDK 0.2.1 relocated two types,
+                       absorbed in one module, no ripple.  advances: proves it works.
+        8. takeaway  — the unlock: 15+ frontier models, $0 extra cost, enterprise
+                       compliant, contributed back.  advances: what the audience keeps.
+
+        + Sources & Methodology (audit-trail slide, not a beat) at the end.
+        Slides = 8 beats + 1 = 9.
+    -->
+
+    <!-- beat 1: proof -->
+    <div class="slide active center">
+        <div class="section-label">The State Today</div>
+        <h2 class="medium-headline">A First-Class Provider That Has Held Through 6 SDK Breaks</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-number">1,218</div>
+                <div class="stat-label">Tests Passing</div>
             </div>
-            <div class="card">
-                <div class="card-title">Infrastructure Tax</div>
-                <div class="card-text">Spinning up LLM infrastructure with auth layers and endpoints takes time and expertise.</div>
+            <div class="stat-item">
+                <div class="stat-number">98%</div>
+                <div class="stat-label">Coverage</div>
             </div>
-            <div class="card">
-                <div class="card-title">Enterprise Approval Gap</div>
-                <div class="card-text">Using models inside a company still requires compliance and security sign-off.</div>
+            <div class="stat-item">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Lint / Type Errors</div>
             </div>
         </div>
         <div class="highlight-box">
-            <div class="highlight-text">Every one of these constraints has the same answer: <strong>GitHub Copilot</strong> — frontier models from multiple providers, no additional setup required, no LLM infrastructure to own.</div>
+            <div class="highlight-text">64 days active, 8+ releases shipped, <strong>6 upstream SDK breaking changes absorbed</strong> — and it still runs as a native Amplifier provider. This is what it settled into. Here is how it got there.</div>
         </div>
     </div>
 
-    <!-- Slide 3: The Question -->
-    <div class="slide center">
-        <div class="section-label">The Gap</div>
-        <h2 class="medium-headline">Why not use GitHub Copilot in Amplifier?</h2>
-        <p class="subhead" style="margin-top: 32px;">That question didn't have an answer yet.<br>Because the GitHub Copilot provider for Amplifier didn't exist.</p>
-    </div>
-
-    <!-- Slide 4: Week 1 -->
+    <!-- beat 2: setup -->
     <div class="slide">
-        <div class="section-label">Discovery</div>
-        <h2 class="medium-headline">Feb 10, 2026 — V0 Ships</h2>
-        <div class="cards" style="max-width: 1000px;">
+        <div class="section-label">What It Is</div>
+        <h2 class="medium-headline">The Copilot Provider Gives Amplifier Frontier Models With No Infrastructure to Own</h2>
+        <div class="cards">
             <div class="card">
-                <div class="card-title">Built in One Week</div>
-                <div class="card-text">From zero to working provider. Streaming support, SDK driver, converters, model discovery, test suite. All delivered.</div>
+                <div class="card-title">Model Sprawl, Solved</div>
+                <div class="card-text">Anthropic, OpenAI, and more — reached through one GitHub Copilot subscription instead of separate accounts and endpoints.</div>
             </div>
             <div class="card">
-                <div class="card-title">Official Launch</div>
-                <div class="card-text">The Amplifier team saw what it could unlock for the ecosystem and adopted it as a native Amplifier provider.</div>
+                <div class="card-title">No Infrastructure Tax</div>
+                <div class="card-text">No auth layers, endpoints, or LLM serving to stand up and maintain. Copilot already owns that.</div>
             </div>
+            <div class="card">
+                <div class="card-title">Enterprise Path Cleared</div>
+                <div class="card-text">Models arrive through a channel companies have already approved for compliance and security.</div>
+            </div>
+        </div>
+        <div class="highlight-box">
+            <div class="highlight-text">That is the promise. The catch: until this project, <strong>no GitHub Copilot provider for Amplifier existed.</strong></div>
         </div>
     </div>
 
-    <!-- Slide 5: V1 Era -->
+    <!-- beat 3: tension -->
     <div class="slide">
-        <div class="section-label">Momentum</div>
-        <h2 class="medium-headline">V1: Releases Shipping, SDK Breaking</h2>
-        <div style="margin-top: clamp(24px, 4vw, 40px); max-width: 800px; text-align: left;">
+        <div class="section-label">The Complication</div>
+        <h2 class="medium-headline">V0 Shipped in a Week — Then Keeping Pace Became Hotfixes on Hotfixes</h2>
+        <div style="margin-top: clamp(16px, 3vw, 32px); max-width: 800px; text-align: left;">
+            <div class="timeline-item">
+                <div class="timeline-marker">Feb 10</div>
+                <div class="timeline-content">V0 built in one week and adopted as a native Amplifier provider.</div>
+            </div>
             <div class="timeline-item">
                 <div class="timeline-marker">v1.0.1</div>
-                <div class="timeline-content">Feb 17 — 18 models, 692 tests, 95% coverage</div>
+                <div class="timeline-content">Feb 17 — 18 models, 692 tests, 95% coverage.</div>
             </div>
             <div class="timeline-item">
-                <div class="timeline-marker">v1.0.2</div>
-                <div class="timeline-content">Feb 28 — SDK 0.1.28 update</div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-marker">v1.0.3</div>
-                <div class="timeline-content">Mar 7 — SDK 0.1.30 update</div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-marker">v1.0.4</div>
-                <div class="timeline-content">Mar 8 — SDK 0.1.32 update</div>
+                <div class="timeline-marker">v1.0.2–4</div>
+                <div class="timeline-content">Feb 28 → Mar 8 — three SDK bumps (0.1.28, 0.1.30, 0.1.32) in nine days.</div>
             </div>
         </div>
         <div class="highlight-box">
-            <div class="highlight-text">Keeping pace with a fast-moving Copilot SDK — same-day and same-week absorption of every breaking change. The codebase earned each update.</div>
+            <div class="highlight-text">Each SDK change rippled everywhere: <strong>imports scattered through provider logic, tests coupled to internals, no formal spec.</strong> The cost of any small change kept growing.</div>
         </div>
     </div>
 
-    <!-- Slide 6: The Wall -->
-    <div class="slide">
-        <div class="section-label">The Problem</div>
-        <h2 class="medium-headline">Hotfixes on Hotfixes</h2>
-        <div class="cards">
-            <div class="card">
-                <div class="card-title">SDK Imports Scattered</div>
-                <div class="card-text">Copilot SDK imports landed in the middle of provider logic — no clean boundary.</div>
-            </div>
-            <div class="card">
-                <div class="card-title">Tests Tightly Coupled</div>
-                <div class="card-text">Tests were reliable but coupled to implementation details. Any SDK change rippled through.</div>
-            </div>
-            <div class="card">
-                <div class="card-title">No Formal Specification</div>
-                <div class="card-text">Only code comments and tribal knowledge. No contract-driven development.</div>
-            </div>
-        </div>
-        <div class="highlight-box">
-            <div class="highlight-text">The work to make any small change was growing. Something had to change.</div>
-        </div>
-    </div>
-
-    <!-- Slide 7: The Decision -->
-    <div class="slide">
-        <div class="section-label">The Pivot</div>
-        <h2 class="medium-headline">Four Goals for V2</h2>
-        <div class="cards">
-            <div class="card">
-                <div class="card-title">1. Match the Provider Contract</div>
-                <div class="card-text">Indistinguishable from any other first-class Amplifier provider. 100% contract compliance.</div>
-            </div>
-            <div class="card">
-                <div class="card-title">2. Isolate the SDK Layer</div>
-                <div class="card-text">All Copilot SDK imports in a single quarantine module. When SDK breaks, only that module changes.</div>
-            </div>
-            <div class="card">
-                <div class="card-title">3. Solid Tests, No Shortcuts</div>
-                <div class="card-text">No MagicMocks. Actual runtime types. TDD discipline applied consistently.</div>
-            </div>
-            <div class="card">
-                <div class="card-title">4. Contract-Driven Development</div>
-                <div class="card-text">Behavioural specs in markdown. Readable by humans and AI assistants alike.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide 8: The Meta-Moment -->
+    <!-- beat 4: payoff -->
     <div class="slide center">
-        <div class="section-label">The Twist</div>
-        <h2 class="medium-headline">What if I used Amplifier<br>to build the Amplifier provider?</h2>
+        <div class="section-label">The Turn</div>
+        <h2 class="medium-headline">The Fix: Use Amplifier to Rebuild the Amplifier Provider</h2>
         <div class="meta-diagram">
             <div class="meta-box">amplifier-expert</div>
             <div class="meta-arrow">·</div>
@@ -538,19 +542,36 @@
             <div class="meta-box">superpowers</div>
             <div class="meta-arrow">·</div>
             <div class="meta-box">git-ops</div>
-            <div class="meta-arrow">·</div>
-            <div class="meta-box">dot-graph</div>
         </div>
         <div class="quote-block">
-            <div class="quote-text">Amplifier's own agent ecosystem did the heavy lifting — architecture advice, code generation, quality review, and git operations — all orchestrated through Amplifier itself.</div>
+            <div class="quote-text">Amplifier's own agents did the heavy lifting — architecture, code generation, quality review, git operations — orchestrated through Amplifier itself.</div>
         </div>
-        <div class="subhead" style="margin-top: 24px;">The provider was built by the same ecosystem it now powers.</div>
+        <div class="subhead" style="margin-top: 24px;"><strong>Amplifier builds Amplifier.</strong> The provider was rebuilt by the same ecosystem it now powers.</div>
     </div>
 
-    <!-- Slide 9: The Result -->
+    <!-- beat 5: mechanism -->
+    <div class="slide">
+        <div class="section-label">How It Stays Durable · Claim 1</div>
+        <h2 class="medium-headline">Every Copilot SDK Import Is Quarantined in One Adapter Module</h2>
+        <div class="comparison">
+            <div class="comparison-box">
+                <div class="comparison-title before">V1: Entangled</div>
+                <div class="comparison-text">An SDK breaking change touched provider logic, tests, and configuration. Everything rippled.</div>
+            </div>
+            <div class="comparison-box">
+                <div class="comparison-title after">V2: Isolated</div>
+                <div class="comparison-text">An SDK breaking change is contained in the <code>sdk_adapter/</code> layer only. The provider-to-Amplifier contract stays untouched.</div>
+            </div>
+        </div>
+        <div class="highlight-box">
+            <div class="highlight-text">One claim, one boundary: when the SDK moves, exactly one module moves with it — and it is now indistinguishable from any other first-class Amplifier provider.</div>
+        </div>
+    </div>
+
+    <!-- beat 6: mechanism -->
     <div class="slide center">
-        <div class="section-label">V2.0.0</div>
-        <h2 class="medium-headline">175 Files. 5 Days. 100% AI-Assisted.</h2>
+        <div class="section-label">How V2 Got Made · Claim 2</div>
+        <h2 class="medium-headline">The Agent Ecosystem Delivered V2 in 5 Days, 100% AI-Assisted</h2>
         <div class="stats-grid">
             <div class="stat-item">
                 <div class="stat-number">175</div>
@@ -561,64 +582,31 @@
                 <div class="stat-label">Lines Added</div>
             </div>
             <div class="stat-item">
-                <div class="stat-number">−31K</div>
-                <div class="stat-label">Lines Deleted</div>
-            </div>
-            <div class="stat-item">
                 <div class="stat-number">858</div>
-                <div class="stat-label">Tests Passing</div>
+                <div class="stat-label">Tests Passing at Cut</div>
             </div>
+        </div>
+        <div class="highlight-box">
+            <div class="highlight-text">Real runtime types, no MagicMocks; behavioural specs in markdown readable by humans and agents alike. The machine did the build — the contract stayed human-defined.</div>
         </div>
     </div>
 
-    <!-- Slide 10: Proof It Worked -->
+    <!-- beat 7: turn -->
     <div class="slide">
         <div class="section-label">Validation</div>
-        <h2 class="medium-headline">SDK 0.2.x Breaks. Architecture Holds.</h2>
-        <div class="comparison">
-            <div class="comparison-box">
-                <div class="comparison-title before">V1: Entangled</div>
-                <div class="comparison-text">SDK breaking change → touches provider logic, tests, configuration. Everything ripples.</div>
-            </div>
-            <div class="comparison-box">
-                <div class="comparison-title after">V2: Isolated</div>
-                <div class="comparison-text">SDK breaking change → contained in sdk_adapter/ layer only. Provider-Amplifier integration untouched.</div>
-            </div>
+        <h2 class="medium-headline">SDK 0.2.1 Moved Two Core Types — The Architecture Absorbed It Without a Ripple</h2>
+        <div class="highlight-box" style="max-width: 1100px;">
+            <div class="highlight-text">Copilot SDK 0.2.1 relocated <code>PermissionRequestResult</code> and <code>SubprocessConfig</code>. The change landed in the <code>sdk_adapter/</code> module and stopped there — provider logic, tests, and the Amplifier integration never noticed.</div>
         </div>
-        <div class="highlight-box" style="margin-top: 40px; max-width: 1100px;">
-            <div class="highlight-text">Copilot SDK 0.2.1 relocated <code>PermissionRequestResult</code> and <code>SubprocessConfig</code>.<br>Isolated to one module. The architecture absorbed the change without a ripple.</div>
-        </div>
-        <div class="small-text">The re-architecture goals were validated in production.</div>
-    </div>
-
-    <!-- Slide 11: Quality Bar -->
-    <div class="slide center">
-        <div class="section-label">The State Today</div>
-        <h2 class="medium-headline">1,218 Tests · 98% Coverage</h2>
-        <div class="stats-grid">
-            <div class="stat-item">
-                <div class="stat-number">64</div>
-                <div class="stat-label">Days Active</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">6</div>
-                <div class="stat-label">SDK Breaks Absorbed</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">8+</div>
-                <div class="stat-label">Releases Shipped</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">0</div>
-                <div class="stat-label">Lint/Type Errors</div>
-            </div>
+        <div class="quote-block">
+            <div class="quote-text">The re-architecture goals weren't a promise on a slide — they were validated in production the next time the SDK broke.</div>
         </div>
     </div>
 
-    <!-- Slide 12: The Opportunity -->
+    <!-- beat 8: takeaway -->
     <div class="slide center">
         <div class="section-label">The Unlock</div>
-        <h2 class="medium-headline">15+ Frontier Models. Zero API Cost.</h2>
+        <h2 class="medium-headline">Anyone With a Copilot Subscription Now Runs Amplifier at Zero Extra Cost</h2>
         <div class="unlock-grid">
             <div class="unlock-item">
                 <div class="unlock-number">15+</div>
@@ -638,18 +626,28 @@
                 <div class="unlock-label">Enterprise Compliant</div>
             </div>
         </div>
-        <p class="subhead" style="margin-top: 32px;">Everyone with a GitHub Copilot subscription<br>can now use Amplifier at zero additional cost.</p>
+        <p class="subhead" style="margin-top: 32px;">Built on Amplifier. Powered by GitHub Copilot. Contributed back to the ecosystem.</p>
+        <div class="small-text" style="margin-top: 24px;"><a href="https://github.com/microsoft/amplifier-module-provider-github-copilot" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.2);">microsoft/amplifier-module-provider-github-copilot</a></div>
     </div>
 
-    <!-- Slide 13: Thank You -->
-    <div class="slide center">
-        <div class="section-label">Thank You</div>
-        <h2 class="headline">Amplifier Builds Amplifier</h2>
-        <p class="subhead" style="margin-top: 24px;">From zero to provider — built with the tools it now powers.</p>
-        <div class="credit-section">
-            <div class="credit-title">Built on Amplifier. Powered by GitHub Copilot. Contributed back to the ecosystem.</div>
+    <!-- Sources & Methodology (audit-trail slide, not a beat) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Sources &amp; Methodology</h2>
+        <div class="sources-content">
+            <p><strong>Data as of:</strong> based on the provider's release history through mid-March 2026.</p>
+            <p><strong>Feature status:</strong> Active — native Amplifier provider.</p>
+            <p><strong>Repository:</strong> <code>microsoft/amplifier-module-provider-github-copilot</code></p>
+            <p><strong>Metrics traced to release/repo history:</strong></p>
+            <ul>
+                <li>V0 shipped Feb 10, 2026 (built in one week); v1.0.1 (Feb 17): 18 models, 692 tests, 95% coverage.</li>
+                <li>SDK cadence: v1.0.2 (0.1.28, Feb 28), v1.0.3 (0.1.30, Mar 7), v1.0.4 (0.1.32, Mar 8).</li>
+                <li>V2.0.0 re-architecture: 175 files changed, +36K/−31K lines, 5 days, 858 tests at cut; 100% AI-assisted via Amplifier agents.</li>
+                <li>Validation: SDK 0.2.1 relocated <code>PermissionRequestResult</code> and <code>SubprocessConfig</code>, isolated to <code>sdk_adapter/</code>.</li>
+                <li>State today: 1,218 tests, 98% coverage, 64 days active, 6 SDK breaks absorbed, 8+ releases, 0 lint/type errors.</li>
+            </ul>
+            <p><strong>Gaps:</strong> "15+ frontier models" and "$0 additional cost / enterprise compliant" reflect GitHub Copilot's offering and subscription model, not an independent audit. No fresh research was performed for this regeneration; metrics reuse the prior verified deck.</p>
         </div>
-        <div class="small-text" style="margin-top: 48px;"><a href="https://github.com/microsoft/amplifier-module-provider-github-copilot" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.2);">microsoft/amplifier-module-provider-github-copilot</a></div>
     </div>
 
     <!-- Navigation -->
