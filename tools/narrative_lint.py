@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import re
 import sys
 from collections import Counter
@@ -96,8 +95,9 @@ HARD_CHECKS = (
     "spine_present",
     "beat_markers",
     "beat_slide_parity",
-    "proof_first",
-    "payoff_before_midpoint",
+    "frame_first",
+    "proof_early",
+    "payoff_present",
     "sources_slide",
 )
 
@@ -184,29 +184,40 @@ def check_beat_slide_parity(beat_count: int, slide_count: int) -> tuple[str, str
     return "fail", detail
 
 
-def check_proof_first(roles: list[str], spine: str | None) -> tuple[str, str]:
+def check_frame_first(roles: list[str], spine: str | None) -> tuple[str, str]:
     if not roles:
         return "fail", "no beats found"
     first = roles[0]
-    if first == "proof":
-        return "pass", "first beat role = proof"
-    if spine and re.search(r"proof_deferred_reason", spine, re.IGNORECASE):
-        return "pass", f"first beat role = {first}, but proof_deferred_reason present"
+    if first in ("frame", "setup"):
+        return "pass", f"first beat role = {first}"
+    if spine and re.search(r"cold_open_reason", spine, re.IGNORECASE):
+        return "pass", f"first beat role = {first}, but cold_open_reason present"
     return "fail", f"first beat role = {first}"
 
 
-def check_payoff_before_midpoint(roles: list[str]) -> tuple[str, str]:
+def check_proof_early(roles: list[str], spine: str | None) -> tuple[str, str]:
+    if not roles:
+        return "fail", "no beats found"
+    first_three = roles[0:3]
+    if "proof" in first_three:
+        return "pass", f"proof in first 3 beats (roles: {', '.join(first_three)})"
+    if spine and re.search(r"proof_deferred_reason", spine, re.IGNORECASE):
+        return (
+            "pass",
+            f"no proof in first 3 beats (roles: {', '.join(first_three)}), "
+            "but proof_deferred_reason present",
+        )
+    return "fail", f"no proof in first 3 beats (roles: {', '.join(first_three)})"
+
+
+def check_payoff_present(roles: list[str]) -> tuple[str, str]:
     n = len(roles)
     if n == 0:
         return "fail", "no beats found"
     if "payoff" not in roles:
-        return "fail", "no payoff beat found"
+        return "fail", "no payoff beat"
     idx = roles.index("payoff")
-    midpoint = math.ceil(n / 2)
-    detail = f"payoff at beat {idx + 1} of {n}"
-    if idx < midpoint:
-        return "pass", detail
-    return "fail", detail
+    return "pass", f"payoff at beat {idx + 1} of {n}"
 
 
 def check_sources_slide(html: str) -> tuple[str, str]:
@@ -308,8 +319,9 @@ def lint_html(html: str, filename: str = "<string>") -> dict[str, Any]:
         "spine_present": _entry(check_spine_present(html, spine)),
         "beat_markers": _entry(check_beat_markers(roles)),
         "beat_slide_parity": _entry(check_beat_slide_parity(beat_count, slide_count)),
-        "proof_first": _entry(check_proof_first(roles, spine)),
-        "payoff_before_midpoint": _entry(check_payoff_before_midpoint(roles)),
+        "frame_first": _entry(check_frame_first(roles, spine)),
+        "proof_early": _entry(check_proof_early(roles, spine)),
+        "payoff_present": _entry(check_payoff_present(roles)),
         "sources_slide": _entry(check_sources_slide(html)),
         "topic_label_headlines": _entry(check_topic_label_headlines(html)),
         "tile_grid_catalog": _entry(check_tile_grid_catalog(slide_blocks)),
