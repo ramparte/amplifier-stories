@@ -494,23 +494,87 @@
 </head>
 <body>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 1: TITLE                                                -->
-    <!-- ============================================================ -->
+    <!--
+      ============================================================================
+      NARRATIVE SPINE  (built from the deck's existing content; no fresh research)
+      ============================================================================
+
+      ABT:
+        AND the in-process architecture that got Amplifier to v1 packs every tool,
+            hook, and provider into a single Python process;
+        BUT that shared-fate monolith is the ceiling for v2 -- dependency hell,
+            Python lock-in, and a blast radius where one crashing tool kills the
+            whole session;
+        THEREFORE amplifier-ipc gives every component its own subprocess behind
+            JSON-RPC, spawned fresh per turn -- process isolation, dependency
+            freedom, language-agnostic -- and that IPC boundary becomes tomorrow's
+            container (Dapr) boundary.
+
+      PAYOFF (named up front):
+        "Every component, its own container." The IPC boundary IS the future
+        network boundary: process isolation and dependency freedom today,
+        Dapr-native containers tomorrow -- proven by a complete rewrite shipped in
+        a 10-day solo sprint.
+
+      BEATS (proof-first; payoff lands at beat 3 of 8, before the midpoint):
+        1. proof     -- a complete IPC rewrite shipped: 407 commits, 13 services,
+                        >1:1 tests, in 10 days.  advances: grounds the AND in a real,
+                        working artifact.
+        2. tension   -- the monolith trap: dependency hell, Python lock-in, blast
+                        radius.  advances: the BUT (why v1's architecture caps v2).
+        3. payoff    -- every component runs as its own isolated subprocess over
+                        JSON-RPC.  advances: lands the THEREFORE.
+        4. mechanism -- the per-turn lifecycle: spawn, discover, route, tear down.
+                        (one claim)  advances: HOW isolation stays cheap and clean.
+        5. mechanism -- Host is a dumb router; the orchestrator owns all logic.
+                        (one claim)  advances: HOW responsibilities split.
+        6. setup     -- what runs on it: 13 services in one mono-repo.  advances:
+                        introduces the services the Dapr future decomposes.
+        7. turn      -- the IPC boundary is tomorrow's container boundary: from
+                        stdio to a Dapr service mesh (~28 containers).  advances:
+                        pivots from "a rewrite" to "the roadmap."
+        8. takeaway  -- what the architecture buys you, and how to run it today.
+                        advances: what the audience keeps.
+
+        + Sources & Methodology (audit-trail slide, not a beat) at the end.
+        Slides = 8 beats + 1 = 9.
+    -->
+
+    <!-- beat 1: proof -->
     <div class="slide active center">
         <div class="section-label">Architecture & Philosophy &middot; Amplifier IPC</div>
-        <h1 class="headline">Every Component,<br>Its Own Container</h1>
-        <p class="subhead">Decomposing the AI agent monolith into composable microservices &mdash; JSON-RPC today, Dapr-native containers tomorrow.</p>
-        <div class="status-badge">Active &middot; Rapid Development</div>
+        <h2 class="medium-headline">A complete IPC rewrite, shipped in a 10-day solo sprint</h2>
+        <div class="velocity-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));">
+            <div class="velocity-stat">
+                <div class="velocity-number">407</div>
+                <div class="velocity-label">Commits</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">13</div>
+                <div class="velocity-label">Services</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">10</div>
+                <div class="velocity-label">Days</div>
+            </div>
+        </div>
+        <div class="halves" style="max-width: min(800px, 95vw);">
+            <div class="card">
+                <h4 class="accent">Test Ratio: &gt;1:1</h4>
+                <p>28,262 lines of tests covering 26,300 lines of source across 147 test files. The protocol library has zero external dependencies &mdash; pure Python.</p>
+            </div>
+            <div class="card">
+                <h4 class="accent">Solo Sprint</h4>
+                <p>394 of 407 commits by Paul Payne (payneio) between March 20&ndash;30, 2026 &mdash; a complete IPC rewrite in 10 days, with AI-assisted development.</p>
+            </div>
+        </div>
         <div class="small-text">May 2026 &middot; payneio/amplifier-ipc</div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 2: THE PROBLEM                                          -->
-    <!-- ============================================================ -->
+    <!-- beat 2: tension -->
     <div class="slide">
         <div class="section-label">The Problem</div>
-        <h2 class="headline">The monolith<br>trap</h2>
+        <h2 class="medium-headline">The architecture that reached v1 is the ceiling on v2</h2>
         <div class="thirds">
             <div class="card card-accent">
                 <div class="icon">&#x1F517;</div>
@@ -529,17 +593,41 @@
             </div>
         </div>
         <div class="callout">
-            <p>The in-process architecture that got Amplifier to v1 becomes the ceiling that prevents v2. Every component shares memory, shares dependencies, shares fate.</p>
+            <p>Every component shares memory, shares dependencies, shares fate. The in-process design that got Amplifier to v1 becomes the wall that prevents v2.</p>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 3: THE SOLUTION                                         -->
-    <!-- ============================================================ -->
+    <!-- beat 3: payoff -->
     <div class="slide">
         <div class="section-label">The Solution</div>
-        <h2 class="headline">IPC service<br>architecture</h2>
-        <p class="subhead">Every component runs as its own subprocess. A central Host routes messages over JSON-RPC 2.0 via stdio. Fresh processes per turn &mdash; no stale state, no concurrency bugs.</p>
+        <h2 class="medium-headline">Every component runs as its own container-in-waiting</h2>
+        <p class="subhead">Each tool, hook, and provider runs as its own subprocess. A central Host routes messages over JSON-RPC 2.0 via stdio &mdash; so the IPC boundary you get today is the network boundary you deploy tomorrow.</p>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>What you get today</h3>
+                <ul class="feature-list">
+                    <li>Process isolation &mdash; a crash can't spread</li>
+                    <li>Dependency freedom &mdash; each service its own <code>uv</code> virtualenv</li>
+                    <li>Language-agnostic wire format &mdash; JSON-RPC, not Python imports</li>
+                    <li>Fresh processes per turn &mdash; no stale state, no concurrency bugs</li>
+                </ul>
+            </div>
+            <div class="card card-accent">
+                <h3>What it unlocks tomorrow</h3>
+                <ul class="feature-list">
+                    <li>The subprocess boundary becomes a container boundary</li>
+                    <li>Business logic doesn't change &mdash; only the transport</li>
+                    <li>Any HTTP server can implement a component</li>
+                    <li>A clean path from monolith to service mesh</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- beat 4: mechanism -->
+    <div class="slide">
+        <div class="section-label">Mechanism &middot; Per-Turn Lifecycle</div>
+        <h2 class="medium-headline">Fresh processes every turn keep isolation cheap</h2>
         <div class="flow-steps">
             <div class="flow-step">
                 <div class="flow-number">1</div>
@@ -575,12 +663,10 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 4: ARCHITECTURE                                         -->
-    <!-- ============================================================ -->
+    <!-- beat 5: mechanism -->
     <div class="slide">
-        <div class="section-label">Architecture</div>
-        <h2 class="medium-headline">Host as dumb router, orchestrator drives all logic</h2>
+        <div class="section-label">Mechanism &middot; Separation of Concerns</div>
+        <h2 class="medium-headline">The Host stays dumb so the orchestrator can own the logic</h2>
         <div class="arch-entities">
             <div class="entity-box">
                 <div class="icon">&#x1F3AF;</div>
@@ -598,77 +684,37 @@
                 <p>Agent loop driver &mdash; calls providers, tools, hooks via JSON-RPC</p>
             </div>
         </div>
-        <div class="thirds">
-            <div class="card">
-                <h4 class="accent">Provider Services</h4>
-                <p>LLM adapters &mdash; Anthropic, OpenAI, Azure, Gemini, Ollama, and more. Each in its own subprocess with its own SDK version.</p>
-            </div>
-            <div class="card">
-                <h4 class="accent">Tool Services</h4>
-                <p>File I/O, search, bash, web, delegation, tasks, todos. Parallel dispatch via <code>asyncio.gather</code> across service boundaries.</p>
-            </div>
-            <div class="card">
-                <h4 class="accent">Hook Services</h4>
-                <p>Logging, redaction, modes, routing, progress monitoring. Priority-ordered fan-out with DENY/MODIFY/INJECT semantics.</p>
-            </div>
-        </div>
         <div class="callout">
-            <p>The Host does NOT interpret hook results, drive the agent loop, hold conversation state, or call LLMs. It's a router. The orchestrator owns all logic.</p>
+            <p>The Host does NOT interpret hook results, drive the agent loop, hold conversation state, or call LLMs. It's a router. The orchestrator owns all logic &mdash; which is exactly why the transport can be swapped later.</p>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 5: THE SERVICE CATALOG                                  -->
-    <!-- ============================================================ -->
+    <!-- beat 6: setup -->
     <div class="slide">
-        <div class="section-label">Service Catalog</div>
-        <h2 class="medium-headline">13 services, one mono-repo</h2>
-        <div class="quads">
+        <div class="section-label">What runs on it</div>
+        <h2 class="medium-headline">13 services in one mono-repo, discovered by decorator</h2>
+        <p class="subhead">A service is just a Python package that exposes components via decorators &mdash; the Host discovers them automatically, no YAML registration of individual tools.</p>
+        <div class="thirds">
             <div class="card card-accent">
-                <h4>amplifier-foundation</h4>
-                <p>Orchestrator, context manager, core tools, hooks &mdash; the kitchen sink behavior</p>
+                <h4 class="accent">Behavior services</h4>
+                <p><code>amplifier-foundation</code> (orchestrator, context, core tools/hooks), <code>amplifier-modes</code>, <code>amplifier-skills</code>, <code>amplifier-routing-matrix</code>.</p>
             </div>
             <div class="card card-accent">
-                <h4>amplifier-providers</h4>
-                <p>8 LLM provider adapters with streaming support</p>
+                <h4 class="accent">Provider services</h4>
+                <p><code>amplifier-providers</code> &mdash; 8 LLM adapters with streaming, plus specialist services like <code>filesystem</code> and <code>browser-tester</code>.</p>
             </div>
             <div class="card card-accent">
-                <h4>amplifier-modes</h4>
-                <p>Runtime mode overlays &mdash; tool + hook for mode switching</p>
+                <h4 class="accent">Content-only services</h4>
+                <p><code>amplifier-recipes</code>, <code>amplifier-core</code> and more &mdash; pure context and definitions, zero custom code.</p>
             </div>
-            <div class="card card-accent">
-                <h4>amplifier-skills</h4>
-                <p>Domain knowledge discovery and loading</p>
-            </div>
-            <div class="card card-accent">
-                <h4>amplifier-routing-matrix</h4>
-                <p>Model routing via curated matrices</p>
-            </div>
-            <div class="card card-accent">
-                <h4>amplifier-recipes</h4>
-                <p>Content-only &mdash; recipe definitions</p>
-            </div>
-            <div class="card card-accent">
-                <h4>amplifier-core</h4>
-                <p>Content-only &mdash; core context docs</p>
-            </div>
-            <div class="card card-accent">
-                <h4>+ 6 more</h4>
-                <p>amplifier-amplifier, filesystem, browser-tester, design-intelligence, superpowers, system-design-intelligence</p>
-            </div>
-        </div>
-        <div class="callout">
-            <p>A service is a Python package that exposes components via decorators. The host discovers components automatically &mdash; no YAML registration of individual tools. Just decorate your classes and <code>describe</code> finds them.</p>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 6: THE DAPR FUTURE                                      -->
-    <!-- ============================================================ -->
+    <!-- beat 7: turn -->
     <div class="slide">
         <div class="section-label">The Dapr Future</div>
-        <h2 class="headline">From stdio<br>to service mesh</h2>
-        <p class="subhead">The next evolution: replace the entire IPC layer with Dapr-native microservices. Every behavior becomes its own container.</p>
+        <h2 class="medium-headline">Today's subprocess boundary is tomorrow's container boundary</h2>
+        <p class="subhead">Swap the stdio IPC layer for Dapr-native microservices and every behavior becomes its own container &mdash; ~28 of them, decomposed from today's 13 services.</p>
         <div class="halves">
             <div class="card card-accent">
                 <h3>Why Dapr</h3>
@@ -677,7 +723,6 @@
                     <li>Pub/sub for streaming tokens and hook fan-out</li>
                     <li>State store for session persistence (Redis)</li>
                     <li>Built-in observability and tracing</li>
-                    <li>Language-agnostic &mdash; any HTTP server works</li>
                 </ul>
             </div>
             <div class="card card-accent">
@@ -686,7 +731,6 @@
                     <li>~28 application containers from today's 13 services</li>
                     <li>Foundation alone splits into 14 behavior containers</li>
                     <li>Shared base image + thin SDK keeps overhead minimal</li>
-                    <li>Content-only services: zero custom code needed</li>
                     <li>Standard HTTP endpoints &mdash; no custom protocol</li>
                 </ul>
             </div>
@@ -698,121 +742,34 @@
 <span class="code-flag">Pattern 3:</span> <span class="code-var">Pub/Sub Hooks</span>     <span class="code-comment"># lifecycle events, parallel fan-out</span></div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 7: BY THE NUMBERS                                       -->
-    <!-- ============================================================ -->
-    <div class="slide center">
-        <div class="section-label">By the Numbers</div>
-        <h2 class="medium-headline">10 days of focused building</h2>
-        <div class="velocity-grid">
-            <div class="velocity-stat">
-                <div class="velocity-number">407</div>
-                <div class="velocity-label">Commits</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">13</div>
-                <div class="velocity-label">Services</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">26K</div>
-                <div class="velocity-label">Lines of Source</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">28K</div>
-                <div class="velocity-label">Lines of Tests</div>
-            </div>
-        </div>
-        <div class="halves" style="max-width: min(800px, 95vw);">
-            <div class="card">
-                <h4 class="accent">Test Ratio: &gt;1:1</h4>
-                <p>28,262 lines of tests covering 26,300 lines of source across 147 test files. The protocol library has zero external dependencies &mdash; pure Python.</p>
-            </div>
-            <div class="card">
-                <h4 class="accent">Solo Sprint</h4>
-                <p>394 of 407 commits by Paul Payne (payneio) between March 20&ndash;30, 2026 &mdash; a complete IPC rewrite in 10 days, with AI-assisted development.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 8: DESIGN PRINCIPLES                                    -->
-    <!-- ============================================================ -->
+    <!-- beat 8: takeaway -->
     <div class="slide">
-        <div class="section-label">Design Principles</div>
-        <h2 class="medium-headline">What the architecture enforces</h2>
+        <div class="section-label">What you keep</div>
+        <h2 class="medium-headline">Isolation and dependency freedom you can run today</h2>
         <div class="thirds">
             <div class="card card-accent">
                 <div class="icon">&#x1F50C;</div>
                 <h3>Process Isolation</h3>
-                <p>A crashing tool can't take down the orchestrator. Each service has its own memory space, its own dependencies, its own fault boundary.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F504;</div>
-                <h3>Spawn-Per-Turn</h3>
-                <p>Services are born fresh and die clean every turn. No stale state, no memory leaks, no concurrency bugs. Process startup (~200ms) is the only cost.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F310;</div>
-                <h3>Language Agnostic</h3>
-                <p>JSON-RPC 2.0 over stdio today, standard HTTP tomorrow. Write tools in Rust, hooks in Go, providers in TypeScript. The wire format doesn't care.</p>
-            </div>
-        </div>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x1F3D7;&#xFE0F;</div>
-                <h3>Composable Agents</h3>
-                <p>Agent definitions compose behaviors by URL. Each behavior activates components from services. Mix and match orchestrators, tools, and hooks freely.</p>
+                <p>A crashing tool can't take down the orchestrator. Each service has its own memory space, dependencies, and fault boundary.</p>
             </div>
             <div class="card card-accent">
                 <div class="icon">&#x1F4E6;</div>
                 <h3>Dependency Freedom</h3>
-                <p>Each service gets its own <code>uv</code> virtualenv. Anthropic SDK v0.40 and OpenAI SDK v1.60 coexist without conflict. No diamond dependency problem.</p>
+                <p>Each service gets its own <code>uv</code> virtualenv. Anthropic SDK v0.40 and OpenAI SDK v1.60 coexist without conflict.</p>
             </div>
             <div class="card card-accent">
                 <div class="icon">&#x1F6E3;&#xFE0F;</div>
                 <h3>Migration Path</h3>
-                <p>The IPC boundary is the future network boundary. Today's subprocess becomes tomorrow's container. Business logic doesn't change &mdash; only the transport.</p>
+                <p>The IPC boundary is the future network boundary. Today's subprocess becomes tomorrow's container &mdash; business logic unchanged.</p>
             </div>
         </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 9: QUICK START                                          -->
-    <!-- ============================================================ -->
-    <div class="slide">
-        <div class="section-label">Quick Start</div>
-        <h2 class="medium-headline">Install, discover, run</h2>
-        <div class="code-block"><span class="code-comment"># Install</span>
+        <div class="code-block"><span class="code-comment"># Install, discover, run</span>
 <span class="code-cmd">uv tool install</span> <span class="code-string">git+https://github.com/payneio/amplifier-ipc</span>
-
-<span class="code-comment"># Discover and register services from a path</span>
-<span class="code-cmd">amplifier-ipc discover</span> <span class="code-string">./services/amplifier-foundation</span> \
-  <span class="code-flag">--register</span> <span class="code-flag">--install</span>
-
-<span class="code-comment"># Or register a single agent definition</span>
-<span class="code-cmd">amplifier-ipc register</span> <span class="code-string">./definitions/foundation-agent.yaml</span> \
-  <span class="code-flag">--install</span>
-
-<span class="code-comment"># Run interactively</span>
-<span class="code-cmd">amplifier-ipc run</span> <span class="code-flag">--agent</span> <span class="code-var">foundation</span>
-
-<span class="code-comment"># Or single-shot</span>
-<span class="code-cmd">amplifier-ipc run</span> <span class="code-flag">--agent</span> <span class="code-var">foundation</span> <span class="code-string">"What files are here?"</span></div>
-        <div class="halves">
-            <div class="card">
-                <h4 class="accent">Session Persistence</h4>
-                <p>Sessions survive across turns. Resume with <code>amplifier-ipc session resume &lt;id&gt;</code>. Full transcript history in <code>~/.amplifier/sessions</code>.</p>
-            </div>
-            <div class="card">
-                <h4 class="accent">3-Tier Config</h4>
-                <p>Settings merge from global (<code>~/.amplifier/settings.yaml</code>), project (<code>.amplifier/settings.yaml</code>), and local (<code>.amplifier/settings.local.yaml</code>).</p>
-            </div>
-        </div>
+<span class="code-cmd">amplifier-ipc discover</span> <span class="code-string">./services/amplifier-foundation</span> <span class="code-flag">--register</span> <span class="code-flag">--install</span>
+<span class="code-cmd">amplifier-ipc run</span> <span class="code-flag">--agent</span> <span class="code-var">foundation</span></div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 10: SOURCES & METHODOLOGY                               -->
-    <!-- ============================================================ -->
+    <!-- Sources & Methodology -->
     <div class="slide">
         <div class="section-label">Sources & Methodology</div>
         <h2 class="medium-headline">How this deck was built</h2>
