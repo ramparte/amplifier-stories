@@ -320,25 +320,55 @@
     </style>
 </head>
 <body>
-    <div class="presentation">
-        <!-- Slide 1: Title -->
-        <div class="slide active title">
-            <h1>Amplifier Platform Evolution</h1>
-            <div class="subtitle">Infrastructure, Quality & Pragmatic Decisions</div>
-            <div class="subtitle" style="font-size: 28px; margin-top: 20px;">
-                A week of PostgreSQL migration, 6x test coverage increase,<br>and learning when simpler wins
-            </div>
-            <div class="date">February 6-13, 2026</div>
-        </div>
+    <!--
+      ============================================================================
+      NARRATIVE SPINE  (built from the deck's existing content; no fresh research)
+      ============================================================================
 
-        <!-- Slide 2: By The Numbers -->
-        <div class="slide">
-            <h2>By The Numbers</h2>
+      ABT:
+        AND in one week the amplifier-app-api platform took a real step toward
+            production -- PostgreSQL, a 6x jump in tests, a cleaner API;
+        BUT the flashiest idea, pinning module dependencies to specific commits at
+            runtime, fought the tooling at every turn (git can't checkout arbitrary
+            commits, URL-format traps, cache corruption, Docker build breakage);
+        THEREFORE the week's biggest win was judgment: revert to simple @main
+            Docker-time locking. Sometimes the simpler solution beats fighting your
+            tools -- and reverting is engineering judgment, not failure.
+
+      PAYOFF (named up front):
+        "Sometimes simpler wins -- reverting is engineering judgment, not failure."
+        Pre-installed @main dependencies locked at Docker build time beat runtime
+        pinning complexity, even as the platform genuinely hardened around it.
+
+      BEATS (proof-first; payoff lands at beat 4 of 9, before the midpoint):
+        1. proof     -- the week by the numbers: 52 files, 6x tests, 37 endpoints.
+                        advances: grounds the AND in real, shipped progress.
+        2. mechanism -- PostgreSQL migration makes the DB production-ready. (one claim)
+                        advances: HOW the platform hardened.
+        3. tension   -- the ambitious idea -- runtime dependency pinning -- fought
+                        the tooling.  advances: the BUT.
+        4. payoff    -- simpler wins: revert to @main Docker-time locking. advances:
+                        lands the THEREFORE.
+        5. mechanism -- test coverage jumped 6x across every layer. (one claim)
+                        advances: more evidence of hardening.
+        6. mechanism -- cleanup shrank the API from 40 to 37 endpoints. (one claim)
+                        advances: the API matured.
+        7. mechanism -- lost work came back from patches and diffs. (one claim)
+                        advances: pragmatic recovery after the revert.
+        8. turn      -- before/after: the net result of the week.  advances: pivots
+                        from parts to the whole.
+        9. takeaway  -- harden the platform, but don't fight your tools.  advances:
+                        what the audience keeps.
+
+        + Sources & Methodology (audit-trail slide, not a beat) at the end.
+        Slides = 9 beats + 1 = 10.
+    -->
+
+    <div class="presentation">
+        <!-- beat 1: proof -->
+        <div class="slide active">
+            <h2>In one week, the platform stepped toward production</h2>
             <div class="metrics-grid">
-                <div class="metric">
-                    <div class="big-number">3</div>
-                    <div class="number-label">Development Sessions<br>39 Conversation Turns</div>
-                </div>
                 <div class="metric">
                     <div class="big-number">52</div>
                     <div class="number-label">Files Changed<br>11,383 insertions, 4,909 deletions</div>
@@ -351,118 +381,111 @@
                     <div class="big-number">37</div>
                     <div class="number-label">REST API Endpoints<br>Simplified from 40</div>
                 </div>
+                <div class="metric">
+                    <div class="big-number">3</div>
+                    <div class="number-label">Development Sessions<br>39 conversation turns, Feb 6-13 2026</div>
+                </div>
             </div>
         </div>
 
-        <!-- Slide 3: Infrastructure Evolution -->
+        <!-- beat 2: mechanism -->
         <div class="slide">
-            <h2>Infrastructure Evolution</h2>
-            <h3>PostgreSQL Migration</h3>
+            <h2>PostgreSQL migration makes the database production-ready</h2>
             <ul>
                 <li>Migrated from aiosqlite to asyncpg for production scale</li>
-                <li>Added connection pooling for concurrent request handling</li>
-                <li>New schema with JSONB columns (tags, metadata, transcripts)</li>
-                <li>Multi-user session support via session_participants table</li>
+                <li>Connection pooling for concurrent request handling</li>
+                <li>New schema with JSONB columns; multi-user sessions via session_participants</li>
                 <li>Azure PostgreSQL ready with proper async patterns</li>
             </ul>
-            <div class="highlight-box">
-                <p><strong>Result:</strong> Production-ready database infrastructure that scales</p>
+            <div class="code-block">
+<span class="code-comment"># Before: SQLite</span>
+async with aiosqlite.connect(db_path) as db:
+    await db.execute("INSERT INTO sessions ...")
+
+<span class="code-comment"># After: PostgreSQL with connection pooling</span>
+pool = await asyncpg.create_pool(dsn=database_url, min_size=5, max_size=20)
+async with pool.acquire() as conn:
+    await conn.execute("INSERT INTO sessions (id, tags, metadata) VALUES ($1,$2,$3)",
+                       session_id, tags_json, metadata_json)
             </div>
         </div>
 
-        <!-- Slide 4: Quality Leap -->
+        <!-- beat 3: tension -->
         <div class="slide">
-            <h2>Quality Leap</h2>
-            <h3>Test Suite Overhaul</h3>
-            <ul>
-                <li>Added 110+ new comprehensive tests in 4 new test files</li>
-                <li>Removed 15+ obsolete tests for deleted endpoints</li>
-                <li>Coverage: config validation, session management, database ops</li>
-                <li>167 core tests verified passing</li>
-                <li>Testing methodology: Unit (68) + Integration (99) + E2E (113)</li>
-            </ul>
-            <div class="highlight-box">
-                <p><strong>Result:</strong> 6x increase in test coverage with systematic expansion</p>
-            </div>
-        </div>
-
-        <!-- Slide 5: API Maturity -->
-        <div class="slide">
-            <h2>API Maturity</h2>
-            <h3>Simplification Through Cleanup</h3>
-            <ul>
-                <li>Removed 3 helper endpoints (POST /configs/{id}/tools, /providers, /bundles)</li>
-                <li>Users modify configs via direct PUT /configs/{id} with YAML</li>
-                <li>Cleaner REST API following pure CRUD patterns</li>
-                <li>Added global registry API for tools/providers/bundles</li>
-                <li>JSON config storage with encryption (replaced YAML strings)</li>
-            </ul>
-            <div class="highlight-box">
-                <p><strong>Result:</strong> 40 → 37 endpoints, clearer API surface</p>
-            </div>
-        </div>
-
-        <!-- Slide 6: The Journey -->
-        <div class="slide">
-            <h2>The Journey</h2>
-            <h3>Dependency Pinning Attempt</h3>
+            <h2>The most ambitious idea fought the tooling at every turn</h2>
             <div class="journey-section">
-                <h3 style="color: #fff;">The Problem</h3>
-                <p>Wanted to pin module dependencies to specific commits for stability</p>
+                <h3 style="color: #fff;">The Goal</h3>
+                <p>Pin module dependencies to specific commits for stability&mdash;via a pinned_sources.yaml, git clone at session startup, and hash-based URL references.</p>
             </div>
             <div class="journey-section">
-                <h3 style="color: #fff;">The Attempt</h3>
-                <ul>
-                    <li>Runtime pinning with pinned_sources.yaml config</li>
-                    <li>Git clone during session startup</li>
-                    <li>Hash-based URL references (#hash, @hash)</li>
-                </ul>
-            </div>
-            <div class="journey-section">
-                <h3 style="color: #fff;">The Challenges</h3>
+                <h3 style="color: #fff;">Where It Broke</h3>
                 <ul>
                     <li>Git clone can't checkout arbitrary commits directly</li>
-                    <li>URL format issues: #hash creates tarballs, @hash treats as branch</li>
+                    <li>URL format traps: #hash creates tarballs, @hash is treated as a branch</li>
                     <li>Permission issues, cache corruption, Docker build problems</li>
                 </ul>
             </div>
         </div>
 
-        <!-- Slide 7: The Learning -->
+        <!-- beat 4: payoff -->
         <div class="slide">
-            <h2>The Learning</h2>
-            <h3>When Simpler Wins</h3>
+            <h2>Sometimes simpler wins&mdash;and reverting is judgment, not failure</h2>
             <ul>
                 <li>Reverted to pre-installed modules in pyproject.toml pointing to @main</li>
-                <li>Versions locked at Docker build time (not runtime)</li>
-                <li>No runtime git complexity, faster session startup</li>
-                <li>Simple dependency management that works with tooling</li>
+                <li>Versions locked at Docker build time, not runtime</li>
+                <li>No runtime git complexity; faster session startup</li>
+                <li>Simple dependency management that works <em>with</em> the tooling</li>
             </ul>
             <div class="highlight-box">
-                <p><strong>Key Insight:</strong> "Sometimes the simpler solution is better than fighting tooling limitations"</p>
+                <p><strong>Key Insight:</strong> "Sometimes the simpler solution is better than fighting tooling limitations." Reverting is engineering judgment, not failure.</p>
             </div>
-            <p style="margin-top: 40px; font-size: 28px; color: #999;">Reverting is engineering judgment, not failure</p>
         </div>
 
-        <!-- Slide 8: JSON Storage Recovery -->
+        <!-- beat 5: mechanism -->
         <div class="slide">
-            <h2>JSON Storage Recovery</h2>
-            <h3>Rebuilding Lost Work</h3>
+            <h2>Test coverage jumped 6x across every layer</h2>
             <ul>
-                <li>Accidentally lost during git revert of pinning attempt</li>
+                <li><strong>Unit (68):</strong> config validation, encryption, models</li>
+                <li><strong>Integration (99):</strong> database operations, API endpoints</li>
+                <li><strong>E2E (113):</strong> full request/response cycles</li>
+                <li>110+ new tests across 4 files; 15+ obsolete tests removed</li>
+            </ul>
+            <div class="highlight-box">
+                <p><strong>Result:</strong> 67 → 400+ tests through systematic, layer-by-layer expansion</p>
+            </div>
+        </div>
+
+        <!-- beat 6: mechanism -->
+        <div class="slide">
+            <h2>Cleanup shrank the API from 40 to 37 endpoints</h2>
+            <ul>
+                <li>Removed 3 helper endpoints (POST /configs/{id}/tools, /providers, /bundles)</li>
+                <li>Configs now modified via a direct PUT /configs/{id}&mdash;pure CRUD</li>
+                <li>Added a global registry API for tools/providers/bundles</li>
+                <li>JSON config storage with encryption (replaced YAML strings)</li>
+            </ul>
+            <div class="highlight-box">
+                <p><strong>Result:</strong> 40 → 37 endpoints and a clearer, more predictable API surface</p>
+            </div>
+        </div>
+
+        <!-- beat 7: mechanism -->
+        <div class="slide">
+            <h2>Lost work came back from patches and diffs</h2>
+            <ul>
+                <li>JSON storage work was accidentally lost during the git revert of the pinning attempt</li>
                 <li>Recovered from patch files and git diffs</li>
-                <li>Migrated config storage: YAML strings → JSON dicts</li>
-                <li>Database: config_json JSONB column for structured data</li>
+                <li>Migrated config storage: YAML strings → JSON dicts (config_json JSONB column)</li>
                 <li>Added encryption support via ConfigEncryption</li>
             </ul>
             <div class="highlight-box">
-                <p><strong>Result:</strong> Structured config storage with encryption ready</p>
+                <p><strong>Result:</strong> Structured, encrypted config storage&mdash;rescued, not rewritten from scratch</p>
             </div>
         </div>
 
-        <!-- Slide 9: Before/After -->
+        <!-- beat 8: turn -->
         <div class="slide">
-            <h2>Before/After Impact</h2>
+            <h2>The net: production-scalable, tested, pragmatically stable</h2>
             <div class="comparison">
                 <div class="comparison-column">
                     <h3>Before</h3>
@@ -470,9 +493,8 @@
                         <li>SQLite database</li>
                         <li>67 tests</li>
                         <li>YAML config strings</li>
-                        <li>Complex dependency pinning ideas</li>
-                        <li>40 API endpoints</li>
-                        <li>Single-user sessions</li>
+                        <li>Complex runtime pinning ideas</li>
+                        <li>40 API endpoints, single-user</li>
                     </ul>
                 </div>
                 <div class="comparison-column">
@@ -481,98 +503,44 @@
                         <li>PostgreSQL with connection pooling</li>
                         <li>400+ tests (6x increase)</li>
                         <li>JSON config with encryption</li>
-                        <li>@main Docker locking</li>
-                        <li>37 API endpoints (simplified)</li>
-                        <li>Multi-user session support</li>
+                        <li>@main Docker-time locking</li>
+                        <li>37 API endpoints, multi-user</li>
                     </ul>
                 </div>
             </div>
-            <div class="highlight-box" style="margin-top: 40px;">
-                <p><strong>Result:</strong> Production-scalable, comprehensively tested, pragmatically stable</p>
-            </div>
         </div>
 
-        <!-- Slide 10: Code Example -->
+        <!-- beat 9: takeaway -->
         <div class="slide">
-            <h2>PostgreSQL Migration Pattern</h2>
-            <h3>Evolution from SQLite to asyncpg</h3>
-            <div class="code-block">
-<span class="code-comment"># Before: SQLite</span>
-async with aiosqlite.connect(db_path) as db:
-    await db.execute("INSERT INTO sessions ...")
-
-<span class="code-comment"># After: PostgreSQL with connection pooling</span>
-pool = await asyncpg.create_pool(
-    dsn=database_url,
-    min_size=5,
-    max_size=20
-)
-async with pool.acquire() as conn:
-    await conn.execute("""
-        INSERT INTO sessions (id, tags, metadata)
-        VALUES ($1, $2, $3)
-    """, session_id, tags_json, metadata_json)
-            </div>
-            <p style="font-size: 28px; color: #999;">JSONB columns enable structured data queries at database level</p>
-        </div>
-
-        <!-- Slide 11: Testing Methodology -->
-        <div class="slide">
-            <h2>Testing Methodology</h2>
-            <h3>Comprehensive Coverage Strategy</h3>
-            <ul>
-                <li><strong>Unit Tests (68):</strong> Config validation, encryption, models</li>
-                <li><strong>Integration Tests (99):</strong> Database operations, API endpoints</li>
-                <li><strong>E2E Tests (113):</strong> Full request/response cycles</li>
-            </ul>
-            <div style="margin-top: 60px;">
-                <h3 style="font-size: 36px;">New Test Files</h3>
-                <ul>
-                    <li>test_config_validation.py - Config schema validation</li>
-                    <li>test_session_management.py - Multi-user session flows</li>
-                    <li>test_database_operations.py - JSONB queries, pooling</li>
-                    <li>test_encryption.py - ConfigEncryption verification</li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- Slide 12: Key Takeaways -->
-        <div class="slide">
-            <h2>Key Takeaways</h2>
+            <h2>Harden the platform&mdash;but don't fight your tools</h2>
             <div class="takeaway">
-                <strong>Infrastructure:</strong>
-                <p>PostgreSQL migration enables production scale with connection pooling and JSONB</p>
+                <strong>Infrastructure & Quality:</strong>
+                <p>PostgreSQL + JSONB and a 6x test jump across all layers moved the platform toward real production scale.</p>
             </div>
             <div class="takeaway">
-                <strong>Quality:</strong>
-                <p>6x test coverage increase through systematic expansion across all layers</p>
-            </div>
-            <div class="takeaway">
-                <strong>Simplicity:</strong>
-                <p>Pre-installed @main dependencies beat runtime pinning complexity</p>
+                <strong>Simplicity beats cleverness:</strong>
+                <p>Pre-installed @main dependencies locked at Docker build time beat runtime pinning complexity.</p>
             </div>
             <div class="takeaway">
                 <strong>Pragmatism:</strong>
-                <p>Reverting is engineering judgment, not failure—choose simpler when tooling fights you</p>
-            </div>
-            <div class="takeaway">
-                <strong>Recovery:</strong>
-                <p>JSON storage work successfully recovered from patches and diffs</p>
+                <p>Reverting is engineering judgment, not failure&mdash;and lost work can be recovered from patches and diffs.</p>
             </div>
         </div>
 
-        <!-- Slide 13: What's Next -->
+        <!-- Sources & Methodology -->
         <div class="slide">
-            <h2>What's Next</h2>
-            <ul>
-                <li>Deploy JSON config storage to production</li>
-                <li>Monitor Docker build stability with @main dependencies</li>
-                <li>Continue E2E test automation refinement</li>
-                <li>Azure PostgreSQL deployment planning</li>
-                <li>Multi-user session feature rollout</li>
-            </ul>
-            <div class="highlight-box" style="margin-top: 80px;">
-                <p><strong>Questions?</strong> Explore the amplifier-app-api repository</p>
+            <h2>Sources & Methodology</h2>
+            <div class="takeaway">
+                <strong>Repository:</strong>
+                <p>amplifier-app-api &middot; Data window: February 6-13, 2026</p>
+            </div>
+            <div class="takeaway">
+                <strong>Drawn from the week's git history:</strong>
+                <p>3 development sessions / 39 conversation turns; 52 files changed (11,383 insertions, 4,909 deletions); test suite 67 → 400+ (Unit 68 + Integration 99 + E2E 113); API 40 → 37 endpoints.</p>
+            </div>
+            <div class="takeaway">
+                <strong>Gaps & caveats:</strong>
+                <p>Counts are as recorded from the session diffs and commit history for this window, not independently re-measured. "400+ tests" reflects the post-migration suite total; the pinning subplot is reconstructed from the revert commits.</p>
             </div>
         </div>
     </div>
@@ -580,6 +548,7 @@ async with pool.acquire() as conn:
     <!-- Navigation -->
     <div class="nav-dots"></div>
     <div class="slide-counter"></div>
+    <a href="index.html" style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:14px; color:#666; text-decoration:none; z-index:100;">More Amplifier Stories</a>
     <div class="nav-area prev"></div>
     <div class="nav-area next"></div>
 
