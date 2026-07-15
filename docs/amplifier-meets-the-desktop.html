@@ -536,21 +536,76 @@
 
 <div id="deck">
 
+  <!--
+    NARRATIVE SPINE  (built from the deck's existing content; no fresh research)
+
+    ABT:
+      AND Amplifier is a Python framework whose whole modular design depends on
+          Python packaging staying intact -- it discovers modules at runtime via
+          importlib.metadata reading real dist-info/RECORD files on disk;
+      BUT to embed it in a cross-platform Electron desktop app the "obvious" move,
+          freezing it into a single PyInstaller binary, silently strips that
+          packaging -- and the runtime crashes before a single agent loads;
+      THEREFORE you don't freeze Python, you ship a real one: a portable
+          python-build-standalone venv running as an HTTP sidecar, with its
+          metadata verified intact at build time.
+
+    PAYOFF (named up front):
+      "Don't freeze Python -- ship it." A portable python-build-standalone runtime
+      as an Electron sidecar keeps importlib.metadata 100% intact (verified in CI),
+      trading ~43 MB -> ~156 MB for a runtime that actually works.
+
+    BEATS (proof-first; payoff lands at beat 7 of 13, before the midpoint):
+      1.  proof     -- ships inside a desktop app with Python intact (~156 MB, 100%, CI).
+                       advances: opens on the working outcome (the AND made real).
+      2.  setup     -- two worlds: a JS Electron app and a Python Amplifier runtime.
+                       advances: introduces the entities the argument leans on.
+      3.  setup     -- a sidecar bridges them over localhost HTTP.
+                       advances: names the bridge the rest of the story relies on.
+      4.  tension   -- the obvious fix: freeze it all into one 43 MB binary.
+                       advances: sets up the trap.
+      5.  tension   -- it crashed before a single agent loaded.
+                       advances: the BUT lands.
+      6.  tension   -- root cause: freezing strips the RECORD paths importlib needs.
+                       advances: explains WHY the trap closes.
+      7.  payoff    -- don't freeze Python; ship a real one.
+                       advances: lands the THEREFORE.
+      8.  mechanism -- python-build-standalone gives real site-packages.
+                       advances: HOW the fix restores discovery.
+      9.  mechanism -- the build: uv installs it, packages go in normally.
+                       advances: HOW it's assembled.
+      10. mechanism -- the build proves module discovery works before it ships.
+                       advances: HOW confidence is earned.
+      11. turn      -- the tradeoff quantified: broken 43 MB vs working 156 MB.
+                       advances: pivots to a principle about tradeoffs.
+      12. mechanism -- the protocol boundary maps cleanly to HTTP.
+                       advances: HOW the philosophy crosses languages.
+      13. takeaway  -- work with Python's packaging; the sidecar is still Amplifier.
+                       advances: what the audience keeps.
+
+      + Sources & Methodology (audit-trail slide, not a beat) at the end (slide 14).
+      Slides = 13 beats + 1 = 14.
+  -->
+
   <!-- ══════════════════════════════════════════════
        SLIDE 1 — TITLE
   ══════════════════════════════════════════════ -->
   <div class="slide title-slide active" id="slide-1">
+    <!-- beat 1: proof -->
     <div class="title-glow"></div>
     <div class="slide-inner" style="text-align:center;">
-      <div style="margin-bottom:24px; display:flex; justify-content:center; gap:10px; align-items:center; flex-wrap:wrap;">
+      <div style="margin-bottom:22px; display:flex; justify-content:center; gap:10px; align-items:center; flex-wrap:wrap;">
         <span class="badge badge-active"><span class="badge-dot"></span>Technical Case Study</span>
         <span style="color:var(--text-tertiary); font-size:13px;">· 2026</span>
       </div>
-      <h1>Amplifier Meets the Desktop</h1>
-      <h1 style="background:linear-gradient(135deg,var(--accent-bright),#A78BFA); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">A Python Sidecar Story</h1>
-      <p class="subtitle">From PyInstaller binaries to portable Python distributions</p>
-      <div style="margin:36px auto 0; width:56px; height:3px; background:linear-gradient(90deg,var(--accent),var(--accent-bright)); border-radius:2px;"></div>
-      <p style="margin-top:28px; font-size:clamp(12px,1.2vw,15px); color:var(--text-tertiary);">Architectural decisions &amp; lessons learned from embedding a Python AI agent framework in a cross-platform desktop app</p>
+      <h1 style="font-size:clamp(28px,4vw,52px);">Amplifier now ships inside a desktop app&mdash;with its Python fully intact</h1>
+      <p class="subtitle">A portable-Python sidecar embeds the Amplifier AI agent framework in a cross-platform Electron app. No system Python. No broken module discovery.</p>
+      <div class="metric-row" style="justify-content:center; margin:30px auto 0;">
+        <div class="metric-chip"><span class="val">~156 MB</span><span class="lbl">Self-contained bundle</span></div>
+        <div class="metric-chip"><span class="val" style="color:var(--green); -webkit-text-fill-color:var(--green);">100%</span><span class="lbl">Metadata intact</span></div>
+        <div class="metric-chip"><span class="val">CI</span><span class="lbl">Verified before ship</span></div>
+      </div>
+      <p style="margin-top:24px; font-size:clamp(12px,1.2vw,15px); color:var(--text-tertiary);">How it got there: a debugging story about freezing Python&mdash;and why you shouldn't.</p>
     </div>
   </div>
 
@@ -558,9 +613,10 @@
        SLIDE 2 — THE CHALLENGE
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-2">
+    <!-- beat 2: setup -->
     <div class="slide-inner">
-      <div class="kicker">The Problem</div>
-      <h2>Two Worlds, One App</h2>
+      <div class="kicker">The Two Worlds</div>
+      <h2>A JavaScript app and a Python runtime must share one binary</h2>
       <div class="two-col">
         <div>
           <div class="cards" style="grid-template-columns:1fr; margin-bottom:0;">
@@ -595,9 +651,10 @@
        SLIDE 3 — THE ARCHITECTURE
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-3">
+    <!-- beat 3: setup -->
     <div class="slide-inner">
       <div class="kicker">System Design</div>
-      <h2>The Sidecar Architecture</h2>
+      <h2>A sidecar bridges the two worlds over localhost HTTP</h2>
       <div class="two-col-wide">
         <div class="arch-diagram">
           <div style="margin-bottom:6px;"><span class="arch-box arch-box-primary">Desktop App (Electron)</span></div>
@@ -646,9 +703,10 @@
        SLIDE 4 — PYINSTALLER APPROACH
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-4">
+    <!-- beat 4: tension -->
     <div class="slide-inner">
       <div class="kicker">First Attempt</div>
-      <h2>The PyInstaller Approach</h2>
+      <h2>The obvious fix: freeze it all into one 43 MB binary</h2>
       <div class="two-col">
         <div>
           <div class="callout" style="margin-bottom:20px; border-left-color:var(--yellow);">
@@ -682,9 +740,10 @@
        SLIDE 5 — THE FAILURE
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-5">
+    <!-- beat 5: tension -->
     <div class="slide-inner">
       <div class="kicker">The Failure</div>
-      <h2>Module Discovery Fails at Startup</h2>
+      <h2>It crashed before a single agent loaded</h2>
       <div class="code-block" style="margin-bottom:24px;"><span class="lang-badge">stderr</span><span class="err-line">RuntimeError: Cannot initialize without orchestrator:
 Module 'loop-streaming' has no valid Python package at
 /tmp/_MEI81mChB/amplifier_module_loop_streaming-1.0.0.dist-info</span>
@@ -717,6 +776,7 @@ Module 'loop-streaming' has no valid Python package at
        SLIDE 6 — ROOT CAUSE
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-6">
+    <!-- beat 6: tension -->
     <div class="slide-inner">
       <div class="kicker">Root Cause Analysis</div>
       <h2>PyInstaller vs <code style="font-size:0.85em; color:var(--accent-bright);">importlib.metadata</code></h2>
@@ -778,9 +838,10 @@ Module 'loop-streaming' has no valid Python package at
        SLIDE 7 — THE INSIGHT
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-7">
+    <!-- beat 7: payoff -->
     <div class="slide-inner" style="max-width:940px;">
-      <div class="kicker">The Insight</div>
-      <h2>Amplifier's Architecture is Built on Python Packaging</h2>
+      <div class="kicker">The Reframe</div>
+      <h2>Don't freeze Python&mdash;ship a real one</h2>
       <div class="cards cards-2" style="margin-bottom:24px;">
         <div class="card card-accent">
           <span class="icon">🔌</span>
@@ -806,6 +867,7 @@ Module 'loop-streaming' has no valid Python package at
        SLIDE 8 — THE RIGHT APPROACH
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-8">
+    <!-- beat 8: mechanism -->
     <div class="slide-inner">
       <div class="kicker">The Solution</div>
       <h2>python-build-standalone: Ship a Real Python</h2>
@@ -867,6 +929,7 @@ Module 'loop-streaming' has no valid Python package at
        SLIDE 9 — BUILD PROCESS
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-9">
+    <!-- beat 9: mechanism -->
     <div class="slide-inner">
       <div class="kicker">Build Process</div>
       <h2>From Source to Bundled Runtime</h2>
@@ -915,9 +978,10 @@ for pkg in required_packages:
        SLIDE 10 — VERIFICATION
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-10">
+    <!-- beat 10: mechanism -->
     <div class="slide-inner" style="max-width:920px;">
       <div class="kicker">Build Verification</div>
-      <h2>Confidence Before Shipping</h2>
+      <h2>The build proves module discovery works before it ships</h2>
       <div class="code-block" style="margin-bottom:28px; font-size:clamp(12px,1.25vw,15px);"><span class="lang-badge">build output</span><span class="dim">▶ Verifying importlib.metadata integrity...</span>
 
 <span class="ok-line">✅ amplifier-core == 1.0.9  (65 recorded files)</span>
@@ -953,9 +1017,10 @@ for pkg in required_packages:
        SLIDE 11 — COMPARISON TABLE
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-11">
+    <!-- beat 11: turn -->
     <div class="slide-inner" style="max-width:980px;">
       <div class="kicker">Trade-offs</div>
-      <h2>PyInstaller vs Portable Venv</h2>
+      <h2>A broken 43 MB binary loses to a working 156 MB runtime</h2>
       <table class="comp-table">
         <thead>
           <tr>
@@ -1010,6 +1075,7 @@ for pkg in required_packages:
        SLIDE 12 — SIDECAR PATTERN
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-12">
+    <!-- beat 12: mechanism -->
     <div class="slide-inner">
       <div class="kicker">Design Pattern</div>
       <h2>Mapping Amplifier's Protocol Boundary to HTTP</h2>
@@ -1059,9 +1125,10 @@ for pkg in required_packages:
        SLIDE 13 — KEY TAKEAWAYS
   ══════════════════════════════════════════════ -->
   <div class="slide" id="slide-13">
+    <!-- beat 13: takeaway -->
     <div class="slide-inner" style="max-width:1000px;">
       <div class="kicker">Lessons Learned</div>
-      <h2>Key Takeaways</h2>
+      <h2>Work with Python's packaging, and the sidecar is still Amplifier</h2>
       <div class="cards cards-2">
         <div class="card card-accent">
           <span class="icon">📦</span>
@@ -1090,29 +1157,22 @@ for pkg in required_packages:
   <!-- ══════════════════════════════════════════════
        SLIDE 14 — CLOSING
   ══════════════════════════════════════════════ -->
-  <div class="slide title-slide" id="slide-14">
-    <div class="title-glow"></div>
-    <div class="slide-inner" style="text-align:center;">
-      <div class="kicker" style="margin-bottom:36px;">The Bottom Line</div>
-      <p class="closing-quote">
-        "Amplifier's modular design works because it <em>trusts Python's package ecosystem</em>. Work with it, not around it."
-      </p>
-      <div style="margin:40px auto; width:56px; height:3px; background:linear-gradient(90deg,var(--accent),var(--accent-bright)); border-radius:2px;"></div>
-      <div class="cards-2 cards" style="max-width:700px; margin:0 auto;">
-        <div class="card" style="text-align:left;">
-          <span class="icon">📚</span>
-          <h3>python-build-standalone</h3>
-          <p>github.com/indygreg/python-build-standalone</p>
-        </div>
-        <div class="card" style="text-align:left;">
-          <span class="icon">⚡</span>
-          <h3>uv package manager</h3>
-          <p>docs.astral.sh/uv — fast Python tooling in Rust</p>
-        </div>
+  <div class="slide" id="slide-14">
+    <div class="slide-inner" style="max-width:900px;">
+      <div class="kicker">Sources &amp; Methodology</div>
+      <h2>How this deck was built</h2>
+      <div style="color:var(--text-secondary); font-size:clamp(13px,1.35vw,16px); line-height:1.7;">
+        <p style="margin-bottom:12px;"><strong style="color:var(--text-primary);">Type:</strong> Technical case study &mdash; embedding the Python Amplifier runtime in a cross-platform Electron desktop app via a portable-Python HTTP sidecar.</p>
+        <p style="margin-bottom:6px;"><strong style="color:var(--text-primary);">Drawn from the project's own build artifacts:</strong></p>
+        <ul class="bullet-list" style="margin-bottom:14px;">
+          <li>Runtime error &amp; traceback from the failed PyInstaller build (module discovery via <code style="font-family:var(--font-mono);">importlib.metadata</code>)</li>
+          <li>Build-verification output: amplifier-core 1.0.9, amplifier-foundation 1.0.0, module-loop-streaming / provider-anthropic / hooks 1.0.0, with RECORD file counts</li>
+          <li>Tooling: <code style="font-family:var(--font-mono);">python-build-standalone</code> (indygreg) installed via <code style="font-family:var(--font-mono);">uv</code>; Electron <code style="font-family:var(--font-mono);">extraResource</code> spawn</li>
+          <li>Bundle sizes: ~43 MB PyInstaller binary vs ~156 MB portable venv</li>
+        </ul>
+        <p style="margin-bottom:12px;"><strong style="color:var(--text-primary);">Gaps &amp; caveats:</strong> Sizes and version numbers are as recorded in the referenced build output, not independently re-measured here. Package versions reflect the build snapshot and will drift over time. The protocol-to-HTTP mapping (DisplaySystem, ApprovalSystem, StreamingHook, SpawnCapability, session lifecycle) is an architectural illustration of the sidecar boundary.</p>
+        <p><strong style="color:var(--text-primary);">Category:</strong> Architecture &amp; Lessons Learned &middot; <strong style="color:var(--text-primary);">Accent:</strong> #5E5CE6</p>
       </div>
-      <p style="margin-top:32px; font-size:clamp(12px,1.1vw,14px); color:var(--text-tertiary);">
-        Technical Case Study · Cross-Platform Desktop Integration · Amplifier AI Agent Framework
-      </p>
     </div>
   </div>
 
@@ -1127,6 +1187,9 @@ for pkg in required_packages:
 
 <!-- Nav Dots -->
 <div id="nav-dots"></div>
+
+<!-- More stories link -->
+<a href="index.html" style="position:fixed; bottom:20px; left:24px; font-size:12px; color:var(--text-tertiary); text-decoration:none; z-index:100;">More Amplifier Stories</a>
 
 <script>
   const TOTAL = 14;
