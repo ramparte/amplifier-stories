@@ -495,48 +495,72 @@
     </style>
 </head>
 <body>
+    <!--
+      ============================================================
+      NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
+      ============================================================
 
-    <!-- SLIDE 1: Title -->
+      ABT:
+        AND a bug announced itself as a single symptom in one repo - a
+            "501 Not Implemented" on voice downloads in amplifier-chat;
+        BUT the real cause was three repos and two languages away, at a Python/Rust
+            PyO3 seam where an async cancel was created as a coroutine and never awaited;
+        THEREFORE Amplifier followed the thread across every boundary and named both
+            required fixes at once - turning a multi-day investigation into an instant diagnosis.
+
+      PAYOFF (named up front):
+        The "two changes needed" moment - after tracing the full call chain across
+        three repositories, Amplifier immediately identified both fixes: the dependency
+        resolution in amplifier-distro and the unawaited async cancellation in amplifierd.
+
+      BEATS (proof-first; payoff lands at beat 5 of 10, before the midpoint):
+        1. proof     - a 501 in the chat app resolved to a missing await in a Rust daemon three repos away.
+                       advances: grounds the AND with the real cross-boundary outcome.
+        2. setup     - the territory: amplifier-chat, amplifier-distro, amplifierd (3 repos, 2 languages).
+                       advances: introduces the named repos the argument will lean on.
+        3. tension   - the symptom is in one repo but nothing there changed; the cause could be anywhere.
+                       advances: establishes the BUT (why this bug is a groaner).
+        4. mechanism - trace from the surface: the [voice] extras dependency chain points upstream. (one claim)
+                       advances: HOW the investigation moves layer to layer.
+        5. payoff    - "two changes needed": the full chain traced, both fixes named at once.
+                       advances: lands the THEREFORE (payoff before midpoint).
+        6. mechanism - the root cause: an async PyO3 method called without await, silently discarded. (one claim)
+                       advances: WHAT the deeper of the two changes actually was.
+        7. mechanism - why async + FFI bugs are notoriously hard: silent failure across a language seam. (one claim)
+                       advances: WHY this trace is beyond a single-language tool.
+        8. mechanism - the fix workflow: diagnose, worktree, fix, test, squash-merge. (one claim)
+                       advances: HOW diagnosis became a shipped, auditable fix.
+        9. turn      - the pattern: multiple sessions coordinating across repos through the developer.
+                       advances: pivots from one bug to a repeatable way of working.
+        10. takeaway - what it demonstrates + the scope, and where your bugs really live.
+                       advances: what the audience keeps.
+
+        + Sources & Methodology (audit-trail slide, not a beat) at the end.
+        Slides = 10 beats + 1 = 11.
+    -->
+
+    <!-- beat 1: proof -->
     <div class="slide active center">
         <div class="section-label">Amplifier Case Study</div>
-        <h1 class="headline">Cross-Repo<br>Bug Hunting</h1>
-        <p class="subhead">Following a bug across 3 repositories, 2 languages,<br>and a Python-to-Rust FFI boundary</p>
+        <h1 class="medium-headline">A "501" in the chat app was a<br>missing <span class="accent-text">await</span> three repos away.</h1>
+        <p class="subhead">One symptom in <span class="inline-code">amplifier-chat</span> traced across 3 repositories, 2 languages, and a Python-to-Rust FFI boundary &mdash; to a single unawaited coroutine.</p>
         <div class="mt-md">
             <span class="badge badge-status">Active Investigation</span>
         </div>
         <div class="small-text mt-md">Based on developer-reported debugging sessions</div>
     </div>
 
-    <!-- SLIDE 2: The Symptom -->
-    <div class="slide">
-        <div class="section-label">The Symptom</div>
-        <h2 class="headline">501 Not Implemented</h2>
-        <p class="subhead">A voice feature in amplifier-chat started failing. Model downloads were broken. The error message was unhelpful.</p>
-
-        <div class="halves">
-            <div class="card card-accent">
-                <h3>What broke</h3>
-                <p>Voice model downloads in amplifier-chat returned a <span class="inline-code">501 Not Implemented</span> error. The feature that had been working simply&hellip; stopped.</p>
-            </div>
-            <div class="card card-accent">
-                <h3>The question</h3>
-                <p>Nothing in amplifier-chat had changed. The code was the same. So where was the bug? And why was a <em>download</em> returning "Not Implemented"?</p>
-            </div>
-        </div>
-
-        <p class="body-text mt-lg">This is the kind of bug that makes engineers groan. The symptom is in one repo, but the cause could be <em>anywhere</em> in the dependency chain.</p>
-    </div>
-
-    <!-- SLIDE 3: The Investigation Map -->
+    <!-- beat 2: setup -->
     <div class="slide">
         <div class="section-label">The Territory</div>
-        <h2 class="medium-headline">Three repos. Two languages. One bug.</h2>
+        <h2 class="medium-headline">Three repos and two languages stood between symptom and cause.</h2>
+        <p class="subhead">Before the chase makes sense, meet the three codebases the bug spanned:</p>
 
         <div class="repo-map">
             <div class="repo-card python">
                 <div class="repo-name">amplifier-chat</div>
                 <div class="repo-lang">Python / TypeScript</div>
-                <div class="repo-role">Frontend application where the voice feature lives. This is where the symptom appeared — model downloads failing with a 501 error.</div>
+                <div class="repo-role">Frontend application where the voice feature lives. This is where the symptom appeared &mdash; model downloads failing with a 501 error.</div>
                 <div class="mt-md">
                     <span class="badge badge-language">Surface Layer</span>
                 </div>
@@ -562,10 +586,30 @@
         </div>
     </div>
 
-    <!-- SLIDE 4: Layer 1 — Surface -->
+    <!-- beat 3: tension -->
     <div class="slide">
-        <div class="section-label">Layer 1 · amplifier-chat</div>
-        <h2 class="medium-headline">Starting at the surface</h2>
+        <div class="section-label">The Symptom</div>
+        <h2 class="medium-headline">Nothing in the chat app changed &mdash; yet it started returning 501.</h2>
+        <p class="subhead">A voice feature in amplifier-chat started failing. Model downloads were broken. The error message was unhelpful.</p>
+
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>What broke</h3>
+                <p>Voice model downloads in amplifier-chat returned a <span class="inline-code">501 Not Implemented</span> error. The feature that had been working simply&hellip; stopped.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>The question</h3>
+                <p>Nothing in amplifier-chat had changed. The code was the same. So where was the bug? And why was a <em>download</em> returning "Not Implemented"?</p>
+            </div>
+        </div>
+
+        <p class="body-text mt-lg">This is the kind of bug that makes engineers groan. The symptom is in one repo, but the cause could be <em>anywhere</em> in the dependency chain.</p>
+    </div>
+
+    <!-- beat 4: mechanism -->
+    <div class="slide">
+        <div class="section-label">Layer 1 &rarr; Layer 2</div>
+        <h2 class="medium-headline">Following the [voice] dependency chain points upstream.</h2>
 
         <div class="trail">
             <div class="trail-item">
@@ -576,63 +620,50 @@
             <div class="trail-item">
                 <div class="trail-label">Investigation</div>
                 <div class="trail-title">Check the dependency chain</div>
-                <div class="trail-desc">The voice feature uses optional dependencies — <span class="inline-code">amplifier-chat[voice]</span>. If these aren't installed, voice features fall back to "not implemented." Could the dependencies be missing?</div>
+                <div class="trail-desc">The voice feature uses optional dependencies &mdash; <span class="inline-code">amplifier-chat[voice]</span>. If these aren't installed, voice features fall back to "not implemented."</div>
             </div>
             <div class="trail-item">
                 <div class="trail-label">Finding</div>
-                <div class="trail-title">Dependencies aren't resolving</div>
-                <div class="trail-desc">The optional dependency pattern is broken. Amplifier traces the issue upstream — something changed in how the distribution builds voice packages.</div>
+                <div class="trail-title">The build system stopped resolving them</div>
+                <div class="trail-desc">In amplifier-distro, changes altered how voice dependencies bundle &mdash; the <span class="inline-code">[voice]</span> extras pattern pip uses no longer resolved. The app never changed; the packages it received did.</div>
             </div>
         </div>
+
+        <p class="body-text mt-md">Fixing dependency resolution would restore downloads &mdash; but a separate session had found something deeper.</p>
     </div>
 
-    <!-- SLIDE 5: Layer 2 — Build System -->
-    <div class="slide">
-        <div class="section-label">Layer 2 · amplifier-distro</div>
-        <h2 class="medium-headline">Into the build system</h2>
-
-        <div class="halves">
-            <div class="card">
-                <h3>The packaging problem</h3>
-                <p>Changes in amplifier-distro altered how voice dependencies are bundled. The <span class="inline-code">[voice]</span> extras pattern that pip uses to install optional features was no longer resolving correctly.</p>
-            </div>
-            <div class="card">
-                <h3>Why it's tricky</h3>
-                <p>Build system changes are invisible to application code. amplifier-chat didn't change — but the packages it received at install time did. Classic "works on my machine" territory.</p>
-            </div>
-        </div>
-
-        <div class="card card-highlight mt-lg">
-            <h3>But that wasn't the whole story</h3>
-            <p>Fixing the dependency resolution would restore voice downloads. But in a separate Amplifier session investigating a related issue, a deeper bug was found — one that had been silently corrupting async operations at the Rust/Python boundary.</p>
-        </div>
+    <!-- beat 5: payoff -->
+    <div class="slide center">
+        <div class="section-label">The Payoff</div>
+        <p class="big-quote">"<span class="accent">Two changes needed.</span>"</p>
+        <p class="subhead mt-md">After tracing the full call chain across all three repositories, Amplifier immediately identified both required fixes &mdash; the dependency resolution in amplifier-distro and the async cancellation in amplifierd. No bisecting. No printf debugging. Trace the chain, name the fixes.</p>
     </div>
 
-    <!-- SLIDE 6: Layer 3 — Root Cause -->
+    <!-- beat 6: mechanism -->
     <div class="slide">
-        <div class="section-label">Layer 3 · amplifierd</div>
-        <h2 class="medium-headline">The root cause:<br>async across an FFI boundary</h2>
+        <div class="section-label">Layer 3 &middot; amplifierd</div>
+        <h2 class="medium-headline">The deeper fix: an async PyO3 call that was never awaited.</h2>
 
         <p class="body-text">In a separate Amplifier debugging session, a confirmed async cancellation bug was found in the Rust daemon (<span class="inline-code">amplifierd</span>), exposed through PyO3 bindings.</p>
 
         <div class="code-block mt-lg"><span class="code-comment"># The bug: calling an async method synchronously</span>
 
 <span class="code-comment"># coordinator.request_cancel() is defined in Rust via PyO3</span>
-<span class="code-comment"># It returns a coroutine — an async operation that needs to be awaited</span>
+<span class="code-comment"># It returns a coroutine &mdash; an async operation that needs to be awaited</span>
 
-<span class="code-comment"># ❌ What the code was doing:</span>
+<span class="code-comment"># &#10060; What the code was doing:</span>
 <span class="code-error">coordinator.request_cancel()</span>   <span class="code-comment"># Returns a coroutine object, doesn't execute it</span>
 
-<span class="code-comment"># ✅ What it should have been doing:</span>
+<span class="code-comment"># &#9989; What it should have been doing:</span>
 <span class="code-good">await coordinator.request_cancel()</span>   <span class="code-comment"># Actually executes the cancellation</span></div>
 
-        <p class="body-text mt-md">The Rust function <span class="inline-code">request_cancel()</span> was exposed to Python as an async method via PyO3. But the calling code treated it as synchronous — creating a coroutine that was immediately discarded, never awaited, never executed.</p>
+        <p class="body-text mt-md">The Rust function <span class="inline-code">request_cancel()</span> was exposed to Python as an async method via PyO3. But the calling code treated it as synchronous &mdash; creating a coroutine that was immediately discarded, never awaited, never executed.</p>
     </div>
 
-    <!-- SLIDE 7: Why This Bug Is Hard -->
+    <!-- beat 7: mechanism -->
     <div class="slide">
         <div class="section-label">The Challenge</div>
-        <h2 class="medium-headline">Why async + FFI bugs are notoriously hard</h2>
+        <h2 class="medium-headline">This bug is invisible to any single-language tool.</h2>
 
         <div class="thirds">
             <div class="card">
@@ -641,28 +672,21 @@
             </div>
             <div class="card">
                 <h3>Cross-language boundary</h3>
-                <p>The async nature of the function is defined in Rust, but the calling mistake happens in Python. No single-language linter catches this — it lives at the PyO3 FFI seam.</p>
+                <p>The async nature of the function is defined in Rust, but the calling mistake happens in Python. No single-language linter catches this &mdash; it lives at the PyO3 FFI seam.</p>
             </div>
             <div class="card">
                 <h3>Intermittent symptoms</h3>
-                <p>Cancellation bugs manifest as operations that "sometimes work" — they complete when they happen to finish before the cancel was needed, and fail silently when they don't.</p>
+                <p>Cancellation bugs manifest as operations that "sometimes work" &mdash; they complete when they happen to finish before the cancel was needed, and fail silently when they don't.</p>
             </div>
         </div>
 
-        <p class="body-text mt-lg">A human debugger would need to: understand Python async semantics, understand Rust async semantics, understand how PyO3 bridges them, and know to look for unawaited coroutines at the boundary. Amplifier followed this thread across all three layers.</p>
+        <p class="body-text mt-lg">A human debugger would need to understand Python async semantics, Rust async semantics, how PyO3 bridges them, and know to look for unawaited coroutines at the boundary. Amplifier followed this thread across all three layers.</p>
     </div>
 
-    <!-- SLIDE 8: The Diagnosis -->
-    <div class="slide center">
-        <div class="section-label">The Payoff</div>
-        <p class="big-quote">"<span class="accent">Two changes needed.</span>"</p>
-        <p class="subhead mt-md">After tracing the full call chain across three repositories, Amplifier immediately identified both required fixes — the dependency resolution in amplifier-distro and the async cancellation in amplifierd.</p>
-    </div>
-
-    <!-- SLIDE 9: The Fix Workflow -->
+    <!-- beat 8: mechanism -->
     <div class="slide">
         <div class="section-label">The Fix</div>
-        <h2 class="medium-headline">Diagnose → Fix → Test → Merge</h2>
+        <h2 class="medium-headline">Diagnosis became a clean, tested, squash-merged commit.</h2>
 
         <div class="flow-steps">
             <div class="flow-step">
@@ -670,25 +694,25 @@
                 <div class="step-label">Diagnose</div>
                 <div class="step-detail">Trace bug across repos</div>
             </div>
-            <div class="flow-arrow">→</div>
+            <div class="flow-arrow">&rarr;</div>
             <div class="flow-step">
                 <div class="step-number">Step 2</div>
                 <div class="step-label">Git Worktree</div>
                 <div class="step-detail">Isolate the fix branch</div>
             </div>
-            <div class="flow-arrow">→</div>
+            <div class="flow-arrow">&rarr;</div>
             <div class="flow-step">
                 <div class="step-number">Step 3</div>
                 <div class="step-label">Fix Rust Code</div>
                 <div class="step-detail">Correct the async call</div>
             </div>
-            <div class="flow-arrow">→</div>
+            <div class="flow-arrow">&rarr;</div>
             <div class="flow-step">
                 <div class="step-number">Step 4</div>
                 <div class="step-label">Run Tests</div>
                 <div class="step-detail">Verify the fix works</div>
             </div>
-            <div class="flow-arrow">→</div>
+            <div class="flow-arrow">&rarr;</div>
             <div class="flow-step">
                 <div class="step-number">Step 5</div>
                 <div class="step-label">Squash Merge</div>
@@ -699,7 +723,7 @@
         <div class="halves mt-lg">
             <div class="card">
                 <h3>Git worktrees for isolation</h3>
-                <p>The developer created a git worktree to isolate the Rust fix from other work in progress. Amplifier guided the fix, the developer ran tests, and the change was squash-merged — a clean, auditable commit.</p>
+                <p>The developer created a git worktree to isolate the Rust fix from other work in progress. Amplifier guided the fix, the developer ran tests, and the change was squash-merged &mdash; a clean, auditable commit.</p>
             </div>
             <div class="card card-highlight">
                 <h3>Cross-session coordination</h3>
@@ -708,67 +732,35 @@
         </div>
     </div>
 
-    <!-- SLIDE 10: Cross-Session Pattern -->
+    <!-- beat 9: turn -->
     <div class="slide">
         <div class="section-label">The Pattern</div>
-        <h2 class="medium-headline">Sessions coordinating with sessions</h2>
+        <h2 class="medium-headline">One bug revealed a way of working: sessions coordinating with sessions.</h2>
 
-        <p class="subhead">This debugging journey revealed a workflow pattern: a developer running multiple Amplifier sessions, each focused on a different repo, sharing context through the developer.</p>
+        <p class="subhead">A developer running multiple Amplifier sessions, each focused on a different repo, sharing context through the developer.</p>
 
         <div class="thirds mt-lg">
             <div class="card" style="border-top: 3px solid #0A84FF;">
                 <h3>Session A</h3>
-                <p><strong>amplifier-chat</strong> — Identifies the 501 error, traces it to a dependency issue, reports finding to developer.</p>
+                <p><strong>amplifier-chat</strong> &mdash; Identifies the 501 error, traces it to a dependency issue, reports finding to developer.</p>
             </div>
             <div class="card" style="border-top: 3px solid #BF5AF2;">
                 <h3>Session B</h3>
-                <p><strong>amplifierd</strong> — Finds the async cancellation bug in Rust/PyO3 code, fixes it, runs tests, merges.</p>
+                <p><strong>amplifierd</strong> &mdash; Finds the async cancellation bug in Rust/PyO3 code, fixes it, runs tests, merges.</p>
             </div>
             <div class="card" style="border-top: 3px solid #FF9F0A;">
                 <h3>Session C</h3>
-                <p><strong>amplifier-distro</strong> — Developer offers to "prompt amplifier-distro" to make coordinated build-system changes.</p>
+                <p><strong>amplifier-distro</strong> &mdash; Developer offers to "prompt amplifier-distro" to make coordinated build-system changes.</p>
             </div>
         </div>
 
-        <p class="body-text mt-lg">The developer acts as the coordinator, carrying context between focused sessions. Each session maintains deep context about its repo — the developer connects the dots between them.</p>
+        <p class="body-text mt-lg">The developer acts as the coordinator, carrying context between focused sessions. Each session maintains deep context about its repo &mdash; the developer connects the dots between them.</p>
     </div>
 
-    <!-- SLIDE 11: Why This Matters -->
-    <div class="slide">
+    <!-- beat 10: takeaway -->
+    <div class="slide center">
         <div class="section-label">Why This Matters</div>
-        <h2 class="medium-headline">What this demonstrates about AI-assisted debugging</h2>
-
-        <div class="halves">
-            <div class="card card-accent">
-                <h3>Following the thread</h3>
-                <p>Amplifier didn't stop at the first plausible explanation. It traced the symptom (501 error) through the dependency layer (build system) to the root cause (async FFI bug) — across repo and language boundaries.</p>
-            </div>
-            <div class="card card-accent">
-                <h3>Polyglot fluency</h3>
-                <p>The debugging required understanding Python async semantics, Rust async semantics, PyO3 FFI bindings, and how they interact. No single-language tool handles this. Amplifier operates across the full stack.</p>
-            </div>
-            <div class="card card-accent">
-                <h3>Instant diagnosis</h3>
-                <p>After tracing the full call chain, Amplifier identified "two changes needed" immediately — no trial-and-error, no bisecting commits, no printf debugging. Trace the chain, find the cause, state the fix.</p>
-            </div>
-            <div class="card card-accent">
-                <h3>End-to-end workflow</h3>
-                <p>Not just diagnosis — Amplifier participated in the full cycle: diagnose, create worktree, fix code, run tests, squash-merge. From symptom to shipped fix in a single workflow.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- SLIDE 12: The Human Cost -->
-    <div class="slide center">
-        <div class="section-label">Reality Check</div>
-        <p class="big-quote">Without AI, this bug is a <span class="accent">multi-day investigation</span>.</p>
-        <p class="subhead mt-md">Cross-repo async FFI bugs combine three of the hardest debugging challenges: distributed systems, language boundaries, and concurrency. Engineers who've chased these bugs know the cost.</p>
-    </div>
-
-    <!-- SLIDE 13: Velocity -->
-    <div class="slide center">
-        <div class="section-label">By The Numbers</div>
-        <h2 class="medium-headline">Investigation scope</h2>
+        <h2 class="medium-headline">Your bugs don't stay in one repo &mdash; neither should the trace.</h2>
 
         <div class="velocity-grid">
             <div class="velocity-stat">
@@ -789,17 +781,17 @@
             </div>
         </div>
 
-        <p class="body-text mt-lg" style="text-align: center; max-width: min(600px, 90vw);">Workflow: Diagnose → Git Worktree → Fix → Test → Squash Merge — all within Amplifier sessions, with cross-session coordination between repos.</p>
+        <p class="body-text mt-lg" style="text-align: center; max-width: min(640px, 90vw);">Cross-repo async FFI bugs combine distributed systems, language boundaries, and concurrency &mdash; a multi-day investigation by hand. Amplifier traced the symptom through the dependency layer to the root cause, then diagnosed, fixed, tested, and squash-merged. From symptom to shipped fix, wherever the thread led.</p>
     </div>
 
-    <!-- SLIDE 14: Sources & Methodology -->
+    <!-- Sources & Methodology -->
     <div class="slide">
         <div class="section-label">Sources</div>
         <h2 class="medium-headline">Sources &amp; Methodology</h2>
 
         <div class="body-text" style="line-height: 1.8; max-width: min(800px, 95vw);">
             <p><strong>Data as of:</strong> March 2026</p>
-            <p class="mt-md"><strong>Feature status:</strong> Active — cross-repo debugging is a core Amplifier capability used in ongoing development</p>
+            <p class="mt-md"><strong>Feature status:</strong> Active &mdash; cross-repo debugging is a core Amplifier capability used in ongoing development</p>
 
             <p class="mt-md"><strong>Story source:</strong></p>
             <ul style="margin-left: 20px; margin-top: 8px;">
@@ -810,29 +802,23 @@
 
             <p class="mt-md"><strong>Repositories involved:</strong></p>
             <ul style="margin-left: 20px; margin-top: 8px;">
-                <li><span class="inline-code">amplifier-chat</span> — Python/TypeScript frontend application</li>
-                <li><span class="inline-code">amplifier-distro</span> — Build system and packaging</li>
-                <li><span class="inline-code">amplifierd</span> — Rust daemon with PyO3 bindings</li>
+                <li><span class="inline-code">amplifier-chat</span> &mdash; Python/TypeScript frontend application</li>
+                <li><span class="inline-code">amplifier-distro</span> &mdash; Build system and packaging</li>
+                <li><span class="inline-code">amplifierd</span> &mdash; Rust daemon with PyO3 bindings</li>
             </ul>
 
             <p class="mt-md"><strong>Gaps &amp; limitations:</strong></p>
             <ul style="margin-left: 20px; margin-top: 8px;">
                 <li>Exact commit hashes, PR numbers, and timestamps not independently verified via git log</li>
-                <li>Time-to-resolution not measured — "multi-day" human comparison is qualitative, based on engineering experience with similar bugs, not benchmarked</li>
-                <li>Repository ownership/org not specified — names used as provided by developer</li>
+                <li>Time-to-resolution not measured &mdash; "multi-day" human comparison is qualitative, based on engineering experience with similar bugs, not benchmarked</li>
+                <li>Repository ownership/org not specified &mdash; names used as provided by developer</li>
             </ul>
 
             <p class="mt-md"><strong>Attribution:</strong> Story reflects a real debugging workflow described by the developer who participated in the sessions</p>
         </div>
     </div>
 
-    <!-- SLIDE 15: CTA -->
-    <div class="slide center">
-        <div class="section-label">Try It</div>
-        <h2 class="headline">Your bugs don't<br>stay in one repo.</h2>
-        <p class="subhead">Neither should your debugging tools.</p>
-        <p class="body-text mt-lg">Amplifier traces bugs across repository boundaries, language boundaries, and FFI layers — following the thread wherever it leads.</p>
-    </div>
+    <!-- Navigation -->
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
