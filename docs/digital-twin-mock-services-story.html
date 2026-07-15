@@ -478,395 +478,253 @@
 </head>
 <body>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 1: Title -->
-    <!-- ============================================================ -->
+    <!--
+      ============================================================
+      NARRATIVE SPINE (built from the deck's existing verified content; no fresh research)
+      ============================================================
+
+      ABT:
+        AND real software integrates with external services like Slack;
+        BUT for an agent-driven software factory that spins environments up and
+            tears them down constantly, testing those integrations for real
+            (accounts, OAuth tokens, rate limits, cleanup) is a non-starter;
+        THEREFORE mock services run as sidecar containers with DNS rewriting, so
+            the production app runs completely unmodified and can't tell it isn't
+            talking to the real service - no accounts, no limits, fully reproducible.
+
+      PAYOFF (named up front):
+        Four themed Slack workspaces run simultaneously against mocks with zero
+        real API calls - "what you test is what you ship," because the app is the
+        real thing and only the network destination changed.
+
+      BEATS (proof-first; payoff lands at beat 4 of 8, before the midpoint):
+        1. proof     - a production Slack bot runs unmodified against a mock it can't
+                       distinguish from Slack (822-line mock, 11 endpoints, 0 accounts).
+                       advances: grounds the AND - it actually works, right now.
+        2. tension   - for a software factory, real Slack testing is a non-starter.
+                       advances: establishes the BUT.
+        3. setup     - introduce amplifier-hive-slack and the mock that stands in for Slack.
+                       advances: names the example the payoff will lean on.
+        4. payoff    - four themed workspaces run at once, zero real API calls.
+                       advances: lands the THEREFORE (payoff before midpoint).
+        5. mechanism - DNS rewriting redirects api.slack.com to the sidecar. (one claim)
+                       advances: HOW the app is fooled without code changes.
+        6. mechanism - one DTU profile declares mocks, passthrough, and launch. (one claim)
+                       advances: HOW you wire it up.
+        7. mechanism - you own the mock, so you script the whole scenario. (one claim)
+                       advances: HOW you get full control.
+        8. takeaway  - once a mock exists, everyone reuses it - for any service.
+                       advances: what the audience keeps + how to start.
+
+        + Sources & Methodology (audit-trail slide, not a beat) at the end.
+        Slides = 8 beats + 1 = 9.
+    -->
+
+    <!-- beat 1: proof -->
     <div class="slide active center">
         <div class="section-label">Amplifier Digital Twin Universe</div>
-        <h1 class="headline">Mock Services</h1>
-        <p class="subhead">Testing against the real world without the real world.</p>
+        <h1 class="headline">A production Slack bot runs unmodified &mdash; and can't tell it isn't Slack</h1>
+        <p class="subhead">No test doubles, no code changes. The real app talks to a mock it believes is the real service.</p>
 
-        <div class="small-text" style="margin-top: var(--space-md);">April 2026</div>
+        <div class="velocity-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(160px, 45%), 1fr));">
+            <div class="velocity-stat">
+                <div class="velocity-number">822</div>
+                <div class="velocity-label">lines of Python in the Slack mock</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">11</div>
+                <div class="velocity-label">Slack API endpoints emulated</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">0</div>
+                <div class="velocity-label">real accounts, tokens, or API calls</div>
+            </div>
+        </div>
+        <div class="status-badge status-active">Active &middot; April 2026</div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 2: The Problem -->
-    <!-- ============================================================ -->
+    <!-- beat 2: tension -->
     <div class="slide">
-        <div class="section-label">The Problem</div>
-        <h2 class="medium-headline">External services make testing painful</h2>
-        <p class="body-text">Most real software integrates with external services. Testing those integrations creates friction that kills velocity.</p>
+        <div class="section-label">The Tension</div>
+        <h2 class="medium-headline">For a software factory, testing against real Slack is a non-starter</h2>
+        <p class="body-text">Most real software integrates with external services &mdash; and testing those integrations creates friction that kills velocity. In a factory where agents constantly create and tear down environments, that friction compounds until testing stops happening.</p>
 
         <div class="thirds">
             <div class="card">
-                <span class="card-icon">🔑</span>
+                <span class="card-icon">&#128273;</span>
                 <h3>Account Overhead</h3>
-                <p>Slack alone needs: an account, an app registration, a workspace, OAuth tokens. Multiply that for every environment.</p>
+                <p>Slack alone needs an account, an app registration, a workspace, and OAuth tokens &mdash; multiplied for every environment.</p>
             </div>
             <div class="card">
-                <span class="card-icon">⏱️</span>
+                <span class="card-icon">&#9201;&#65039;</span>
                 <h3>Rate Limits</h3>
-                <p>Real APIs have quotas. In a software factory where agents constantly create and tear down environments, you burn through limits fast.</p>
+                <p>Real APIs have quotas. Agents spinning environments up and down burn through those limits fast.</p>
             </div>
             <div class="card">
-                <span class="card-icon">🔧</span>
+                <span class="card-icon">&#128295;</span>
                 <h3>Manual Setup</h3>
-                <p>Throwaway accounts, manual configuration, cleanup after every test run. Non-starter for agent-driven development.</p>
+                <p>Throwaway accounts, hand configuration, cleanup after every run. Non-starter for agent-driven development.</p>
             </div>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 3: The Architecture -->
-    <!-- ============================================================ -->
+    <!-- beat 3: setup -->
     <div class="slide">
-        <div class="section-label">The Solution</div>
-        <h2 class="medium-headline">Mock services as sidecar containers with DNS rewriting</h2>
+        <div class="section-label">The Example</div>
+        <h2 class="medium-headline">Meet amplifier-hive-slack &mdash; and the mock that stands in for Slack</h2>
+        <p class="body-text"><strong style="color:var(--text-primary);">amplifier-hive-slack</strong> is a bot that integrates directly with Slack's APIs. To test it for real you'd need the full account-and-token dance above. So instead we built an 822-line mock Slack that the bot talks to exactly as if it were the real thing &mdash; across four surfaces:</p>
+
+        <ul class="list-styled mt-lg" style="max-width: min(820px, 95vw);">
+            <li><strong style="color:var(--text-primary);">Slack Web API</strong> &mdash; 11 GET/POST endpoints (<code>auth.test</code>, <code>chat.postMessage</code>, <code>conversations.history</code>, <code>reactions.add</code>, &hellip;)</li>
+            <li><strong style="color:var(--text-primary);">Socket Mode WebSocket</strong> &mdash; hello handshake, event envelopes, ack, ping/pong keepalive, rewritten to connect over TLS transparently</li>
+            <li><strong style="color:var(--text-primary);">Control API</strong> &mdash; <code>/mock/send-message</code>, <code>/mock/create-user</code>, <code>/mock/create-channel</code> for full programmatic simulation</li>
+            <li><strong style="color:var(--text-primary);">Web UI</strong> &mdash; a vanilla HTML/JS interface with channel list, message feed, and input, so you can drive the mock from a browser</li>
+        </ul>
+    </div>
+
+    <!-- beat 4: payoff -->
+    <div class="slide">
+        <div class="section-label">The Payoff</div>
+        <h2 class="medium-headline">Four themed Slack workspaces, live at once &mdash; zero real API calls</h2>
+        <div class="big-quote">What you test is what you ship. The app is production code; only the network destination changed.</div>
+        <p class="body-text">The multi-workspace demo launches four DTU environments simultaneously, each with unique channels, seeded users, and scripted conversations firing in real time &mdash; the bot responding throughout, and not one real Slack account in sight.</p>
+
+        <ul class="list-styled mt-lg" style="max-width: min(820px, 95vw);">
+            <li>&#128640; <strong style="color:var(--text-primary);">Startup Weekend</strong> &mdash; a team building a meal-prep app in 47 hours; the bot scopes features and structures the pitch.</li>
+            <li>&#127918; <strong style="color:var(--text-primary);">Moonlight Studios</strong> &mdash; an indie game studio prepping for Steam Next Fest; the bot debugs gameplay and shaders.</li>
+            <li>&#128300; <strong style="color:var(--text-primary);">Patel Research Lab</strong> &mdash; a team racing the ICML 2026 deadline; the bot reviews drafts and suggests experiments.</li>
+            <li>&#127960;&#65039; <strong style="color:var(--text-primary);">Oakridge HOA</strong> &mdash; a neighborhood association juggling maintenance, events, and fence disputes.</li>
+        </ul>
+    </div>
+
+    <!-- beat 5: mechanism -->
+    <div class="slide">
+        <div class="section-label">How It Works</div>
+        <h2 class="medium-headline">DNS rewriting redirects api.slack.com to the sidecar &mdash; the app never changes</h2>
+        <p class="body-text">Traffic bound for a real API hostname is transparently redirected to the mock container. The application is installed completely unmodified; mitmproxy does all the work at the network layer.</p>
 
         <div class="flow">
             <div class="flow-step">DTU Profile</div>
-            <span class="flow-arrow">→</span>
-            <div class="flow-step">Clone Mock Repo</div>
-            <span class="flow-arrow">→</span>
-            <div class="flow-step">Build Image</div>
-            <span class="flow-arrow">→</span>
+            <span class="flow-arrow">&rarr;</span>
+            <div class="flow-step">Build Mock Image</div>
+            <span class="flow-arrow">&rarr;</span>
             <div class="flow-step accent">Start Sidecar</div>
-            <span class="flow-arrow">→</span>
+            <span class="flow-arrow">&rarr;</span>
             <div class="flow-step accent">DNS Rewrite via mitmproxy</div>
-            <span class="flow-arrow">→</span>
+            <span class="flow-arrow">&rarr;</span>
             <div class="flow-step">App Runs Unmodified</div>
         </div>
 
-        <div class="code-block"><span class="code-comment"># digital-twin-mock.yaml — the standard manifest</span>
-<span class="code-keyword">name:</span> <span class="code-string">slack</span>
-<span class="code-keyword">version:</span> <span class="code-string">0.1.0</span>
-<span class="code-keyword">description:</span> <span class="code-string">Mock Slack service for DTU testing</span>
-
-<span class="code-keyword">runtime:</span>
-  <span class="code-keyword">type:</span> docker
-  <span class="code-keyword">build:</span> Dockerfile
-  <span class="code-keyword">port:</span> <span class="code-green">3000</span>
-
-<span class="code-keyword">domains:</span>
-  - <span class="code-blue">api.slack.com</span>
-  - <span class="code-blue">slack.com</span></div>
+        <div class="code-block"><span class="code-comment"># Inside the Incus container, the DTU engine:</span>
+<span class="code-comment"># 1. installs mitmproxy and a rewrite addon</span>
+<span class="code-comment">#    api.slack.com &rarr; mock container IP:3000</span>
+<span class="code-comment"># 2. installs the mitmproxy CA cert so TLS just works</span>
+cp ~/.mitmproxy/mitmproxy-ca-cert.pem /usr/local/share/ca-certificates/mitmproxy.crt
+update-ca-certificates
+<span class="code-comment"># 3. sets proxy env vars</span>
+<span class="code-keyword">export</span> HTTPS_PROXY=<span class="code-string">"http://localhost:8080"</span>
+<span class="code-comment"># 4. rewrites the Socket Mode WebSocket URL to wss://api.slack.com/ws</span></div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 4: Critical Design Point -->
-    <!-- ============================================================ -->
+    <!-- beat 6: mechanism -->
     <div class="slide">
-        <div class="section-label">Design Principle</div>
-        <h2 class="headline">No code changes.</h2>
+        <div class="section-label">How It Works</div>
+        <h2 class="medium-headline">One DTU profile declares the mocks, the passthrough, and the launch</h2>
+        <p class="body-text">The profile is the single source of truth: what to install, which mocks to wire up, which real APIs to let through, and how to start the app.</p>
 
-        <div class="big-quote">The mock is what changes, not the app. The application under test runs exactly as it would in production.</div>
-
-        <p class="body-text">Traffic destined for a real API hostname gets transparently redirected to the mock container. The application under test is installed completely unmodified. It genuinely believes it's talking to the real service.</p>
-
-        <div class="comparison mt-lg">
-            <div class="comparison-header before">Traditional Mocking</div>
-            <div class="comparison-header after">DTU Mock Services</div>
-            <div class="comparison-cell">Modify app code with test doubles</div>
-            <div class="comparison-cell">App runs unmodified — production code</div>
-            <div class="comparison-cell">Swap SDK clients for fakes</div>
-            <div class="comparison-cell">DNS rewrite at the network layer</div>
-            <div class="comparison-cell">Test harness version of the app</div>
-            <div class="comparison-cell">Test the real thing</div>
-            <div class="comparison-cell">"Works in test" ≠ works in prod</div>
-            <div class="comparison-cell">What you test is what you ship</div>
-        </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 5: How the Slack Mock Works -->
-    <!-- ============================================================ -->
-    <div class="slide">
-        <div class="section-label">Sample Scenario</div>
-        <h2 class="medium-headline">amplifier-hive-slack: a Slack bot that needs Slack</h2>
-
-        <p class="body-text" style="margin-bottom: var(--space-md);">amplifier-hive-slack is a bot that integrates with Slack's APIs. To test it for real, you need a Slack account, an app registration, a workspace, OAuth tokens — and you're subject to rate limits. In a software factory where agents are constantly creating and tearing down environments, that's a non-starter. So we built a mock.</p>
-
-        <h3 style="color: var(--text-secondary); font-size: var(--fs-h3); margin-bottom: var(--space-sm);">The Slack mock: 822 lines of Python, 11 API endpoints</h3>
-
-        <div class="halves">
-            <div class="card">
-                <span class="card-icon">🌐</span>
-                <h3>Slack Web API</h3>
-                <p>11 endpoints (GET + POST): <code>auth.test</code>, <code>apps.connections.open</code>, <code>conversations.info</code>, <code>conversations.list</code>, <code>conversations.history</code>, <code>chat.postMessage</code>, <code>chat.update</code>, <code>reactions.add</code>, <code>users.info</code>, <code>bots.info</code>, <code>team.info</code></p>
-            </div>
-            <div class="card">
-                <span class="card-icon">🔌</span>
-                <h3>Socket Mode WebSocket</h3>
-                <p>Full Socket Mode support: hello handshake, event envelopes, ack responses, ping/pong keepalive. mitmproxy rewrites the WebSocket URL so the bot connects via TLS transparently.</p>
-            </div>
-            <div class="card">
-                <span class="card-icon">🎛️</span>
-                <h3>Control API</h3>
-                <p>Endpoints for simulation: <code>/mock/state</code>, <code>/mock/send-message</code>, <code>/mock/add-reaction</code>, <code>/mock/create-user</code>, <code>/mock/create-channel</code>. Full programmatic control.</p>
-            </div>
-            <div class="card">
-                <span class="card-icon">🖥️</span>
-                <h3>Web UI</h3>
-                <p>Vanilla HTML/JS interface at <code>/</code> with channel list, message feed, and input. Interact with the mock directly from your browser.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 6: The Profile -->
-    <!-- ============================================================ -->
-    <div class="slide">
-        <div class="section-label">Configuration</div>
-        <h2 class="medium-headline">A DTU profile declares everything</h2>
-        <p class="body-text">The profile is the single source of truth: what to install, which mocks to wire up, which real APIs to allow through, and how to start the app.</p>
-
-        <div class="code-block"><span class="code-comment"># amplifier-hive-slack.yaml — DTU profile (86 lines)</span>
+        <div class="code-block"><span class="code-comment"># amplifier-hive-slack.yaml &mdash; DTU profile (86 lines)</span>
 <span class="code-keyword">name:</span> <span class="code-string">amplifier-hive-slack</span>
 <span class="code-keyword">base:</span>
   <span class="code-keyword">image:</span> ubuntu:24.04
 
-<span class="code-keyword">mock_services:</span>                    <span class="code-comment"># ← declare mocks here</span>
+<span class="code-keyword">mock_services:</span>                    <span class="code-comment"># &larr; declare mocks here</span>
   - <span class="code-keyword">source:</span> <span class="code-string">${MOCK_SLACK_PATH}</span>
-    <span class="code-keyword">config:</span>
-      <span class="code-keyword">workspace_name:</span> <span class="code-string">"${WORKSPACE_NAME}"</span>
 
-<span class="code-keyword">passthrough:</span>                      <span class="code-comment"># ← real APIs still work</span>
+<span class="code-keyword">passthrough:</span>                      <span class="code-comment"># &larr; real APIs still work</span>
   <span class="code-keyword">allow_external:</span> <span class="code-green">true</span>
   <span class="code-keyword">services:</span>
     - <span class="code-keyword">name:</span> anthropic
       <span class="code-keyword">key_env:</span> ANTHROPIC_API_KEY
 
-<span class="code-keyword">provision:</span>                        <span class="code-comment"># ← install & launch</span>
+<span class="code-keyword">provision:</span>                        <span class="code-comment"># &larr; install &amp; launch</span>
   <span class="code-keyword">setup_cmds:</span>
     - uv tool install amplifier-hive-slack
-    - nohup hive-slack config.yaml &</div>
+    - nohup hive-slack config.yaml &amp;</div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 7: The Workflow -->
-    <!-- ============================================================ -->
+    <!-- beat 7: mechanism -->
     <div class="slide">
-        <div class="section-label">Workflow</div>
-        <h2 class="medium-headline">Tell the agent what you want. It builds the rest.</h2>
-
-        <div class="card mt-lg" style="max-width: min(800px, 95vw);">
-            <p class="body-text" style="color: var(--text-primary);">
-                <span class="accent-text" style="font-weight: 600;">"Look at amplifier-hive-slack and make me a Digital Twin Universe that will let me try it out with a mock Slack."</span>
-            </p>
-            <ul class="list-styled mt-md">
-                <li>Agent builds a DTU profile with the Slack mock declared as a sidecar</li>
-                <li>DTU engine clones the mock repo, builds the Docker image</li>
-                <li>Launches the Incus environment with the mock container alongside it</li>
-                <li>Configures mitmproxy: <code>api.slack.com</code> → mock container</li>
-                <li>Installs hive-slack as-is with fake OAuth tokens (mock doesn't validate)</li>
-                <li>Bot starts, connects via Socket Mode — you're interacting through the browser</li>
-            </ul>
-        </div>
-
-        <p class="body-text mt-lg">When the bot wasn't replying as expected, the next step was natural: <em>"Amplifier, can you try x, y, z and simulate some users so I can see how it's working."</em></p>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 8: The Power -->
-    <!-- ============================================================ -->
-    <div class="slide">
-        <div class="section-label">Capabilities</div>
-        <h2 class="medium-headline">You own the mock. You control everything.</h2>
+        <div class="section-label">How It Works</div>
+        <h2 class="medium-headline">You own the mock, so you script the entire scenario</h2>
+        <p class="body-text">Because the mock is yours, the Control API lets you stage any workspace topology and drive it end to end &mdash; the same lever behind the four-workspace demo.</p>
 
         <div class="thirds">
             <div class="card">
-                <span class="card-icon">🎬</span>
+                <span class="card-icon">&#127916;</span>
                 <h3>Prepopulate Scenarios</h3>
-                <p>Seed channels, users, message history however you want. Create-user and create-channel endpoints let you build any workspace topology on demand.</p>
+                <p>Seed channels, users, and message history with create-user and create-channel &mdash; any topology on demand.</p>
             </div>
             <div class="card">
-                <span class="card-icon">🤖</span>
+                <span class="card-icon">&#129302;</span>
                 <h3>Script Interactions</h3>
-                <p>Send messages, trigger events, simulate multiple users — all through the Control API. Automate entire conversation flows with a shell script.</p>
+                <p>Send messages, trigger events, simulate multiple users &mdash; automate an entire conversation flow with a shell script.</p>
             </div>
             <div class="card">
-                <span class="card-icon">♾️</span>
+                <span class="card-icon">&#9854;&#65039;</span>
                 <h3>No Limits</h3>
-                <p>No rate limits, no accounts to create, no cleanup. Run as many times as you want. Tear down and rebuild in seconds.</p>
+                <p>No quotas, no accounts, no cleanup. Tear down and rebuild in seconds, a thousand times over.</p>
             </div>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 9: The Demo -->
-    <!-- ============================================================ -->
+    <!-- beat 8: takeaway -->
     <div class="slide">
-        <div class="section-label">Demo</div>
-        <h2 class="medium-headline">Four themed workspaces. Running simultaneously.</h2>
-        <p class="body-text">The multi-workspace demo launches 4 DTU environments, each with unique channels, users, and seeded conversations — including bot responses — with live message scripts firing in real time.</p>
-
-        <div class="halves mt-lg">
-            <div class="card">
-                <span class="card-icon">🚀</span>
-                <h3>Startup Weekend</h3>
-                <p>4 users, 3 channels (#general, #tech-stack, #pitch-prep). A team building a meal-prep app in 47 hours. The bot helps scope features and structure the pitch.</p>
-            </div>
-            <div class="card">
-                <span class="card-icon">🎮</span>
-                <h3>Moonlight Studios</h3>
-                <p>4 users, 4 channels (#general, #bugs, #playtesting, #art-assets). An indie game studio preparing for Steam Next Fest. The bot helps debug gameplay and optimize shaders.</p>
-            </div>
-            <div class="card">
-                <span class="card-icon">🔬</span>
-                <h3>Patel Research Lab</h3>
-                <p>4 users, 4 channels (#general, #paper-drafts, #experiment-results, #reading-group). A research team racing toward the ICML 2026 deadline. The bot reviews paper drafts and suggests experiments.</p>
-            </div>
-            <div class="card">
-                <span class="card-icon">🏘️</span>
-                <h3>Oakridge HOA</h3>
-                <p>4 users, 4 channels (#general, #maintenance, #events, #lost-and-found). A neighborhood association managing everything from fence disputes to block party planning.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 10: The Full Loop -->
-    <!-- ============================================================ -->
-    <div class="slide">
-        <div class="section-label">Integration</div>
-        <h2 class="medium-headline">Close the loop: mocks + browser-tester = full automation</h2>
-
-        <p class="body-text">Combined with the browser-tester agent, mock services create a full verification loop — all without touching a single real external service.</p>
+        <div class="section-label">What You Keep</div>
+        <h2 class="medium-headline">Once a mock exists, everyone reuses it &mdash; for any external service</h2>
+        <p class="body-text">Mocks are standalone repos with a standard <code>digital-twin-mock.yaml</code>. A profile just declares what it needs; DTU clones, builds, starts, and rewrites DNS. Pair it with the browser-tester agent and the loop closes &mdash; end-to-end verification with zero real external calls.</p>
 
         <div class="flow mt-lg">
             <div class="flow-step">Launch DTU</div>
-            <span class="flow-arrow">→</span>
-            <div class="flow-step accent">Mock Services Start</div>
-            <span class="flow-arrow">→</span>
+            <span class="flow-arrow">&rarr;</span>
+            <div class="flow-step accent">Mocks Start</div>
+            <span class="flow-arrow">&rarr;</span>
             <div class="flow-step">App Installs</div>
-            <span class="flow-arrow">→</span>
+            <span class="flow-arrow">&rarr;</span>
             <div class="flow-step accent">Browser Agent Tests</div>
-            <span class="flow-arrow">→</span>
+            <span class="flow-arrow">&rarr;</span>
             <div class="flow-step">Integration Verified</div>
         </div>
 
-        <div class="card mt-lg" style="max-width: min(800px, 95vw);">
-            <h3>What this means</h3>
-            <ul class="list-styled mt-md">
-                <li>Launch an environment with mock services wired up</li>
-                <li>Have an agent interact with the app through a real browser</li>
-                <li>Verify the integration works end-to-end</li>
-                <li>Zero real accounts, zero real API calls, zero cleanup</li>
-                <li>Fully reproducible — run it a thousand times</li>
+        <p class="body-text mt-lg">Start by telling Amplifier: <em>&ldquo;Make me a DTU with a mock Slack so I can try amplifier-hive-slack.&rdquo;</em></p>
+
+        <div style="margin-top: var(--space-lg); display: flex; gap: var(--space-md); justify-content: flex-start; flex-wrap: wrap;">
+            <a href="https://github.com/microsoft/amplifier-bundle-digital-twin-universe" target="_blank" style="color: var(--accent); text-decoration: none; border: 1px solid var(--accent-dim); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-sm); font-size: var(--fs-body);">amplifier-bundle-digital-twin-universe</a>
+            <a href="https://github.com/DavidKoleczek/digital-twin-mock-slack" target="_blank" style="color: var(--accent); text-decoration: none; border: 1px solid var(--accent-dim); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-sm); font-size: var(--fs-body);">digital-twin-mock-slack</a>
+        </div>
+    </div>
+
+    <!-- Sources & Methodology (audit-trail slide, not a beat) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2 class="medium-headline">Research Methodology</h2>
+        <div class="body-text">
+            <p><strong style="color:var(--text-primary);">Data as of:</strong> April 2026</p>
+            <p><strong style="color:var(--text-primary);">Feature status:</strong> Active</p>
+            <p class="mt-md"><strong style="color:var(--text-primary);">Verified from source:</strong></p>
+            <ul class="list-styled">
+                <li>Slack mock: 822 lines of Python, 11 Web API endpoints, Socket Mode WebSocket, Control API, and Web UI &mdash; <code>DavidKoleczek/digital-twin-mock-slack</code></li>
+                <li>DTU profile <code>amplifier-hive-slack.yaml</code>: 86 lines declaring <code>mock_services</code>, <code>passthrough</code>, and <code>provision</code></li>
+                <li>Multi-workspace demo: 4 environments (Startup Weekend, Moonlight Studios, Patel Research Lab, Oakridge HOA), each with seeded channels/users</li>
+                <li>DNS rewrite path verified against the DTU engine's mitmproxy addon and CA-cert install steps</li>
             </ul>
-        </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 11: The Vision -->
-    <!-- ============================================================ -->
-    <div class="slide">
-        <div class="section-label">Vision</div>
-        <h2 class="medium-headline">A catalog of reusable mocks for any external service</h2>
-        <p class="body-text">Once someone builds a mock, everyone can use it. The profile just declares what it needs and DTU handles the rest: clone, build, start, DNS rewrite, ready.</p>
-
-        <div class="vision-grid mt-lg">
-            <div class="vision-item active-mock">
-                <span class="vi-icon">💬</span>
-                <span class="vi-name">Slack</span>
-                <span class="vi-desc">Available now</span>
-            </div>
-            <div class="vision-item future-mock">
-                <span class="vi-icon">📧</span>
-                <span class="vi-name">Microsoft 365</span>
-                <span class="vi-desc">Planned</span>
-            </div>
-            <div class="vision-item future-mock">
-                <span class="vi-icon">📂</span>
-                <span class="vi-name">Google Workspace</span>
-                <span class="vi-desc">Planned</span>
-            </div>
-            <div class="vision-item future-mock">
-                <span class="vi-icon">💳</span>
-                <span class="vi-name">Payment APIs</span>
-                <span class="vi-desc">Planned</span>
-            </div>
-            <div class="vision-item future-mock">
-                <span class="vi-icon">🗂️</span>
-                <span class="vi-name">GitHub API</span>
-                <span class="vi-desc">Planned</span>
-            </div>
-            <div class="vision-item future-mock">
-                <span class="vi-icon">📊</span>
-                <span class="vi-name">Any REST API</span>
-                <span class="vi-desc">Standard pattern</span>
-            </div>
-        </div>
-
-        <p class="body-text mt-lg">The framework is designed to be shared. Mocks are standalone repos with a standard <code>digital-twin-mock.yaml</code> definition. The same pattern extends to any external service.</p>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 12: Architecture Detail -->
-    <!-- ============================================================ -->
-    <div class="slide">
-        <div class="section-label">Under the Hood</div>
-        <h2 class="medium-headline">How DNS rewriting works</h2>
-
-        <div class="code-block"><span class="code-comment"># Inside the Incus container, the DTU engine:</span>
-
-<span class="code-comment"># 1. Installs mitmproxy</span>
-pip3 install mitmproxy
-
-<span class="code-comment"># 2. Generates a rewrite addon that maps domains to mock containers</span>
-<span class="code-comment">#    api.slack.com → mock container IP:3000</span>
-<span class="code-comment">#    slack.com     → mock container IP:3000</span>
-
-<span class="code-comment"># 3. Installs the mitmproxy CA certificate</span>
-cp ~/.mitmproxy/mitmproxy-ca-cert.pem \
-   /usr/local/share/ca-certificates/mitmproxy.crt
-update-ca-certificates
-
-<span class="code-comment"># 4. Sets proxy environment variables</span>
-<span class="code-keyword">export</span> HTTP_PROXY=<span class="code-string">"http://localhost:8080"</span>
-<span class="code-keyword">export</span> HTTPS_PROXY=<span class="code-string">"http://localhost:8080"</span>
-
-<span class="code-comment"># 5. Special handling: WebSocket URL rewriting</span>
-<span class="code-comment">#    apps.connections.open returns ws://localhost:3000/ws</span>
-<span class="code-comment">#    mitmproxy rewrites it to wss://api.slack.com/ws</span>
-<span class="code-comment">#    so the bot connects via TLS through the proxy transparently</span></div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 13: CTA -->
-    <!-- ============================================================ -->
-    <div class="slide center">
-        <div class="section-label">Get Started</div>
-        <h2 class="headline">Try it yourself</h2>
-        <p class="subhead" style="margin-top: var(--space-md);">Tell Amplifier:<br><em>"Make me a DTU with a mock Slack so I can try amplifier-hive-slack."</em></p>
-
-        <div class="thirds" style="max-width: min(900px, 95vw); margin-top: var(--space-xl);">
-            <div class="card" style="text-align: center;">
-                <span class="card-icon">📦</span>
-                <h3>Use an existing mock</h3>
-                <p>Add <code>mock_services</code> to any DTU profile and point it at a mock repo.</p>
-            </div>
-            <div class="card" style="text-align: center;">
-                <span class="card-icon">🔨</span>
-                <h3>Build a new mock</h3>
-                <p>Create a repo with a <code>digital-twin-mock.yaml</code> and a Dockerfile. That's the contract.</p>
-            </div>
-            <div class="card" style="text-align: center;">
-                <span class="card-icon">🔄</span>
-                <h3>Run the demo</h3>
-                <p><code>./demos/launch-multi-workspace.sh</code> to see 4 workspaces come alive.</p>
-            </div>
-        </div>
-
-        <div style="margin-top: var(--space-xl); display: flex; gap: var(--space-md); justify-content: center; flex-wrap: wrap;">
-            <a href="https://github.com/microsoft/amplifier-bundle-digital-twin-universe" target="_blank" style="color: var(--accent); text-decoration: none; border: 1px solid var(--accent-dim); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-sm); font-size: var(--fs-body); transition: background 0.2s;">amplifier-bundle-digital-twin-universe</a>
-            <a href="https://github.com/DavidKoleczek/digital-twin-mock-slack" target="_blank" style="color: var(--accent); text-decoration: none; border: 1px solid var(--accent-dim); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-sm); font-size: var(--fs-body); transition: background 0.2s;">digital-twin-mock-slack</a>
+            <p class="mt-md"><strong style="color:var(--text-primary);">Primary repositories:</strong> microsoft/amplifier-bundle-digital-twin-universe, DavidKoleczek/digital-twin-mock-slack</p>
         </div>
     </div>
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
