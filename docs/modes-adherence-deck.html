@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Mode Transition Control — Amplifier</title>
+    <script>document.documentElement.classList.add('js')</script>
     <style>
         :root {
             --accent: #FF375F;
@@ -463,147 +464,181 @@
         .pill-red { background: rgba(255,107,107,0.15); border: 1px solid rgba(255,107,107,0.3); color: #FF6B6B; }
         .pill-green { background: var(--green-dim); border: 1px solid rgba(48,209,88,0.3); color: #30D158; }
         .pill-yellow { background: rgba(255,214,10,0.12); border: 1px solid rgba(255,214,10,0.3); color: var(--yellow); }
+
+        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        html:not(.js), html:not(.js) body { overflow: auto; overscroll-behavior: auto; height: auto; }
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+        }
+        /* Progressive enhancement: JS-only slide mode */
+        html.js, html.js body { overflow: hidden; }
     </style>
 </head>
 <body>
+<!--
+  ============================================================
+  NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
+  ============================================================
 
-<!-- ══════════════════════════════════════════════
-     SLIDE 1 — TITLE
-══════════════════════════════════════════════ -->
+  ABT:
+    AND Amplifier's mode system already controlled what an agent can DO inside a
+        mode - blocking write_file, gating bash;
+    BUT it enforced nothing about how agents MOVE between modes: any agent could
+        silently mode(clear) or jump brainstorm -> finish, so the pipeline lived
+        in documentation only;
+    THEREFORE two optional frontmatter fields turn the pipeline from advisory into
+        structural - agents must traverse the sequence and can only exit where you say.
+
+  PAYOFF (named up front):
+    The single-exit pipeline. Only `finish` has allow_clear: true; every other mode
+    denies mode(clear), and allowed_transitions blocks arbitrary jumps - with a
+    structured denial that always shows the agent a valid path forward.
+
+  BEATS (proof-first; payoff lands at beat 3 of 9, before the midpoint of 5):
+    1. proof     - the pipeline now blocks what used to be a one-liner escape.
+                   advances: grounds the THEREFORE - enforcement is real, shown as before/after.
+    2. tension   - it governed tools inside a mode, but never how agents moved between them.
+                   advances: establishes the BUT (pipeline existed in docs only).
+    3. payoff    - one exit, no skips: the pipeline is now structural.
+                   advances: lands the payoff (single-exit flow) before midpoint.
+    4. mechanism - two optional frontmatter fields; absent means permissive. (one claim)
+                   advances: HOW enforcement is declared - pure YAML, zero migration.
+    5. mechanism - all six Superpowers modes, explicitly wired. (one claim)
+                   advances: HOW a real pipeline is expressed with the fields.
+    6. turn      - mechanism, not policy: infra owns the how, bundles own the what.
+                   advances: the pivot that makes it reusable by any bundle.
+    7. takeaway  - what a mode author can build with two YAML fields.
+                   advances: the reusable capability the audience keeps.
+    8. takeaway  - 26 new tests lock it in; 160 green across both repos.
+                   advances: proof of rigor - it shipped tested.
+    9. takeaway  - add pipeline enforcement to your bundle.
+                   advances: where the audience goes next.
+
+    + Sources & Methodology (audit-trail slide, not a beat) at the end - reused verbatim.
+    Slides = 9 beats + 1 = 10.
+-->
+
+<!-- beat 1: proof -->
 <div class="slide active center">
-    <div class="section-label">Amplifier · Mode System</div>
-    <h1 class="headline">Mode Transition<br>Control</h1>
-    <p class="subhead mt-md" style="max-width: 620px;">
-        Structural enforcement of pipeline sequencing across<br>multi-stage agentic workflows
-    </p>
-    <div class="status-badge">● Active — Merged March 2026</div>
-    <div class="small-text mt-lg">amplifier-bundle-modes PR #6 &nbsp;·&nbsp; amplifier-bundle-superpowers PR #22</div>
+    <div class="section-label">Amplifier &middot; Mode System</div>
+    <h1 class="medium-headline" style="max-width: 820px;">The pipeline now blocks what used to be a one-liner escape</h1>
+    <p class="subhead mt-md" style="max-width: 660px;">Amplifier modes gate the tools an agent can use. Now they also enforce the <em>sequence</em> agents move through &mdash; shipped and merged.</p>
+    <table class="comparison-table" style="max-width: 900px;">
+        <thead>
+            <tr>
+                <th class="what-col">Scenario</th>
+                <th class="before-col">Before</th>
+                <th class="after-col">After</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Agent calls <code style="font-size:0.85em;color:var(--accent)">mode(clear)</code> from brainstorm</td>
+                <td class="before-td">Instantly exits all mode restrictions</td>
+                <td class="after-td">Denied &mdash; brainstorm has allow_clear: false</td>
+            </tr>
+            <tr>
+                <td>Agent jumps brainstorm &rarr; finish</td>
+                <td class="before-td">Allowed &mdash; no transition enforcement</td>
+                <td class="after-td">Denied &mdash; finish not in allowed_transitions</td>
+            </tr>
+            <tr>
+                <td>Execute-plan agent runs <code style="font-size:0.85em;color:var(--accent)">git push</code></td>
+                <td class="before-td">No instruction preventing it</td>
+                <td class="after-td">Mode doc says DO NOT push/merge/PR; scope boundary set</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="status-badge">&#9679; Active &mdash; Merged March 2026</div>
+    <div class="small-text mt-md">amplifier-bundle-modes PR #6 &nbsp;&middot;&nbsp; amplifier-bundle-superpowers PR #22</div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SLIDE 2 — THE PROBLEM
-══════════════════════════════════════════════ -->
+<!-- beat 2: tension -->
 <div class="slide">
-    <div class="section-label">The Problem</div>
-    <h2 class="headline">Agents ignored<br>pipeline boundaries</h2>
+    <div class="section-label">The Gap</div>
+    <h2 class="medium-headline">It governed tools inside a mode &mdash; never how agents moved between them</h2>
     <div class="thirds">
         <div class="card">
-            <span class="icon-card">🚪</span>
+            <span class="icon-card">&#128682;</span>
             <h3>Silent Exits</h3>
-            <p>Any agent could call <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code> at any time — zero gate policy, no friction, no log entry. Dropping all tool restrictions was a one-liner.</p>
+            <p>Any agent could call <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code> at any time &mdash; zero gate policy, no friction, no log. Dropping all tool restrictions was a one-liner.</p>
         </div>
         <div class="card">
-            <span class="icon-card">⏭️</span>
+            <span class="icon-card">&#9197;&#65039;</span>
             <h3>Arbitrary Jumps</h3>
-            <p>Nothing prevented an agent in <em>brainstorm</em> from jumping directly to <em>finish</em>. Stage order was advisory at best — effectively ignored in practice.</p>
+            <p>Nothing stopped an agent in <em>brainstorm</em> from jumping straight to <em>finish</em>. Stage order was advisory &mdash; effectively ignored in practice.</p>
         </div>
         <div class="card">
-            <span class="icon-card">🔓</span>
+            <span class="icon-card">&#128275;</span>
             <h3>Unrestricted Execution</h3>
-            <p>Execution agents had bash access with no prohibition against <code style="color:var(--accent);font-size:0.9em;">git push</code> or merge operations — even in stages where code should only be written, not shipped.</p>
+            <p>Execution agents had bash access with no prohibition against <code style="color:var(--accent);font-size:0.9em;">git push</code> or merge &mdash; even in stages where code should only be written, not shipped.</p>
         </div>
     </div>
     <div class="callout">
-        <strong>Net result:</strong> The mode system enforced <em>tool-level</em> restrictions (blocking write_file, gating bash) but had <strong>zero enforcement on mode transitions or mode exits</strong>. The pipeline existed in documentation only.
+        <strong>Net result:</strong> the mode system enforced <em>tool-level</em> restrictions but had <strong>zero enforcement on mode transitions or exits</strong>. The pipeline existed in documentation only.
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SLIDE 3 — SPECIFIC GAPS
-══════════════════════════════════════════════ -->
+<!-- beat 3: payoff -->
 <div class="slide">
-    <div class="section-label">The Gaps</div>
-    <h2 class="medium-headline">Six specific failure modes</h2>
-    <div class="split">
+    <div class="section-label">The Payoff</div>
+    <h2 class="medium-headline">One exit, no skips: the pipeline is now structural</h2>
+    <p class="subhead mt-md" style="max-width: 760px;">Agents must traverse the sequence. Only <span class="mode-tag exit-tag">finish</span> can clear; every other mode denies exit &mdash; and debug is the one lateral escape when something breaks.</p>
+    <div class="pipeline-wrapper">
+        <div style="margin-bottom: clamp(12px,2vw,20px);">
+            <div class="small-text" style="color:var(--text-tertiary);margin-bottom:10px;text-transform:uppercase;letter-spacing:1.5px;">Main pipeline</div>
+            <div class="pipeline-row">
+                <div class="pipeline-node">brainstorm</div>
+                <div class="pipeline-arrow">&rarr;</div>
+                <div class="pipeline-node">write-plan</div>
+                <div class="pipeline-arrow">&rarr;</div>
+                <div class="pipeline-node">execute-plan</div>
+                <div class="pipeline-arrow">&rarr;</div>
+                <div class="pipeline-node">verify</div>
+                <div class="pipeline-arrow">&rarr;</div>
+                <div class="pipeline-node exit-node">finish</div>
+                <div class="pipeline-arrow" style="color:var(--green);">&rarr; clear()</div>
+            </div>
+        </div>
         <div>
-            <table class="comparison-table">
-                <thead>
-                    <tr>
-                        <th class="what-col">Where</th>
-                        <th class="before-col">Gap Found</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><span class="mode-tag">mode(clear)</span></td>
-                        <td class="before-td">Zero gate policy — instant, silent, no friction</td>
-                    </tr>
-                    <tr>
-                        <td><span class="mode-tag">mode(set)</span></td>
-                        <td class="before-td">No transition sequencing — any mode reachable from any mode</td>
-                    </tr>
-                    <tr>
-                        <td>All 5 non-finish modes</td>
-                        <td class="before-td">No "DO NOT push/merge/PR" instruction in any mode</td>
-                    </tr>
-                    <tr>
-                        <td>3 execution agents</td>
-                        <td class="before-td">Bash access with no prohibition against push/merge</td>
-                    </tr>
-                    <tr>
-                        <td><span class="mode-tag">execute-plan.md</span></td>
-                        <td class="before-td">Internal contradiction: said <code style="font-size:0.85em;color:var(--accent)">/mode off</code> but should have said <code style="font-size:0.85em;color:var(--accent)">/verify</code></td>
-                    </tr>
-                    <tr>
-                        <td><span class="mode-tag">brainstorm.md</span></td>
-                        <td class="before-td"><code style="font-size:0.85em;color:var(--accent)">mode(clear)</code> listed as a valid escape hatch</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="small-text" style="color:var(--text-tertiary);margin-bottom:10px;text-transform:uppercase;letter-spacing:1.5px;">Lateral escape (from every stage)</div>
+            <div class="pipeline-row">
+                <div class="pipeline-node debug-node">debug</div>
+                <div class="pipeline-arrow">&rarr;</div>
+                <div class="pipeline-node" style="opacity:0.7;">verify</div>
+                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">or</span>
+                <div class="pipeline-node" style="opacity:0.7;">execute-plan</div>
+                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">or</span>
+                <div class="pipeline-node" style="opacity:0.7;">brainstorm</div>
+            </div>
         </div>
-        <div class="card" style="align-self: start;">
-            <span class="icon-card">🔍</span>
-            <h3>Root Cause</h3>
-            <p>The modes infrastructure was built to control <strong>what agents can do inside a mode</strong>, but not <strong>how they move between modes</strong>.</p>
-            <div class="divider"></div>
-            <p>Mode exits were never treated as a transition requiring a gate. They bypassed all policy checks entirely — the same hooks that block unsafe tool calls simply weren't wired to mode(clear).</p>
+    </div>
+    <div class="pipeline-legend">
+        <div class="legend-item">
+            <div class="legend-dot" style="background:var(--green-dim);border:1px solid rgba(48,209,88,0.35);"></div>
+            <span>Finish &mdash; only exit point (allow_clear: true)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:rgba(255,214,10,0.12);border:1px solid rgba(255,214,10,0.3);"></div>
+            <span>Debug &mdash; lateral escape from any stage</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent-dim);border:1px solid var(--accent-border);"></div>
+            <span>All others blocked from arbitrary forward jumps</span>
         </div>
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SLIDE 4 — THE SOLUTION OVERVIEW
-══════════════════════════════════════════════ -->
+<!-- beat 4: mechanism -->
 <div class="slide">
-    <div class="section-label">The Solution</div>
-    <h2 class="headline">Two layers of<br>enforcement</h2>
-    <div class="split">
-        <div class="card card-accent">
-            <span class="icon-card">⚙️</span>
-            <h3>Layer 1 — Infrastructure</h3>
-            <p style="font-weight:600;color:var(--text-primary);margin-bottom:8px;">amplifier-bundle-modes PR #6</p>
-            <ul class="ul-clean" style="margin-top:10px;">
-                <li><code style="color:var(--accent);font-size:0.9em;">allowed_transitions</code> field — restricts reachable modes</li>
-                <li><code style="color:var(--accent);font-size:0.9em;">allow_clear</code> field — locks or permits mode exit</li>
-                <li>Gate policy on <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code> — same warn/confirm/auto flow as <code style="color:var(--accent);font-size:0.9em;">mode(set)</code></li>
-                <li>Structured denial messages list what the agent <em>can</em> do</li>
-                <li>Fully backward-compatible — absent fields = permissive</li>
-            </ul>
-        </div>
-        <div class="card card-green">
-            <span class="icon-card">🗺️</span>
-            <h3>Layer 2 — Pipeline Policy</h3>
-            <p style="font-weight:600;color:var(--text-primary);margin-bottom:8px;">amplifier-bundle-superpowers PR #22</p>
-            <ul class="ul-clean" style="margin-top:10px;">
-                <li>All 6 Superpowers modes wired with explicit transition maps</li>
-                <li>"DO NOT push/merge/PR" added to all 5 non-finish modes</li>
-                <li>Scope Boundary section in 3 execution agents</li>
-                <li>Foundation context + philosophy added to all 5 agents</li>
-                <li>Fixed the <code style="color:var(--accent);font-size:0.9em;">/mode off</code> contradiction in execute-plan</li>
-            </ul>
-        </div>
-    </div>
-    <div class="callout">
-        <strong>Design principle:</strong> Mechanism, not policy. The infrastructure provides enforcement hooks — the policy (which transitions are valid) lives entirely in the mode <code>.md</code> files. Any bundle can define its own pipeline rules.
-    </div>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     SLIDE 5 — LAYER 1: THE TWO NEW FIELDS
-══════════════════════════════════════════════ -->
-<div class="slide">
-    <div class="section-label">Infrastructure · Layer 1</div>
-    <h2 class="medium-headline">Two new optional fields<br>in mode frontmatter</h2>
+    <div class="section-label">Mechanism &mdash; The Two Fields</div>
+    <h2 class="medium-headline">Two optional fields &mdash; absent means permissive</h2>
     <div class="split">
         <div>
 <div class="code-block"><span class="code-comment"># my-mode.md frontmatter</span>
@@ -621,26 +656,22 @@
             </div>
         </div>
         <div>
-            <div class="card mt-md" style="margin-top: 0;">
+            <div class="card" style="margin-top: 0;">
                 <h4>allowed_transitions</h4>
-                <p>When set, <code style="color:var(--accent);font-size:0.9em;">_handle_set</code> checks the target mode against the list before applying gate policy. Denied transitions return a structured error showing the valid options.</p>
-                <p style="margin-top:8px;">When absent, any mode transition is permitted (legacy behavior).</p>
+                <p>When set, <code style="color:var(--accent);font-size:0.9em;">_handle_set</code> checks the target against the list before applying gate policy. Denied transitions return a structured error showing the valid options.</p>
             </div>
             <div class="card" style="margin-top: var(--gap-grid);">
                 <h4>allow_clear</h4>
-                <p>When <code style="color:var(--accent);font-size:0.9em;">false</code>, <code style="color:var(--accent);font-size:0.9em;">_handle_clear</code> returns a denial. The agent stays in-mode. Only the designated exit mode can actually clear.</p>
-                <p style="margin-top:8px;">Gate policy on <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code> now mirrors <code style="color:var(--accent);font-size:0.9em;">mode(set)</code> — same warn/confirm/auto flow that was already proven for set operations.</p>
+                <p>When <code style="color:var(--accent);font-size:0.9em;">false</code>, <code style="color:var(--accent);font-size:0.9em;">_handle_clear</code> returns a denial &mdash; the agent stays in-mode. Gate policy on <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code> now mirrors the warn/confirm/auto flow already proven for <code style="color:var(--accent);font-size:0.9em;">mode(set)</code>.</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SLIDE 6 — LAYER 2: THE TRANSITION MAP
-══════════════════════════════════════════════ -->
+<!-- beat 5: mechanism -->
 <div class="slide">
-    <div class="section-label">Pipeline Policy · Layer 2</div>
-    <h2 class="medium-headline">Superpowers: all 6 modes<br>explicitly wired</h2>
+    <div class="section-label">Mechanism &mdash; The Reference Pipeline</div>
+    <h2 class="medium-headline">All six Superpowers modes, explicitly wired</h2>
     <div class="split" style="align-items: start;">
         <div>
             <table class="transition-table">
@@ -654,249 +685,57 @@
                 <tbody>
                     <tr>
                         <td><span class="mode-tag">brainstorm</span></td>
-                        <td>
-                            <span class="mode-tag">write-plan</span>&nbsp;
-                            <span class="mode-tag">debug</span>
-                        </td>
+                        <td><span class="mode-tag">write-plan</span>&nbsp; <span class="mode-tag">debug</span></td>
                         <td><span class="pill pill-red">false</span></td>
                     </tr>
                     <tr>
                         <td><span class="mode-tag">write-plan</span></td>
-                        <td>
-                            <span class="mode-tag">execute-plan</span>&nbsp;
-                            <span class="mode-tag">brainstorm</span>&nbsp;
-                            <span class="mode-tag">debug</span>
-                        </td>
+                        <td><span class="mode-tag">execute-plan</span>&nbsp; <span class="mode-tag">brainstorm</span>&nbsp; <span class="mode-tag">debug</span></td>
                         <td><span class="pill pill-red">false</span></td>
                     </tr>
                     <tr>
                         <td><span class="mode-tag">execute-plan</span></td>
-                        <td>
-                            <span class="mode-tag">verify</span>&nbsp;
-                            <span class="mode-tag">debug</span>&nbsp;
-                            <span class="mode-tag">brainstorm</span>&nbsp;
-                            <span class="mode-tag">write-plan</span>
-                        </td>
+                        <td><span class="mode-tag">verify</span>&nbsp; <span class="mode-tag">debug</span>&nbsp; <span class="mode-tag">brainstorm</span></td>
                         <td><span class="pill pill-red">false</span></td>
                     </tr>
                     <tr>
                         <td><span class="mode-tag">debug</span></td>
-                        <td>
-                            <span class="mode-tag">verify</span>&nbsp;
-                            <span class="mode-tag">brainstorm</span>&nbsp;
-                            <span class="mode-tag">execute-plan</span>
-                        </td>
+                        <td><span class="mode-tag">verify</span>&nbsp; <span class="mode-tag">brainstorm</span>&nbsp; <span class="mode-tag">execute-plan</span></td>
                         <td><span class="pill pill-red">false</span></td>
                     </tr>
                     <tr>
                         <td><span class="mode-tag">verify</span></td>
-                        <td>
-                            <span class="mode-tag">finish</span>&nbsp;
-                            <span class="mode-tag">debug</span>&nbsp;
-                            <span class="mode-tag">execute-plan</span>&nbsp;
-                            <span class="mode-tag">brainstorm</span>&nbsp;
-                            <span class="mode-tag">write-plan</span>
-                        </td>
+                        <td><span class="mode-tag">finish</span>&nbsp; <span class="mode-tag">debug</span>&nbsp; <span class="mode-tag">execute-plan</span></td>
                         <td><span class="pill pill-red">false</span></td>
                     </tr>
                     <tr>
                         <td><span class="mode-tag exit-tag">finish</span></td>
-                        <td>
-                            <span class="mode-tag">execute-plan</span>&nbsp;
-                            <span class="mode-tag">brainstorm</span>
-                        </td>
-                        <td><span class="pill pill-green">true ← only exit</span></td>
+                        <td><span class="mode-tag">execute-plan</span>&nbsp; <span class="mode-tag">brainstorm</span></td>
+                        <td><span class="pill pill-green">true &larr; only exit</span></td>
                     </tr>
                 </tbody>
             </table>
         </div>
         <div>
             <div class="card">
-                <span class="icon-card">🧭</span>
-                <h3>Lateral Escape Hatches</h3>
-                <p><span class="mode-tag">debug</span> is reachable from every stage — it's the universal lateral escape when something breaks. But agents cannot jump from debug straight to finish.</p>
+                <span class="icon-card">&#129517;</span>
+                <h3>Debug is the universal lateral</h3>
+                <p><span class="mode-tag">debug</span> is reachable from every stage &mdash; the escape hatch when something breaks. But agents still cannot jump from debug straight to finish.</p>
             </div>
             <div class="card" style="margin-top: var(--gap-grid);">
-                <span class="icon-card">🔒</span>
-                <h3>Single Exit Point</h3>
-                <p>Only <span class="mode-tag exit-tag">finish</span> has <code style="color:var(--green);font-size:0.9em;">allow_clear: true</code>. Every other mode denies <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code>. Agents must traverse the pipeline to exit it.</p>
+                <span class="icon-card">&#128274;</span>
+                <h3>Finish is the single exit</h3>
+                <p>Only <span class="mode-tag exit-tag">finish</span> sets <code style="color:var(--green);font-size:0.9em;">allow_clear: true</code>. Every other mode denies <code style="color:var(--accent);font-size:0.9em;">mode(clear)</code> &mdash; you must traverse the pipeline to leave it.</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SLIDE 7 — PIPELINE FLOW DIAGRAM
-══════════════════════════════════════════════ -->
-<div class="slide">
-    <div class="section-label">Pipeline Architecture</div>
-    <h2 class="medium-headline">The enforced flow</h2>
-
-    <div class="pipeline-wrapper">
-        <!-- Main forward path -->
-        <div style="margin-bottom: clamp(12px,2vw,20px);">
-            <div class="small-text" style="color:var(--text-tertiary);margin-bottom:10px;text-transform:uppercase;letter-spacing:1.5px;">Main pipeline</div>
-            <div class="pipeline-row">
-                <div class="pipeline-node">brainstorm</div>
-                <div class="pipeline-arrow">→</div>
-                <div class="pipeline-node">write-plan</div>
-                <div class="pipeline-arrow">→</div>
-                <div class="pipeline-node">execute-plan</div>
-                <div class="pipeline-arrow">→</div>
-                <div class="pipeline-node">verify</div>
-                <div class="pipeline-arrow">→</div>
-                <div class="pipeline-node exit-node">finish</div>
-                <div class="pipeline-arrow" style="color:var(--green);">→ clear()</div>
-            </div>
-        </div>
-
-        <!-- Debug lateral path -->
-        <div style="margin-bottom: clamp(12px,2vw,20px);">
-            <div class="small-text" style="color:var(--text-tertiary);margin-bottom:10px;text-transform:uppercase;letter-spacing:1.5px;">Lateral escape (available from every stage)</div>
-            <div class="pipeline-row">
-                <div class="pipeline-node debug-node">debug</div>
-                <div class="pipeline-arrow">→</div>
-                <div class="pipeline-node" style="opacity:0.7;">verify</div>
-                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">or</span>
-                <div class="pipeline-node" style="opacity:0.7;">execute-plan</div>
-                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">or</span>
-                <div class="pipeline-node" style="opacity:0.7;">brainstorm</div>
-            </div>
-        </div>
-
-        <!-- Finish loop -->
-        <div>
-            <div class="small-text" style="color:var(--text-tertiary);margin-bottom:10px;text-transform:uppercase;letter-spacing:1.5px;">From finish ("what's next?")</div>
-            <div class="pipeline-row">
-                <div class="pipeline-node exit-node">finish</div>
-                <div class="pipeline-arrow" style="color:var(--green);">→</div>
-                <div class="pipeline-node" style="opacity:0.7;">execute-plan</div>
-                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">staged plan</span>
-                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">or</span>
-                <div class="pipeline-node" style="opacity:0.7;">brainstorm</div>
-                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">new feature</span>
-                <span style="font-size:var(--font-small);color:var(--text-tertiary);padding: 0 8px;">or</span>
-                <div class="pipeline-node" style="background:var(--green-dim);border-color:rgba(48,209,88,0.3);color:var(--green);">truly done</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="pipeline-legend">
-        <div class="legend-item">
-            <div class="legend-dot" style="background:var(--surface-2);border:1px solid var(--border-visible);"></div>
-            <span>Standard mode (allow_clear: false)</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-dot" style="background:var(--green-dim);border:1px solid rgba(48,209,88,0.35);"></div>
-            <span>Finish — only exit point (allow_clear: true)</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-dot" style="background:rgba(255,214,10,0.12);border:1px solid rgba(255,214,10,0.3);"></div>
-            <span>Debug — lateral escape from any stage</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-dot" style="background:var(--accent-dim);border:1px solid var(--accent-border);"></div>
-            <span>All blocked from arbitrary forward jumps</span>
-        </div>
-    </div>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     SLIDE 8 — BEFORE / AFTER
-══════════════════════════════════════════════ -->
-<div class="slide">
-    <div class="section-label">Impact</div>
-    <h2 class="medium-headline">Before vs. After</h2>
-    <table class="comparison-table" style="margin-top: clamp(20px,3vw,32px);">
-        <thead>
-            <tr>
-                <th class="what-col">Scenario</th>
-                <th class="before-col">Before</th>
-                <th class="after-col">After</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Agent calls <code style="font-size:0.85em;color:var(--accent)">mode(clear)</code> from brainstorm</td>
-                <td class="before-td">Instantly exits all mode restrictions</td>
-                <td class="after-td">Denied — brainstorm has allow_clear: false. Structured error lists valid options.</td>
-            </tr>
-            <tr>
-                <td>Agent jumps brainstorm → finish</td>
-                <td class="before-td">Allowed — no transition enforcement</td>
-                <td class="after-td">Denied — finish not in brainstorm's allowed_transitions list</td>
-            </tr>
-            <tr>
-                <td>Execute-plan agent runs <code style="font-size:0.85em;color:var(--accent)">git push</code></td>
-                <td class="before-td">No instruction preventing it</td>
-                <td class="after-td">Mode doc now says DO NOT push/merge/PR; scope boundary in agent context</td>
-            </tr>
-            <tr>
-                <td>Agent hits bug, needs to rethink</td>
-                <td class="before-td">Could silently exit to brainstorm or clear</td>
-                <td class="after-td">Must route through debug → brainstorm (explicit lateral path)</td>
-            </tr>
-            <tr>
-                <td>Mode author creates a new pipeline</td>
-                <td class="before-td">Pipeline was purely documentary — no enforcement</td>
-                <td class="after-td">Two-field declaration gives structural guarantee the pipeline will be followed</td>
-            </tr>
-            <tr>
-                <td>Existing mode without new fields</td>
-                <td class="before-td">—</td>
-                <td class="after-td">Zero change — backward-compatible defaults. No migration required.</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     SLIDE 9 — FOR MODE AUTHORS
-══════════════════════════════════════════════ -->
-<div class="slide">
-    <div class="section-label">For Mode Authors</div>
-    <h2 class="medium-headline">What you can build<br>with this</h2>
-    <div class="thirds">
-        <div class="card">
-            <span class="icon-card">🏗️</span>
-            <h3>Staged Workflows</h3>
-            <p>Define multi-stage pipelines where agents must follow your intended sequence. Agents stay in the pipeline until they reach the designated exit point.</p>
-        </div>
-        <div class="card">
-            <span class="icon-card">🔀</span>
-            <h3>Lateral Escapes</h3>
-            <p>Create escape-hatch modes (like debug) that are reachable from anywhere, while preventing arbitrary forward jumps that skip critical stages.</p>
-        </div>
-        <div class="card">
-            <span class="icon-card">🧩</span>
-            <h3>Mix Freely</h3>
-            <p>Restricted and unrestricted modes coexist freely in the same bundle. Only modes with the fields set are constrained — others remain fully open.</p>
-        </div>
-    </div>
-    <div class="split" style="margin-top: var(--gap-grid);">
-        <div class="card">
-            <span class="icon-card">🗣️</span>
-            <h3>Helpful Denials</h3>
-            <p>Structured denial messages tell the agent what it <strong>can</strong> do, not just what it can't. The agent is never left stuck — it always has a valid path forward.</p>
-        </div>
-        <div class="card">
-            <span class="icon-card">📋</span>
-            <h3>Pure Declaration</h3>
-            <p>No infrastructure code to write. Two optional YAML fields in your mode frontmatter, and the enforcement infrastructure handles the rest automatically.</p>
-        </div>
-    </div>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     SLIDE 10 — DESIGN PRINCIPLE
-══════════════════════════════════════════════ -->
+<!-- beat 6: turn -->
 <div class="slide center">
-    <div class="section-label">Design Principle</div>
-    <h2 class="headline" style="max-width: 800px;">Mechanism,<br>not policy.</h2>
-    <p class="subhead mt-md" style="max-width: 620px;">
-        The modes infrastructure provides the enforcement mechanism.
-        The policy lives entirely in the mode <code style="font-size:0.9em;color:var(--accent)">.md</code> files.
-    </p>
+    <div class="section-label">The Design Principle</div>
+    <h2 class="headline" style="max-width: 820px;">Mechanism,<br>not policy.</h2>
+    <p class="subhead mt-md" style="max-width: 640px;">The infrastructure provides the enforcement hooks; the policy &mdash; which transitions are valid &mdash; lives entirely in the mode <code style="font-size:0.9em;color:var(--accent)">.md</code> files. That split is what lets any bundle define its own pipeline.</p>
     <div class="thirds" style="text-align: left; max-width: 900px;">
         <div class="card">
             <h3>Infrastructure owns</h3>
@@ -917,7 +756,7 @@
             </ul>
         </div>
         <div class="card">
-            <h3>Neither side leaks into</h3>
+            <h3>Neither leaks into</h3>
             <ul class="ul-clean">
                 <li>Hardcoded mode names in infra</li>
                 <li>Custom enforcement code in bundles</li>
@@ -927,52 +766,83 @@
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SLIDE 11 — VELOCITY
-══════════════════════════════════════════════ -->
-<div class="slide center">
-    <div class="section-label">Development Velocity</div>
-    <h2 class="medium-headline">By the numbers</h2>
-    <div class="velocity-grid" style="max-width: 900px; width: 100%;">
-        <div class="velocity-stat">
-            <div class="velocity-number">9</div>
-            <div class="velocity-label">Total commits</div>
-            <div class="velocity-sub">5 modes + 4 superpowers</div>
+<!-- beat 7: takeaway -->
+<div class="slide">
+    <div class="section-label">For Mode Authors</div>
+    <h2 class="medium-headline">What you can build with two YAML fields</h2>
+    <div class="thirds">
+        <div class="card">
+            <span class="icon-card">&#127959;&#65039;</span>
+            <h3>Staged Workflows</h3>
+            <p>Define multi-stage pipelines where agents must follow your intended sequence and stay in it until they reach the designated exit point.</p>
         </div>
-        <div class="velocity-stat">
-            <div class="velocity-number">2</div>
-            <div class="velocity-label">Repos touched</div>
-            <div class="velocity-sub">bundle-modes · bundle-superpowers</div>
+        <div class="card">
+            <span class="icon-card">&#128256;</span>
+            <h3>Lateral Escapes</h3>
+            <p>Create escape-hatch modes (like debug) reachable from anywhere, while preventing arbitrary forward jumps that skip critical stages.</p>
         </div>
-        <div class="velocity-stat">
-            <div class="velocity-number">2</div>
-            <div class="velocity-label">PRs merged</div>
-            <div class="velocity-sub">#6 and #22</div>
-        </div>
-        <div class="velocity-stat">
-            <div class="velocity-number">160</div>
-            <div class="velocity-label">Tests passing</div>
-            <div class="velocity-sub">across both repos</div>
-        </div>
-        <div class="velocity-stat">
-            <div class="velocity-number">12</div>
-            <div class="velocity-label">New infra tests</div>
-            <div class="velocity-sub">enforcement in modes</div>
-        </div>
-        <div class="velocity-stat">
-            <div class="velocity-number">14</div>
-            <div class="velocity-label">New pipeline tests</div>
-            <div class="velocity-sub">adherence in superpowers</div>
+        <div class="card">
+            <span class="icon-card">&#128483;&#65039;</span>
+            <h3>Helpful Denials</h3>
+            <p>Structured denial messages tell the agent what it <strong>can</strong> do, not just what it can&rsquo;t. The agent is never left stuck &mdash; it always has a valid path forward.</p>
         </div>
     </div>
-    <div class="small-text mt-md" style="color:var(--text-tertiary);">
-        Test breakdown: 29 hooks-mode · 37 tool-mode · 94 superpowers
+    <div class="callout">
+        <strong>Pure declaration.</strong> No infrastructure code to write &mdash; add two optional YAML fields to your mode frontmatter, and the enforcement handles the rest.
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SLIDE 12 — SOURCES & METHODOLOGY
-══════════════════════════════════════════════ -->
+<!-- beat 8: takeaway -->
+<div class="slide center">
+    <div class="section-label">Shipped With Tests</div>
+    <h2 class="medium-headline">26 new tests lock it in &mdash; 160 green across both repos</h2>
+    <div class="velocity-grid" style="max-width: 760px; width: 100%;">
+        <div class="velocity-stat">
+            <div class="velocity-number">160</div>
+            <div class="velocity-label">Tests passing</div>
+            <div class="velocity-sub">29 hooks-mode &middot; 37 tool-mode &middot; 94 superpowers</div>
+        </div>
+        <div class="velocity-stat">
+            <div class="velocity-number">26</div>
+            <div class="velocity-label">New tests added</div>
+            <div class="velocity-sub">12 infra enforcement + 14 pipeline adherence</div>
+        </div>
+        <div class="velocity-stat">
+            <div class="velocity-number">6</div>
+            <div class="velocity-label">Modes wired</div>
+            <div class="velocity-sub">across 2 PRs, 2 repos, 9 commits</div>
+        </div>
+    </div>
+</div>
+
+<!-- beat 9: takeaway -->
+<div class="slide center">
+    <div class="section-label">Get Started</div>
+    <h2 class="headline">Add pipeline enforcement<br>to your bundle</h2>
+    <p class="subhead mt-md" style="max-width: 580px;">Two optional fields. Zero migration. Any bundle can define its own enforced workflow.</p>
+    <div class="thirds" style="text-align: left; max-width: 900px; margin-top: clamp(28px,4vw,44px);">
+        <div class="card">
+            <span class="icon-card">&#128214;</span>
+            <h3>Read the PR</h3>
+            <p>Infrastructure changes in amplifier-bundle-modes PR #6 &mdash; field definitions, gate policy wiring, and test coverage.</p>
+        </div>
+        <div class="card">
+            <span class="icon-card">&#128506;&#65039;</span>
+            <h3>See it in action</h3>
+            <p>The Superpowers pipeline reference lives in amplifier-bundle-superpowers PR #22 &mdash; all 6 modes fully annotated.</p>
+        </div>
+        <div class="card">
+            <span class="icon-card">&#128295;</span>
+            <h3>Try it yourself</h3>
+            <p>Add <code style="color:var(--accent);font-size:0.9em;">allowed_transitions</code> to any mode and watch enforcement kick in &mdash; no other code changes needed.</p>
+        </div>
+    </div>
+    <div class="callout" style="max-width: 800px; margin-top: clamp(20px,3vw,36px);">
+        <strong>The modes system now enforces the pipeline, not just the tools.</strong> Agents in multi-stage workflows stay in the sequence you define &mdash; from first brainstorm commit to final ship.
+    </div>
+</div>
+
+<!-- Sources & Methodology -->
 <div class="slide">
     <div class="section-label">Sources</div>
     <h2 class="medium-headline">Research Methodology</h2>
@@ -980,7 +850,7 @@
         <div class="card">
             <h3>Data Provenance</h3>
             <p><strong style="color:var(--text-primary);">Data as of:</strong> March 4, 2026</p>
-            <p class="mt-sm"><strong style="color:var(--text-primary);">Feature status:</strong> <span class="pill pill-green">Active</span> — both PRs merged</p>
+            <p class="mt-sm"><strong style="color:var(--text-primary);">Feature status:</strong> <span class="pill pill-green">Active</span> &mdash; both PRs merged</p>
             <p class="mt-sm"><strong style="color:var(--text-primary);">Data source:</strong> All metrics provided directly by the developer in the feature brief. No independent git research was performed for this deck.</p>
             <p class="mt-sm"><strong style="color:var(--text-primary);">Repositories:</strong></p>
             <ul style="padding-left:1.2em;margin-top:4px;">
@@ -991,11 +861,11 @@
         <div class="card">
             <h3>Metrics Sourcing</h3>
             <ul class="ul-clean">
-                <li><strong style="color:var(--text-primary);">9 commits</strong> — stated as "9 commits across 2 repos" in brief</li>
-                <li><strong style="color:var(--text-primary);">5 + 4 commit split</strong> — stated explicitly (5 modes, 4 superpowers)</li>
-                <li><strong style="color:var(--text-primary);">160 tests passing</strong> — stated with breakdown: 29 + 37 + 94</li>
-                <li><strong style="color:var(--text-primary);">12 + 14 new tests</strong> — stated explicitly in brief</li>
-                <li><strong style="color:var(--text-primary);">6 modes configured</strong> — named explicitly: brainstorm, write-plan, execute-plan, debug, verify, finish</li>
+                <li><strong style="color:var(--text-primary);">9 commits</strong> &mdash; stated as &ldquo;9 commits across 2 repos&rdquo; in brief</li>
+                <li><strong style="color:var(--text-primary);">5 + 4 commit split</strong> &mdash; stated explicitly (5 modes, 4 superpowers)</li>
+                <li><strong style="color:var(--text-primary);">160 tests passing</strong> &mdash; stated with breakdown: 29 + 37 + 94</li>
+                <li><strong style="color:var(--text-primary);">12 + 14 new tests</strong> &mdash; stated explicitly in brief</li>
+                <li><strong style="color:var(--text-primary);">6 modes configured</strong> &mdash; named explicitly: brainstorm, write-plan, execute-plan, debug, verify, finish</li>
             </ul>
             <div class="divider"></div>
             <p><strong style="color:var(--text-primary);">Gaps:</strong> Primary author attribution, exact PR merge dates, and lines of code changed were not provided in the brief and are not stated in this deck.</p>
@@ -1003,40 +873,7 @@
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     SLIDE 13 — CTA
-══════════════════════════════════════════════ -->
-<div class="slide center">
-    <div class="section-label">Get Started</div>
-    <h2 class="headline">Add pipeline enforcement<br>to your bundle</h2>
-    <p class="subhead mt-md" style="max-width: 580px;">
-        Two optional fields. Zero migration. Any bundle can define its own enforced workflow.
-    </p>
-    <div class="thirds" style="text-align: left; max-width: 900px; margin-top: clamp(28px,4vw,44px);">
-        <div class="card">
-            <span class="icon-card">📖</span>
-            <h3>Read the PR</h3>
-            <p>Infrastructure changes in amplifier-bundle-modes PR #6. Field definitions, gate policy wiring, and test coverage.</p>
-        </div>
-        <div class="card">
-            <span class="icon-card">🗺️</span>
-            <h3>See it in action</h3>
-            <p>Superpowers pipeline reference implementation in amplifier-bundle-superpowers PR #22. All 6 modes fully annotated.</p>
-        </div>
-        <div class="card">
-            <span class="icon-card">🔧</span>
-            <h3>Try it yourself</h3>
-            <p>Add <code style="color:var(--accent);font-size:0.9em;">allowed_transitions</code> to any mode and watch the enforcement kick in — no other code changes needed.</p>
-        </div>
-    </div>
-    <div class="callout" style="max-width: 800px; margin-top: clamp(20px,3vw,36px);">
-        <strong>The modes system now enforces the pipeline, not just the tools.</strong> Agents in multi-stage workflows stay in the sequence you define — from first brainstorm commit to final ship.
-    </div>
-</div>
 
-<!-- ══════════════════════════════════════════════
-     NAVIGATION
-══════════════════════════════════════════════ -->
 <div class="nav" id="nav"></div>
 <div class="slide-counter" id="counter"></div>
 <a href="index.html" class="more-stories">More Amplifier Stories</a>
