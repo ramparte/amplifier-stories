@@ -547,16 +547,81 @@
 </head>
 <body>
 
-<!-- ========== SLIDE 1: Title ========== -->
+<!--
+  ============================================================
+  NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
+  ============================================================
+
+  ABT:
+    AND you want to know where a week of AI work actually went - 304 sessions across
+        six projects;
+    BUT the raw session event files are hostile to LLMs: single lines of 100,000+
+        tokens, recursively nested agent trees, and timestamp math - reading them
+        directly overflows the context window and crashes the session;
+    THEREFORE Session Insights splits the labor - a purpose-built timing_analysis tool
+        does the computation in milliseconds while multi-agent context-sinks absorb the
+        tokens, so one prompt turns 304 sessions into an actionable report.
+
+  PAYOFF (named up front):
+    The token math. What would be millions of raw tokens collapses to a ~2-3K structured
+    summary per session because the tool does COMPUTATION instead of spending LLM tokens -
+    the whole report lands in ~15K tokens at the root, and it even surfaced a silent bug.
+
+  BEATS (proof-first; payoff lands at beat 4 of 11, before the midpoint of 6):
+    1. proof     - one prompt profiled 304 sessions into a report and caught a real bug.
+                   advances: grounds the whole claim - it worked, at scale, with headroom.
+    2. tension   - session event files are hostile territory for LLMs.
+                   advances: establishes the BUT (why the naive path crashes).
+    3. setup     - the prompt: one request fanned out to seven agents, five analyses.
+                   advances: introduces the timing_analysis workflow the payoff leans on.
+    4. payoff    - timing_analysis: computation the LLM doesn't have to do.
+                   advances: lands the THEREFORE (the split of labor) before the midpoint.
+    5. mechanism - the token math made concrete: millions of tokens become ~2-3K. (one claim)
+                   advances: HOW the computation-not-tokens move pays off.
+    6. mechanism - context sink: each agent absorbs its own tokens, returns a summary. (one claim)
+                   advances: HOW the multi-agent layer compounds the compression.
+    7. proof     - the findings: runaway planner, monster recipe, a silent failure.
+                   advances: shows the payoff produced concrete, actionable evidence.
+    8. mechanism - the engine is pure and testable: file I/O isolated in one module. (one claim)
+                   advances: HOW the tool stays trustworthy and simple.
+    9. takeaway  - from "where did the time go?" to specific recommendations.
+                   advances: what the user actually walked away with.
+   10. takeaway  - the principle: make the LLM do only what LLMs are best at.
+                   advances: the durable pattern behind the result.
+   11. takeaway  - try it yourself: add the bundle, ask a performance question.
+                   advances: what the audience does next.
+
+    + Sources & Methodology (audit-trail slide, not a beat) at the end.
+    Slides = 11 beats + 1 = 12.
+-->
+
+<!-- beat 1: proof -->
 <div class="slide active center">
     <div class="section-label">Amplifier Case Study</div>
-    <h1 class="headline">Where Did<br>the Time Go?</h1>
+    <h2 class="medium-headline">One prompt profiled 304 sessions &mdash;<br>and caught a bug nobody knew about</h2>
     <div class="accent-line"></div>
-    <p class="subhead">How Session Insights turned 304 sessions into a performance report &mdash; without crashing a single context window.</p>
+    <p class="subhead">"Analyze last week's sessions and give me a timing analysis report." Here's what a single sentence set in motion &mdash; without crashing one context window.</p>
+    <div class="card-grid" style="margin: 0 auto; max-width: min(820px, 95vw);">
+        <div class="card" style="text-align: center;">
+            <div class="card-stat cyan">304</div>
+            <div class="card-title">Sessions Profiled</div>
+            <div class="card-body">Across 6 projects, one week &mdash; 44+ hours of active time</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div class="card-stat green">~15K</div>
+            <div class="card-title">Tokens in Root</div>
+            <div class="card-body">Summaries only, never raw data &mdash; no context overflow</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div class="card-stat red">5,000+</div>
+            <div class="card-title">LLM Calls Tracked</div>
+            <div class="card-body">Across the full recursive session trees</div>
+        </div>
+    </div>
     <div class="tag">April 22, 2026</div>
 </div>
 
-<!-- ========== SLIDE 2: The Problem ========== -->
+<!-- beat 2: tension -->
 <div class="slide">
     <div class="section-label">The Challenge</div>
     <h2 class="medium-headline">You can't improve what you can't measure</h2>
@@ -582,10 +647,10 @@
     </div>
 </div>
 
-<!-- ========== SLIDE 3: The Question ========== -->
+<!-- beat 3: setup -->
 <div class="slide center">
     <div class="section-label">The Prompt</div>
-    <h2 class="medium-headline">One request. Seven agents. Five parallel analyses.</h2>
+    <h2 class="medium-headline">One request fanned out to<br>seven agents and five analyses</h2>
     <div class="accent-line"></div>
     <div class="code-block" style="text-align: left; margin: 0 auto;">
 <span class="code-comment"># The user typed:</span>
@@ -601,32 +666,10 @@
     </div>
 </div>
 
-<!-- ========== SLIDE 4: Architecture ========== -->
+<!-- beat 4: payoff -->
 <div class="slide">
-    <div class="section-label">The Architecture</div>
-    <h2 class="medium-headline">Two bundles. One mission.</h2>
-    <p class="body-text">The analysis relied on a handoff between two Amplifier bundles &mdash; <strong>foundation</strong> for session discovery, and <strong>session-insights</strong> for performance analysis.</p>
-
-    <div class="arch-box"><span class="code-comment">+---------------------------------------------------------+</span>
-<span class="code-comment">|</span>  <span class="code-keyword">Root Agent</span> (claude-opus-4-6)                              <span class="code-comment">|</span>
-<span class="code-comment">|</span>  "Analyze last week's sessions"                          <span class="code-comment">|</span>
-<span class="code-comment">|</span>                                                           <span class="code-comment">|</span>
-<span class="code-comment">|</span>  <span class="code-fn">Step 1:</span> delegate &rarr; <span class="code-string">foundation:session-analyst</span>           <span class="code-comment">|</span>
-<span class="code-comment">|</span>          "Find all sessions from April 14-18"             <span class="code-comment">|</span>
-<span class="code-comment">|</span>          &rarr; scans 2,992 files &rarr; returns 304 matches        <span class="code-comment">|</span>
-<span class="code-comment">|</span>                                                           <span class="code-comment">|</span>
-<span class="code-comment">|</span>  <span class="code-fn">Step 2:</span> delegate x 5 &rarr; <span class="code-string">session-insights:perf-analyst</span>  <span class="code-comment">|</span>
-<span class="code-comment">|</span>          Each calls <span class="code-keyword">timing_analysis</span> at depth 2            <span class="code-comment">|</span>
-<span class="code-comment">|</span>          Each returns ~500 token summary                  <span class="code-comment">|</span>
-<span class="code-comment">|</span>                                                           <span class="code-comment">|</span>
-<span class="code-comment">|</span>  <span class="code-fn">Step 3:</span> synthesize &rarr; cross-session performance report   <span class="code-comment">|</span>
-<span class="code-comment">+---------------------------------------------------------+</span></div>
-</div>
-
-<!-- ========== SLIDE 5: The Tool ========== -->
-<div class="slide">
-    <div class="section-label">The Secret Weapon</div>
-    <h2 class="medium-headline">timing_analysis: computation the LLM doesn't have to do</h2>
+    <div class="section-label">The Payoff &middot; The Secret Weapon</div>
+    <h2 class="medium-headline">timing_analysis does the computation<br>the LLM never should</h2>
     <p class="body-text">The <span class="highlight">timing_analysis</span> tool is a purpose-built Python module that does everything an LLM would waste tokens trying to figure out &mdash; and does it in milliseconds.</p>
 
     <div class="flow">
@@ -657,10 +700,10 @@
     </div>
 </div>
 
-<!-- ========== SLIDE 6: Token Efficiency ========== -->
+<!-- beat 5: mechanism -->
 <div class="slide">
     <div class="section-label">The Breakthrough</div>
-    <h2 class="medium-headline">The token math that makes it work</h2>
+    <h2 class="medium-headline">Millions of raw tokens collapse<br>to a ~2&ndash;3K structured summary</h2>
     <p class="body-text">Here's the fundamental insight: this tool does <em>computationally</em> what would otherwise require <em>LLM tokens</em>. Timestamp math, event correlation, tree traversal, duration bucketing &mdash; these are computation problems, not language problems.</p>
 
     <div class="comparison">
@@ -698,49 +741,10 @@ timing_analysis(path=<span class="code-string">"/path/to/session"</span>)
     </div>
 </div>
 
-<!-- ========== SLIDE 7: Stats ========== -->
-<div class="slide center">
-    <div class="section-label">By the Numbers</div>
-    <h2 class="medium-headline">What one prompt actually analyzed</h2>
-    <div class="accent-line"></div>
-    <div class="card-grid" style="margin: 0 auto;">
-        <div class="card" style="text-align: center;">
-            <div class="card-stat cyan">304</div>
-            <div class="card-title">Sessions Discovered</div>
-            <div class="card-body">Across 6 projects, 1 week</div>
-        </div>
-        <div class="card" style="text-align: center;">
-            <div class="card-stat accent">5</div>
-            <div class="card-title">Deep Analyses</div>
-            <div class="card-body">Parallel, recursive to depth 2</div>
-        </div>
-        <div class="card" style="text-align: center;">
-            <div class="card-stat green">~15K</div>
-            <div class="card-title">Tokens in Root</div>
-            <div class="card-body">From summaries only &mdash; not raw data</div>
-        </div>
-        <div class="card" style="text-align: center;">
-            <div class="card-stat amber">44+ hrs</div>
-            <div class="card-title">Active Time Profiled</div>
-            <div class="card-body">Across all analyzed sessions</div>
-        </div>
-        <div class="card" style="text-align: center;">
-            <div class="card-stat red">5,000+</div>
-            <div class="card-title">LLM Calls Tracked</div>
-            <div class="card-body">Across the full session trees</div>
-        </div>
-        <div class="card" style="text-align: center;">
-            <div class="card-stat green">7</div>
-            <div class="card-title">Agents Coordinated</div>
-            <div class="card-body">1 analyst + 5 profilers + 1 root</div>
-        </div>
-    </div>
-</div>
-
-<!-- ========== SLIDE 8: Context Sink ========== -->
+<!-- beat 6: mechanism -->
 <div class="slide">
     <div class="section-label">The Pattern</div>
-    <h2 class="medium-headline">Context Sink: agents absorb tokens so you don't have to</h2>
+    <h2 class="medium-headline">Context Sink: each agent absorbs<br>the tokens so the root doesn't</h2>
     <p class="body-text">The multi-agent architecture multiplied the efficiency of the purpose-built tool. Each performance analyst ran in its own context window &mdash; absorbing the token cost of its session's analysis locally and returning only a distilled summary to the root.</p>
 
     <div class="bar-chart">
@@ -773,10 +777,10 @@ timing_analysis(path=<span class="code-string">"/path/to/session"</span>)
     <div class="pull-quote">"The tool does computation. The agent does interpretation. The root does synthesis. Each layer compresses by an order of magnitude."</div>
 </div>
 
-<!-- ========== SLIDE 9: Discoveries ========== -->
+<!-- beat 7: proof -->
 <div class="slide">
     <div class="section-label">The Findings</div>
-    <h2 class="medium-headline">What the analysis actually discovered</h2>
+    <h2 class="medium-headline">What the analysis actually<br>dragged into the light</h2>
     <p class="body-text">Every session told the same story: they were LLM-bound on claude-opus-4-6, with 67&ndash;99% of agent time spent waiting for model inference. But the specifics were where it got interesting.</p>
 
     <div class="timeline">
@@ -808,10 +812,10 @@ timing_analysis(path=<span class="code-string">"/path/to/session"</span>)
     </div>
 </div>
 
-<!-- ========== SLIDE 10: Inside the Engine ========== -->
+<!-- beat 8: mechanism -->
 <div class="slide">
     <div class="section-label">Under the Hood</div>
-    <h2 class="medium-headline">Clean architecture, ruthless simplicity</h2>
+    <h2 class="medium-headline">A pure engine: all file I/O<br>isolated in one module</h2>
     <p class="body-text">The <span class="highlight">session-insights</span> bundle is small by design: one tool, one agent, 71 tests, zero runtime dependencies beyond stdlib. The analysis engine is pure &mdash; no file I/O &mdash; making it fully testable with synthetic data.</p>
 
     <div class="code-block">
@@ -841,39 +845,10 @@ timing_analysis(path=<span class="code-string">"/path/to/session"</span>)
     </div>
 </div>
 
-<!-- ========== SLIDE 11: The Philosophy ========== -->
-<div class="slide">
-    <div class="section-label">The Principles</div>
-    <h2 class="medium-headline">Four Amplifier patterns in action</h2>
-
-    <div class="card-grid">
-        <div class="card">
-            <div class="card-icon">&#x1F527;</div>
-            <div class="card-title">Mechanism, Not Policy</div>
-            <div class="card-body">The tool provides timing <em>data</em>. The agent provides <em>interpretation</em>. The tool never says "this is slow" &mdash; it says "this took 4h9m, which is 43% of active time." The agent decides what that means.</div>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#x1F573;</div>
-            <div class="card-title">Context Sink</div>
-            <div class="card-body">Each child agent absorbs the token-heavy work in its own context window and returns a compressed summary. The root session never sees raw event data &mdash; only structured insights.</div>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#x26A1;</div>
-            <div class="card-title">Tools for Computation</div>
-            <div class="card-body">Timestamp math, event correlation, tree traversal, duration bucketing &mdash; these are computation problems. The tool handles them in milliseconds. The LLM handles what tools can't: narrative, interpretation, recommendations.</div>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#x1F3AF;</div>
-            <div class="card-title">Ruthless Simplicity</div>
-            <div class="card-body">One tool call replaces what would be hundreds of file reads. One agent replaces manual event-log spelunking. The entire bundle is 4 Python files and 1 agent prompt.</div>
-        </div>
-    </div>
-</div>
-
-<!-- ========== SLIDE 12: Results ========== -->
+<!-- beat 9: takeaway -->
 <div class="slide">
     <div class="section-label">The Impact</div>
-    <h2 class="medium-headline">From "where did the time go?" to actionable recommendations</h2>
+    <h2 class="medium-headline">From "where did the time go?"<br>to actionable recommendations</h2>
 
     <p class="body-text wide">The user got a comprehensive weekly performance report covering cross-session patterns, specific bottlenecks with exact durations and percentages, and actionable recommendations. Here's what changed:</p>
 
@@ -917,10 +892,10 @@ timing_analysis(path=<span class="code-string">"/path/to/session"</span>)
     <div class="pull-quote">"It found a bug I didn't even know existed. The terminal-tester was failing silently every time &mdash; only systematic analysis caught it."</div>
 </div>
 
-<!-- ========== SLIDE 13: The Division of Labor ========== -->
+<!-- beat 10: takeaway -->
 <div class="slide center">
     <div class="section-label">The Insight</div>
-    <h2 class="medium-headline">The ideal division of labor</h2>
+    <h2 class="medium-headline">Make the LLM do only<br>what LLMs are best at</h2>
     <div class="accent-line"></div>
     <div class="card-grid" style="margin: var(--space-lg) auto; max-width: min(900px, 95vw);">
         <div class="card" style="text-align: center; border-color: rgba(74, 222, 128, 0.3);">
@@ -953,10 +928,10 @@ timing_analysis(path=<span class="code-string">"/path/to/session"</span>)
     <p class="subhead" style="margin-top: var(--space-md);">The best AI systems don't make the LLM do everything.<br>They make the LLM do only what LLMs are best at.</p>
 </div>
 
-<!-- ========== SLIDE 14: Try It ========== -->
+<!-- beat 11: takeaway -->
 <div class="slide">
     <div class="section-label">Try It Yourself</div>
-    <h2 class="medium-headline">Get started in 30 seconds</h2>
+    <h2 class="medium-headline">Add the bundle and ask any<br>performance question</h2>
     <p class="body-text">Session Insights is an Amplifier bundle. Add it to your configuration, and every session gains performance analysis capabilities.</p>
 
     <div class="code-block">
