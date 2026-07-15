@@ -19,8 +19,10 @@ Write the spine first, as an explicit artifact. It has three parts:
 - **Payoff, named up front** — state, in the spine, what the deck is driving
   toward. You must know the payoff before you write slide one.
 - **Ordered list of beats** — proof-first. Each beat has a `role` from:
-  `proof | tension | mechanism | turn | payoff | takeaway`, and an
+  `proof | setup | tension | mechanism | turn | payoff | takeaway`, and an
   **`advances:` note** saying how it serves the ABT.
+  (`setup` is for introducing a named example/project/entity the argument will
+  lean on — see rule (d) below.)
 
 **Spine rules (hard):**
 
@@ -71,11 +73,23 @@ Every content slide must:
   topic label** like *"Metrics"*, *"Architecture"*, *"Overview"*, *"Features"*.
 - **(c) Earn every fact/number/visual on it** — each supporting element must
   make THAT ONE claim land harder. If it doesn't, cut it.
-- **(d) Hand off** — end pointed at the next beat, so the deck reads as a
+- **(d) Explain your examples before you lean on them.** If the deck uses a
+  specific project, product, tool, or entity as evidence (e.g. *"the safeguard
+  project ran 4,240 sessions"*), the audience must already know what that thing
+  IS before it carries the argument. An unexplained proper noun is a dead
+  reference — the reader stalls on "what's that?" instead of feeling the point.
+  Introduce it first: give it a one-line `setup` beat of its own, or a lead-in
+  sentence on the same slide. **Exception:** skip the introduction only when the
+  example is obvious to essentially everyone in the target audience (e.g. "Git",
+  "VS Code"). When in doubt, take the beat.
+- **(e) Hand off** — end pointed at the next beat, so the deck reads as a
   throughline, not islands.
-- **(e) No default tile-grid** — a pile of co-equal tiles is banned as a layout
+- **(f) No default tile-grid** — a pile of co-equal tiles is banned as a layout
   default. Mechanism gets one claim per slide, shown not catalogued. If you find
   yourself making 4+ co-equal tiles, you are cataloguing, not narrating.
+- **(g) Stats must fit their tiles** — a big-number stat that clips or overflows
+  its container is a bug, not a design. Size numbers with responsive `clamp()`
+  so they scale down on narrow tiles; never let a headline figure get cut off.
 
 ## Research Phase
 
@@ -449,6 +463,8 @@ Before presenting to user, verify ALL items in both sections:
 - [ ] **Payoff lands before the midpoint** — not buried at the end
 - [ ] **Every slide headline is a CLAIM, not a topic label** — no "Metrics"/"Architecture"/"Overview" title slides
 - [ ] **No co-equal tile-grid catalog slides** — mechanism is one claim per slide, not a 4+ tile pile
+- [ ] **Every named example is explained before it's used as evidence** — no unexplained proper nouns (project/product/tool names) unless obvious to the whole audience
+- [ ] **No clipped/overflowing stats** — big-number tiles fit their containers at every viewport width (responsive `clamp()`)
 
 ### Accuracy (verify FIRST — a beautiful deck with wrong numbers is worse than ugly truth)
 
