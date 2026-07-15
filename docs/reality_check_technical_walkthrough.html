@@ -440,39 +440,90 @@
 </head>
 <body>
 
+<!--
+  ============================================================
+  NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
+  ============================================================
+
+  ABT:
+    AND Reality Check runs a five-step recipe of LLM agents to test software;
+    BUT an LLM writing acceptance tests and reports can drift or emit invalid output, so
+        "the model said it's fine" is not a guarantee;
+    THEREFORE a deterministic CLI checkpoint sits between every LLM step - convergence is a
+        recipe property, not a model promise - and intent becomes evidence-backed pass/fail.
+
+  PAYOFF (named up front):
+    The CLI - not the LLM - is the judge. Every stage's output is validated by code, capped,
+    and fed back on failure, so the pipeline turns a plain-English request into evidence-backed
+    pass/fail: intent -> tests, tests -> evidence, evidence -> report.
+
+  BEATS (proof-first; payoff lands at beat 4 of 9, before the midpoint of 5):
+    1. proof     - validators hand back PASS with evidence and screenshots for a real app.
+                   advances: grounds the THEREFORE - the pipeline produces real evidence.
+    2. tension   - but LLM agents writing YAML and reports can drift or emit invalid output.
+                   advances: establishes the BUT (why raw LLM output can't be trusted).
+    3. mechanism - five steps, one recipe: intent, DTU, validators, report, render. (one claim)
+                   advances: HOW the pipeline is wired end to end.
+    4. payoff    - the CLI, not the LLM, is the convergence judge.
+                   advances: lands the named payoff before midpoint.
+    5. mechanism - the Intent Analyzer emits tests.yaml, the single source of truth. (one claim)
+                   advances: HOW intent becomes structured, checkable tests.
+    6. mechanism - the DTU Profile Builder stands up the real running environment. (one claim)
+                   advances: HOW tests run against the software as a user sees it.
+    7. mechanism - three validators, one rule: only run the tests you own. (one claim)
+                   advances: HOW each test type gets exercised for real.
+    8. mechanism - the Report Agent aggregates; the CLI validates and renders. (one claim)
+                   advances: HOW results become canonical artifacts without the LLM re-judging.
+    9. takeaway  - intent -> tests -> evidence -> report, a CLI checkpoint at every seam.
+                   advances: the durable lesson the audience keeps.
+
+    + Sources & Methodology (audit-trail slide, not a beat) at the end.
+    Slides = 9 beats + 1 = 10.
+-->
+
 <div class="deck" id="deck">
 
-<!-- ================================================================
-     SLIDE 1 — TITLE
-     ================================================================ -->
-<div class="slide title-slide active" data-slide="0">
+<!-- beat 1: proof -->
+<div class="slide active" data-slide="0">
   <div class="slide-inner">
-    <h1 class="slide-title">Reality Check Technical Walkthrough</h1>
-    <p class="slide-subtitle">How <code>amplifier-bundle-reality-check</code> turns user intent into evidence-backed pass/fail.</p>
-    <div class="title-meta">
-      <span><strong>Author</strong> David Koleczek</span>
+    <div class="slide-label" style="color: var(--bundles);">Evidence In, Not Opinions</div>
+    <h2>The pipeline hands back PASS with real evidence and screenshots.</h2>
+    <p style="margin-bottom: 16px;"><code>amplifier-bundle-reality-check</code> runs software inside a <strong>DTU</strong> (an isolated, disposable environment) and validates it. Here it is checking a URL-shortener web service &mdash; each validator returns the same shape: an ID, a status, and evidence.</p>
+<div class="code-block"><span class="cmt">--- browser-tester results ---</span>
+| ID       | Test                     | Status | Evidence                                   |
+|----------|--------------------------|--------|--------------------------------------------|
+| a3f12c8b | Web UI shortens a URL    | <span class="val">PASS</span>   | Result panel showed localhost:8080/Xk7mNq  |
+  Screenshots: 02-a3f12c8b-result-displayed.png
+
+<span class="cmt">--- generic-tester results ---</span>
+| ID       | Test                     | Status | Evidence                                   |
+|----------|--------------------------|--------|--------------------------------------------|
+| 9d4a210e | API 302 redirect         | <span class="val">PASS</span>   | curl -I returned 302, Location: example.com|
+
+<span class="cmt">--- terminal-tester results ---</span>
+| ID       | Test                     | Status | Evidence                                   |
+|----------|--------------------------|--------|--------------------------------------------|
+| 7e80f3a1 | Admin CLI lists URLs     | <span class="val">PASS</span>   | `shortener admin list` exit 0, JSON w/ code|</div>
+    <p style="margin-top: 16px; font-size: clamp(12px, 1.2vw, 14px);">That evidence is the output. The rest of this walkthrough is how the pipeline earns it &mdash; trustworthily.</p>
+  </div>
+</div>
+
+<!-- beat 2: tension -->
+<div class="slide" data-slide="1">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--boundary);">The Trust Problem</div>
+    <h2>An LLM writing the tests and the report can quietly drift.</h2>
+    <p>Every stage of this pipeline is an LLM agent: one synthesizes acceptance tests, three run them, one writes the report. Left unchecked, any of them can emit malformed YAML, invent a field, or reference a test ID that doesn&rsquo;t exist. &ldquo;The model said it passed&rdquo; is not the same as &ldquo;the output is valid.&rdquo;</p>
+    <div class="card" style="margin-top: 20px; border-left: 3px solid var(--boundary); border-top: none;">
+      <p><strong style="color: var(--boundary);">The question this design answers:</strong> who decides an agent&rsquo;s output is good enough to pass to the next stage &mdash; and how do you guarantee it, run after run?</p>
     </div>
   </div>
 </div>
 
-<!-- ================================================================
-     SLIDE 2 — CAKE DIAGRAM (motivation)
-     ================================================================ -->
-<div class="slide diagram-slide" data-slide="1">
-  <div class="slide-inner">
-    <h2 style="margin-bottom: 16px;">Reality Check sits on top.</h2>
-    <p style="max-width: 900px; margin: 0 auto 20px;">It leverages everything below it &mdash; the <strong>DTU</strong> for an isolated environment, <strong>browser-tester</strong> and <strong>terminal-tester</strong> for in-environment interaction, and <strong>amplifier-gitea</strong> when a repo needs to be served &mdash; and adds the missing piece on top: <em>did the software actually do what the user wanted?</em></p>
-    <img src="digital_twin_universe_framing_rev2_images/dtu-uinverse-diagram.png" alt="The Digital Twin Universe, Universe">
-    <div class="diagram-caption">Reality Check is the top layer of the cake.</div>
-  </div>
-</div>
-
-<!-- ================================================================
-     SLIDE 3 — PIPELINE OVERVIEW
-     ================================================================ -->
+<!-- beat 3: mechanism -->
 <div class="slide" data-slide="2">
   <div class="slide-inner">
-    <div class="slide-label" style="color: var(--modules);">Pipeline</div>
+    <div class="slide-label" style="color: var(--modules);">The Pipeline</div>
     <h2>Five steps, one recipe.</h2>
     <p>The <code>reality-check-pipeline</code> recipe orchestrates everything. Intent and DTU are independent &mdash; conceptually parallel &mdash; and validators only run on tests they actually own.</p>
     <div class="flow">
@@ -483,29 +534,48 @@
       <div class="flow-step" style="border-top-color: var(--accent);">CLI Render<span>report.yaml + report.html</span></div>
     </div>
     <div class="card" style="margin-top: 24px; border-left: 3px solid var(--accent); border-top: none;">
-      <p><strong style="color: var(--accent);">Two convergence loops:</strong> one wrapping the intent analyzer, one wrapping the report agent. The CLI &mdash; not the LLM &mdash; decides if output is valid.</p>
+      <p><strong style="color: var(--accent);">Two convergence loops</strong> wrap the two agents that must emit valid structured output: the intent analyzer and the report agent. That is where the trust problem gets solved next.</p>
     </div>
   </div>
 </div>
 
-<!-- ================================================================
-     SLIDE 4 — INTENT ANALYZER OVERVIEW
-     ================================================================ -->
+<!-- beat 4: payoff -->
 <div class="slide" data-slide="3">
   <div class="slide-inner">
-    <div class="slide-label" style="color: var(--modules);">Step 1</div>
-    <h2>Intent Analyzer.</h2>
-    <p style="margin-bottom: 16px;">Produces a single <code>tests.yaml</code> file of structured acceptance tests &mdash; the source of truth for everything downstream. By default it derives them from the inputs below, but it&rsquo;s flexible: you can also hand it something that already looks like acceptance tests and it will leverage that directly.</p>
+    <div class="slide-label" style="color: var(--accent);">The Payoff</div>
+    <h2>The CLI &mdash; not the LLM &mdash; is the convergence judge.</h2>
+    <p style="margin-bottom: 16px;">The agent writes a file; a bash step runs a deterministic validator (<code>validate-acceptance-tests</code>, <code>validate-report</code>). Non-zero exit feeds the raw errors back into the next attempt. Capped at <strong>3 iterations</strong>, fail loudly otherwise. Convergence is a recipe property, not a model promise.</p>
+    <div class="loop">
+      <div class="loop-box" style="border-top: 3px solid var(--modules);">agent<br><span style="font-weight:400; color: var(--text-tertiary); font-size: 0.85em;">writes YAML</span></div>
+      <div class="loop-arrow">&rarr;</div>
+      <div class="loop-box" style="border-top: 3px solid var(--accent);"><code>validate</code><br><span style="font-weight:400; color: var(--text-tertiary); font-size: 0.85em;">CLI schema check</span></div>
+      <div class="loop-arrow">&rarr;</div>
+      <div class="loop-box" style="border-top: 3px solid var(--foundation);">pass &rarr; continue<br><span style="font-weight:400; color: var(--text-tertiary); font-size: 0.85em;">fail &rarr; retry with errors</span></div>
+    </div>
+<div class="code-block" style="margin-top: 20px;"><span class="cmt"># reality-check-pipeline.yaml &mdash; convergence loop</span>
+<span class="kw">while_condition</span>:        <span class="str">"{{validated}} != true"</span>
+<span class="kw">max_while_iterations</span>:   <span class="val">3</span>
+<span class="kw">break_when</span>:             <span class="str">"{{validated}} == true"</span>
+<span class="kw">update_context</span>:
+  <span class="kw">previous_errors</span>:  <span class="str">"{{iteration_result.validation_result.errors}}"</span>  <span class="cmt"># fed back in</span></div>
+  </div>
+</div>
+
+<!-- beat 5: mechanism -->
+<div class="slide" data-slide="4">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--modules);">Step 1 &middot; Intent Analyzer</div>
+    <h2>One <code>tests.yaml</code> becomes the source of truth.</h2>
+    <p style="margin-bottom: 16px;">The analyzer turns conversation history, an optional spec, and repo paths into structured acceptance tests &mdash; or validates a draft you hand it directly. Everything downstream keys off this one file.</p>
     <div class="grid-2">
       <div class="card" style="border-top: 3px solid var(--modules);">
-        <h3 style="color: var(--modules);">Default inputs</h3>
+        <h3 style="color: var(--modules);">Inputs</h3>
         <ul>
           <li>Full conversation history</li>
           <li>Spec or README (optional)</li>
           <li>Repo paths (optional)</li>
-          <li>Output path</li>
+          <li><em>or</em> your own draft acceptance tests</li>
         </ul>
-        <p style="margin-top: 8px; font-size: 0.92em;"><em>Or skip these and pass in your own draft acceptance tests &mdash; the analyzer will validate, fill gaps, and normalize.</em></p>
       </div>
       <div class="card" style="border-top: 3px solid var(--accent);">
         <h3 style="color: var(--accent);">Output schema</h3>
@@ -517,124 +587,33 @@
         </ul>
       </div>
     </div>
+    <p style="margin-top: 16px; font-size: clamp(12px, 1.2vw, 14px);"><strong>CLI side effect:</strong> <code>validate-acceptance-tests</code> auto-injects an 8-char hex <code>id</code> into any test missing one, then rewrites the file in place.</p>
   </div>
 </div>
 
-<!-- ================================================================
-     SLIDE 5 — INTENT ANALYZER EXAMPLE
-     ================================================================ -->
-<div class="slide" data-slide="4">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--modules);">Step 1 &middot; Example output</div>
-    <h2>What a real <code>tests.yaml</code> looks like.</h2>
-    <p style="margin-bottom: 12px; font-size: clamp(13px, 1.3vw, 15px);">Synthesized for a URL-shortener web service &mdash; one test per validator type.</p>
-<div class="code-block"><span class="kw">summary</span>: <span class="str">"FastAPI URL shortener with a web UI, JSON API, and admin CLI."</span>
-<span class="kw">software_type</span>: <span class="val">web_app</span>
-
-<span class="kw">entry_points</span>:
-  - { <span class="kw">type</span>: <span class="val">url</span>,     <span class="kw">value</span>: <span class="str">"http://localhost:8080"</span>, <span class="kw">label</span>: <span class="str">"Web UI"</span> }
-  - { <span class="kw">type</span>: <span class="val">command</span>, <span class="kw">value</span>: <span class="str">"shortener admin"</span>,        <span class="kw">label</span>: <span class="str">"Admin CLI"</span> }
-
-<span class="kw">tests</span>:
-  - <span class="kw">id</span>: <span class="val">a3f12c8b</span>                       <span class="cmt"># 8-char hex, CLI-injected</span>
-    <span class="kw">description</span>: <span class="str">"Web UI shortens a URL and shows the short link"</span>
-    <span class="kw">type</span>: <span class="val">browser</span>
-    <span class="kw">steps</span>:
-      - <span class="kw">action</span>: <span class="str">"Navigate to http://localhost:8080"</span>
-        <span class="kw">expect</span>: <span class="str">"Page renders with a 'Long URL' input and 'Shorten' button"</span>
-      - <span class="kw">action</span>: <span class="str">"Enter https://example.com and click Shorten"</span>
-        <span class="kw">expect</span>: <span class="str">"Result panel shows http://localhost:8080/&lt;6-char-code&gt;"</span>
-
-  - <span class="kw">id</span>: <span class="val">9d4a210e</span>
-    <span class="kw">description</span>: <span class="str">"API resolves a short code via 302 redirect"</span>
-    <span class="kw">type</span>: <span class="val">other</span>
-    <span class="kw">steps</span>:
-      - <span class="kw">action</span>: <span class="str">"curl -sX POST localhost:8080/api/shorten -d '{\"url\":\"https://example.com\"}'"</span>
-        <span class="kw">expect</span>: <span class="str">"HTTP 200, body is JSON with non-empty short_code"</span>
-      - <span class="kw">action</span>: <span class="str">"curl -sI --max-redirs 0 localhost:8080/&lt;short_code&gt;"</span>
-        <span class="kw">expect</span>: <span class="str">"HTTP 302 with Location: https://example.com"</span>
-
-  - <span class="kw">id</span>: <span class="val">7e80f3a1</span>
-    <span class="kw">description</span>: <span class="str">"Admin CLI lists shortened URLs as JSON"</span>
-    <span class="kw">type</span>: <span class="val">cli</span>
-    <span class="kw">steps</span>:
-      - <span class="kw">action</span>: <span class="str">"shortener admin list --format json"</span>
-        <span class="kw">expect</span>: <span class="str">"Exit 0, stdout is a JSON array containing the short_code from earlier tests"</span></div>
-  </div>
-</div>
-
-<!-- ================================================================
-     SLIDE 6 — INTENT ANALYZER VALIDATION LOOP
-     ================================================================ -->
+<!-- beat 6: mechanism -->
 <div class="slide" data-slide="5">
   <div class="slide-inner">
-    <div class="slide-label" style="color: var(--modules);">Step 1 &middot; Convergence</div>
-    <h2>The CLI is the convergence judge.</h2>
-    <p style="margin-bottom: 16px;">The agent writes <code>tests.yaml</code>. A bash step in the recipe runs <code>amplifier-reality-check validate-acceptance-tests</code>. If it exits non-zero, raw pydantic errors are fed back into the next attempt. Capped at <strong>3 iterations</strong>.</p>
-
-    <div class="loop">
-      <div class="loop-box" style="border-top: 3px solid var(--modules);">intent-analyzer<br><span style="font-weight:400; color: var(--text-tertiary); font-size: 0.85em;">writes tests.yaml</span></div>
-      <div class="loop-arrow">&rarr;</div>
-      <div class="loop-box" style="border-top: 3px solid var(--accent);"><code>validate-acceptance-tests</code><br><span style="font-weight:400; color: var(--text-tertiary); font-size: 0.85em;">pydantic check</span></div>
-      <div class="loop-arrow">&rarr;</div>
-      <div class="loop-box" style="border-top: 3px solid var(--foundation);">pass &rarr; continue<br><span style="font-weight:400; color: var(--text-tertiary); font-size: 0.85em;">fail &rarr; retry with errors</span></div>
-    </div>
-
-<div class="code-block" style="margin-top: 20px;"><span class="cmt"># reality-check-pipeline.yaml &mdash; intent loop</span>
-<span class="kw">while_condition</span>:        <span class="str">"{{validated}} != true"</span>
-<span class="kw">max_while_iterations</span>:   <span class="val">3</span>
-<span class="kw">break_when</span>:             <span class="str">"{{validated}} == true"</span>
-<span class="kw">update_context</span>:
-  <span class="kw">validated</span>:        <span class="str">"{{iteration_result.validation_result.validated}}"</span>
-  <span class="kw">previous_errors</span>:  <span class="str">"{{iteration_result.validation_result.errors}}"</span>  <span class="cmt"># fed back in</span></div>
-
-    <p style="margin-top: 16px; font-size: clamp(12px, 1.2vw, 14px);"><strong>Side effect:</strong> <code>validate-acceptance-tests</code> auto-injects an 8-char hex <code>id</code> into any test missing one, then rewrites the file in place.</p>
-  </div>
-</div>
-
-<!-- ================================================================
-     TRANSITION — Step 1 → Step 2
-     ================================================================ -->
-<div class="slide transition-slide" data-slide="6">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--text-tertiary);">Up next</div>
-    <h2>Step 2 &middot; DTU Profile Builder.</h2>
-    <p>Stand up the universe.</p>
-    <div class="flow">
-      <div class="flow-step flow-done"  style="border-top-color: var(--modules);">Intent Analyzer<span>done</span></div>
-      <div class="flow-step flow-active" style="border-top-color: var(--foundation); --highlight: var(--foundation);">DTU Profile Builder<span>next</span></div>
-      <div class="flow-step flow-todo"  style="border-top-color: var(--bundles);">Validators<span>&nbsp;</span></div>
-      <div class="flow-step flow-todo"  style="border-top-color: var(--apps);">Report Agent<span>&nbsp;</span></div>
-      <div class="flow-step flow-todo"  style="border-top-color: var(--accent);">CLI Render<span>&nbsp;</span></div>
-    </div>
-  </div>
-</div>
-
-<!-- ================================================================
-     SLIDE 7 — DTU PROFILE BUILDER
-     ================================================================ -->
-<div class="slide" data-slide="6">
-  <div class="slide-inner">
     <div class="slide-label" style="color: var(--foundation);">Step 2 &middot; DTU Profile Builder</div>
-    <h2>Stand up the universe.</h2>
-    <p style="margin-bottom: 20px;">Delegated to <code>digital-twin-universe:dtu-profile-builder</code>. Independent of the intent analyzer &mdash; conceptually parallel.</p>
+    <h2>Stand up the universe the tests run against.</h2>
+    <p style="margin-bottom: 20px;">Delegated to <code>digital-twin-universe:dtu-profile-builder</code>, independent of the intent analyzer. It deploys the software so validators test it exactly as a real user would see it.</p>
     <div class="grid-2">
       <div class="card" style="border-top: 3px solid var(--foundation);">
         <h3 style="color: var(--foundation);">What it does</h3>
         <ul>
-          <li>Explores the project and infers ports, deps, runtime needs</li>
+          <li>Infers ports, deps, runtime needs</li>
           <li>Generates a DTU profile YAML</li>
-          <li>Launches the environment with <code>amplifier-digital-twin launch</code></li>
-          <li>Verifies readiness, hands back URLs / exec commands</li>
+          <li>Launches with <code>amplifier-digital-twin launch</code></li>
+          <li>Verifies readiness, hands back access</li>
         </ul>
       </div>
       <div class="card" style="border-top: 3px solid var(--accent);">
         <h3 style="color: var(--accent);">What downstream gets</h3>
         <ul>
-          <li>A DTU instance ID (e.g. <code>dtu-a1b2c3d4</code>)</li>
-          <li>Forwarded URLs for browser tests (e.g. <code>http://localhost:8080</code>)</li>
-          <li>An exec channel for terminal tests &mdash; <code>amplifier-digital-twin exec &lt;id&gt;</code></li>
-          <li>The deployed software, ready as a real user would see it</li>
+          <li>A DTU instance ID (<code>dtu-a1b2c3d4</code>)</li>
+          <li>Forwarded URLs for browser tests</li>
+          <li>An exec channel for terminal tests</li>
+          <li>The deployed software, running</li>
         </ul>
       </div>
     </div>
@@ -644,42 +623,22 @@
   </div>
 </div>
 
-<!-- ================================================================
-     TRANSITION — Step 2 → Step 3
-     ================================================================ -->
-<div class="slide transition-slide" data-slide="8">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--text-tertiary);">Up next</div>
-    <h2>Step 3 &middot; Validators.</h2>
-    <p>Run the acceptance tests inside the DTU.</p>
-    <div class="flow">
-      <div class="flow-step flow-done"  style="border-top-color: var(--modules);">Intent Analyzer<span>done</span></div>
-      <div class="flow-step flow-done"  style="border-top-color: var(--foundation);">DTU Profile Builder<span>done</span></div>
-      <div class="flow-step flow-active" style="border-top-color: var(--bundles); --highlight: var(--bundles);">Validators<span>next</span></div>
-      <div class="flow-step flow-todo"  style="border-top-color: var(--apps);">Report Agent<span>&nbsp;</span></div>
-      <div class="flow-step flow-todo"  style="border-top-color: var(--accent);">CLI Render<span>&nbsp;</span></div>
-    </div>
-  </div>
-</div>
-
-<!-- ================================================================
-     SLIDE 8 — VALIDATORS OVERVIEW
-     ================================================================ -->
-<div class="slide" data-slide="7">
+<!-- beat 7: mechanism -->
+<div class="slide" data-slide="6">
   <div class="slide-inner">
     <div class="slide-label" style="color: var(--bundles);">Step 3 &middot; Validators</div>
     <h2>Three validators, one rule: only run what you own.</h2>
-    <p style="margin-bottom: 16px;">Each validator filters <code>tests.yaml</code> by <code>type</code> and exits immediately if no tests match. They run sequentially in the recipe.</p>
+    <p style="margin-bottom: 16px;">Each validator filters <code>tests.yaml</code> by <code>type</code> and exits immediately if no tests match. They run sequentially inside the DTU and emit the evidence tables from beat one.</p>
     <div class="grid-3">
       <div class="card" style="border-top: 3px solid var(--bundles);">
         <h3 style="color: var(--bundles);">terminal-tester</h3>
         <p style="margin-bottom: 8px;"><strong>Owns:</strong> <code>type: cli</code></p>
-        <p>Spawns CLI/TUI apps inside the DTU via the <code>terminal_inspector</code> PTY bridge. Sends keystrokes, captures screen state, verifies output as a real user would.</p>
+        <p>Spawns CLI/TUI apps via a PTY bridge. Sends keystrokes, captures screen state, verifies output as a real user would.</p>
       </div>
       <div class="card" style="border-top: 3px solid var(--bundles);">
         <h3 style="color: var(--bundles);">browser-tester</h3>
         <p style="margin-bottom: 8px;"><strong>Owns:</strong> <code>type: browser</code></p>
-        <p>Drives a real browser against the DTU's forwarded URL via the vision-capable <code>browser-operator</code> sub-agent. Navigates, fills, clicks, screenshots.</p>
+        <p>Drives a real browser against the DTU&rsquo;s forwarded URL via a vision-capable operator. Navigates, fills, clicks, screenshots.</p>
       </div>
       <div class="card" style="border-top: 3px solid var(--bundles);">
         <h3 style="color: var(--bundles);">generic-tester</h3>
@@ -690,142 +649,66 @@
   </div>
 </div>
 
-<!-- ================================================================
-     SLIDE 9 — VALIDATOR OUTPUTS
-     ================================================================ -->
-<div class="slide" data-slide="8">
+<!-- beat 8: mechanism -->
+<div class="slide" data-slide="7">
   <div class="slide-inner">
-    <div class="slide-label" style="color: var(--bundles);">Step 3 &middot; Validator outputs</div>
-    <h2>Each returns the same shape.</h2>
-    <p style="margin-bottom: 16px;">A markdown results table. The Report Agent ingests these blocks verbatim &mdash; it doesn't rerun anything.</p>
-
-<div class="code-block"><span class="cmt">--- terminal-tester results ---</span>
-| ID       | Test                                  | Status | Evidence                                           |
-|----------|---------------------------------------|--------|----------------------------------------------------|
-| 7e80f3a1 | Admin CLI lists shortened URLs        | <span class="val">PASS</span>   | `shortener admin list` exit 0, JSON contains code  |
-
-Screenshots:
-  - 03-7e80f3a1-admin-list.png &mdash; CLI output after listing
-<span class="cmt">--- end terminal-tester results ---</span>
-
-<span class="cmt">--- browser-tester results ---</span>
-| ID       | Test                                  | Status | Evidence                                           |
-|----------|---------------------------------------|--------|----------------------------------------------------|
-| a3f12c8b | Web UI shortens a URL                 | <span class="val">PASS</span>   | Result panel showed http://localhost:8080/Xk7mNq  |
-
-Screenshots:
-  - 01-a3f12c8b-form-loaded.png
-  - 02-a3f12c8b-result-displayed.png
-<span class="cmt">--- end browser-tester results ---</span>
-
-<span class="cmt">--- generic-tester results ---</span>
-| ID       | Test                                  | Status | Evidence                                           |
-|----------|---------------------------------------|--------|----------------------------------------------------|
-| 9d4a210e | API 302 redirect                      | <span class="val">PASS</span>   | curl -I returned 302, Location: https://example.com|
-<span class="cmt">--- end generic-tester results ---</span></div>
-
-    <p style="margin-top: 16px; font-size: clamp(12px, 1.2vw, 14px);">Screenshots are saved into a shared <code>screenshots/</code> directory, named <code>&lt;step&gt;-&lt;test_id&gt;-&lt;slug&gt;.png</code>.</p>
-  </div>
-</div>
-
-<!-- ================================================================
-     TRANSITION — Step 3 → Step 4
-     ================================================================ -->
-<div class="slide transition-slide" data-slide="11">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--text-tertiary);">Up next</div>
-    <h2>Step 4 &middot; Report Agent.</h2>
-    <p>Aggregate validator results into a structured report.</p>
-    <div class="flow">
-      <div class="flow-step flow-done"  style="border-top-color: var(--modules);">Intent Analyzer<span>done</span></div>
-      <div class="flow-step flow-done"  style="border-top-color: var(--foundation);">DTU Profile Builder<span>done</span></div>
-      <div class="flow-step flow-done"  style="border-top-color: var(--bundles);">Validators<span>done</span></div>
-      <div class="flow-step flow-active" style="border-top-color: var(--apps); --highlight: var(--apps);">Report Agent<span>next</span></div>
-      <div class="flow-step flow-todo"  style="border-top-color: var(--accent);">CLI Render<span>&nbsp;</span></div>
-    </div>
-  </div>
-</div>
-
-<!-- ================================================================
-     SLIDE 10 — REPORT AGENT
-     ================================================================ -->
-<div class="slide" data-slide="9">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--apps);">Step 4 &middot; Report Agent</div>
-    <h2>Aggregate, don't re-judge.</h2>
-    <p style="margin-bottom: 16px;">The agent reads <code>tests.yaml</code> + the three validator result blocks and writes a single slim file: <code>report.raw.yaml</code>. <strong>Top-level <code>extra=forbid</code></strong> &mdash; only <code>results:</code> is allowed.</p>
-
-<div class="code-block"><span class="cmt"># report.raw.yaml &mdash; one entry per acceptance test</span>
-<span class="kw">results</span>:
-  - <span class="kw">id</span>: <span class="val">a3f12c8b</span>                                  <span class="cmt"># must match an acceptance-test id</span>
-    <span class="kw">status</span>: <span class="val">pass</span>                                    <span class="cmt"># pass | fail (no skip, no error)</span>
-    <span class="kw">evidence</span>: <span class="str">"Web UI rendered short link http://localhost:8080/Xk7mNq"</span>
-    <span class="kw">screenshots</span>: [<span class="str">"02-a3f12c8b-result-displayed.png"</span>]
-
-  - <span class="kw">id</span>: <span class="val">9d4a210e</span>
-    <span class="kw">status</span>: <span class="val">pass</span>
-    <span class="kw">evidence</span>: <span class="str">"curl -I returned 302, Location: https://example.com"</span>
-
-  - <span class="kw">id</span>: <span class="val">7e80f3a1</span>
-    <span class="kw">status</span>: <span class="val">pass</span>
-    <span class="kw">evidence</span>: <span class="str">"`shortener admin list --format json` exit 0, output contained Xk7mNq"</span>
-    <span class="kw">screenshots</span>: [<span class="str">"03-7e80f3a1-admin-list.png"</span>]</div>
-
-    <p style="margin-top: 16px; font-size: clamp(12px, 1.2vw, 14px);"><strong>Why slim?</strong> Statistics, descriptions, and bucket assignments are computed deterministically by the CLI &mdash; not asked of the LLM.</p>
-  </div>
-</div>
-
-<!-- ================================================================
-     SLIDE 11 — REPORT VALIDATION + HTML
-     ================================================================ -->
-<div class="slide" data-slide="10">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--apps);">Step 4 &middot; Convergence + render</div>
-    <h2>CLI validates, then renders.</h2>
-    <p style="margin-bottom: 16px;">Same convergence pattern as the intent analyzer. After the agent settles, the CLI joins the raw report against the acceptance tests and emits two derived artifacts.</p>
-
-    <div class="loop" style="grid-template-columns: 1fr auto 1fr auto 1fr;">
-      <div class="loop-box" style="border-top: 3px solid var(--apps);">report agent<br><span style="font-weight:400; color: var(--text-tertiary); font-size: 0.85em;">writes report.raw.yaml</span></div>
-      <div class="loop-arrow">&rarr;</div>
-      <div class="loop-box" style="border-top: 3px solid var(--accent);"><code>validate-report</code><br><span style="font-weight:400; color: var(--text-tertiary); font-size: 0.85em;">schema + id match</span></div>
-      <div class="loop-arrow">&rarr;</div>
-      <div class="loop-box" style="border-top: 3px solid var(--foundation);">renders<br><span style="font-weight:400; color: var(--text-tertiary); font-size: 0.85em;">report.yaml + report.html</span></div>
-    </div>
-
-    <div class="grid-2" style="margin-top: 20px;">
+    <div class="slide-label" style="color: var(--apps);">Step 4 &middot; Report</div>
+    <h2>The agent aggregates; the CLI validates and renders.</h2>
+    <p style="margin-bottom: 16px;">The report agent reads <code>tests.yaml</code> plus the three validator blocks and writes a slim <code>report.raw.yaml</code> &mdash; top-level <code>extra=forbid</code>, only <code>results:</code> allowed. It doesn&rsquo;t re-judge; it aggregates. Then the same convergence loop validates it and the CLI renders two artifacts.</p>
+    <div class="grid-2">
       <div class="card" style="border-top: 3px solid var(--accent);">
         <h3 style="color: var(--accent);"><code>report.yaml</code></h3>
-        <p>Canonical, expanded. Joins on <code>id</code>, buckets into <code>passed</code> / <code>failures</code> / <code>missing</code>, computes <code>statistics</code> (total, pass_rate, &hellip;), copies through <code>assumptions</code>.</p>
+        <p>Canonical, expanded. Joins on <code>id</code>, buckets into <code>passed</code> / <code>failures</code> / <code>missing</code>, computes <code>statistics</code> deterministically &mdash; not asked of the LLM.</p>
       </div>
       <div class="card" style="border-top: 3px solid var(--foundation);">
         <h3 style="color: var(--foundation);"><code>report.html</code></h3>
-        <p>Self-contained visual artifact for end users &mdash; auto-generated. Optional <code>--dtu-details-file</code> renders an &ldquo;Environment Access&rdquo; footer so a reader can connect to the DTU and reproduce.</p>
+        <p>Self-contained visual artifact for end users. Optional <code>--dtu-details-file</code> renders an &ldquo;Environment Access&rdquo; footer so a reader can connect to the DTU and reproduce.</p>
       </div>
-    </div>
-
-    <div class="card" style="margin-top: 20px; border-left: 3px solid var(--apps); border-top: none;">
-      <p><strong style="color: var(--apps);">Loop guarantees:</strong> capped at 3 iterations, errors fed back to the agent on retry, recipe fails loudly if convergence is never reached.</p>
     </div>
   </div>
 </div>
 
-<!-- ================================================================
-     SLIDE 12 — CLOSING
-     ================================================================ -->
-<div class="slide" data-slide="11">
+<!-- beat 9: takeaway -->
+<div class="slide" data-slide="8">
   <div class="slide-inner" style="text-align: center;">
     <div class="pull-quote" style="border-color: var(--modules); text-align: center; border-left: none; border-bottom: 4px solid var(--modules); padding-bottom: 32px; padding-left: 0; font-size: clamp(24px, 3.5vw, 44px);">
       Intent &rarr; tests.<br>Tests &rarr; evidence.<br>Evidence &rarr; report.
     </div>
-    <p style="margin-top: 24px; max-width: 760px; margin-left: auto; margin-right: auto;">Every step has a deterministic checkpoint &mdash; the CLI &mdash; sitting between LLM output and the next stage. Convergence is a recipe property, not a model promise.</p>
+    <p style="margin-top: 24px; max-width: 760px; margin-left: auto; margin-right: auto;">Every seam has a deterministic checkpoint &mdash; the CLI &mdash; sitting between LLM output and the next stage. That is what makes a chain of five LLM agents produce a trustworthy pass/fail.</p>
     <div class="title-meta" style="margin-top: 28px;">
       <span><a href="https://github.com/microsoft/amplifier-bundle-reality-check">amplifier-bundle-reality-check</a></span>
     </div>
   </div>
 </div>
 
-</div><!-- /deck -->
+<!-- Sources & Methodology -->
+<div class="slide" data-slide="9">
+  <div class="slide-inner">
+    <div class="slide-label" style="color: var(--text-tertiary);">Sources</div>
+    <h3>Sources &amp; Methodology</h3>
+    <div class="grid-2" style="margin-top: 8px;">
+      <div class="card">
+        <h3 style="color: var(--text-primary);">What is documented</h3>
+        <ul>
+          <li>The <code>reality-check-pipeline</code> recipe and its two convergence loops</li>
+          <li>CLI validators: <code>validate-acceptance-tests</code>, <code>validate-report</code></li>
+          <li>Agent roster: intent-analyzer, dtu-profile-builder, terminal/browser/generic testers, report agent</li>
+          <li>Artifacts: <code>tests.yaml</code>, <code>report.raw.yaml</code>, <code>report.yaml</code>, <code>report.html</code></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="color: var(--text-primary);">Gaps &amp; caveats</h3>
+        <ul>
+          <li>The URL-shortener <code>tests.yaml</code>, IDs, and validator tables are a synthesized example illustrating the shapes, not a captured production run</li>
+          <li>Iteration cap (3) and schema rules are as configured in the recipe</li>
+          <li>Author: David Koleczek</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
 
+</div><!-- /deck -->
 <button class="ctrl-btn ctrl-prev" onclick="prevSlide()" title="Previous slide">
   <svg width="18" height="18" viewBox="0 0 18 18"><path d="M11 14L6 9l5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 </button>
@@ -834,7 +717,8 @@ Screenshots:
 </button>
 
 <div class="nav-dots" id="navDots"></div>
-<div class="slide-counter" id="slideCounter">1 / 15</div>
+<div class="slide-counter" id="slideCounter">1 / 10</div>
+<a href="index.html" style="position: fixed; bottom: 24px; left: 32px; font-family: var(--font-heading); font-size: 12px; color: var(--text-tertiary); text-decoration: none; z-index: 100; border: none;">More Amplifier Stories</a>
 
 <div class="click-zone left" onclick="prevSlide()"></div>
 <div class="click-zone right" onclick="nextSlide()"></div>
