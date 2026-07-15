@@ -574,204 +574,109 @@
     </style>
 </head>
 <body>
+    <!--
+      NARRATIVE SPINE — 590 Million Corrections in 7 Hours (OCR + Rust)
 
-    <!-- ═══════════════ Slide 1: Title ═══════════════ -->
+      ABT: AND robotdad had 1.4M historical documents that needed heavy OCR
+           cleanup; BUT a pure-Python cleanup would take 33.75 days — unworkable;
+           THEREFORE a hybrid Python + Rust pipeline (450 pre-compiled patterns,
+           PyO3, Rayon) did it in 7h14m at 99.98% precision — conversational
+           performance engineering that turned a month into an afternoon.
+
+      PAYOFF (named up front): 590 million corrections across 1.17M files in
+      7h14m — 111.9× faster than the Python baseline — and trustworthy, because a
+      testing ladder caught a bug that would have made 1.2M false corrections.
+
+      BEATS (proof-first; payoff at beat 5 of 10, before the midpoint of 5):
+        1. proof     — 590M corrections in 7h14m; 111.9× faster; a month's work in an afternoon.
+                       advances: grounds the THEREFORE — the result is real.
+        2. setup     — the corpus: 1.4M pre-WWI scans, 99.78% needing cleanup (long-s, li→h, watermarks).
+                       advances: establishes the AND and introduces the corpus + the artifacts the argument leans on.
+        3. tension   — the Python baseline: 33.75 days. "We can't wait a month."
+                       advances: establishes the BUT.
+        4. mechanism — Python orchestrates, Rust processes via PyO3, Rayon parallelizes 450 pre-compiled patterns. (one claim)
+                       advances: HOW the speed is won.
+        5. payoff    — production run: 1.17M files, 590M corrections, 7h14m, 111.9×.
+                       advances: lands the payoff before midpoint.
+        6. mechanism — a 10×-scaling testing ladder (100 → 1K → 100K files) proved it before production. (one claim)
+                       advances: HOW the result was made trustworthy, cheaply.
+        7. turn      — the ladder caught a pattern-sync bug: 1.2M false positives stopped; 99.98% precision.
+                       advances: the pivot — speed is worthless without correctness; validation earned trust.
+        8. takeaway  — knowing when to stop was a data-driven call: pivot from regex to statistical filtering.
+                       advances: the judgment lesson the audience keeps.
+        9. takeaway  — domain knowledge + rapid implementation: human calls, AI execution.
+                       advances: the collaboration lesson.
+       10. takeaway  — a clean corpus, ready for training (open source, try it).
+                       advances: what the audience does next.
+
+        + Sources & Methodology (audit-trail slide, not a beat) at the end.
+        Slides = 10 beats + 1 = 11.
+    -->
+
+    <!-- beat 1: proof -->
     <div class="slide active center">
         <div class="status-badge">Active</div>
-        <h1 class="headline">590 Million Corrections<br>in <span class="highlight">7 Hours</span></h1>
-        <p class="subhead">OCR Cleanup at Scale with Rust</p>
-        <div class="summary-text" style="margin-top: clamp(16px, 3vw, 40px); font-size: var(--font-label);">robotdad &amp; Amplifier</div>
+        <h1 class="headline">590 million corrections in <span class="highlight">7 hours</span> &mdash; a month's work in an afternoon</h1>
+        <p class="subhead">OCR cleanup at scale, built conversationally by robotdad &amp; Amplifier with a Python + Rust pipeline.</p>
+        <div class="stats-row">
+            <div class="stat-item"><div class="stat-number">590M</div><div class="stat-label">corrections</div></div>
+            <div class="stat-item"><div class="stat-number">7h 14m</div><div class="stat-label">total runtime</div></div>
+            <div class="stat-item"><div class="stat-number">111.9&times;</div><div class="stat-label">faster than Python</div></div>
+        </div>
     </div>
 
-    <!-- ═══════════════ Slide 2: The Corpus Challenge ═══════════════ -->
+    <!-- beat 2: setup -->
     <div class="slide center">
-        <div class="section-label">The Challenge</div>
-        <h2 class="medium-headline">The Corpus from Story 1</h2>
+        <div class="section-label">The Corpus</div>
+        <h2 class="medium-headline">1.4 million historical scans, riddled with OCR artifacts</h2>
         <div class="thirds">
             <div class="card">
                 <div class="card-number">1.4M</div>
-                <div class="card-label">Documents Downloaded</div>
+                <div class="card-label">Documents downloaded</div>
             </div>
             <div class="card">
                 <div class="card-number">99.78%</div>
-                <div class="card-label">Need OCR Cleanup</div>
+                <div class="card-label">Needed OCR cleanup</div>
             </div>
             <div class="card">
                 <div class="card-number" style="font-size: var(--font-subhead);">pre-1800 to 1914</div>
-                <div class="card-label">Historical Scans</div>
+                <div class="card-label">Pre-WWI scans</div>
             </div>
         </div>
-        <p class="summary-text">Old printing + Decades-old OCR = <span class="emphasis">Artifacts Everywhere</span></p>
+        <div class="code-block" style="margin-top: clamp(16px,3vw,32px); text-align:left;">"Congre<span class="error">&#383;</span>s <span class="error">&#383;</span>hall make no law"   <span class="success"># long-&#383; reads as f</span>
+"pub<span class="error">h</span>sh the report"          <span class="success"># li&#8594;h confusion</span>
+"TI<span class="error">1</span>E committee met"           <span class="success"># I&#8594;1 confusion</span>
+"Chapter Five<span class="error"> &#8212; Downloaded from Google Books</span>"  <span class="success"># watermark</span></div>
+        <p class="summary-text">Old printing + decades-old OCR = <span class="emphasis">artifacts everywhere</span>.</p>
     </div>
 
-    <!-- ═══════════════ Slide 3: OCR Artifacts ═══════════════ -->
-    <div class="slide">
-        <div class="section-label">The Problem</div>
-        <h2 class="medium-headline">The OCR Artifacts</h2>
-        <div class="code-block">"Congre<span class="error">&#383;</span>s <span class="error">&#383;</span>hall make no law"
-"bu<span class="error">&#383;</span>ine<span class="error">&#383;</span>s di<span class="error">&#383;</span>cu<span class="error">&#383;</span>sion"
-"pub<span class="error">h</span>sh the report"
-"TI<span class="error">1</span>E committee met"
-"Chapter Five<span class="error"> &#8212; Downloaded from Google Books</span>"</div>
-        <ul class="content-list" style="margin-top: clamp(16px, 3vw, 32px);">
-            <li>Long-&#383; (looks like f) from 19th-century typography</li>
-            <li>OCR confusion: li&#8594;h, ll&#8594;U, I&#8594;1</li>
-            <li>Watermarks embedded in text</li>
-        </ul>
-    </div>
-
-    <!-- ═══════════════ Slide 4: The Python Nightmare ═══════════════ -->
+    <!-- beat 3: tension -->
     <div class="slide center">
         <div class="section-label">The Baseline</div>
         <div class="big-stat">
             <div class="big-number">33.75</div>
-            <div class="big-label">Days</div>
+            <div class="big-label">Days in Python</div>
             <div class="big-context">
                 Python baseline: 0.4 files/second<br>
                 1.17M files &times; 2.5 seconds each<br><br>
-                <span class="emphasis">"We can't wait a month for this."</span>
+                <span class="emphasis">&ldquo;We can't wait a month for this.&rdquo;</span>
             </div>
         </div>
     </div>
 
-    <!-- ═══════════════ Slide 5: Pattern Library ═══════════════ -->
-    <div class="slide center">
-        <div class="section-label">The Patterns</div>
-        <h2 class="medium-headline">Building the Pattern Library</h2>
-        <div class="quads">
-            <div class="card">
-                <div class="card-number">150+</div>
-                <div class="card-label">Long-s Patterns</div>
-                <div class="card-detail">&#383; &#8594; s, e&#383;s &#8594; ess, a&#383;h &#8594; ash</div>
-            </div>
-            <div class="card">
-                <div class="card-number">200+</div>
-                <div class="card-label">OCR Corrections</div>
-                <div class="card-detail">hstory &#8594; history, TIIE &#8594; THE</div>
-            </div>
-            <div class="card">
-                <div class="card-number">50+</div>
-                <div class="card-label">Watermark Removal</div>
-                <div class="card-detail">Google Books, Archive.org stamps</div>
-            </div>
-            <div class="card">
-                <div class="card-number">50+</div>
-                <div class="card-label">Other Fixes</div>
-                <div class="card-detail">Whitespace, hyphenation, etc.</div>
-            </div>
-        </div>
-        <p class="summary-text"><span class="emphasis">~450 regex patterns</span> compiled and ready</p>
-    </div>
-
-    <!-- ═══════════════ Slide 6: Rust + PyO3 ═══════════════ -->
+    <!-- beat 4: mechanism -->
     <div class="slide">
         <div class="section-label">The Solution</div>
-        <h2 class="medium-headline">Rust + PyO3</h2>
+        <h2 class="medium-headline">Python orchestrates; Rust does the heavy lifting</h2>
         <ul class="content-list">
-            <li><span class="emphasis">Python orchestration:</span> File discovery, pattern management, reporting</li>
-            <li><span class="emphasis">Rust processing:</span> CPU-intensive regex on text</li>
-            <li><span class="emphasis">PyO3 bridge:</span> Call Rust from Python seamlessly</li>
-            <li><span class="emphasis">Pre-compiled patterns:</span> Zero overhead on 450+ regexes</li>
-            <li><span class="emphasis">Rayon parallelization:</span> All 16 cores working</li>
+            <li><span class="emphasis">Python orchestration:</span> file discovery, pattern management, reporting</li>
+            <li><span class="emphasis">Rust processing:</span> CPU-intensive regex over text, via a PyO3 bridge</li>
+            <li><span class="emphasis">~450 pre-compiled patterns:</span> 150+ long-&#383;, 200+ OCR fixes, 50+ watermark, 50+ misc &mdash; zero per-file compile cost</li>
+            <li><span class="emphasis">Rayon parallelization:</span> all 16 cores saturated</li>
         </ul>
-        <p class="summary-text">Best tool for each part of the job</p>
-    </div>
-
-    <!-- ═══════════════ Slide 7: Testing Ladder ═══════════════ -->
-    <div class="slide">
-        <div class="section-label">Validation</div>
-        <h2 class="medium-headline">The Testing Ladder</h2>
-        <div class="ladder">
-            <div class="ladder-step">
-                <div class="step-number">Test 1: 100 Files</div>
-                <div class="step-title">The Smoke Test</div>
-                <div class="step-details">10 seconds &bull; 20,099 substitutions &bull; Does it run without crashing?</div>
-            </div>
-            <div class="ladder-step">
-                <div class="step-number">Test 2: 1,000 Files</div>
-                <div class="step-title">Pattern Validation</div>
-                <div class="step-details">28 seconds &bull; 157,146 substitutions &bull; Vocabulary extraction finds pattern sync bug</div>
-            </div>
-            <div class="ladder-step">
-                <div class="step-number">Test 3: 100,000 Files</div>
-                <div class="step-title">Precision Test</div>
-                <div class="step-details">21 minutes &bull; 43.3M substitutions &bull; The "enough is enough" moment</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══════════════ Slide 8: Bug Discovery ═══════════════ -->
-    <div class="slide center">
-        <div class="section-label">Quality Gate</div>
-        <h2 class="medium-headline">Bug Caught During Testing</h2>
-        <div class="quote-block">
-            <div class="quote-text">"Wait, those are perfectly valid words. What's happening?"</div>
-            <div class="quote-author">&mdash; robotdad, reviewing vocabulary analysis</div>
-        </div>
-        <p class="summary-text">Pattern sync issue between Python and Rust<br><span class="emphasis">1.2M false positives</span> caught before production</p>
-    </div>
-
-    <!-- ═══════════════ Slide 9: Precision ═══════════════ -->
-    <div class="slide center">
-        <div class="section-label">Precision</div>
-        <div class="big-stat">
-            <div class="big-number">99.98%</div>
-            <div class="big-label">Precision</div>
-            <div class="big-context">
-                100,000 files tested &bull; 1,014,036 suspicious words flagged<br>
-                Only 225 were false positives<br><br>
-                <span class="emphasis">"Only 225 cleared by dictionary lookup. That seems really good to me."</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══════════════ Slide 10: Enough is Enough ═══════════════ -->
-    <div class="slide">
-        <div class="section-label">Decision Point</div>
-        <h2 class="medium-headline">The "Enough is Enough" Moment</h2>
-        <p class="subhead" style="margin-bottom: clamp(16px, 3vw, 32px);">The remaining 225 errors weren't fixable with regex patterns</p>
-        <ul class="content-list">
-            <li>Random capitalization (fundamental OCR failure)</li>
-            <li>Garbage text from completely failed scans</li>
-            <li>Mixed-language encoding errors</li>
-            <li>Unusual proper nouns</li>
-        </ul>
-        <p class="summary-text"><span class="emphasis">Data-driven decision:</span> Stop adding patterns, pivot to statistical noise filtering</p>
-    </div>
-
-    <!-- ═══════════════ Slide 11: Production Victory ═══════════════ -->
-    <div class="slide center">
-        <div class="section-label">Production</div>
-        <h2 class="medium-headline">Production Run</h2>
-        <div class="thirds">
-            <div class="card">
-                <div class="card-number">1.17M</div>
-                <div class="card-label">Files Processed</div>
-            </div>
-            <div class="card">
-                <div class="card-number">590M</div>
-                <div class="card-label">Corrections Made</div>
-            </div>
-            <div class="card">
-                <div class="card-number">7h 14m</div>
-                <div class="card-label">Total Runtime</div>
-            </div>
-        </div>
-        <div class="stats-row">
-            <div class="stat-item">
-                <div class="stat-number">111.9&times;</div>
-                <div class="stat-label">faster than Python baseline</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══════════════ Slide 12: Performance Breakdown ═══════════════ -->
-    <div class="slide">
-        <div class="section-label">Performance</div>
-        <h2 class="medium-headline">Where the Speedup Came From</h2>
-        <div class="comparison">
+        <div class="comparison" style="margin-top: clamp(16px,3vw,32px);">
             <div class="side bad">
-                <div class="side-title">Python Baseline</div>
+                <div class="side-title">Python baseline</div>
                 <div class="side-metric">
                     &bull; Interpreted bytecode<br>
                     &bull; Regex compiled per file<br>
@@ -791,20 +696,94 @@
                 </div>
             </div>
         </div>
-        <p class="summary-text" style="font-size: var(--font-small); color: var(--text-tertiary);">Multiplier breakdowns are approximate decomposition of the overall 111.9&times; speedup</p>
     </div>
 
-    <!-- ═══════════════ Slide 13: Human-AI Collaboration ═══════════════ -->
+    <!-- beat 5: payoff -->
+    <div class="slide center">
+        <div class="section-label">The Payoff</div>
+        <h2 class="medium-headline">1.17M files, 590M corrections, 111.9&times; faster</h2>
+        <div class="thirds">
+            <div class="card">
+                <div class="card-number">1.17M</div>
+                <div class="card-label">Files processed</div>
+            </div>
+            <div class="card">
+                <div class="card-number">590M</div>
+                <div class="card-label">Corrections made</div>
+            </div>
+            <div class="card">
+                <div class="card-number">7h 14m</div>
+                <div class="card-label">Total runtime</div>
+            </div>
+        </div>
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="stat-number">111.9&times;</div>
+                <div class="stat-label">faster than the 33.75-day Python baseline</div>
+            </div>
+        </div>
+        <p class="summary-text">33 days collapsed to a single afternoon. But raw speed was only trustworthy because of what came next.</p>
+    </div>
+
+    <!-- beat 6: mechanism -->
     <div class="slide">
-        <div class="section-label">Collaboration</div>
-        <h2 class="medium-headline">Human-AI Collaboration</h2>
+        <div class="section-label">Validation</div>
+        <h2 class="medium-headline">A testing ladder proved it before production</h2>
+        <div class="ladder">
+            <div class="ladder-step">
+                <div class="step-number">Test 1: 100 files</div>
+                <div class="step-title">Smoke test</div>
+                <div class="step-details">10 seconds &bull; 20,099 substitutions &bull; does it run without crashing?</div>
+            </div>
+            <div class="ladder-step">
+                <div class="step-number">Test 2: 1,000 files</div>
+                <div class="step-title">Pattern validation</div>
+                <div class="step-details">28 seconds &bull; 157,146 substitutions &bull; vocabulary extraction surfaces a pattern-sync bug</div>
+            </div>
+            <div class="ladder-step">
+                <div class="step-number">Test 3: 100,000 files</div>
+                <div class="step-title">Precision test</div>
+                <div class="step-details">21 minutes &bull; 43.3M substitutions &bull; measure precision at scale</div>
+            </div>
+        </div>
+        <p class="summary-text">Each rung scaled 10&times; &mdash; catching failures cheaply before they cost hours.</p>
+    </div>
+
+    <!-- beat 7: turn -->
+    <div class="slide center">
+        <div class="section-label">Why It's Trustworthy</div>
+        <h2 class="medium-headline">The ladder caught a bug that would have wrecked 1.2M words</h2>
+        <div class="quote-block">
+            <div class="quote-text">&ldquo;Wait, those are perfectly valid words. What's happening?&rdquo;</div>
+            <div class="quote-author">&mdash; robotdad, reviewing vocabulary analysis</div>
+        </div>
+        <p class="summary-text">A Python&harr;Rust pattern-sync issue was flagging <span class="emphasis">1.2M false positives</span> &mdash; caught before production. Final precision on 100K files: <span class="emphasis">99.98%</span> (only 225 false positives out of 1,014,036 flags).</p>
+    </div>
+
+    <!-- beat 8: takeaway -->
+    <div class="slide">
+        <div class="section-label">Judgment</div>
+        <h2 class="medium-headline">Knowing when to stop was a data-driven call</h2>
+        <p class="subhead" style="margin-bottom: clamp(16px, 3vw, 32px);">The last 225 errors weren't fixable with regex &mdash; and Amplifier said so with evidence.</p>
+        <ul class="content-list">
+            <li>Random capitalization from fundamental OCR failure</li>
+            <li>Garbage text from completely failed scans</li>
+            <li>Mixed-language encoding errors and unusual proper nouns</li>
+        </ul>
+        <p class="summary-text"><span class="emphasis">The decision:</span> stop adding patterns; pivot to statistical noise filtering instead of chasing diminishing returns.</p>
+    </div>
+
+    <!-- beat 9: takeaway -->
+    <div class="slide">
+        <div class="section-label">How It Worked</div>
+        <h2 class="medium-headline">Domain knowledge + rapid implementation</h2>
         <div class="comparison">
             <div class="side good">
                 <div class="side-title">robotdad</div>
                 <div class="side-metric">
-                    &bull; Identified performance bottleneck<br>
-                    &bull; Made architectural decision (Rust)<br>
-                    &bull; Defined pattern categories<br>
+                    &bull; Identified the performance bottleneck<br>
+                    &bull; Made the architectural call (Rust)<br>
+                    &bull; Defined the pattern categories<br>
                     &bull; Directed testing &amp; validation<br>
                     &bull; Decided when to stop iterating
                 </div>
@@ -812,79 +791,36 @@
             <div class="side good">
                 <div class="side-title">Amplifier</div>
                 <div class="side-metric">
-                    &bull; Implemented Rust core + PyO3<br>
-                    &bull; Built 450+ pattern library<br>
+                    &bull; Implemented the Rust core + PyO3<br>
+                    &bull; Built the 450+ pattern library<br>
                     &bull; Benchmarked approaches<br>
                     &bull; Integrated Rayon parallelization<br>
                     &bull; Generated validation reports
                 </div>
             </div>
         </div>
-        <p class="summary-text">Domain knowledge + rapid implementation = production-scale results</p>
+        <p class="summary-text">Conversational performance engineering: from &ldquo;this will take 33 days&rdquo; to a shipped Rust pipeline &mdash; in days, not weeks.</p>
     </div>
 
-    <!-- ═══════════════ Slide 14: What This Demonstrates ═══════════════ -->
-    <div class="slide">
-        <div class="section-label">Impact</div>
-        <h2 class="medium-headline">What This Demonstrates</h2>
-        <ul class="content-list">
-            <li><span class="emphasis">Conversational performance engineering</span> &mdash; "This will take 33 days" &#8594; Rust solution</li>
-            <li><span class="emphasis">Polyglot development</span> &mdash; Python + Rust hybrid in one session</li>
-            <li><span class="emphasis">Iterative validation</span> &mdash; Test ladder caught critical bug</li>
-            <li><span class="emphasis">Data-driven decisions</span> &mdash; Amplifier guided "when is enough enough?"</li>
-            <li><span class="emphasis">Production-scale execution</span> &mdash; 1.17M files, 590M corrections, reliable</li>
-        </ul>
-        <p class="summary-text">From bottleneck to breakthrough in <span class="emphasis">days, not weeks</span></p>
-    </div>
-
-    <!-- ═══════════════ Slide 15: Ready for Training ═══════════════ -->
+    <!-- beat 10: takeaway -->
     <div class="slide center">
-        <div class="section-label">Outcome</div>
-        <h2 class="medium-headline">Ready for Training</h2>
+        <div class="section-label">The Outcome</div>
+        <h2 class="medium-headline">A clean corpus, ready for training</h2>
         <div class="split">
             <div class="card">
                 <div class="card-number">1.17M</div>
-                <div class="card-label">Clean Documents</div>
+                <div class="card-label">Clean documents, long-&#383; normalized, watermarks stripped</div>
             </div>
             <div class="card">
-                <div class="card-number" style="font-size: var(--font-subhead);">pre-1800 to 1914</div>
-                <div class="card-label">Pre-WWI Era</div>
+                <div class="card-number" style="font-size: var(--font-subhead);">Open source</div>
+                <div class="card-label">450+ pattern library &bull; Rust core with PyO3 &bull; tested on 1.17M files</div>
             </div>
         </div>
-        <div class="summary-text" style="text-align: left; max-width: 800px;">
-            <ul class="content-list">
-                <li>Long-&#383; normalized across the corpus</li>
-                <li>OCR errors corrected</li>
-                <li>Watermarks stripped</li>
-                <li>Ready for tokenization &amp; LLM training</li>
-            </ul>
-            <p style="text-align: center; margin-top: clamp(16px, 3vw, 32px); font-size: var(--font-body); color: var(--text-secondary);"><span class="emphasis">Next story:</span> Training a timecapsule LLM that doesn't know about WWI</p>
-        </div>
+        <p class="subhead" style="margin: clamp(16px,3vw,32px) 0;">Next story: training a timecapsule LLM that doesn't know about WWI.</p>
+        <a href="https://github.com/robotdad/timecapsule-data" class="cta-button">View timecapsule-data on GitHub</a>
     </div>
 
-    <!-- ═══════════════ Slide 16: CTA ═══════════════ -->
-    <div class="slide center">
-        <div class="section-label">Open Source</div>
-        <h2 class="medium-headline">Try It Yourself</h2>
-        <p class="subhead" style="margin-bottom: clamp(20px, 4vw, 40px);">The timecapsule-data project is open source</p>
-        <a href="https://github.com/robotdad/timecapsule-data" class="cta-button">View on GitHub</a>
-        <div class="split" style="margin-top: clamp(24px, 5vw, 48px); max-width: 800px;">
-            <div class="card">
-                <div class="card-label">450+ OCR pattern library</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Rust core with PyO3</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Hybrid Python/Rust architecture</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Tested on 1.17M files</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══════════════ Slide 17: Sources & Methodology ═══════════════ -->
+    <!-- Sources & Methodology -->
     <div class="slide">
         <div class="section-label">Sources</div>
         <h2 class="medium-headline">Research Methodology</h2>
@@ -911,6 +847,7 @@
             <p><strong>Primary contributors:</strong> robotdad (Brian Krabach) &mdash; project creator and domain expert</p>
         </div>
     </div>
+
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
