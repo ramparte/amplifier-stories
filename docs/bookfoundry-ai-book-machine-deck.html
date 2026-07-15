@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>BookFoundry &mdash; The AI Book Writing Machine</title>
+    <script>document.documentElement.classList.add('js')</script>
     <style>
         :root {
             --accent: #E74C3C;
@@ -49,8 +50,20 @@
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
             background: #000;
             color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
+        }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+
+        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
         }
 
         /* Slide base */
@@ -515,24 +528,80 @@
     </style>
 </head>
 <body>
+<!--
+  ===========================================================================
+  NARRATIVE SPINE  (built from the deck's existing content; no fresh research)
+  ===========================================================================
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 1: TITLE                                                -->
-    <!-- ============================================================ -->
+  ABT:
+    AND anyone can prompt an LLM to draft a book;
+    BUT "just prompting" stalls at the 85% wall -- the last 15% (voice fidelity,
+        rhythm, the absence of AI tells) needs machinery, and naive multi-filter
+        cleanup thrashes because filters undo each other;
+    THEREFORE BookFoundry turns three generations of hard-won fixes into an
+        8-layer, damage-supervised engine -- voice capture, then generation, then
+        14 ordered filters with mechanical always last -- that a solo dev built
+        in 11 days.
+
+  PAYOFF (named up front):
+    The supervised filter pipeline with damage detection -- 14 filters run in a
+    strict order (programmatic -> LLM-guided -> gradient), and after each stage a
+    damage check re-runs earlier filters if tells crept back. This is the fix
+    that killed the book2 thrashing problem and clears the 85% wall.
+
+  BEATS (proof-first; payoff lands at beat 3 of 10, before the midpoint = 5):
+    1. proof     -- BookFoundry is real and shipped: an 8-layer engine + desktop
+                    app, built solo in 11 days (122 commits).  advances: grounds
+                    the AND with a concrete artifact. Introduces BookFoundry.
+    2. tension   -- AI writes like AI: revision loops, the 85% wall, metrics !=
+                    quality.  advances: the BUT (why naive prompting fails).
+    3. payoff    -- the damage-supervised filter pipeline solves the thrashing
+                    and clears the last 15%.  advances: lands the THEREFORE.
+    4. mechanism -- voice first: capture the author's voice before generating.
+                    (one claim)  advances: HOW fidelity starts.
+    5. mechanism -- the 8-layer chapter pipeline, mechanical always last.
+                    (one claim)  advances: HOW a chapter is produced.
+    6. mechanism -- the 14-filter arsenal in three ordered tiers.
+                    (one claim)  advances: HOW the payoff is implemented.
+    7. mechanism -- central engine + project override system.
+                    (one claim)  advances: HOW it stays composable.
+    8. mechanism -- a desktop app makes the machine watchable.
+                    (one claim)  advances: HOW a human drives it.
+    9. turn      -- from tool to platform: the override system lets specialists
+                    compose without forking.  advances: pivots to what's next.
+   10. takeaway  -- three generations of failures, generalized into a reusable
+                    engine you point at a directory.  advances: what you keep.
+
+    + Sources & Methodology (audit-trail slide, not a beat) at the end.
+    Slides = 10 beats + 1 = 11.
+-->
+
+    <!-- beat 1: proof -->
     <div class="slide active center">
         <div class="section-label">Showcase &middot; Amplifier Bundle</div>
-        <h1 class="headline">BookFoundry</h1>
-        <p class="subhead">An AI book-writing machine.<br>Eight layers from voice capture to finished manuscript.</p>
-        <div class="status-badge">Active &middot; 3rd Generation</div>
-        <div class="small-text">May 2026 &middot; ramparte</div>
+        <h1 class="headline">BookFoundry: a book-writing machine, built in 11 days</h1>
+        <p class="subhead">An 8-layer engine from voice capture to finished manuscript &mdash; plus a desktop app &mdash; shipped solo, and already on its 3rd generation.</p>
+        <div class="velocity-grid">
+            <div class="velocity-stat">
+                <div class="velocity-number">11</div>
+                <div class="velocity-label">days, start<br>to shipped</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">122</div>
+                <div class="velocity-label">commits across<br>2 repositories</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">15K</div>
+                <div class="velocity-label">lines of<br>engine source</div>
+            </div>
+        </div>
+        <div class="status-badge">Active &middot; April 2026 &middot; ramparte</div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 2: THE PROBLEM                                          -->
-    <!-- ============================================================ -->
+    <!-- beat 2: tension -->
     <div class="slide">
-        <div class="section-label">Three Generations of Failure Modes</div>
-        <h2 class="headline">AI writes<br>like AI</h2>
+        <div class="section-label">Why "Just Prompting" Isn't Enough</div>
+        <h2 class="headline">The problem: AI writes like AI</h2>
         <div class="thirds">
             <div class="card card-accent">
                 <div class="icon">&#x1F501;</div>
@@ -555,12 +624,57 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 3: THE 8-LAYER PIPELINE                                 -->
-    <!-- ============================================================ -->
+    <!-- beat 3: payoff -->
     <div class="slide">
-        <div class="section-label">The Engine</div>
-        <h2 class="medium-headline">8-layer chapter pipeline</h2>
+        <div class="section-label">The Core Fix</div>
+        <h2 class="medium-headline">Supervision with damage detection clears the last 15%</h2>
+        <p class="subhead">The keystone: 14 tell-removal filters run in a strict order, and after each stage a damage check re-runs earlier filters if later ones reintroduced tells.</p>
+        <div class="halves">
+            <div class="card card-accent">
+                <h3>Strict order, mechanical last</h3>
+                <p>Programmatic first, then LLM-guided, then gradient. No filter gets to quietly undo another's work &mdash; the mechanical pass always has the final word.</p>
+            </div>
+            <div class="card card-accent">
+                <h3>The book2 thrashing, solved</h3>
+                <p>The damage-detection loop is exactly what earlier generations lacked. It converts an endless revision fight into a supervised pipeline that improves each pass.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>This is the difference between prose that scores well and prose a reader trusts &mdash; the machinery that gets past the 85% wall instead of grinding at it.</p>
+        </div>
+    </div>
+
+    <!-- beat 4: mechanism -->
+    <div class="slide">
+        <div class="section-label">How &middot; Voice First</div>
+        <h2 class="headline">Capture the author's voice before writing a word</h2>
+        <p class="subhead">Voice acquisition runs before any content generation. Three paths, same output format.</p>
+        <div class="thirds">
+            <div class="card card-accent">
+                <div class="icon">&#x1F4DA;</div>
+                <h3>Corpus Path</h3>
+                <p>Provide existing writing &mdash; essays, blog posts, prior books. The machine analyzes sentence structure, hedging patterns, signature moves, vocabulary range, and rhythm.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x1F399;&#xFE0F;</div>
+                <h3>Sparse Path</h3>
+                <p>Limited material: interviews, conversations, a few short pieces. The machine distills what's detectable and flags areas of uncertainty.</p>
+            </div>
+            <div class="card card-accent">
+                <div class="icon">&#x270D;&#xFE0F;</div>
+                <h3>Imitation Path</h3>
+                <p>Name a public writer, a website, or a reference book. The machine fetches available work, analyzes it, and distills a style guide.</p>
+            </div>
+        </div>
+        <div class="callout">
+            <p>Output is always the same: <code>exemplars.yaml</code> (annotated writing samples) + <code>style-guide.md</code> (distilled rules). The machine then generates project-specific rubrics from the analysis.</p>
+        </div>
+    </div>
+
+    <!-- beat 5: mechanism -->
+    <div class="slide">
+        <div class="section-label">How &middot; The Chapter Engine</div>
+        <h2 class="medium-headline">Every chapter runs the same 8-layer sequence</h2>
         <p class="subhead">Each chapter proceeds through a strict sequence. Mechanical always has the last word.</p>
         <div class="flow-steps">
             <div class="flow-step">
@@ -597,42 +711,11 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 4: VOICE ACQUISITION                                    -->
-    <!-- ============================================================ -->
+    <!-- beat 6: mechanism -->
     <div class="slide">
-        <div class="section-label">Voice First</div>
-        <h2 class="headline">Capture the<br>author's voice</h2>
-        <p class="subhead">Voice acquisition runs before any content generation. Three paths, same output format.</p>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x1F4DA;</div>
-                <h3>Corpus Path</h3>
-                <p>Provide existing writing &mdash; essays, blog posts, prior books. The machine analyzes sentence structure, hedging patterns, signature moves, vocabulary range, and rhythm.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F399;&#xFE0F;</div>
-                <h3>Sparse Path</h3>
-                <p>Limited material: interviews, conversations, a few short pieces. The machine distills what's detectable and flags areas of uncertainty.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x270D;&#xFE0F;</div>
-                <h3>Imitation Path</h3>
-                <p>Name a public writer, a website, or a reference book. The machine fetches available work, analyzes it, and distills a style guide.</p>
-            </div>
-        </div>
-        <div class="callout">
-            <p>Output is always the same: <code>exemplars.yaml</code> (annotated writing samples) + <code>style-guide.md</code> (distilled rules). The machine then generates project-specific rubrics from the analysis.</p>
-        </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 5: THE FILTER ARSENAL                                   -->
-    <!-- ============================================================ -->
-    <div class="slide">
-        <div class="section-label">AI-Tell Removal</div>
-        <h2 class="medium-headline">14 filters, 5,580 lines of Python</h2>
-        <p class="subhead">A supervised pipeline with damage detection &mdash; the ReAct pattern prevents filters from undoing each other.</p>
+        <div class="section-label">How &middot; AI-Tell Removal</div>
+        <h2 class="medium-headline">14 filters, 5,580 lines, in three ordered tiers</h2>
+        <p class="subhead">The arsenal that implements the supervised pipeline &mdash; each tier runs before the next.</p>
         <div class="thirds">
             <div class="card">
                 <h4 class="accent">Programmatic Filters</h4>
@@ -665,17 +748,12 @@
                 </ul>
             </div>
         </div>
-        <div class="callout">
-            <p>Strict ordering: programmatic first, then LLM-guided, then gradient. After each stage, a damage check re-runs earlier filters if later ones reintroduced tells. This solved the book2 thrashing problem.</p>
-        </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 6: COMPONENT INVENTORY                                  -->
-    <!-- ============================================================ -->
+    <!-- beat 7: mechanism -->
     <div class="slide">
-        <div class="section-label">Architecture</div>
-        <h2 class="medium-headline">Central engine + project directories</h2>
+        <div class="section-label">How &middot; Composability</div>
+        <h2 class="medium-headline">One engine, overridden per project directory</h2>
         <div class="arch-entities">
             <div class="entity-box">
                 <div class="icon">&#x1F9E0;</div>
@@ -706,89 +784,32 @@
         <div class="small-text">7 modes &middot; 3 rubric templates &middot; STATE.yaml session resilience &middot; Decision store learning loop</div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 7: THE DESKTOP APP                                      -->
-    <!-- ============================================================ -->
+    <!-- beat 8: mechanism -->
     <div class="slide">
-        <div class="section-label">bookfoundry-desktop</div>
-        <h2 class="headline">A desktop app<br>for the machine</h2>
-        <p class="subhead">Electron + React + TypeScript frontend with a FastAPI Python sidecar. Watch the pipeline work in real time.</p>
-        <div class="quads">
-            <div class="card card-accent">
-                <div class="icon">&#x1F4CB;</div>
-                <h3>Library</h3>
-                <p>Project dashboard with chapter table, status icons, and pipeline state at a glance.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x26A1;</div>
-                <h3>Pipeline</h3>
-                <p>WebSocket-driven live progress. Start, pause, and approve pipeline stages with approval gates.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x270F;&#xFE0F;</div>
-                <h3>Editor</h3>
-                <p>TipTap rich text with AI suggestion marks, metrics sidebar, version history with diffs.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F4A1;</div>
-                <h3>Brainstorm</h3>
-                <p>Streaming chat sessions with pin/unpin ideas. Create new book projects directly from brainstorm output.</p>
-            </div>
-        </div>
+        <div class="section-label">How &middot; The Human Cockpit</div>
+        <h2 class="headline">A desktop app to watch the machine work</h2>
+        <p class="subhead">Electron + React + TypeScript frontend with a FastAPI Python sidecar &mdash; the pipeline, live and steerable.</p>
+        <ul class="feature-list" style="margin-top: var(--space-lg); max-width: min(760px, 95vw);">
+            <li><strong>Library</strong> &mdash; project dashboard with chapter table, status icons, and pipeline state at a glance.</li>
+            <li><strong>Pipeline</strong> &mdash; WebSocket-driven live progress; start, pause, and approve stages with approval gates.</li>
+            <li><strong>Editor</strong> &mdash; TipTap rich text with AI suggestion marks, a metrics sidebar, and version history with diffs.</li>
+            <li><strong>Brainstorm</strong> &mdash; streaming chat with pin/unpin ideas; spin up new book projects straight from the output.</li>
+        </ul>
         <div class="small-text">41 commits &middot; 36 TypeScript files &middot; 20 Python sidecar files &middot; 10 API routes &middot; Electron Forge + Vite</div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 8: VELOCITY                                             -->
-    <!-- ============================================================ -->
-    <div class="slide center">
-        <div class="section-label">Development Velocity</div>
-        <h2 class="medium-headline">Built in 11 days</h2>
-        <div class="velocity-grid">
-            <div class="velocity-stat">
-                <div class="velocity-number">122</div>
-                <div class="velocity-label">commits across<br>2 repositories</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">88</div>
-                <div class="velocity-label">Python source files<br>in the engine</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">15K</div>
-                <div class="velocity-label">lines of<br>engine source</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">10K</div>
-                <div class="velocity-label">lines of<br>test code</div>
-            </div>
-        </div>
-        <div class="small-text" style="margin-top: var(--space-lg);">April 12&ndash;23, 2026 &middot; ~11 commits/day &middot; 36 test files &middot; Solo developer (ramparte)</div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 9: WHAT'S NEXT                                          -->
-    <!-- ============================================================ -->
+    <!-- beat 9: turn -->
     <div class="slide">
         <div class="section-label">What's Next</div>
-        <h2 class="headline">From tool<br>to platform</h2>
+        <h2 class="headline">From a tool into a platform</h2>
         <div class="halves">
             <div class="card card-accent">
                 <h3>Full-Book-Cycle Recipe</h3>
                 <p>One command: voice acquisition, book planning, process all chapters, assembly, rendering. <code>full-book-cycle.yaml</code> is already scaffolded &mdash; the master recipe that produces a complete book.</p>
             </div>
             <div class="card card-accent">
-                <h3>Multi-Format Rendering</h3>
-                <p>EPUB and HTML require no external tools. Typst/PDF rendering is wired. Templates live in <code>templates/render/</code> with project-level overrides.</p>
-            </div>
-        </div>
-        <div class="halves">
-            <div class="card">
-                <h4 class="accent">Fiction Support</h4>
-                <p>Continuity graph vocabulary with character/scene/plot-thread nodes. Genre gates skip expansion and fact-check for fiction. Continuity tracking is the "killer app."</p>
-            </div>
-            <div class="card">
-                <h4 class="accent">Desktop Integration</h4>
-                <p>The sidecar API bridges the Amplifier CLI engine to the Electron UI. Real-time pipeline visualization, author review gates, and brainstorm-to-book flows.</p>
+                <h3>Multi-Format &amp; Fiction</h3>
+                <p>EPUB/HTML render with no external tools and Typst/PDF is wired. A continuity graph (character/scene/plot-thread) makes fiction continuity tracking the next "killer app."</p>
             </div>
         </div>
         <div class="callout">
@@ -796,9 +817,15 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SLIDE 10: SOURCES & METHODOLOGY                               -->
-    <!-- ============================================================ -->
+    <!-- beat 10: takeaway -->
+    <div class="slide center">
+        <div class="section-label">The Takeaway</div>
+        <h2 class="headline">Three generations of failure, distilled into an engine</h2>
+        <p class="subhead">Point BookFoundry at a project directory and it captures a voice, drafts, and supervises tell-removal to a finished manuscript &mdash; the machinery that turns "AI writes like AI" into prose a reader trusts.</p>
+        <div class="status-badge">Voice captured &rarr; drafted &rarr; supervised &rarr; shipped</div>
+    </div>
+
+    <!-- Sources & Methodology (audit-trail slide, not a beat) -->
     <div class="slide">
         <div class="section-label">Sources &amp; Methodology</div>
         <h2 class="medium-headline">How this deck was built</h2>
