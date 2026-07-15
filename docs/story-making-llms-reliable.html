@@ -554,279 +554,36 @@
     </style>
 </head>
 <body>
+<!--
+SPINE — Making LLMs reliable through code
+ABT: AND you can ask an LLM to regenerate a document while preserving the
+     sections that already work; BUT LLMs won't reliably copy verbatim or obey
+     "don't touch these" — they paraphrase code, reformat commands, and rewrite
+     "preserved" content anyway; THEREFORE you wrap the LLM in deterministic code
+     that restores preserved sections byte-for-byte — when determinism matters,
+     use code, not LLMs.
+Payoff: "100% fidelity" — 11 preserved sections, 0 bytes modified, byte-for-byte
+     identical to the original, guaranteed by a deterministic restore step rather
+     than by trusting the model's promises.
+Beats:
+  1. proof     — 11 sections preserved, 0 bytes modified, byte-for-byte.   advances: opens on the payoff/AND (reliable outcome achieved)
+  2. setup     — the ask: regenerate the recipe's doc, keep working sections. advances: names the example the argument leans on
+  3. tension   — asking the LLM to "preserve" mangled it.                  advances: establishes the BUT (LLMs won't copy verbatim)
+  4. turn      — the root cause: LLMs can't be trusted to copy or to skip. advances: pivots from prompt-tuning to a code guarantee
+  5. payoff    — the pattern: let the LLM work, then restore with code.    advances: lands the THEREFORE before the midpoint
+  6. mechanism — restore preserved sections after every LLM pass.          advances: shows HOW the deterministic sandwich works
+  7. mechanism — a parser bug: # comments in code fences read as headings. advances: shows determinism needs state tracking too
+  8. mechanism — five recipe versions in one session to get reliable.      advances: shows the iteration cost of the fix
+  9. takeaway  — when determinism matters, use code not LLMs.              advances: what the audience keeps
+-->
     <!-- More Amplifier Stories link -->
     <a href="index.html" class="stories-link">More Amplifier Stories &rarr;</a>
 
-    <!-- Slide 1: Title -->
+    <!-- beat 1: proof -->
     <div class="slide center active">
         <div class="status-badge">Case Study</div>
-        <h1 class="headline-hero">Making LLMs Reliable<br>Through Code</h1>
-        <p class="subhead">A debugging journey: 5 recipe versions, 3 bugs found, 1 fundamental insight about AI-assisted development.</p>
-        <div class="date">February 2026</div>
-    </div>
-
-    <!-- Slide 2: The Problem -->
-    <div class="slide">
-        <div class="section-label">The Challenge</div>
-        <h2 class="headline">Preserve What Works</h2>
-        <p class="subhead">When regenerating documentation, users want to keep their existing content intact - only updating sections that need changes.</p>
-
-        <div class="thirds">
-            <div class="card">
-                <div class="card-title">The Ask</div>
-                <p class="card-text">"When I provide an existing document, preserve sections that don't need changes. Only regenerate what's actually outdated."</p>
-            </div>
-            <div class="card">
-                <div class="card-title">The Stakes</div>
-                <p class="card-text">11 carefully written sections with code examples, commands, and formatting - losing any of it means manual recovery.</p>
-            </div>
-        </div>
-
-        <div class="quote" style="margin-top: 48px;">
-            "Mostly, we want to make sure the existing sections reflect the source files. The existing doc is a reference for what is already mainly working."
-        </div>
-    </div>
-
-    <!-- Slide 3: First Attempt -->
-    <div class="slide">
-        <div class="section-label">v7.1.0</div>
-        <h2 class="medium-headline">First Attempt: Let the LLM Decide</h2>
-
-        <div class="code-block"><span class="comment"># The prompt approach</span>
-<span class="keyword">If</span> action_needed is <span class="string">"none"</span>: <span class="highlight">USE EXISTING CONTENT AS-IS</span>
-<span class="keyword">If</span> action_needed is <span class="string">"add"</span>:  Keep existing, ADD missing content
-<span class="keyword">If</span> action_needed is <span class="string">"update"</span>: Revise specific parts only</div>
-
-        <div class="bug-reveal">
-            <div class="bug-icon">&#x1F6A8;</div>
-            <h3>Result: Content Mangled</h3>
-            <p class="card-text">The LLM "preserved" content by summarizing it. Code blocks were paraphrased. Commands were reformatted. Nothing was verbatim.</p>
-        </div>
-
-        <p class="subhead" style="margin-top: 24px;"><strong>Lesson:</strong> Asking an LLM to "copy exactly" doesn't mean it will.</p>
-    </div>
-
-    <!-- Slide 4: Fix #1 -->
-    <div class="slide">
-        <div class="section-label">v7.2.0</div>
-        <h2 class="medium-headline">Fix #1: Use Code to Extract Content</h2>
-        <p class="subhead">Don't ask the LLM to preserve - use bash/Python to copy sections directly.</p>
-
-        <div class="code-block"><span class="comment"># Deterministic preservation with bash</span>
-<span class="keyword">for</span> section_id <span class="keyword">in</span> $(jq -r <span class="string">'.[] | select(.action_needed == "none")'</span>); <span class="keyword">do</span>
-    <span class="comment"># Copy existing content directly to tracker</span>
-    existing_content=$(jq -r <span class="string">".section_mappings[$section_id].existing_content"</span>)
-    <span class="comment"># No LLM involved - pure data copy</span>
-    jq <span class="string">".generated_content[$section_id] = \$content"</span> tracker.json
-<span class="keyword">done</span></div>
-
-        <div class="comparison">
-            <div class="comparison-box before">
-                <div class="comparison-label">Before</div>
-                <p class="card-text"><strong>Original:</strong> 6,293 bytes</p>
-                <p class="card-text"><strong>Output:</strong> 5,340 bytes</p>
-                <p class="card-text" style="margin-top: 12px; color: #FF453A;">&#x274C; Lost ~950 bytes somewhere</p>
-            </div>
-            <div class="comparison-box before">
-                <div class="comparison-label">Still Broken</div>
-                <p class="card-text">Content extraction was truncating sections. But why?</p>
-                <p class="card-text" style="margin-top: 12px;">Time to investigate...</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide 5: Bug Discovery -->
-    <div class="slide">
-        <div class="section-label">Discovery</div>
-        <h2 class="medium-headline">The Markdown Parser Bug</h2>
-
-        <div class="bug-reveal">
-            <div class="bug-icon">&#x1F41B;</div>
-            <h3>Code Comments Mistaken for Headings</h3>
-            <div class="code-block"><span class="comment"># This bash comment inside a code block...</span>
-```bash
-amplifier run <span class="string">"execute recipe.yaml"</span>
-<span class="error"># Interactive mode</span>   <span class="comment">&lt;-- Parser sees this as a heading!</span>
-amplifier
-```</div>
-            <p class="card-text">The markdown parser wasn't tracking whether it was inside a code fence. Every <code># comment</code> was treated as a new section boundary, truncating content.</p>
-        </div>
-
-        <p class="subhead" style="margin-top: 24px;">
-            <strong>Section 1.2.1 content:</strong><br>
-            Before fix: <span style="color: #FF453A;">99 characters</span> (truncated)<br>
-            After fix: <span style="color: #30D158;">737 characters</span> (complete)
-        </p>
-    </div>
-
-    <!-- Slide 6: Fix #2 -->
-    <div class="slide">
-        <div class="section-label">v7.5.0</div>
-        <h2 class="medium-headline">Fix #2: Code Block State Tracking</h2>
-
-        <div class="code-block"><span class="keyword">def</span> <span class="function">parse_markdown_sections</span>(content):
-    sections = []
-    <span class="highlight">in_code_block = False</span>  <span class="comment"># Track state!</span>
-
-    <span class="keyword">for</span> line <span class="keyword">in</span> content.split(<span class="string">'\\n'</span>):
-        <span class="keyword">if</span> line.startswith(<span class="string">'```'</span>):
-            <span class="highlight">in_code_block = not in_code_block</span>
-            <span class="keyword">continue</span>
-
-        <span class="comment"># Only treat # as heading if NOT in code block</span>
-        <span class="keyword">if</span> line.startswith(<span class="string">'#'</span>) <span class="keyword">and</span> <span class="highlight">not in_code_block</span>:
-            sections.append(parse_heading(line))
-
-    <span class="keyword">return</span> sections</div>
-
-        <div class="comparison">
-            <div class="comparison-box after">
-                <div class="comparison-label">Result</div>
-                <p class="card-text"><strong>Original:</strong> 6,293 bytes</p>
-                <p class="card-text"><strong>Output:</strong> 7,211 bytes</p>
-                <p class="card-text" style="margin-top: 12px; color: #30D158;">&#x2705; All content preserved + new sections added</p>
-            </div>
-            <div class="comparison-box after">
-                <div class="comparison-label">Diff Check</div>
-                <p class="card-text">Only 2 additions (intro paragraphs for empty parent sections).</p>
-                <p class="card-text" style="margin-top: 12px;"><strong>Zero modifications</strong> to preserved content!</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide 7: New Problem -->
-    <div class="slide">
-        <div class="section-label">Plot Twist</div>
-        <h2 class="medium-headline">But Then... Validation Broke It</h2>
-
-        <div class="flow-diagram">
-            <div class="flow-step">Generate</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-step">Content Validation</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-step highlight" style="border-color: #FF453A;">Fix Issues</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-step">Quality Validation</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-step highlight" style="border-color: #FF453A;">Fix Issues</div>
-        </div>
-
-        <div class="bug-reveal">
-            <div class="bug-icon">&#x1F92F;</div>
-            <h3>The "Skip These Sections" Problem</h3>
-            <p class="card-text">We told the LLM: "These sections are preserved - don't modify them during validation fixes."</p>
-            <p class="card-text" style="margin-top: 12px;"><strong>The LLM:</strong> "Sure!" <em>*proceeds to rewrite them anyway*</em></p>
-        </div>
-
-        <div class="insight-box">
-            <div class="insight-icon">&#x1F4A1;</div>
-            <h3>Root Cause Identified</h3>
-            <p class="card-text">LLMs cannot reliably follow "skip these sections" instructions. They will still touch, modify, or "improve" content they were told to leave alone.</p>
-        </div>
-    </div>
-
-    <!-- Slide 8: The Final Fix -->
-    <div class="slide">
-        <div class="section-label">v7.4.0</div>
-        <h2 class="medium-headline">Final Fix: Deterministic Restore</h2>
-        <p class="subhead">Don't trust the LLM to skip. Instead: let it do its thing, then <strong>restore</strong> preserved sections with code.</p>
-
-        <div class="flow-diagram">
-            <div class="flow-step">LLM Validation Fix</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-step highlight">Python Restore</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-step">LLM Quality Fix</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-step highlight">Python Restore</div>
-        </div>
-
-        <div class="code-block"><span class="comment"># After EVERY LLM validation pass, restore preserved sections</span>
-
-<span class="keyword">def</span> <span class="function">restore_preserved_sections</span>(document, preserved_content):
-    <span class="string">"""Deterministically restore sections - no LLM involved"""</span>
-
-    <span class="keyword">for</span> section_id, original <span class="keyword">in</span> preserved_content.items():
-        <span class="comment"># Find section boundaries using heading matching</span>
-        start, end = find_section_boundaries(document, section_id)
-
-        <span class="comment"># Replace whatever the LLM wrote with the original</span>
-        document = document[:start] + <span class="highlight">original</span> + document[end:]
-
-    <span class="keyword">return</span> document  <span class="comment"># Guaranteed byte-for-byte identical</span></div>
-    </div>
-
-    <!-- Slide 9: The Pattern -->
-    <div class="slide">
-        <div class="section-label">The Pattern</div>
-        <h2 class="medium-headline">Trust But Verify</h2>
-
-        <div class="thirds">
-            <div class="card">
-                <div class="card-title error">&#x274C; Don't Do This</div>
-                <div class="code-block"><span class="comment"># Hoping the LLM follows instructions</span>
-prompt: |
-  Fix content issues but
-  <span class="error">DO NOT modify preserved sections</span>
-
-<span class="comment"># Result: LLM modifies them anyway</span></div>
-            </div>
-            <div class="card">
-                <div class="card-title success">&#x2705; Do This Instead</div>
-                <div class="code-block"><span class="comment"># Let LLM work, then restore with code</span>
-steps:
-  - llm_validation_fix
-  - <span class="success">python_restore_preserved</span>
-  - llm_quality_fix
-  - <span class="success">python_restore_preserved</span>
-
-<span class="comment"># Result: 100% fidelity guaranteed</span></div>
-            </div>
-        </div>
-
-        <div class="quote" style="margin-top: 40px;">
-            "When determinism matters, use code not LLMs."
-        </div>
-    </div>
-
-    <!-- Slide 10: Version Timeline -->
-    <div class="slide">
-        <div class="section-label">The Journey</div>
-        <h2 class="medium-headline">5 Versions in One Session</h2>
-
-        <div class="timeline">
-            <div class="timeline-item error">
-                <div class="timeline-version">v7.1.0</div>
-                <div class="timeline-title">Existing Document Input</div>
-                <div class="timeline-desc">LLM-based preservation with quality assessment (keep/revise/replace). <span style="color: #FF453A;">Failed: LLM rewrote "preserved" content.</span></div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-version">v7.2.0</div>
-                <div class="timeline-title">Deterministic Copy</div>
-                <div class="timeline-desc">Bash copies sections with action_needed="none" directly. <span style="color: #FFD60A;">Partial: Content extraction truncated.</span></div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-version">v7.3.0</div>
-                <div class="timeline-title">Skip Validation for Preserved</div>
-                <div class="timeline-desc">Analysis determines what needs work, validation skips preserved. <span style="color: #FFD60A;">Partial: LLM still touched preserved sections.</span></div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-version">v7.4.0</div>
-                <div class="timeline-title">Deterministic Restore</div>
-                <div class="timeline-desc">Python restores preserved sections after each LLM pass. <span style="color: #30D158;">Success: 100% preservation.</span></div>
-            </div>
-            <div class="timeline-item success">
-                <div class="timeline-version">v7.5.0</div>
-                <div class="timeline-title">Code Block Aware Parsing</div>
-                <div class="timeline-desc">Fixed # comments in code blocks being seen as headings. <span style="color: #30D158;">Complete solution achieved.</span></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide 11: Results -->
-    <div class="slide center">
-        <div class="section-label">Results</div>
-        <h2 class="headline">100% Fidelity</h2>
+        <h1 class="headline">11 Sections Preserved.<br>0 Bytes Modified.</h1>
+        <p class="subhead">Byte-for-byte identical to the original &mdash; guaranteed by code, not by trusting the model's promises.</p>
 
         <div class="metric-grid" style="max-width: 800px;">
             <div class="metric">
@@ -838,65 +595,203 @@ steps:
                 <div class="label">Bytes Modified</div>
             </div>
             <div class="metric">
-                <div class="value">5</div>
-                <div class="label">Recipe Versions</div>
+                <div class="value">100%</div>
+                <div class="label">Fidelity</div>
             </div>
         </div>
 
-        <div class="insight-box" style="max-width: 700px; margin-top: 48px;">
+        <div class="insight-box" style="max-width: 700px; margin-top: 40px;">
             <p class="lead">
-                Validated by <strong>recipe-results-validator</strong>:<br>
-                All 11 preserved sections are <span style="color: #30D158;">byte-for-byte identical</span> to the original.
+                Validated by <strong>recipe-results-validator</strong>: every preserved section
+                <span style="color: #30D158;">byte-for-byte identical</span> to the original. But getting there took five versions and one wrong assumption.
             </p>
         </div>
-
-        <div class="attribution">Analysis via Amplifier session-analyst and recipe-results-validator</div>
     </div>
 
-    <!-- Slide 12: Key Insight -->
+    <!-- beat 2: setup -->
+    <div class="slide">
+        <div class="section-label">The Ask</div>
+        <h2 class="medium-headline">Regenerate the doc &mdash; but keep what already works</h2>
+        <p class="subhead">While regenerating the output of the <span class="highlight">document-generation-parallel.yaml</span> recipe, the user wanted existing sections kept intact &mdash; only outdated parts rewritten.</p>
+
+        <div class="comparison">
+            <div class="comparison-box after">
+                <div class="comparison-label">The Ask</div>
+                <p class="card-text">"When I provide an existing document, preserve sections that don't need changes. Only regenerate what's actually outdated."</p>
+            </div>
+            <div class="comparison-box before">
+                <div class="comparison-label">The Stakes</div>
+                <p class="card-text">11 hand-written sections with code examples, commands, and formatting. Lose any of it and it's manual recovery.</p>
+            </div>
+        </div>
+
+        <div class="quote" style="margin-top: 40px;">
+            "The existing doc is the reference for what is already mainly working."
+        </div>
+    </div>
+
+    <!-- beat 3: tension -->
+    <div class="slide">
+        <div class="section-label">v7.1.0 &mdash; First Attempt</div>
+        <h2 class="medium-headline">Asking the LLM to "preserve" mangled it</h2>
+
+        <div class="code-block"><span class="comment"># The prompt approach</span>
+<span class="keyword">If</span> action_needed is <span class="string">"none"</span>: <span class="highlight">USE EXISTING CONTENT AS-IS</span>
+<span class="keyword">If</span> action_needed is <span class="string">"add"</span>:  Keep existing, ADD missing content
+<span class="keyword">If</span> action_needed is <span class="string">"update"</span>: Revise specific parts only</div>
+
+        <div class="bug-reveal">
+            <div class="bug-icon">&#x1F6A8;</div>
+            <h3>Result: content mangled</h3>
+            <p class="card-text">The LLM "preserved" content by summarizing it. Code blocks were paraphrased. Commands were reformatted. Nothing came back verbatim.</p>
+        </div>
+
+        <p class="subhead" style="margin-top: 24px;"><strong>Lesson:</strong> asking an LLM to "copy exactly" doesn't mean it will.</p>
+    </div>
+
+    <!-- beat 4: turn -->
+    <div class="slide">
+        <div class="section-label">Root Cause</div>
+        <h2 class="medium-headline">LLMs can't be trusted to copy &mdash; or to skip</h2>
+
+        <div class="bug-reveal">
+            <div class="bug-icon">&#x1F92F;</div>
+            <h3>The "skip these sections" problem</h3>
+            <p class="card-text">Even told "these sections are preserved &mdash; don't modify them during validation fixes," the model would agree&hellip;</p>
+            <p class="card-text" style="margin-top: 12px;"><strong>The LLM:</strong> "Sure!" <em>*proceeds to rewrite them anyway*</em></p>
+        </div>
+
+        <div class="insight-box">
+            <div class="insight-icon">&#x1F4A1;</div>
+            <h3>The instruction was never the fix</h3>
+            <p class="card-text">LLMs cannot reliably follow "copy exactly" or "skip these sections." They will still touch, reformat, or "improve" content they were told to leave alone. No prompt makes that a guarantee.</p>
+        </div>
+    </div>
+
+    <!-- beat 5: payoff -->
+    <div class="slide">
+        <div class="section-label">The Pattern</div>
+        <h2 class="medium-headline">Let the LLM work &mdash; then restore with code</h2>
+        <p class="subhead">Stop hoping the model skips things. Let it do its pass, then deterministically put the preserved sections back. That's what turns "usually right" into 100% fidelity.</p>
+
+        <div class="comparison">
+            <div class="comparison-box before">
+                <div class="comparison-label">Don't Do This</div>
+                <div class="code-block"><span class="comment"># Hope the LLM obeys</span>
+prompt: |
+  Fix content issues but
+  <span class="error">DO NOT modify preserved sections</span>
+
+<span class="comment"># Result: modified anyway</span></div>
+            </div>
+            <div class="comparison-box after">
+                <div class="comparison-label">Do This Instead</div>
+                <div class="code-block"><span class="comment"># Let it work, then restore</span>
+steps:
+  - llm_validation_fix
+  - <span class="success">python_restore_preserved</span>
+  - llm_quality_fix
+  - <span class="success">python_restore_preserved</span>
+
+<span class="comment"># Result: 100% fidelity</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- beat 6: mechanism -->
+    <div class="slide">
+        <div class="section-label">v7.4.0 &mdash; Deterministic Restore</div>
+        <h2 class="medium-headline">Restore preserved sections after every LLM pass</h2>
+
+        <div class="flow-diagram">
+            <div class="flow-step">LLM Validation Fix</div>
+            <div class="flow-arrow">&#x2192;</div>
+            <div class="flow-step highlight">Python Restore</div>
+            <div class="flow-arrow">&#x2192;</div>
+            <div class="flow-step">LLM Quality Fix</div>
+            <div class="flow-arrow">&#x2192;</div>
+            <div class="flow-step highlight">Python Restore</div>
+        </div>
+
+        <div class="code-block"><span class="comment"># After EVERY LLM pass, restore preserved sections</span>
+
+<span class="keyword">def</span> <span class="function">restore_preserved_sections</span>(document, preserved_content):
+    <span class="string">"""Deterministically restore sections - no LLM involved"""</span>
+
+    <span class="keyword">for</span> section_id, original <span class="keyword">in</span> preserved_content.items():
+        start, end = find_section_boundaries(document, section_id)
+        document = document[:start] + <span class="highlight">original</span> + document[end:]
+
+    <span class="keyword">return</span> document  <span class="comment"># Guaranteed byte-for-byte identical</span></div>
+    </div>
+
+    <!-- beat 7: mechanism -->
+    <div class="slide">
+        <div class="section-label">v7.5.0 &mdash; The Parser Bug</div>
+        <h2 class="medium-headline">Even the code had a determinism bug</h2>
+
+        <div class="bug-reveal">
+            <div class="bug-icon">&#x1F41B;</div>
+            <h3>Code comments mistaken for headings</h3>
+            <p class="card-text">The section extractor wasn't tracking whether it was inside a code fence. Every <code># comment</code> inside a fenced block looked like a new heading &mdash; so sections got truncated. Section 1.2.1 came back as <span style="color:#FF453A;">99 characters</span> instead of <span style="color:#30D158;">737</span>.</p>
+        </div>
+
+        <div class="code-block"><span class="keyword">def</span> <span class="function">parse_markdown_sections</span>(content):
+    <span class="highlight">in_code_block = False</span>  <span class="comment"># Track state!</span>
+    <span class="keyword">for</span> line <span class="keyword">in</span> content.split(<span class="string">'\n'</span>):
+        <span class="keyword">if</span> line.startswith(<span class="string">'```'</span>):
+            <span class="highlight">in_code_block = not in_code_block</span>
+            <span class="keyword">continue</span>
+        <span class="keyword">if</span> line.startswith(<span class="string">'#'</span>) <span class="keyword">and</span> <span class="highlight">not in_code_block</span>:
+            sections.append(parse_heading(line))</div>
+    </div>
+
+    <!-- beat 8: mechanism -->
+    <div class="slide">
+        <div class="section-label">The Journey</div>
+        <h2 class="medium-headline">Five versions in one session to get to reliable</h2>
+
+        <div class="timeline">
+            <div class="timeline-item error">
+                <div class="timeline-version">v7.1.0</div>
+                <div class="timeline-title">LLM-based preservation</div>
+                <div class="timeline-desc">Keep/revise/replace judged by the model. <span style="color: #FF453A;">Failed: it rewrote "preserved" content.</span></div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-version">v7.2.0</div>
+                <div class="timeline-title">Deterministic copy</div>
+                <div class="timeline-desc">Bash copies action_needed="none" sections directly. <span style="color: #FFD60A;">Partial: extraction truncated.</span></div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-version">v7.3.0</div>
+                <div class="timeline-title">Skip validation for preserved</div>
+                <div class="timeline-desc">Told validation to skip preserved sections. <span style="color: #FFD60A;">Partial: LLM touched them anyway.</span></div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-version">v7.4.0</div>
+                <div class="timeline-title">Deterministic restore</div>
+                <div class="timeline-desc">Python restores preserved sections after each pass. <span style="color: #30D158;">Success: 100% preservation.</span></div>
+            </div>
+            <div class="timeline-item success">
+                <div class="timeline-version">v7.5.0</div>
+                <div class="timeline-title">Code-block-aware parsing</div>
+                <div class="timeline-desc">Fixed # comments read as headings. <span style="color: #30D158;">Complete solution.</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- beat 9: takeaway -->
     <div class="slide center">
         <div class="section-label">Key Insight</div>
         <div class="big-number" style="margin-bottom: 32px;">&#x1F4A1;</div>
         <h2 class="headline" style="max-width: 900px;">When Determinism Matters,<br>Use Code Not LLMs</h2>
         <p class="subhead" style="margin-top: 32px; max-width: 700px;">
-            LLMs are powerful for generation and analysis. But for tasks requiring exact reproduction, byte-level accuracy, or strict constraints - use deterministic code.
+            LLMs are powerful for generation and analysis. But for exact reproduction, byte-level accuracy, or strict constraints, a 10-line Python function beats a 100-word prompt. Wrap the model; restore with code.
         </p>
+        <div class="attribution">Analysis via Amplifier session-analyst and recipe-results-validator</div>
     </div>
 
-    <!-- Slide 13: Takeaways -->
-    <div class="slide">
-        <div class="section-label">Takeaways</div>
-        <h2 class="medium-headline">Patterns for Reliable AI Workflows</h2>
-
-        <div class="thirds">
-            <div class="card">
-                <div class="card-title">1. Sandwich Pattern</div>
-                <p class="card-text">Wrap LLM operations with deterministic code. Pre-process inputs, post-process outputs.</p>
-            </div>
-            <div class="card">
-                <div class="card-title">2. Restore After</div>
-                <p class="card-text">Don't ask LLMs to skip things. Let them work, then restore what shouldn't change.</p>
-            </div>
-            <div class="card">
-                <div class="card-title">3. State Tracking</div>
-                <p class="card-text">Keep track of context (like in_code_block) that changes how content should be parsed.</p>
-            </div>
-            <div class="card">
-                <div class="card-title">4. Byte-Level Validation</div>
-                <p class="card-text">Don't trust "looks right" - verify with checksums, diffs, or exact byte comparisons.</p>
-            </div>
-            <div class="card">
-                <div class="card-title">5. Iterative Debugging</div>
-                <p class="card-text">Each fix reveals new issues. Budget time for multiple passes (5 versions in this case).</p>
-            </div>
-            <div class="card">
-                <div class="card-title">6. Code Over Prompts</div>
-                <p class="card-text">When determinism matters, a 10-line Python function beats a 100-word prompt.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide 14: Sources & Methodology -->
+    <!-- Sources & Methodology -->
     <div class="slide">
         <div class="section-label">Sources &amp; Methodology</div>
         <h2 class="medium-headline">About This Case Study</h2>
@@ -916,36 +811,9 @@ steps:
         </div>
     </div>
 
-    <!-- Slide 15: CTA -->
-    <div class="slide center">
-        <div class="section-label">Apply This Pattern</div>
-        <h2 class="headline">Trust But Verify</h2>
-        <p class="subhead" style="margin-top: 24px; max-width: 600px;">
-            The next time you need an LLM to "preserve" or "skip" something, consider: can you enforce that with code instead?
-        </p>
-
-        <div class="thirds" style="max-width: 700px; margin-top: 48px;">
-            <div class="card">
-                <div class="card-title">Recipe Source</div>
-                <p class="card-text">document-generation-parallel.yaml v7.5.0</p>
-            </div>
-            <div class="card">
-                <div class="card-title">Session Analysis</div>
-                <p class="card-text">Available via session-analyst agent</p>
-            </div>
-        </div>
-
-        <div class="session-box">
-            <p>
-                <strong>The debugging session that inspired this deck:</strong><br>
-                <span class="muted">~4 hours of iterative problem-solving</span>
-            </p>
-        </div>
-    </div>
-
     <!-- Navigation -->
     <nav id="nav"></nav>
-    <div id="counter">1 / 15</div>
+    <div id="counter">1 / 10</div>
 
     <script>
         const slides = document.querySelectorAll('.slide');
