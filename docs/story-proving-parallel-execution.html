@@ -698,73 +698,38 @@
     </style>
 </head>
 <body>
+<!--
+SPINE — Proving parallel execution with timestamps
+ABT: AND a recipe can declare `parallel: 3` on a foreach step; BUT a config flag
+     declares intent, not execution — nothing about the YAML proves the agents
+     actually ran at the same time; THEREFORE we correlated the child agents'
+     start timestamps and found three checks launched within 317ms of each other:
+     claims aren't proof, timestamps are.
+Payoff: "Claims aren't proof. Timestamps are." — sub-second start-time correlation
+     proves concurrent execution and quantifies the win (~65% faster content
+     validation), turning an unverifiable config flag into hard evidence.
+Beats:
+  1. proof     — 3 agents started within 317ms → concurrent, not queued.    advances: opens on the payoff/AND (the evidence)
+  2. setup     — the recipe declares parallel: 3.                           advances: names the example (the claim) the argument leans on
+  3. tension   — a config flag declares intent, not execution.             advances: establishes the BUT
+  4. mechanism — the method: correlate child-agent start timestamps.        advances: shows HOW you prove it
+  5. payoff    — claims aren't proof, timestamps are (~65% faster).         advances: lands the THEREFORE before the midpoint
+  6. mechanism — bounded parallelism proven: 5 checks, parallel:3, 2 waves. advances: shows the semaphore actually bounding concurrency
+  7. mechanism — under the hood: asyncio.gather + Semaphore(N).            advances: shows WHY the timestamps look the way they do
+  8. turn      — the honest limit: timestamps aren't git-verifiable.        advances: separates proven from proposed
+  9. takeaway  — verify, don't trust: config declares, timestamps prove.    advances: what the audience keeps
+-->
 
-    <!-- Slide 1: Title -->
+    <!-- beat 1: proof -->
     <div class="slide active center">
-        <div class="section-label">Amplifier Stories</div>
-        <h1 class="headline">Proving Parallel Execution<br><span class="accent">with Timestamps</span></h1>
-        <p class="subhead">How we verified concurrent agent execution through sub-second timestamp correlation in session data</p>
-        <div class="status-badge">Active</div>
-    </div>
-
-    <!-- Slide 2: The Claim -->
-    <div class="slide">
-        <div class="section-label">The Claim</div>
-        <h2 class="medium-headline">Recipe says <span class="accent">parallel: 3</span><br>But how do we know it works?</h2>
-        <div class="code-block"><span class="code-comment"># parallel-analysis-recipe.yaml</span>
-- id: <span class="code-string">"run-content-checks"</span>
-  foreach: <span class="code-string">"{{content_check_definitions}}"</span>
-  <span class="code-highlight">parallel: 3</span>
-  agent: <span class="code-string">"foundation:zen-architect"</span>
-  instruction: <span class="code-string">"Analyze {{item.name}}..."</span></div>
-        <p class="subhead">Configuration declares intent. But <em>configuration isn't proof</em>. We need evidence of actual concurrent execution.</p>
-    </div>
-
-    <!-- Slide 3: The Method -->
-    <div class="slide">
-        <div class="section-label">The Method</div>
-        <h2 class="medium-headline">Correlate <span class="accent">start timestamps</span><br>from child agent sessions</h2>
-        <ul class="feature-list">
-            <li><span class="check">1</span> Locate recipe execution session and its child agents</li>
-            <li><span class="check">2</span> Extract start/end timestamps from each spawned agent</li>
-            <li><span class="check">3</span> Map timestamps to individual validation check types</li>
-            <li><span class="check">4</span> Analyze for temporal overlap &mdash; concurrent starts prove parallelism</li>
-        </ul>
-        <div class="highlight-box">
-            <strong>Key insight:</strong> If agents start within milliseconds of each other, they were launched concurrently by the executor &mdash; not queued sequentially.
-        </div>
-    </div>
-
-    <!-- Slide 4: Content Validation Evidence -->
-    <div class="slide">
-        <div class="section-label">Evidence &mdash; Content Validation</div>
-        <h2 class="medium-headline">3 checks, all started within <span class="accent">317ms</span></h2>
+        <div class="section-label">The Evidence</div>
+        <h1 class="medium-headline">3 agents. <span class="accent">317ms</span> apart.<br>That's concurrent, not queued.</h1>
         <div class="table-wrap">
             <table class="timestamp-table">
-                <tr>
-                    <th>Check</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
-                    <th>Duration</th>
-                </tr>
-                <tr>
-                    <td>accuracy</td>
-                    <td>19:53:08.810</td>
-                    <td>19:54:34.104</td>
-                    <td>~85s</td>
-                </tr>
-                <tr>
-                    <td>completeness</td>
-                    <td>19:53:08.967</td>
-                    <td>19:54:42.803</td>
-                    <td>~94s</td>
-                </tr>
-                <tr>
-                    <td>instructions</td>
-                    <td>19:53:09.127</td>
-                    <td>19:54:41.310</td>
-                    <td>~92s</td>
-                </tr>
+                <tr><th>Check</th><th>Start Time</th><th>End Time</th><th>Duration</th></tr>
+                <tr><td>accuracy</td><td>19:53:08.810</td><td>19:54:34.104</td><td>~85s</td></tr>
+                <tr><td>completeness</td><td>19:53:08.967</td><td>19:54:42.803</td><td>~94s</td></tr>
+                <tr><td>instructions</td><td>19:53:09.127</td><td>19:54:41.310</td><td>~92s</td></tr>
             </table>
         </div>
         <div class="evidence-box">
@@ -772,114 +737,78 @@
             <div class="evidence-value">317ms</div>
             <div class="evidence-desc">All 3 checks launched within 0.3 seconds of each other</div>
         </div>
-        <p class="caveat">Timestamps observed in a test run session. Exact values may vary between executions.</p>
+        <p class="caveat">Timestamps observed in a test-run session. Exact values vary between executions.</p>
     </div>
 
-    <!-- Slide 5: Timeline Visualization -->
+    <!-- beat 2: setup -->
     <div class="slide">
-        <div class="section-label">Visual Timeline</div>
-        <h2 class="medium-headline">Concurrent execution, <span class="accent">not sequential</span></h2>
-        <div class="timeline">
-            <div class="timeline-section">
-                <div class="timeline-section-label">Content Validation (parallel: true, 3 agents)</div>
-                <div class="timeline-row">
-                    <div class="timeline-label">accuracy</div>
-                    <div class="timeline-bar-container">
-                        <div class="timeline-bar" style="left: 0%; width: 90%;">85s</div>
-                    </div>
-                </div>
-                <div class="timeline-row">
-                    <div class="timeline-label">completeness</div>
-                    <div class="timeline-bar-container">
-                        <div class="timeline-bar" style="left: 0.2%; width: 100%;">94s</div>
-                    </div>
-                </div>
-                <div class="timeline-row">
-                    <div class="timeline-label">instructions</div>
-                    <div class="timeline-bar-container">
-                        <div class="timeline-bar" style="left: 0.3%; width: 97%;">92s</div>
-                    </div>
-                </div>
+        <div class="section-label">The Claim</div>
+        <h2 class="medium-headline">The recipe declares <span class="accent">parallel: 3</span></h2>
+        <div class="code-block"><span class="code-comment"># parallel-analysis-recipe.yaml</span>
+- id: <span class="code-string">"run-content-checks"</span>
+  foreach: <span class="code-string">"{{content_check_definitions}}"</span>
+  <span class="code-highlight">parallel: 3</span>
+  agent: <span class="code-string">"foundation:zen-architect"</span>
+  instruction: <span class="code-string">"Analyze {{item.name}}..."</span></div>
+        <p class="subhead">That one line is the whole claim: run these validation checks three at a time instead of one after another.</p>
+    </div>
+
+    <!-- beat 3: tension -->
+    <div class="slide">
+        <div class="section-label">The Problem</div>
+        <h2 class="medium-headline">A config flag declares <span class="accent">intent</span>,<br>not execution</h2>
+        <p class="subhead">The YAML says what <em>should</em> happen. It proves nothing about what the executor actually did at runtime. A flag could be ignored, mis-wired, or silently serialized.</p>
+        <div class="quote">Configuration isn't proof. We needed evidence of actual concurrent execution &mdash; something the running system itself produced.</div>
+    </div>
+
+    <!-- beat 4: mechanism -->
+    <div class="slide">
+        <div class="section-label">The Method</div>
+        <h2 class="medium-headline">Correlate <span class="accent">start timestamps</span><br>from child agent sessions</h2>
+        <ul class="feature-list">
+            <li><span class="check">1</span> Locate the recipe execution session and its child agents</li>
+            <li><span class="check">2</span> Extract start/end timestamps from each spawned agent</li>
+            <li><span class="check">3</span> Map timestamps to individual validation check types</li>
+            <li><span class="check">4</span> Analyze for temporal overlap &mdash; concurrent starts prove parallelism</li>
+        </ul>
+        <div class="highlight-box">
+            <strong>Key insight:</strong> if agents start within milliseconds of each other, they were launched concurrently by the executor &mdash; not queued one behind the next.
+        </div>
+    </div>
+
+    <!-- beat 5: payoff -->
+    <div class="slide center">
+        <div class="section-label">The Payoff</div>
+        <h2 class="headline">Claims aren't proof.<br><span class="accent">Timestamps are.</span></h2>
+        <div class="metric-grid" style="max-width: 720px;">
+            <div class="metric-card">
+                <div class="metric-value">~65%</div>
+                <div class="metric-desc">faster content validation</div>
+                <div class="metric-note">271s sequential sum vs 94s wall clock</div>
             </div>
-            <div class="timeline-section">
-                <div class="timeline-section-label">Quality Validation (parallel: 3, bounded &mdash; 5 checks in 2 waves)</div>
-                <div class="timeline-row">
-                    <div class="timeline-label">depth</div>
-                    <div class="timeline-bar-container">
-                        <div class="timeline-bar" style="left: 0%; width: 74%;">102s</div>
-                    </div>
-                </div>
-                <div class="timeline-row">
-                    <div class="timeline-label">coherence</div>
-                    <div class="timeline-bar-container">
-                        <div class="timeline-bar" style="left: 0.1%; width: 38%;">53s</div>
-                    </div>
-                </div>
-                <div class="timeline-row">
-                    <div class="timeline-label">crossrefs</div>
-                    <div class="timeline-bar-container">
-                        <div class="timeline-bar" style="left: 0.4%; width: 39%;">54s</div>
-                    </div>
-                </div>
-                <div class="timeline-row">
-                    <div class="timeline-label">consistency</div>
-                    <div class="timeline-bar-container">
-                        <div class="timeline-bar" style="left: 38.5%; width: 61%;">85s</div>
-                    </div>
-                </div>
-                <div class="timeline-row">
-                    <div class="timeline-label">tone</div>
-                    <div class="timeline-bar-container">
-                        <div class="timeline-bar" style="left: 39.7%; width: 26%;">36s</div>
-                    </div>
-                </div>
+            <div class="metric-card">
+                <div class="metric-value">~58%</div>
+                <div class="metric-desc">faster quality validation</div>
+                <div class="metric-note">330s sequential sum vs 138s wall clock</div>
             </div>
         </div>
-        <p class="caveat">Example session data &mdash; bar positions approximate relative timing.</p>
+        <div class="highlight-box" style="max-width: 720px;">
+            <strong>Methodology:</strong> sequential baseline = sum of individual check durations; parallel time = wall clock from first start to last end. The 317ms spread proves concurrency; the wall-clock gap quantifies what it bought.
+        </div>
     </div>
 
-    <!-- Slide 6: Quality Validation Evidence -->
+    <!-- beat 6: mechanism -->
     <div class="slide">
-        <div class="section-label">Evidence &mdash; Bounded Parallelism</div>
-        <h2 class="medium-headline">5 checks, <span class="accent">parallel: 3</span> &mdash; two waves</h2>
+        <div class="section-label">Bounded Parallelism</div>
+        <h2 class="medium-headline">5 checks, <span class="accent">parallel: 3</span> &mdash; the semaphore holds the line</h2>
         <div class="table-wrap">
             <table class="timestamp-table">
-                <tr>
-                    <th>Check</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
-                    <th>Wave</th>
-                </tr>
-                <tr>
-                    <td>depth</td>
-                    <td>19:57:41.459</td>
-                    <td>19:59:23.157</td>
-                    <td>1</td>
-                </tr>
-                <tr>
-                    <td>coherence</td>
-                    <td>19:57:41.624</td>
-                    <td>19:58:34.161</td>
-                    <td>1</td>
-                </tr>
-                <tr>
-                    <td>crossrefs</td>
-                    <td>19:57:41.989</td>
-                    <td>19:58:35.916</td>
-                    <td>1</td>
-                </tr>
-                <tr>
-                    <td>consistency</td>
-                    <td>19:58:34.830</td>
-                    <td>19:59:59.605</td>
-                    <td>2</td>
-                </tr>
-                <tr>
-                    <td>tone</td>
-                    <td>19:58:36.570</td>
-                    <td>19:59:12.742</td>
-                    <td>2</td>
-                </tr>
+                <tr><th>Check</th><th>Start Time</th><th>End Time</th><th>Wave</th></tr>
+                <tr><td>depth</td><td>19:57:41.459</td><td>19:59:23.157</td><td>1</td></tr>
+                <tr><td>coherence</td><td>19:57:41.624</td><td>19:58:34.161</td><td>1</td></tr>
+                <tr><td>crossrefs</td><td>19:57:41.989</td><td>19:58:35.916</td><td>1</td></tr>
+                <tr><td>consistency</td><td>19:58:34.830</td><td>19:59:59.605</td><td>2</td></tr>
+                <tr><td>tone</td><td>19:58:36.570</td><td>19:59:12.742</td><td>2</td></tr>
             </table>
         </div>
         <div class="halves">
@@ -894,34 +823,13 @@
                 <div class="evidence-desc">consistency &amp; tone start as Wave 1 slots free</div>
             </div>
         </div>
-        <p class="caveat">Timestamps from example session data. Wave 2 starts as the semaphore releases slots.</p>
+        <p class="caveat">Exactly 3 run at once; checks 4 and 5 wait for a slot &mdash; proof the limit is enforced, not just requested.</p>
     </div>
 
-    <!-- Slide 7: Impact -->
-    <div class="slide center">
-        <div class="section-label">Impact</div>
-        <h2 class="medium-headline">Time saved through <span class="accent">parallelism</span></h2>
-        <div class="metric-grid">
-            <div class="metric-card">
-                <div class="metric-value">~65%</div>
-                <div class="metric-desc">faster content validation</div>
-                <div class="metric-note">271s sequential sum vs 94s wall clock</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value">~58%</div>
-                <div class="metric-desc">faster quality validation</div>
-                <div class="metric-note">330s sequential sum vs 138s wall clock</div>
-            </div>
-        </div>
-        <div class="highlight-box">
-            <strong>Methodology:</strong> Sequential baseline = sum of individual check durations. Parallel time = wall clock from first start to last end. Reduction percentages are valid given accurate timestamps. Actual speedup varies with check count, LLM latency, and concurrency limit.
-        </div>
-    </div>
-
-    <!-- Slide 8: Architecture -->
+    <!-- beat 7: mechanism -->
     <div class="slide">
         <div class="section-label">Architecture</div>
-        <h2 class="medium-headline">How the executor runs <span class="accent">parallel steps</span></h2>
+        <h2 class="medium-headline">Under the hood: <span class="accent">gather</span> + a <span class="accent">Semaphore(N)</span></h2>
         <div class="diagram">
             <div class="diagram-box">
                 <div class="diagram-box-label">Recipe YAML</div>
@@ -937,20 +845,15 @@
                 <div class="diagram-box-label">Concurrency</div>
                 <div class="diagram-box-content">Semaphore(N)</div>
             </div>
-            <div class="diagram-arrow">&rarr;</div>
-            <div class="diagram-box">
-                <div class="diagram-box-label">Output</div>
-                <div class="diagram-box-content">N agents</div>
-            </div>
         </div>
         <div class="halves">
             <div class="card">
                 <div class="card-title">Unbounded: parallel: true</div>
                 <div class="code-block"><span class="code-comment"># All items launch at once</span>
 <span class="code-keyword">await</span> asyncio.gather(
-    *[run_item(item) <span class="code-keyword">for</span> item <span class="code-keyword">in</span> items]
+    *[run_item(i) <span class="code-keyword">for</span> i <span class="code-keyword">in</span> items]
 )</div>
-                <p class="card-text">Every foreach item runs concurrently. Good for I/O-bound tasks with few items.</p>
+                <p class="card-text">Every foreach item runs concurrently. That's the 317ms cluster from slide 1.</p>
             </div>
             <div class="card">
                 <div class="card-title">Bounded: parallel: N</div>
@@ -958,94 +861,44 @@
 sem = asyncio.Semaphore(<span class="code-highlight">N</span>)
 <span class="code-keyword">async def</span> limited(item):
     <span class="code-keyword">async with</span> sem:
-        <span class="code-keyword">return await</span> run_item(item)
-<span class="code-keyword">await</span> asyncio.gather(*[limited(i) ...])</div>
-                <p class="card-text">At most N items run concurrently. Prevents overwhelming providers with too many parallel LLM calls.</p>
+        <span class="code-keyword">return await</span> run_item(item)</div>
+                <p class="card-text">At most N run at once &mdash; the two-wave pattern you just saw.</p>
             </div>
         </div>
     </div>
 
-    <!-- Slide 9: Real Examples -->
+    <!-- beat 8: turn -->
     <div class="slide">
-        <div class="section-label">Real Examples</div>
-        <h2 class="medium-headline">Parallel execution <span class="accent">in production recipes</span></h2>
-        <div class="thirds">
+        <div class="section-label">The Honest Limit</div>
+        <h2 class="medium-headline">Timestamps prove runtime &mdash;<br>but they can't be <span class="accent">git-verified</span></h2>
+        <p class="subhead">The code is confirmed in the repo. The timing evidence is not something a commit can re-prove.</p>
+        <div class="halves">
             <div class="card">
-                <div class="card-icon">&#x26A1;</div>
-                <div class="card-title">parallel-analysis-recipe.yaml</div>
-                <div class="code-block"><span class="code-keyword">foreach</span>: "{{checks}}"
-<span class="code-highlight">parallel: true</span>
-agent: "foundation:zen-architect"</div>
-                <p class="card-text">Unbounded parallelism for multi-file analysis. All checks run simultaneously.</p>
+                <div class="card-title">Proven in git</div>
+                <p class="card-text">Bounded parallelism landed in commit <strong>997b85e</strong> (Brian Krabach, Jan 7 2026) in microsoft/amplifier-bundle-recipes, using <code style="color:var(--color-accent)">asyncio.Semaphore</code>. 19 of 21 executor commits are his.</p>
             </div>
             <div class="card">
-                <div class="card-icon">&#x1F4CA;</div>
-                <div class="card-title">multi-file-analysis.yaml</div>
-                <div class="code-block"><span class="code-keyword">foreach</span>: "{{files}}"
-<span class="code-highlight">parallel: true</span>
-agent: "self"</div>
-                <p class="card-text">Each file analyzed concurrently. Results aggregated after all agents complete.</p>
-            </div>
-            <div class="card">
-                <div class="card-icon">&#x1F6E1;</div>
-                <div class="card-title">validate-bundle.yaml</div>
-                <div class="code-block"><span class="code-keyword">foreach</span>: "{{bundles}}"
-<span class="code-highlight">parallel: false</span>
-agent: "smoke-test"</div>
-                <p class="card-text">Explicitly sequential. Proves the flag is intentional &mdash; not just a default.</p>
+                <div class="card-title">Not claimed</div>
+                <p class="card-text">The timestamps are example session data, not reproducible from git. A self-documenting <code style="color:var(--color-accent)">parallel_metrics</code> block is proposed, not confirmed shipped.</p>
             </div>
         </div>
-        <p class="caveat">Source: microsoft/amplifier-bundle-recipes/examples/ and amplifier-foundation</p>
+        <p class="caveat">This is why the deck shows raw start times: the numbers do the arguing, honestly labeled.</p>
     </div>
 
-    <!-- Slide 10: Proposed Enhancement -->
-    <div class="slide">
-        <div class="section-label">The Pattern</div>
-        <h2 class="medium-headline">Self-documenting <span class="accent">parallel metrics</span></h2>
-        <p class="subhead">A proposed enhancement: embed proof directly in execution output so future runs are self-verifying.</p>
-        <div class="code-block"><span class="code-comment">// Proposed parallel_metrics in tracker.json</span>
-{
-  <span class="code-keyword">"parallel_metrics"</span>: {
-    <span class="code-keyword">"max_concurrent"</span>: <span class="code-highlight">3</span>,
-    <span class="code-keyword">"wall_clock_time_seconds"</span>: <span class="code-highlight">94</span>,
-    <span class="code-keyword">"total_check_time_seconds"</span>: <span class="code-highlight">271</span>,
-    <span class="code-keyword">"parallelism_efficiency"</span>: <span class="code-highlight">2.88</span>,
-    <span class="code-keyword">"time_saved_seconds"</span>: <span class="code-highlight">177</span>
-  }
-}</div>
-        <div class="highlight-box">
-            <strong>Efficiency ratio explained:</strong> 271s &divide; 94s = 2.88&times; &mdash; meaning the system performed nearly 3&times; the work in the same wall-clock window. Perfect utilization for a concurrency limit of 3.
-        </div>
-        <p class="caveat">This metrics pattern is a proposed enhancement, not confirmed shipped. Values shown are derived from example session data.</p>
-    </div>
-
-    <!-- Slide 11: Velocity -->
+    <!-- beat 9: takeaway -->
     <div class="slide center">
-        <div class="section-label">Velocity</div>
-        <h2 class="medium-headline">Built and shipped by <span class="accent">a focused team</span></h2>
-        <div class="stat-row">
-            <div class="stat">
-                <div class="stat-number">90%</div>
-                <div class="stat-label">of executor commits</div>
-                <div class="stat-detail">Brian Krabach (19/21)</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">3</div>
-                <div class="stat-label">contributors</div>
-                <div class="stat-detail">Krabach, momuno, Schillace</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">1</div>
-                <div class="stat-label">repo</div>
-                <div class="stat-detail">amplifier-bundle-recipes</div>
-            </div>
-        </div>
-        <div class="highlight-box">
-            Bounded parallelism added in commit <strong>997b85e</strong> by Brian Krabach, January 7, 2026. Uses <code>asyncio.Semaphore</code> for safe concurrency limiting on foreach steps.
-        </div>
+        <div class="section-label">Takeaway</div>
+        <h2 class="headline">Verify, don't trust.</h2>
+        <ul class="feature-list">
+            <li><span class="check">&#x2713;</span> <strong>Configuration declares intent</strong> &mdash; timestamps prove execution</li>
+            <li><span class="check">&#x2713;</span> <strong>Session archaeology</strong> &mdash; child-agent start times tell the real story</li>
+            <li><span class="check">&#x2713;</span> <strong>Quantify the win</strong> &mdash; &ldquo;parallel&rdquo; means nothing without wall-clock numbers</li>
+            <li><span class="check">&#x2713;</span> <strong>Build in observability</strong> &mdash; make parallel systems self-documenting next time</li>
+        </ul>
+        <p class="subhead">Parallel execution is active in the recipe executor today. Try <code style="color:var(--color-accent)">parallel: true</code> on your foreach steps.</p>
     </div>
 
-    <!-- Slide 12: Sources & Methodology -->
+    <!-- Sources & Methodology -->
     <div class="slide">
         <div class="section-label">Sources &amp; Methodology</div>
         <h2 class="medium-headline">How this story was <span class="accent">verified</span></h2>
@@ -1081,19 +934,6 @@ agent: "smoke-test"</div>
                 <li>Timestamps cannot be independently verified from git evidence alone</li>
             </ul>
         </div>
-    </div>
-
-    <!-- Slide 13: CTA -->
-    <div class="slide center">
-        <div class="section-label">Takeaway</div>
-        <h2 class="headline">Claims aren't proof.<br><span class="accent">Timestamps are.</span></h2>
-        <ul class="feature-list">
-            <li><span class="check">&#x2713;</span> <strong>Verify, don't trust</strong> &mdash; configuration declares intent, timestamps prove execution</li>
-            <li><span class="check">&#x2713;</span> <strong>Session archaeology</strong> &mdash; child agent start times tell the real story</li>
-            <li><span class="check">&#x2713;</span> <strong>Build in observability</strong> &mdash; make parallel systems self-documenting</li>
-            <li><span class="check">&#x2713;</span> <strong>Quantify impact</strong> &mdash; &ldquo;parallel&rdquo; means nothing without wall-clock measurements</li>
-        </ul>
-        <p class="subhead">Parallel execution is active in the recipe executor today. Try <code>parallel: true</code> on your foreach steps.</p>
     </div>
 
     <!-- Navigation -->
