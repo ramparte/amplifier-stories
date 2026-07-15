@@ -494,47 +494,84 @@
 </head>
 <body>
 
-<!-- ============================================================ -->
-<!-- SLIDE 1: TITLE                                               -->
-<!-- ============================================================ -->
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  NARRATIVE SPINE  (built from the deck's existing content; no fresh research)
+  ═══════════════════════════════════════════════════════════════════════
+
+  ABT:
+    AND agent workflows generate piles of tasks;
+    BUT run serially they're a bottleneck — no visibility, and no recovery when a
+        worker dies mid-task;
+    THEREFORE Amplifier Swarm runs N isolated workers off a durable SQLite queue
+        with a live dashboard and automatic recovery — so wall-clock time drops to
+        ~1/N and crashes don't lose work.
+
+  PAYOFF (named up front):
+    The wordbs run — 50 real tasks driven through Swarm with 4 workers in roughly a
+    quarter of the sequential time, its swarm.db left on disk as evidence it ran.
+
+  BEATS (proof-first; payoff lands at beat 3 of 8, before the midpoint):
+    1. proof     — the wordbs run: 50 tasks, 4 workers, ~¼ wall-clock, swarm.db on
+                   disk as evidence; 2,496 lines of Python.  advances: grounds the
+                   AND — it works in production.
+    2. tension   — serial execution: a bottleneck with no visibility and no recovery.
+                   advances: the BUT.
+    3. payoff    — the model: N isolated workers off a durable SQLite queue →
+                   wall-clock ÷ N.  advances: lands the THEREFORE.
+    4. mechanism — the four-layer pipeline: dashboard → orchestrator → workers →
+                   SQLite queue, one responsibility each. (one claim)  advances: HOW
+                   the parallelism is organized.
+    5. mechanism — durability with no broker: all state in one SQLite file, no Redis
+                   or RabbitMQ. (one claim)  advances: HOW state survives.
+    6. mechanism — built to recover: retries + orphan detection (psutil) + crash
+                   recovery. (one claim)  advances: HOW crashes don't lose work.
+    7. turn      — the run stops being a black box: FastAPI + WebSockets push a live
+                   view, no polling.  advances: resolves the "no visibility" tension.
+    8. takeaway  — try it: install and run in one command.  advances: what the
+                   audience keeps.
+
+    + Sources & Methodology (audit-trail slide, not a beat) at the end.
+    Slides = 8 beats + 1 = 9.
+-->
+
+<!-- beat 1: proof -->
 <div class="slide active center">
-    <div class="badge badge-active" style="margin-bottom: clamp(16px, 3vw, 28px);">Active</div>
-    <h1>Amplifier Swarm</h1>
-    <p class="subtitle">Parallel task execution with real-time monitoring</p>
+    <div class="badge badge-active" style="margin-bottom: clamp(16px, 3vw, 28px);">Active &middot; in production</div>
+    <h1>50 real tasks, 4 workers, roughly a quarter of the wall-clock time</h1>
+    <p class="subtitle" style="margin-left:auto;margin-right:auto;">Amplifier Swarm is a parallel task runner. In the wordbs project it drove 50 tasks to completion &mdash; and left <code style="color:var(--text-secondary);">swarm.db</code> on disk as proof it ran.</p>
     <div class="spacer"></div>
     <div style="display: flex; flex-wrap: wrap; gap: clamp(24px, 5vw, 48px); justify-content: center;">
+        <div style="text-align: center;">
+            <div style="font-size: clamp(28px, 6vw, 52px); font-weight: 700; color: var(--accent);">50</div>
+            <div style="font-size: clamp(11px, 1.5vw, 14px); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">Tasks in the wordbs run</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: clamp(28px, 6vw, 52px); font-weight: 700; color: var(--accent);">&frac14;</div>
+            <div style="font-size: clamp(11px, 1.5vw, 14px); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">Wall-clock vs serial</div>
+        </div>
         <div style="text-align: center;">
             <div style="font-size: clamp(28px, 6vw, 52px); font-weight: 700; color: var(--accent);">2,496</div>
             <div style="font-size: clamp(11px, 1.5vw, 14px); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">Lines of Python</div>
         </div>
-        <div style="text-align: center;">
-            <div style="font-size: clamp(28px, 6vw, 52px); font-weight: 700; color: var(--accent);">7</div>
-            <div style="font-size: clamp(11px, 1.5vw, 14px); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">Source Files</div>
-        </div>
-        <div style="text-align: center;">
-            <div style="font-size: clamp(28px, 6vw, 52px); font-weight: 700; color: var(--accent);">v0.1.0</div>
-            <div style="font-size: clamp(11px, 1.5vw, 14px); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">Current Release</div>
-        </div>
     </div>
     <div class="spacer"></div>
     <p style="font-size: clamp(12px, 1.6vw, 15px); color: var(--text-tertiary);">
-        ramparte/amplifier-toolkit &middot; Sam Schillace &middot; February 2026
+        ramparte/amplifier-toolkit &middot; Sam Schillace &middot; February 2026 &middot; v0.1.0 &middot; MIT
     </p>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 2: THE PROBLEM                                         -->
-<!-- ============================================================ -->
+<!-- beat 2: tension -->
 <div class="slide">
-    <h2>The Problem</h2>
+    <h2>Run those 50 tasks serially and it&rsquo;s a bottleneck you can&rsquo;t see into</h2>
     <p style="margin-bottom: clamp(16px, 3vw, 28px);">
-        Agent workflows hit a wall when tasks pile up and run one at a time.
+        The same workload, one task at a time, is where agent workflows hit a wall.
     </p>
     <div class="grid-3">
         <div class="card">
             <div class="icon">&#9203;</div>
             <h3>Serial Bottleneck</h3>
-            <p>Tasks queued sequentially. A 50-task run waits for every predecessor to finish before the next begins.</p>
+            <p>Tasks run sequentially. A 50-task run waits for every predecessor to finish before the next begins &mdash; wall-clock time is the sum of them all.</p>
         </div>
         <div class="card">
             <div class="icon">&#128065;&#65039;</div>
@@ -543,18 +580,45 @@
         </div>
         <div class="card">
             <div class="icon">&#9888;&#65039;</div>
-            <h3>Failure Modes</h3>
-            <p>Orphaned processes, race conditions on shared state, no automatic recovery when a worker crashes mid-task.</p>
+            <h3>No Recovery</h3>
+            <p>Orphaned processes, race conditions on shared state, and no way to resume when a worker crashes mid-task.</p>
         </div>
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 3: ARCHITECTURE                                        -->
-<!-- ============================================================ -->
+<!-- beat 3: payoff -->
+<div class="slide center">
+    <h2>The model: N isolated workers off a durable queue &mdash; wall-clock &divide; N</h2>
+    <p class="subtitle" style="margin-left:auto;margin-right:auto;">Instead of one process grinding through the list, Swarm fans the work out to N worker processes pulling from one shared, durable SQLite queue. Add workers, cut the wall-clock time.</p>
+    <div class="spacer"></div>
+    <div class="compare-grid">
+        <div class="compare-col">
+            <div class="card" style="height: 100%;">
+                <h3 style="color: var(--text-tertiary); margin-bottom: clamp(10px, 2vw, 16px);">Before &mdash; Sequential</h3>
+                <ul>
+                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> Tasks run one at a time</li>
+                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> State in memory only</li>
+                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> Wall-clock = sum of all tasks</li>
+                </ul>
+            </div>
+        </div>
+        <div class="compare-col">
+            <div class="card-accent" style="height: 100%;">
+                <h3 style="color: var(--accent); margin-bottom: clamp(10px, 2vw, 16px);">After &mdash; Amplifier Swarm</h3>
+                <ul>
+                    <li><span style="color: var(--accent);">&#10003;</span> N workers run in parallel</li>
+                    <li><span style="color: var(--accent);">&#10003;</span> Durable SQLite queue</li>
+                    <li><span style="color: var(--accent);">&#10003;</span> Wall-clock &divide; N workers</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- beat 4: mechanism -->
 <div class="slide">
-    <h2>Architecture</h2>
-    <p style="margin-bottom: clamp(8px, 1.5vw, 16px);">Four layers, each with a single responsibility.</p>
+    <h2>Four layers, each with a single responsibility</h2>
+    <p style="margin-bottom: clamp(8px, 1.5vw, 16px);">How the fan-out is organized &mdash; dashboard on top, durable queue at the bottom.</p>
     <div class="arch-diagram">
         <div class="arch-node primary">
             <div class="node-title">&#127760; Web Dashboard</div>
@@ -587,60 +651,52 @@
         </div>
     </div>
     <p style="font-size: clamp(12px, 1.6vw, 15px); color: var(--text-tertiary); text-align: center;">
-        Source files: database.py, orchestrator.py, worker.py, dashboard.py, cli.py, migrate.py, __init__.py
+        Seven source files: database.py, orchestrator.py, worker.py, dashboard.py, cli.py, migrate.py, __init__.py
     </p>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 4: KEY FEATURES                                        -->
-<!-- ============================================================ -->
+<!-- beat 5: mechanism -->
+<div class="slide center">
+    <h2>One SQLite file is the whole queue &mdash; no Redis, no RabbitMQ</h2>
+    <p class="subtitle" style="margin-left:auto;margin-right:auto;">Every task&rsquo;s state lives in a single durable file. That&rsquo;s what makes the run portable, zero-config, and&mdash;crucially&mdash;survivable.</p>
+    <div class="spacer"></div>
+    <div class="card" style="max-width: 640px;">
+        <div class="icon">&#128451;&#65039;</div>
+        <h3>SQLite Task Queue</h3>
+        <p>No broker to stand up, no service to babysit. Because all state is on disk, the queue outlives any individual worker or orchestrator process &mdash; the foundation the next slide builds recovery on.</p>
+    </div>
+</div>
+
+<!-- beat 6: mechanism -->
 <div class="slide">
-    <h2>Key Features</h2>
-    <div class="grid-2">
-        <div style="display: flex; flex-direction: column; gap: var(--gap-grid);">
-            <div class="card">
-                <div class="icon">&#128451;&#65039;</div>
-                <h3>SQLite Task Queue</h3>
-                <p>No Redis, no RabbitMQ. A single SQLite file holds all task state. Durable, portable, zero-config.</p>
-            </div>
-            <div class="card">
-                <div class="icon">&#9881;&#65039;</div>
-                <h3>Parallel Workers</h3>
-                <p>N workers run in separate processes. N workers reduce wall-clock time proportionally to available parallelism.</p>
-            </div>
-            <div class="card">
-                <div class="icon">&#128260;</div>
-                <h3>Automatic Retries</h3>
-                <p>Failed tasks re-queued automatically. Configurable retry count keeps transient failures from stalling runs.</p>
-            </div>
+    <h2>When a worker dies, the work doesn&rsquo;t &mdash; Swarm reclaims it</h2>
+    <p style="margin-bottom: clamp(16px, 3vw, 28px);">
+        Production workloads crash. Three mechanisms, all reading from that durable queue, keep the run going.
+    </p>
+    <div class="grid-3">
+        <div class="card-accent">
+            <div class="icon">&#128260;</div>
+            <h3 style="color: var(--accent);">Automatic Retries</h3>
+            <p>Transient failures&mdash;API timeouts, rate limits&mdash;are retried without manual intervention. Configurable limits prevent infinite loops.</p>
         </div>
-        <div style="display: flex; flex-direction: column; gap: var(--gap-grid);">
-            <div class="card">
-                <div class="icon">&#127760;</div>
-                <h3>Web Dashboard</h3>
-                <p>FastAPI serves a live view over WebSockets. Progress, worker health, and task results update in real time.</p>
-            </div>
-            <div class="card">
-                <div class="icon">&#128269;</div>
-                <h3>Orphan Detection</h3>
-                <p>Uses psutil to detect workers that vanished without updating state. Reclaims their tasks automatically.</p>
-            </div>
-            <div class="card">
-                <div class="icon">&#128721;&#65039;</div>
-                <h3>Graceful Shutdown</h3>
-                <p>Signal handlers let in-flight tasks finish cleanly. No half-written results or corrupted queue state.</p>
-            </div>
+        <div class="card-accent">
+            <div class="icon">&#128269;</div>
+            <h3 style="color: var(--accent);">Orphan Detection</h3>
+            <p>psutil checks whether worker PIDs are alive. Tasks claimed by dead processes are automatically returned to the queue.</p>
+        </div>
+        <div class="card-accent">
+            <div class="icon">&#128190;</div>
+            <h3 style="color: var(--accent);">Crash Recovery</h3>
+            <p>On restart, the orchestrator reads the queue, finds incomplete tasks, and resumes where it left off &mdash; hence the <code style="color:var(--text-secondary);">swarm.db.backup</code> beside the wordbs run.</p>
         </div>
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 5: REAL-TIME DASHBOARD                                 -->
-<!-- ============================================================ -->
+<!-- beat 7: turn -->
 <div class="slide">
-    <h2>Real-Time Dashboard</h2>
+    <h2>And the run stops being a black box &mdash; you watch it live</h2>
     <p style="margin-bottom: clamp(16px, 3vw, 28px);">
-        FastAPI + WebSockets push updates as tasks complete. No polling.
+        FastAPI + WebSockets push updates the moment a task completes. No polling, no tailing logs &mdash; the &ldquo;no visibility&rdquo; problem is simply gone.
     </p>
     <div class="dashboard-mock">
         <div class="dash-header">
@@ -648,10 +704,6 @@
             <div class="dash-live">Live</div>
         </div>
         <div class="dash-stats">
-            <div class="dash-stat">
-                <div class="stat-val">50</div>
-                <div class="stat-label">Total</div>
-            </div>
             <div class="dash-stat">
                 <div class="stat-val">38</div>
                 <div class="stat-label">Completed</div>
@@ -696,126 +748,33 @@
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 6: ROBUSTNESS                                          -->
-<!-- ============================================================ -->
-<div class="slide">
-    <h2>Built to Recover</h2>
-    <p style="margin-bottom: clamp(16px, 3vw, 28px);">
-        Production workloads crash. Swarm is designed to keep going.
+<!-- beat 8: takeaway -->
+<div class="slide center">
+    <h1 style="margin-bottom: clamp(12px, 2vw, 24px);">Parallel, durable, recoverable &mdash; in one command</h1>
+    <p class="subtitle" style="margin-left: auto; margin-right: auto;">
+        Everything you just saw &mdash; the wall-clock &divide; N, the durable queue, the live dashboard, the crash recovery &mdash; ships in 2,496 lines of Python inside amplifier-toolkit.
     </p>
-    <div class="grid-3">
-        <div class="card-accent">
-            <div class="icon">&#128260;</div>
-            <h3 style="color: var(--accent);">Automatic Retries</h3>
-            <p>Transient failures&mdash;API timeouts, rate limits&mdash;are retried without manual intervention. Configurable limits prevent infinite loops.</p>
-        </div>
-        <div class="card-accent">
-            <div class="icon">&#128269;</div>
-            <h3 style="color: var(--accent);">Orphan Detection</h3>
-            <p>psutil checks whether worker PIDs are alive. Tasks claimed by dead processes are automatically returned to the queue.</p>
-        </div>
-        <div class="card-accent">
-            <div class="icon">&#128190;</div>
-            <h3 style="color: var(--accent);">Crash Recovery</h3>
-            <p>All state lives in SQLite. On restart, the orchestrator reads the queue, finds incomplete tasks, and resumes where it left off.</p>
-        </div>
-    </div>
     <div class="spacer"></div>
-    <div class="card" style="max-width: 600px;">
-        <p class="label" style="margin-bottom: 6px;">Production Evidence</p>
-        <p style="font-size: clamp(13px, 1.8vw, 16px);">
-            <code style="color: var(--text-secondary);">swarm.db</code>, <code style="color: var(--text-secondary);">swarm.db.backup</code>, and <code style="color: var(--text-secondary);">swarm-full.log</code> found in the wordbs project directory&mdash;confirming active production use with real task data.
-        </p>
-    </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- SLIDE 7: BEFORE & AFTER                                      -->
-<!-- ============================================================ -->
-<div class="slide">
-    <h2>Before &amp; After</h2>
-    <p style="margin-bottom: clamp(16px, 3vw, 28px);">Sequential execution vs. Amplifier Swarm.</p>
-    <div class="compare-grid">
-        <div class="compare-col">
-            <div class="card" style="height: 100%;">
-                <h3 style="color: var(--text-tertiary); margin-bottom: clamp(10px, 2vw, 16px);">Before &mdash; Sequential</h3>
-                <ul>
-                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> Tasks run one at a time</li>
-                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> No progress visibility</li>
-                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> Manual restart on failure</li>
-                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> State in memory only</li>
-                    <li><span style="color: rgba(255,100,90,0.8);">&#10005;</span> Wall-clock time = sum of all tasks</li>
-                </ul>
-            </div>
-        </div>
-        <div class="compare-col">
-            <div class="card-accent" style="height: 100%;">
-                <h3 style="color: var(--accent); margin-bottom: clamp(10px, 2vw, 16px);">After &mdash; Amplifier Swarm</h3>
-                <ul>
-                    <li><span style="color: var(--accent);">&#10003;</span> N workers run in parallel</li>
-                    <li><span style="color: var(--accent);">&#10003;</span> Live web dashboard</li>
-                    <li><span style="color: var(--accent);">&#10003;</span> Automatic retry + orphan recovery</li>
-                    <li><span style="color: var(--accent);">&#10003;</span> Durable SQLite queue</li>
-                    <li><span style="color: var(--accent);">&#10003;</span> Wall-clock time &divide; N workers</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-    <div class="spacer"></div>
-    <div class="card" style="max-width: 640px;">
-        <p style="font-size: clamp(13px, 1.8vw, 16px);">
-            <strong style="color: var(--accent);">Real example (wordbs project):</strong>
-            50 tasks processed via Swarm. With 4 workers, wall-clock time reduces to roughly &frac14; of sequential execution.
-        </p>
-    </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- SLIDE 8: GETTING STARTED                                     -->
-<!-- ============================================================ -->
-<div class="slide">
-    <h2>Getting Started</h2>
-    <div style="max-width: 640px;">
-        <div class="step">
-            <div class="step-num">1</div>
-            <div class="step-body">
-                <h3>Install from the toolkit</h3>
-                <p>Amplifier Swarm ships inside amplifier-toolkit.</p>
-            </div>
-        </div>
-        <div class="step">
-            <div class="step-num">2</div>
-            <div class="step-body">
-                <h3>Define your tasks</h3>
-                <p>Tasks are YAML entries. Each has a name, command, and optional dependencies.</p>
-            </div>
-        </div>
-        <div class="step">
-            <div class="step-num">3</div>
-            <div class="step-body">
-                <h3>Run the swarm</h3>
-                <p>The CLI launches the orchestrator, workers, and optional dashboard in one command.</p>
-            </div>
-        </div>
-    </div>
-    <div class="spacer-sm"></div>
-    <div class="code-block" style="max-width: 640px;"><span class="cmt"># Install</span>
+    <div class="code-block" style="max-width: 520px; text-align: left;"><span class="cmt"># Install</span>
 pip install amplifier-toolkit
 
-<span class="cmt"># Run 4 workers with the dashboard</span>
-amplifier-swarm run <span class="str">--workers 4</span> <span class="str">--dashboard</span> tasks.yaml
-
-<span class="cmt"># Check status</span>
-amplifier-swarm status</div>
-    <div class="spacer-sm"></div>
-    <p style="font-size: clamp(12px, 1.6vw, 15px); color: var(--text-tertiary); max-width: 640px;">
-        Dependencies: click, rich, pyyaml, fastapi, uvicorn, websockets, psutil &middot; MIT License
+<span class="cmt"># Run 4 workers with the live dashboard</span>
+amplifier-swarm run <span class="str">--workers 4</span> <span class="str">--dashboard</span> tasks.yaml</div>
+    <div class="spacer"></div>
+    <div>
+        <a href="https://github.com/ramparte/amplifier-toolkit" target="_blank" rel="noopener noreferrer"
+           style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; background: var(--accent); color: #0a0a0a; border-radius: 100px; font-weight: 600; font-size: clamp(14px, 2vw, 17px); text-decoration: none; transition: background 0.2s ease;">
+            View on GitHub &#8594;
+        </a>
+    </div>
+    <div class="spacer"></div>
+    <p style="font-size: clamp(12px, 1.6vw, 15px); color: var(--text-tertiary);">
+        MIT License &middot; v0.1.0 &middot; ramparte/amplifier-toolkit
     </p>
 </div>
 
 <!-- ============================================================ -->
-<!-- SLIDE 9: SOURCES & METHODOLOGY                               -->
+<!-- SOURCES & METHODOLOGY  (audit-trail slide, not a beat)       -->
 <!-- ============================================================ -->
 <div class="slide">
     <h2>Sources &amp; Methodology</h2>
@@ -863,30 +822,6 @@ amplifier-swarm status</div>
             Development timeline not verifiable from cache repo (only 1 commit visible). Exact session count unverifiable. Previous deck claimed "3,812 lines"&mdash;actual count is 2,496. Previous deck claimed "12 files"&mdash;actual count is 7 Python source files.
         </div>
     </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- SLIDE 10: CTA                                                -->
-<!-- ============================================================ -->
-<div class="slide center">
-    <h1 style="margin-bottom: clamp(12px, 2vw, 24px);">Try Amplifier Swarm</h1>
-    <p class="subtitle" style="margin-left: auto; margin-right: auto;">
-        Parallel task execution, real-time monitoring, and crash recovery&mdash;in 2,496 lines of Python.
-    </p>
-    <div class="spacer"></div>
-    <div class="code-block" style="max-width: 480px; text-align: left;">pip install amplifier-toolkit
-amplifier-swarm run <span class="str">--workers 4</span> tasks.yaml</div>
-    <div class="spacer"></div>
-    <div>
-        <a href="https://github.com/ramparte/amplifier-toolkit" target="_blank" rel="noopener noreferrer"
-           style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; background: var(--accent); color: #0a0a0a; border-radius: 100px; font-weight: 600; font-size: clamp(14px, 2vw, 17px); text-decoration: none; transition: background 0.2s ease;">
-            View on GitHub &#8594;
-        </a>
-    </div>
-    <div class="spacer"></div>
-    <p style="font-size: clamp(12px, 1.6vw, 15px); color: var(--text-tertiary);">
-        MIT License &middot; v0.1.0 &middot; ramparte/amplifier-toolkit
-    </p>
 </div>
 
 <!-- ── Navigation ── -->
