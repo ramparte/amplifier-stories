@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>The Meta-Skill: How to Create Template-Based Amplifier Skills</title>
+    <script>document.documentElement.classList.add('js')</script>
     <style>
         :root {
             --accent: #5E5CE6;
@@ -483,129 +484,160 @@
         .glow-text {
             text-shadow: 0 0 40px var(--accent-glow), 0 0 80px rgba(94, 92, 230, 0.15);
         }
+
+        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        html:not(.js) body { overflow: auto; overscroll-behavior: auto; }
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+        }
+        html:not(.js) .slide.active > * { animation: none !important; }
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
     </style>
 </head>
 <body>
+<!--
+  ============================================================
+  NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
+  ============================================================
 
-    <!-- Slide 1: Title -->
+  ABT:
+    AND the obvious way to make a reusable "scaffold a new service" skill is to
+        write down the steps and point at a working reference service;
+    BUT those pointers rot - when the workspace churned, ~30 references inside the
+        skill broke and it went dead;
+    THEREFORE a durable skill has to carry its own templates - self-contained files
+        with placeholder tokens - and, more deeply, the way you get there is itself
+        a repeatable process: a meta-skill.
+
+  PAYOFF (named up front):
+    The pivot to self-contained templates. Hours after the skill was converted from
+    pointers to 26 template files, it built The Garden's web frontend on the first
+    try - because it no longer depended on any other service existing.
+
+  BEATS (proof-first; payoff lands at beat 4 of 9, before the midpoint of 5):
+    1. proof     - scaffold-new-service stands up a full service and proved it same-day.
+                   advances: grounds the AND - the methodology produced a real, working skill.
+    2. setup     - it began as a deliberately minimal V1: pure instructions pointing at live code.
+                   advances: introduces V1, the thing the tension will break.
+    3. tension   - pointers rot: ~30 references broke when the workspace migrated to Gitea.
+                   advances: establishes the BUT (the failure mode).
+    4. payoff    - the pivot to self-contained templates; V2 worked immediately.
+                   advances: lands the THEREFORE (payoff before midpoint).
+    5. mechanism - placeholder tokens are the abstraction layer. (one claim)
+                   advances: HOW a template stays generic yet buildable.
+    6. mechanism - V2 turned pointers into packages. (one claim)
+                   advances: HOW the structure changed to become portable.
+    7. mechanism - under the hood it's just the Agent Skills spec. (one claim)
+                   advances: HOW this generalizes to any skill you write.
+    8. takeaway  - the real artifact is the process: six repeatable moves.
+                   advances: the reusable pattern the audience keeps.
+    9. takeaway  - the process is itself a skill.
+                   advances: lands the meta-point + a try-it-yourself hand-off.
+
+    + Sources & Methodology (audit-trail slide, not a beat) at the end.
+    Slides = 9 beats + 1 = 10.
+-->
+
+    <!-- beat 1: proof -->
     <div class="slide active center">
         <div class="section-label">Amplifier Skills</div>
-        <h1 class="headline glow-text" style="max-width: 900px;">The Meta-Skill</h1>
-        <p class="subhead" style="text-align: center;">How to create template-based Amplifier skills &mdash; a methodology extracted from building <span class="accent-underline">scaffold-new-service</span></p>
+        <h1 class="headline glow-text" style="max-width: 900px;">One skill scaffolds a whole service &mdash; and proved it the day it shipped</h1>
+        <p class="subhead" style="text-align: center;"><span class="accent-underline">scaffold-new-service</span> stands up a full FastAPI backend + React/Vite frontend from bundled templates &mdash; a methodology extracted from building it.</p>
+        <div class="velocity-grid" style="margin-top: clamp(8px, 2vw, 20px);">
+            <div class="velocity-stat">
+                <div class="velocity-number">26</div>
+                <div class="velocity-label">Self-contained templates</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">2</div>
+                <div class="velocity-label">Real same-project validations</div>
+            </div>
+            <div class="velocity-stat">
+                <div class="velocity-number">0</div>
+                <div class="velocity-label">External code dependencies</div>
+            </div>
+        </div>
         <div style="display: flex; align-items: center; gap: clamp(12px, 2vw, 20px); margin-top: clamp(8px, 2vw, 16px); flex-wrap: wrap; justify-content: center;">
             <span class="small-text">Feb 13 &ndash; Mar 4, 2026</span>
             <span class="status-badge"><span class="status-dot"></span> Active Methodology</span>
         </div>
     </div>
 
-    <!-- Slide 2: The Problem -->
-    <div class="slide">
-        <div class="section-label">The Problem</div>
-        <h2 class="headline">Copy, paste, forget, debug.</h2>
-        <div class="thirds">
-            <div class="card">
-                <h3>Repetitive Scaffolding</h3>
-                <p>Every new FastAPI microservice required the same boilerplate: project structure, auth middleware, Docker config, frontend setup, CI scripts.</p>
-            </div>
-            <div class="card">
-                <h3>Tribal Knowledge</h3>
-                <p>The right way to stand up a service lived in the developer&rsquo;s head and in scattered reference implementations &mdash; not in any teachable artifact.</p>
-            </div>
-            <div class="card">
-                <h3>Time Sink</h3>
-                <p>Each new service was built by hand. Same patterns, same mistakes, same debugging session every time.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide 3: Genesis -->
+    <!-- beat 2: setup -->
     <div class="slide">
         <div class="section-label">Act 1 &middot; Feb 13</div>
-        <h2 class="medium-headline">Genesis: &ldquo;Transfer over all the scaffolding&rdquo;</h2>
+        <h2 class="medium-headline">It began as pointers, not knowledge</h2>
         <div class="quote-block">
             <div class="quote-text">&ldquo;I want to create a new skill that stands up a new service&hellip; Make sure ALL the changes needed are captured.&rdquo;</div>
-            <div class="quote-attribution">&mdash; The user, recognizing the pattern after building 3 services by hand</div>
+            <div class="quote-attribution">&mdash; The user, after building 3 services by hand</div>
         </div>
-        <p class="body-text" style="max-width: 800px;">The key insight: don&rsquo;t design a skill in a vacuum. Build real things first, then extract the reusable pattern. The user had lived through the pain of manual scaffolding three times &mdash; enough to know what should be automated.</p>
-    </div>
-
-    <!-- Slide 4: Act 1 Process (merged slides 4+5) -->
-    <div class="slide">
-        <div class="section-label">Act 1 &middot; The Process</div>
-        <h2 class="medium-headline">Explore, Decide, Ship V1</h2>
-        <div class="thirds">
-            <div class="card">
-                <h3>Explore</h3>
-                <p>The AI read every file in two reference services in parallel, mapping project structure, config patterns, middleware chains, and deployment scripts.</p>
-            </div>
-            <div class="card">
-                <h3>Inventory &amp; Ask</h3>
-                <p>Produced a full artifact list, then asked 6 design questions before writing anything: auth optional or required? Templates or instructions? Monorepo or standalone?</p>
-            </div>
-            <div class="card">
-                <h3>Result: V1</h3>
-                <p>A single SKILL.md &mdash; 365 lines, 11 sections. Pure instructions referencing live files in <code style="color: var(--accent);">gh-issues-local/</code>. Deliberately minimal.</p>
-            </div>
-        </div>
+        <p class="body-text" style="max-width: 800px;">The insight was to build real things first, then extract the pattern. V1 shipped deliberately minimal: a single <strong>SKILL.md</strong>, 365 lines, referencing live files in <code style="color: var(--accent);">gh-issues-local/</code>.</p>
         <div class="card" style="max-width: 900px; border-color: var(--orange); border-width: 2px;">
             <h3 style="color: var(--orange);">The Hidden Fragility</h3>
-            <p>The skill didn&rsquo;t contain the knowledge &mdash; it contained <strong>pointers</strong> to the knowledge. Every section said: <em>&ldquo;See gh-issues-local/src/app.py for reference.&rdquo;</em> Those pointers assumed gh-issues-local would always exist, unchanged, in the same location.</p>
+            <p>The skill didn&rsquo;t contain the knowledge &mdash; it contained <strong>pointers</strong> to it. Every section said <em>&ldquo;See gh-issues-local/src/app.py for reference.&rdquo;</em> Those pointers assumed gh-issues-local would exist forever, unchanged, in the same place.</p>
         </div>
     </div>
 
-    <!-- Slide 5: Proving Ground (merged slides 7+8) -->
+    <!-- beat 3: tension -->
     <div class="slide">
         <div class="section-label">Act 2 &middot; Feb 17 &ndash; Mar 3</div>
-        <h2 class="medium-headline">The Proving Ground</h2>
+        <h2 class="medium-headline">Pointers rot: ~30 references broke when the workspace moved</h2>
         <div style="display: flex; flex-direction: column; gap: clamp(16px, 3vw, 28px); width: 100%; max-width: 800px;">
             <div class="timeline-item">
                 <div class="timeline-date">Feb 17</div>
                 <div class="timeline-content">
                     <div class="timeline-title" style="color: var(--green);">&#x2713; First real test: nl-spec-generator</div>
-                    <div class="timeline-desc">Four days after creation, the skill got its first use. A new service scaffolded by the AI following the SKILL.md instructions. Validation passed.</div>
+                    <div class="timeline-desc">Four days after creation the skill got its first use &mdash; a new service scaffolded by following the SKILL.md instructions. Validation passed.</div>
                 </div>
             </div>
             <div class="timeline-item">
                 <div class="timeline-date">Feb&ndash;Mar</div>
                 <div class="timeline-content">
-                    <div class="timeline-title">Workspace evolves</div>
-                    <div class="timeline-desc">Infrastructure shifted: github-local was retired, Gitea replaced it. Services were refactored, moved, renamed. The codebase was a moving target.</div>
+                    <div class="timeline-title">The workspace churned</div>
+                    <div class="timeline-desc">github-local was retired, Gitea replaced it, services were refactored, moved, and renamed. The codebase the skill pointed at was a moving target.</div>
                 </div>
             </div>
             <div class="timeline-item">
                 <div class="timeline-date">Mar 3</div>
                 <div class="timeline-content">
                     <div class="timeline-title" style="color: var(--red);">&#x2717; ~30 references break</div>
-                    <div class="timeline-desc">During the Gitea migration, the AI discovered ~30 stale references in SKILL.md &mdash; all pointing to the now-retired gh-issues-local. Every &ldquo;see gh-issues-local/&hellip;&rdquo; instruction was a dead link.</div>
+                    <div class="timeline-desc">During the Gitea migration the AI found ~30 stale references in SKILL.md, all pointing to the retired gh-issues-local. Every &ldquo;see gh-issues-local/&hellip;&rdquo; was now a dead link.</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Slide 6: The Pivot (merged slides 9+12) -->
+    <!-- beat 4: payoff -->
     <div class="slide">
-        <div class="section-label">Act 3 &middot; Mar 4</div>
-        <h2 class="medium-headline">The Pivot: Self-Contained Templates</h2>
+        <div class="section-label">Act 3 &middot; Mar 4 &middot; The Payoff</div>
+        <h2 class="medium-headline">The fix: templates the skill carries itself</h2>
         <div class="quote-block">
             <div class="quote-text">&ldquo;Come up with a plan to store sample files in that directory, so we are not reliant on any service.&rdquo;</div>
             <div class="quote-attribution">&mdash; The user, articulating the core insight</div>
         </div>
         <div class="halves" style="max-width: 1000px;">
             <div class="card" style="border-color: var(--accent); border-width: 2px;">
-                <h3 style="color: var(--accent);">AI&rsquo;s Response</h3>
-                <p>Proposed 26 template files with placeholder tokens. Extracted from issues-to-brief (backend) and recovered from the retired github-local&rsquo;s git cache (frontend). Even dead code was resurrected as reusable templates.</p>
+                <h3 style="color: var(--accent);">26 templates, zero dependencies</h3>
+                <p>The AI proposed 26 template files with placeholder tokens &mdash; extracted from issues-to-brief and even recovered from the retired github-local&rsquo;s git cache. Dead code became reusable templates.</p>
             </div>
             <div class="card" style="border-color: var(--green);">
-                <h3 style="color: var(--green);">Same-Day Validation</h3>
-                <p>Hours after the V2 conversion, the template skill was used to build The Garden&rsquo;s web frontend. The AI loaded the skill, read templates from <span class="token">templates/web/</span>, and used them as the foundation. It worked immediately.</p>
+                <h3 style="color: var(--green);">Worked on the first try</h3>
+                <p>Hours after the V2 conversion, the skill built The Garden&rsquo;s web frontend &mdash; loading templates from <span class="token">templates/web/</span> as its foundation. Nothing external to break; it just worked.</p>
             </div>
         </div>
     </div>
 
-    <!-- Slide 7: Token System (trimmed) -->
+    <!-- beat 5: mechanism -->
     <div class="slide">
-        <div class="section-label">Act 3 &middot; The Mechanism</div>
-        <h2 class="medium-headline">Placeholder Tokens as Abstraction Layer</h2>
+        <div class="section-label">Mechanism &mdash; Tokens</div>
+        <h2 class="medium-headline">Placeholder tokens are the abstraction layer</h2>
         <div class="code-block" style="max-width: 900px;"><span class="code-comment"># pyproject.toml template</span>
 [project]
 name = "<span class="code-accent">{{PACKAGE_NAME}}</span>"
@@ -639,10 +671,10 @@ export default defineConfig({
         </div>
     </div>
 
-    <!-- Slide 8: V1->V2 Evolution (trimmed) -->
+    <!-- beat 6: mechanism -->
     <div class="slide">
-        <div class="section-label">The Evolution</div>
-        <h2 class="medium-headline">V1 &rarr; V2: From Pointers to Packages</h2>
+        <div class="section-label">Mechanism &mdash; The Evolution</div>
+        <h2 class="medium-headline">V2 turned pointers into packages</h2>
         <div class="halves" style="max-width: 1000px; align-items: start;">
             <div class="compare-col">
                 <div class="compare-header">
@@ -680,49 +712,11 @@ export default defineConfig({
         </div>
     </div>
 
-    <!-- Slide 9: Methodology (merged slides 13+14, 6 items) -->
+    <!-- beat 7: mechanism -->
     <div class="slide">
-        <div class="section-label">The Repeatable Process</div>
-        <h2 class="medium-headline">The Meta-Methodology</h2>
-        <div class="thirds">
-            <div class="card">
-                <div class="method-number">01</div>
-                <div class="method-title">Build First, Extract Later</div>
-                <div class="method-desc">Don&rsquo;t design skills in the abstract. Build something real by hand, then look back and ask &ldquo;what&rsquo;s the reusable pattern here?&rdquo; The skill was extracted from 3 real services &mdash; not designed top-down.</div>
-            </div>
-            <div class="card">
-                <div class="method-number">02</div>
-                <div class="method-title">AI as Pattern Miner</div>
-                <div class="method-desc">Ask the AI to explore existing implementations and propose what a generalized skill should contain. It reads every file, produces artifact inventories, and asks clarifying questions.</div>
-            </div>
-            <div class="card">
-                <div class="method-number">03</div>
-                <div class="method-title">Human Directs, AI Executes</div>
-                <div class="method-desc">The AI proposes options; the human makes architectural choices. &ldquo;Pure instructions vs. templates&rdquo; was a human call. &ldquo;Auth is optional&rdquo; was a human call. Design decisions stay human-driven.</div>
-            </div>
-            <div class="card">
-                <div class="method-number">04</div>
-                <div class="method-title">Start Minimal, Upgrade When Pain Emerges</div>
-                <div class="method-desc">V1 was deliberately minimal. Only when references broke did the user invest in templates. The upgrade wasn&rsquo;t premature &mdash; it was motivated by a real failure mode.</div>
-            </div>
-            <div class="card">
-                <div class="method-number">05</div>
-                <div class="method-title">Self-Contained &gt; Cross-References</div>
-                <div class="method-desc">Bundle template files with <span class="token">{{PLACEHOLDER}}</span> tokens so the skill is independent of any service&rsquo;s existence. Skills that reference live code are fragile; skills that carry their own templates are not.</div>
-            </div>
-            <div class="card">
-                <div class="method-number">06</div>
-                <div class="method-title">Validate Immediately</div>
-                <div class="method-desc">Use the skill right away on a real task. V1 was validated 4 days later on nl-spec-generator. V2 was validated the same evening on The Garden. If it doesn&rsquo;t work in practice, iterate.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide 10: Anatomy of a Skill (no Key Structural Rules card) -->
-    <div class="slide">
-        <div class="section-label">Skill Structure</div>
-        <h2 class="medium-headline">Anatomy of an Amplifier Skill</h2>
-        <p class="body-text" style="max-width: 800px;">Skills follow the <a href="https://agentskills.io/specification" style="color: var(--accent); text-decoration: underline;">Agent Skills specification</a>. The directory name must match the <code style="color: var(--accent);">name</code> field in SKILL.md. Here&rsquo;s the standard structure and how scaffold-new-service maps to it.</p>
+        <div class="section-label">Mechanism &mdash; The Spec</div>
+        <h2 class="medium-headline">Under the hood it&rsquo;s just the Agent Skills spec</h2>
+        <p class="body-text" style="max-width: 800px;">Nothing here is bespoke. Skills follow the <a href="https://agentskills.io/specification" style="color: var(--accent); text-decoration: underline;">Agent Skills specification</a>: a SKILL.md with frontmatter, plus optional companion files the agent loads on demand. Templates are just <em>assets</em>.</p>
         <div class="halves" style="max-width: 1000px; align-items: start;">
             <div>
                 <div class="code-block"><span class="tree-label">Standard Skill Structure</span>
@@ -736,9 +730,7 @@ export default defineConfig({
 <span class="code-comment">--- SKILL.md frontmatter ---</span>
 <span class="code-accent">name:</span> my-skill
 <span class="code-accent">description:</span> Apply X when Y happens
-<span class="code-comment">---</span>
-<span class="code-comment"># Then markdown body: steps, examples,</span>
-<span class="code-comment"># templates, edge cases</span></div>
+<span class="code-comment">---</span></div>
             </div>
             <div>
                 <div class="code-block"><span class="tree-label">scaffold-new-service (V2)</span>
@@ -750,61 +742,86 @@ export default defineConfig({
     src/app.py      <span class="tree-comment"># FastAPI factory</span>
     src/auth.py     <span class="tree-comment"># Bearer middleware</span>
     web/            <span class="tree-comment"># React + Vite frontend</span>
-    scripts/        <span class="tree-comment"># smoke_test.py</span>
     ...
 
-<span class="code-comment"># SKILL.md uses read_file(skill_directory</span>
-<span class="code-comment"># + "/templates/foo") to load templates</span></div>
+<span class="code-comment"># load via read_file(skill_directory</span>
+<span class="code-comment"># + "/templates/foo")</span></div>
             </div>
         </div>
     </div>
 
-    <!-- Slide 11: Writing an Effective SKILL.md (simplified) -->
+    <!-- beat 8: takeaway -->
     <div class="slide">
-        <div class="section-label">Skill Structure</div>
-        <h2 class="medium-headline">Writing an Effective SKILL.md</h2>
+        <div class="section-label">The Repeatable Process</div>
+        <h2 class="medium-headline">The real artifact is the process, in six moves</h2>
         <div class="thirds">
             <div class="card">
-                <div class="card-icon" style="font-size: clamp(20px, 4vw, 36px);">YAML</div>
-                <h3>Frontmatter: name + description</h3>
-                <p>The <code style="color: var(--accent);">description</code> is critical &mdash; it&rsquo;s how the agent decides whether to load your skill. Write triggering conditions, not a workflow summary.</p>
-                <div style="margin-top: 12px; font-family: monospace; font-size: var(--font-small); color: var(--text-tertiary); line-height: 1.6;">
-                    <div style="color: var(--red);">&#x2717; &ldquo;Scaffolds a new FastAPI service with auth&rdquo;</div>
-                    <div style="color: var(--green);">&#x2713; &ldquo;Use when standing up a new service in this workspace&rdquo;</div>
-                </div>
+                <div class="method-number">01</div>
+                <div class="method-title">Build First, Extract Later</div>
+                <div class="method-desc">Don&rsquo;t design skills in the abstract. Build something real by hand, then ask &ldquo;what&rsquo;s the reusable pattern?&rdquo; This skill was extracted from 3 real services.</div>
             </div>
             <div class="card">
-                <div class="card-icon" style="font-size: clamp(20px, 4vw, 36px);">MD</div>
-                <h3>Body: Steps + Tokens + Branches</h3>
-                <p>Start with an overview and a placeholder token table. Then numbered steps the agent follows in order. Include conditional branches (e.g. &ldquo;if auth requested&rdquo;, &ldquo;if web UI requested&rdquo;) and edge cases.</p>
+                <div class="method-number">02</div>
+                <div class="method-title">AI as Pattern Miner</div>
+                <div class="method-desc">Ask the AI to explore existing implementations and propose what a generalized skill should contain &mdash; artifact inventories and clarifying questions included.</div>
             </div>
             <div class="card">
-                <div class="card-icon" style="font-size: clamp(20px, 4vw, 36px);">REF</div>
-                <h3>Companion Files: Templates &amp; Assets</h3>
-                <p>Heavy content goes in separate files. Keep the main SKILL.md scannable (&lt;500 lines). The agent loads companions on demand via <code style="color: var(--accent);">read_file(skill_directory + &ldquo;/templates/foo&rdquo;)</code>.</p>
+                <div class="method-number">03</div>
+                <div class="method-title">Human Directs, AI Executes</div>
+                <div class="method-desc">The AI proposes options; the human makes the architectural calls. &ldquo;Templates vs. instructions&rdquo; and &ldquo;auth is optional&rdquo; were human decisions.</div>
             </div>
-        </div>
-        <div class="card" style="max-width: 1000px; border-color: var(--orange);">
-            <h3 style="color: var(--orange);">Amplifier vs Claude.ai</h3>
-            <p>Both follow the same Agent Skills specification. Amplifier skills live in <code style="color: var(--accent);">.amplifier/skills/</code> (project) or <code style="color: var(--accent);">~/.amplifier/skills/</code> (global), are discovered via <code style="color: var(--accent);">load_skill()</code>, and can be bundled with <code style="color: var(--accent);">tool-skills</code> config. Claude.ai skills are uploaded as ZIP files with descriptions capped at 200 chars and support declared pip/npm script dependencies in frontmatter.</p>
+            <div class="card">
+                <div class="method-number">04</div>
+                <div class="method-title">Start Minimal, Harden on Pain</div>
+                <div class="method-desc">V1 was minimal on purpose. Only when references broke did templates earn their cost &mdash; motivated by a real failure, not premature polish.</div>
+            </div>
+            <div class="card">
+                <div class="method-number">05</div>
+                <div class="method-title">Self-Contained &gt; Cross-References</div>
+                <div class="method-desc">Bundle template files with <span class="token">{{PLACEHOLDER}}</span> tokens so the skill doesn&rsquo;t depend on any service existing. Carried templates don&rsquo;t rot.</div>
+            </div>
+            <div class="card">
+                <div class="method-number">06</div>
+                <div class="method-title">Validate Immediately</div>
+                <div class="method-desc">Use the skill on a real task at once. V1 was validated 4 days later on nl-spec-generator; V2 the same evening on The Garden.</div>
+            </div>
         </div>
     </div>
 
-    <!-- Slide 12: The Punchline -->
+    <!-- beat 9: takeaway -->
     <div class="slide center">
         <div class="section-label">The Punchline</div>
-        <h2 class="headline glow-text" style="max-width: 800px;">This process is itself a skill.</h2>
-        <p class="subhead" style="text-align: center; max-width: 650px;">The methodology for creating template-based skills &mdash; build, extract, mine, decide, validate, harden &mdash; is a repeatable, teachable pattern. Which is exactly what a skill is.</p>
+        <h2 class="headline glow-text" style="max-width: 800px;">The process is itself a skill</h2>
+        <p class="subhead" style="text-align: center; max-width: 650px;">Build, extract, mine, decide, start minimal, harden, validate &mdash; a repeatable, teachable pattern. Which is exactly what a skill is.</p>
         <div class="card" style="max-width: 600px; margin-top: clamp(8px, 2vw, 16px); text-align: center; border-color: var(--accent);">
             <h3 style="color: var(--accent);">Try the Process</h3>
             <p><strong>1.</strong> Build something real by hand, at least twice</p>
             <p><strong>2.</strong> Ask the AI to mine the pattern</p>
             <p><strong>3.</strong> Make the design decisions yourself</p>
-            <p><strong>4.</strong> Start with instructions, upgrade to templates when the pain demands it</p>
+            <p><strong>4.</strong> Start with instructions; upgrade to templates when the pain demands it</p>
             <p><strong>5.</strong> Validate immediately on a new project</p>
         </div>
-        <p class="small-text" style="margin-top: clamp(8px, 2vw, 20px);"></p>
     </div>
+
+    <!-- Sources & Methodology -->
+    <div class="slide">
+        <div class="section-label">Sources &amp; Methodology</div>
+        <h2 class="medium-headline">How we built this deck</h2>
+        <div class="body-text" style="max-width: 800px; line-height: 1.7;">
+            <p><strong style="color: var(--text-primary);">Subject:</strong> the <code style="color: var(--accent);">scaffold-new-service</code> Amplifier skill and its V1&rarr;V2 evolution.</p>
+            <p style="margin-top: 12px;"><strong style="color: var(--text-primary);">Timeline:</strong> Feb 13 &ndash; Mar 4, 2026, reconstructed from the skill&rsquo;s own development history.</p>
+            <p style="margin-top: 12px;"><strong style="color: var(--text-primary);">Verified from the artifacts:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li>V1 SKILL.md &mdash; 365 lines, pure instructions referencing <code style="color: var(--accent);">gh-issues-local/</code></li>
+                <li>V2 SKILL.md &mdash; 255 lines plus a <code style="color: var(--accent);">templates/</code> directory of 26 files with <span class="token">{{TOKEN}}</span> placeholders</li>
+                <li>~30 stale references discovered and fixed during the Gitea migration</li>
+                <li>Validations: nl-spec-generator (Feb 17) and The Garden web frontend (Mar 4)</li>
+                <li>Structure conforms to the Agent Skills specification (agentskills.io)</li>
+            </ul>
+            <p style="margin-top: 12px;"><strong style="color: var(--text-primary);">No metrics were fabricated.</strong> Counts and dates are drawn from the skill directory, SKILL.md revisions, and conversation history.</p>
+        </div>
+    </div>
+
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
