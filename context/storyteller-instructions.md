@@ -18,17 +18,24 @@ Write the spine first, as an explicit artifact. It has three parts:
   (*Therefore*). This is the throughline of the whole deck.
 - **Payoff, named up front** — state, in the spine, what the deck is driving
   toward. You must know the payoff before you write slide one.
-- **Ordered list of beats** — proof-first. Each beat has a `role` from:
-  `proof | setup | tension | mechanism | turn | payoff | takeaway`, and an
-  **`advances:` note** saying how it serves the ABT.
-  (`setup` is for introducing a named example/project/entity the argument will
-  lean on — see rule (d) below.)
+- **Ordered list of beats** — frame-first, proof-early. Each beat has a `role`
+  from: `frame | proof | setup | tension | mechanism | turn | payoff | takeaway`,
+  and an **`advances:` note** saying how it serves the ABT.
+  (`frame` opens the deck with orientation — see rule (a). `setup` introduces a
+  named example/project mid-deck before the argument leans on it — see rule (d).)
 
 **Spine rules (hard):**
 
-- **(a) Proof-first:** `beats[0].role == proof`. Open on the payoff/evidence,
-  not a title card. The only exception is an explicit
-  `proof_deferred_reason:` written into the spine.
+- **(a) Frame first, then proof — fast.** `beats[0].role == frame`: open with a
+  one-slide orientation the audience can grab onto — *what this is, the problem it
+  solves, and why it matters* — written as a HOOK, not a bland title/agenda card
+  (e.g. *"Superpowers is Jesse Vincent's TDD discipline tool; we ported it to
+  Amplifier so agents can't skip the tests."*). Then land a `proof` beat within the
+  first THREE beats — get to evidence fast, but never drop the audience in cold.
+  The frame earns attention; the proof rewards it. Without a frame the deck feels
+  like it starts on beat 2 or 3 — the audience has no broad thing to hang onto.
+  Exceptions: an explicit `cold_open_reason:` (skip the frame) or
+  `proof_deferred_reason:` (delay the proof) written into the spine.
 - **(b) Every beat must advance the ABT:** each beat carries an `advances:` note.
   **No `advances`, no beat.** This is what kills random supporting material.
 - **(c) Mechanism is capped, one claim each:** `mechanism` beats are limited in
@@ -45,20 +52,25 @@ ABT: AND a small tool builds a machine that writes software the model never
 Payoff: the "ruler incident" — the machine grinding tests while a human draws
         the ruler in seconds.
 Beats:
-  1. proof     — the machine shipped 89K lines in one run.   advances: establishes the AND (real leverage)
-  2. tension   — but it couldn't tell what was worth doing.  advances: establishes the BUT
-  3. mechanism — the dev-machine loop, one claim.            advances: shows HOW the leverage works
-  4. turn      — the ruler incident.                         advances: the pivot from AND to THEREFORE
-  5. payoff    — machine = leverage, judgment stays human.   advances: lands the THEREFORE
-  6. takeaway  — the pattern, generalized.                   advances: what the audience keeps
+  1. frame     — we set out to build software at a scale one prompt can't reach; here's the leverage we built.  advances: orients the audience — the stakes behind the AND
+  2. proof     — the machine shipped 89K lines in one run.   advances: establishes the AND (real leverage)
+  3. tension   — but it couldn't tell what was worth doing.  advances: establishes the BUT
+  4. mechanism — the dev-machine loop, one claim.            advances: shows HOW the leverage works
+  5. turn      — the ruler incident.                         advances: the pivot from AND to THEREFORE
+  6. payoff    — machine = leverage, judgment stays human.   advances: lands the THEREFORE (the climax)
+  7. takeaway  — the pattern, generalized.                   advances: what the audience keeps
 ```
 
 ### Contract 2 — The deck contract (beat → slide)
 
 - Slides render **1:1 from beats**. One beat = one slide.
 - **If it's not a beat, it's not a slide.** No slide exists without a beat.
-- **Payoff lands before the midpoint** of the deck — never buried near the end
-  (the Foundry deck's payoff was at slide 13/16; that is the failure mode).
+- **Payoff is the climax, not buried.** With a frame opener and an early proof,
+  the payoff lands as the high point in the back half, right before the takeaway —
+  that is good narrative shape. What must NOT happen is the Foundry failure mode:
+  the payoff stranded at slide 13/16 behind a wall of catalog slides. The early
+  proof (Contract 1 rule (a)) is what prevents burial — not shoving the payoff
+  itself to the front.
 - The mandatory **Sources & Methodology** slide is the one allowed exception to
   1:1 (it is an audit-trail slide, not a beat) and sits at the end.
 
@@ -457,10 +469,11 @@ Before presenting to user, verify ALL items in both sections:
 ### Narrative (verify FIRST — a pretty, accurate, non-compelling deck has failed)
 
 - [ ] **Spine written before slides** — ABT (And/But/Therefore) + named payoff + ordered beats exist as an artifact (see "Narrative Layer")
-- [ ] **Proof-first** — first content slide is the `proof` beat (or an explicit `proof_deferred_reason` is stated)
+- [ ] **Frame first** — first content slide is a `frame` beat: a hook that orients the audience (what this is / the problem / why it matters), not a bland title card
+- [ ] **Proof early** — a `proof` beat lands within the first three beats (or an explicit `proof_deferred_reason` is stated)
 - [ ] **Every beat advances the ABT** — each beat has an `advances:` note; no orphan beats
 - [ ] **Slides are 1:1 with beats** — slide count == beat count (excluding the Sources slide)
-- [ ] **Payoff lands before the midpoint** — not buried at the end
+- [ ] **Payoff is the climax, not buried** — payoff present, landing in the back half before the takeaway (early proof, not an early payoff, is what prevents burial)
 - [ ] **Every slide headline is a CLAIM, not a topic label** — no "Metrics"/"Architecture"/"Overview" title slides
 - [ ] **No co-equal tile-grid catalog slides** — mechanism is one claim per slide, not a 4+ tile pile
 - [ ] **Every named example is explained before it's used as evidence** — no unexplained proper nouns (project/product/tool names) unless obvious to the whole audience
