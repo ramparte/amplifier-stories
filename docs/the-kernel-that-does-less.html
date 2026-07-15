@@ -480,47 +480,51 @@
     </style>
 </head>
 <body>
+<!--
+  NARRATIVE SPINE (reused from this deck's own verified content; no fresh research)
+
+  ABT:
+    AND a kernel is supposed to be the powerful core that does everything;
+    BUT Amplifier's kernel deliberately does LESS - 18 source files, a three-method API;
+    THEREFORE by refusing to hold opinions the kernel becomes the still center that
+        every module can safely build on.
+
+  PAYOFF (named up front):
+    The QNX principle - reliability through radical exclusion. A ~3,400-line kernel
+    is the leverage; what you leave OUT matters more than what you put in.
+
+  BEATS (proof-first; payoff at beat 5 of 10, before the midpoint):
+    1. proof     - the kernel really is tiny: 18 source files, every one with a purpose.
+                   advances: grounds the AND+BUT - 'does less' is literally true.
+    2. setup     - six runtime-checkable protocols are the entire extension contract.
+                   advances: introduces the seam the whole argument leans on.
+    3. mechanism - the public API is just three methods. (one claim)
+                   advances: HOW little surface the kernel exposes.
+    4. mechanism - ModuleCoordinator is a mount table, nothing more. (one claim)
+                   advances: HOW modules attach without the kernel knowing them.
+    5. payoff    - the QNX principle: reliability through radical exclusion.
+                   advances: lands the THEREFORE before the midpoint.
+    6. mechanism - 46 canonical events carry all cross-module traffic. (one claim)
+                   advances: HOW modules talk without direct coupling.
+    7. mechanism - five actions ride one dispatch mechanism. (one claim)
+                   advances: HOW behavior stays uniform and small.
+    8. mechanism - modules are discovered, not hard-wired. (one claim)
+                   advances: HOW the edge grows while the center stays fixed.
+    9. turn      - what's deliberately NOT in the kernel is the design.
+                   advances: the pivot - omission is the feature.
+   10. takeaway  - the discipline: five kernel jobs, everything else at the edge.
+                   advances: the pattern the audience keeps.
+
+  + Sources & Methodology (audit-trail slide, not a beat) at the end. Slides = 10 + 1 = 11.
+-->
+
 
 <!-- ============================================================ -->
 <!-- SLIDE 1: Title                                                -->
 <!-- ============================================================ -->
-<div class="slide active center">
-    <div class="section-label">Amplifier Core Architecture</div>
-    <h1 class="headline" style="margin-top: 12px;">The Kernel That Does Less</h1>
-    <p class="subhead" style="margin-top: 12px;">
-        An architectural deep-dive into the microkernel that runs AI agents<br>
-        in ~3,400 lines of Python
-    </p>
-    <div style="margin-top: clamp(20px, 4vw, 40px);">
-        <div class="stats-row">
-            <div class="stat-item">
-                <div class="stat-number">12</div>
-                <div class="stat-label">Architecture Files</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">~3,400</div>
-                <div class="stat-label">Lines of Kernel</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">6</div>
-                <div class="stat-label">Protocols</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">46</div>
-                <div class="stat-label">Events</div>
-            </div>
-        </div>
-    </div>
-    <div style="margin-top: clamp(16px, 3vw, 24px);">
-        <span class="status-badge">Active</span>
-        <span class="small-text" style="margin-left: 12px;">February 2026</span>
-    </div>
-</div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 2: The File Map                                         -->
-<!-- ============================================================ -->
-<div class="slide">
+<!-- beat 1: proof -->
+<div class="slide active">
     <div class="section-label">Anatomy</div>
     <h2 class="medium-headline">18 Source Files. Every One With a Purpose.</h2>
     <p class="body-text" style="max-width: 680px;">
@@ -603,9 +607,7 @@
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 3: The Six Protocols                                    -->
-<!-- ============================================================ -->
+<!-- beat 2: setup -->
 <div class="slide">
     <div class="section-label">Contracts</div>
     <h2 class="medium-headline">Six <span class="mono">@runtime_checkable</span> Protocols</h2>
@@ -664,9 +666,56 @@
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 4: The Coordinator                                      -->
-<!-- ============================================================ -->
+<!-- beat 3: mechanism -->
+<div class="slide">
+    <div class="section-label">Lifecycle</div>
+    <h2 class="medium-headline">Three Methods. That's the API.</h2>
+    <div class="flow">
+        <div class="flow-step">
+            <div class="flow-step-header color-sandstone">__init__(config)</div>
+            <div class="card-body">
+                Takes a raw config dict — the <em>"mount plan"</em>. Validates two required keys:
+                <span class="mono" style="color: var(--parchment);">session.orchestrator</span> and
+                <span class="mono" style="color: var(--parchment);">session.context</span>.
+                Creates coordinator and loader.
+            </div>
+            <div class="card-code" style="margin-top: 10px; color: var(--parchment-50);">
+<span class="code-comment"># No modules loaded yet.</span>
+<span class="code-comment"># Just the mount plan.</span></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+            <div class="flow-step-header color-copper">await initialize()</div>
+            <div class="card-body">
+                Loads modules in dependency order:
+            </div>
+            <div class="card-code" style="margin-top: 10px;">
+<span class="code-string">1.</span> orchestrator <span class="code-comment"># required, fatal</span>
+<span class="code-string">2.</span> context     <span class="code-comment"># required, fatal</span>
+<span class="code-string">3.</span> providers   <span class="code-comment"># warns on failure</span>
+<span class="code-string">4.</span> tools       <span class="code-comment"># warns on failure</span>
+<span class="code-string">5.</span> hooks       <span class="code-comment"># warns on failure</span>
+<span class="code-string">6.</span> emit <span class="code-keyword">session:fork</span> <span class="code-comment"># if parent_id</span></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+            <div class="flow-step-header color-malachite">await execute(prompt)</div>
+            <div class="card-body">
+                Emits <span class="mono" style="color:var(--parchment)">session:start</span> or
+                <span class="mono" style="color:var(--parchment)">session:resume</span>.
+                Gets all modules from coordinator.
+                Calls <span class="mono" style="color:var(--parchment)">orchestrator.execute()</span>.
+            </div>
+            <div class="card-code" style="margin-top: 10px; color: var(--parchment-50);">
+<span class="code-comment"># orchestrator.execute()</span>
+<span class="code-comment"># IS the agent loop.</span>
+<span class="code-comment"># Kernel doesn't know what</span>
+<span class="code-comment"># happens inside.</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- beat 4: mechanism -->
 <div class="slide">
     <div class="section-label">Coordination</div>
     <h2 class="medium-headline">ModuleCoordinator: The Mount Table</h2>
@@ -719,60 +768,43 @@
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 5: Session Lifecycle                                    -->
-<!-- ============================================================ -->
-<div class="slide">
-    <div class="section-label">Lifecycle</div>
-    <h2 class="medium-headline">Three Methods. That's the API.</h2>
-    <div class="flow">
-        <div class="flow-step">
-            <div class="flow-step-header color-sandstone">__init__(config)</div>
-            <div class="card-body">
-                Takes a raw config dict — the <em>"mount plan"</em>. Validates two required keys:
-                <span class="mono" style="color: var(--parchment);">session.orchestrator</span> and
-                <span class="mono" style="color: var(--parchment);">session.context</span>.
-                Creates coordinator and loader.
-            </div>
-            <div class="card-code" style="margin-top: 10px; color: var(--parchment-50);">
-<span class="code-comment"># No modules loaded yet.</span>
-<span class="code-comment"># Just the mount plan.</span></div>
+<!-- beat 5: payoff -->
+<div class="slide center">
+    <div class="section-label">Philosophy</div>
+    <h2 class="medium-headline" style="max-width: 800px;">The QNX Principle</h2>
+    <p class="subhead" style="margin-top: 12px;">
+        QNX runs nuclear power plants with a 100KB kernel.<br>
+        Amplifier runs AI agents with ~3,400 lines.
+    </p>
+    <p class="body-text" style="max-width: 640px; margin-top: clamp(16px, 3vw, 28px);">
+        Both achieve reliability through radical exclusion. The things you leave
+        <em>out</em> of the kernel matter more than what you put in.
+    </p>
+    <div class="card" style="max-width: 640px; margin-top: clamp(16px, 3vw, 28px); text-align: left;">
+        <div class="card-title" style="color: var(--accent);">The Two-Implementation Rule</div>
+        <div class="card-body">
+            Nothing gets promoted to the kernel until two independent modules converge on the need.
+            One implementation is a feature. Two implementations with the same pattern is a kernel candidate.
+            This prevents premature abstraction — the most expensive kind of technical debt.
         </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-step">
-            <div class="flow-step-header color-copper">await initialize()</div>
-            <div class="card-body">
-                Loads modules in dependency order:
-            </div>
-            <div class="card-code" style="margin-top: 10px;">
-<span class="code-string">1.</span> orchestrator <span class="code-comment"># required, fatal</span>
-<span class="code-string">2.</span> context     <span class="code-comment"># required, fatal</span>
-<span class="code-string">3.</span> providers   <span class="code-comment"># warns on failure</span>
-<span class="code-string">4.</span> tools       <span class="code-comment"># warns on failure</span>
-<span class="code-string">5.</span> hooks       <span class="code-comment"># warns on failure</span>
-<span class="code-string">6.</span> emit <span class="code-keyword">session:fork</span> <span class="code-comment"># if parent_id</span></div>
+    </div>
+    <div class="stats-row" style="margin-top: clamp(20px, 4vw, 36px);">
+        <div class="stat-item">
+            <div class="stat-number">139</div>
+            <div class="stat-label">Commits</div>
         </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-step">
-            <div class="flow-step-header color-malachite">await execute(prompt)</div>
-            <div class="card-body">
-                Emits <span class="mono" style="color:var(--parchment)">session:start</span> or
-                <span class="mono" style="color:var(--parchment)">session:resume</span>.
-                Gets all modules from coordinator.
-                Calls <span class="mono" style="color:var(--parchment)">orchestrator.execute()</span>.
-            </div>
-            <div class="card-code" style="margin-top: 10px; color: var(--parchment-50);">
-<span class="code-comment"># orchestrator.execute()</span>
-<span class="code-comment"># IS the agent loop.</span>
-<span class="code-comment"># Kernel doesn't know what</span>
-<span class="code-comment"># happens inside.</span></div>
+        <div class="stat-item">
+            <div class="stat-number">5</div>
+            <div class="stat-label">Contributors</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">~140</div>
+            <div class="stat-label">Days of History</div>
         </div>
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 6: Event Taxonomy                                       -->
-<!-- ============================================================ -->
+<!-- beat 6: mechanism -->
 <div class="slide">
     <div class="section-label">Events</div>
     <h2 class="medium-headline">46 Canonical Events, 14 Categories</h2>
@@ -824,9 +856,7 @@
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 7: Hook Result Actions                                  -->
-<!-- ============================================================ -->
+<!-- beat 7: mechanism -->
 <div class="slide">
     <div class="section-label">Hooks</div>
     <h2 class="medium-headline">Five Actions. One Mechanism.</h2>
@@ -875,9 +905,7 @@
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 8: Module Loading                                       -->
-<!-- ============================================================ -->
+<!-- beat 8: mechanism -->
 <div class="slide">
     <div class="section-label">Loading</div>
     <h2 class="medium-headline">How Modules Get Discovered</h2>
@@ -911,9 +939,7 @@ cleanup_fn = <span class="code-keyword">await</span> module.<span class="code-fn
 <span class="code-comment"># THAT'S the contract.</span></div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 9: What's Not In The Kernel                             -->
-<!-- ============================================================ -->
+<!-- beat 9: turn -->
 <div class="slide">
     <div class="section-label">Exclusion</div>
     <h2 class="medium-headline">What's Deliberately Not Here</h2>
@@ -977,47 +1003,25 @@ cleanup_fn = <span class="code-keyword">await</span> module.<span class="code-fn
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 10: The Microkernel Parallel                            -->
-<!-- ============================================================ -->
+<!-- beat 10: takeaway -->
 <div class="slide center">
-    <div class="section-label">Philosophy</div>
-    <h2 class="medium-headline" style="max-width: 800px;">The QNX Principle</h2>
-    <p class="subhead" style="margin-top: 12px;">
-        QNX runs nuclear power plants with a 100KB kernel.<br>
-        Amplifier runs AI agents with ~3,400 lines.
+    <div class="section-label">The Discipline</div>
+    <p class="subhead" style="max-width: 720px; line-height: 1.7; margin-top: 12px; color: var(--parchment-90);">
+        The kernel does five things: load modules, manage sessions, dispatch events,
+        coordinate protocols, and fork child sessions.
     </p>
-    <p class="body-text" style="max-width: 640px; margin-top: clamp(16px, 3vw, 28px);">
-        Both achieve reliability through radical exclusion. The things you leave
-        <em>out</em> of the kernel matter more than what you put in.
+    <p class="subhead" style="max-width: 720px; line-height: 1.7; margin-top: clamp(16px, 3vw, 28px); color: var(--parchment-70);">
+        Everything else — every provider, every tool, every orchestration strategy, every
+        logging decision, every safety policy — is a loadable module at the edge.
     </p>
-    <div class="card" style="max-width: 640px; margin-top: clamp(16px, 3vw, 28px); text-align: left;">
-        <div class="card-title" style="color: var(--accent);">The Two-Implementation Rule</div>
-        <div class="card-body">
-            Nothing gets promoted to the kernel until two independent modules converge on the need.
-            One implementation is a feature. Two implementations with the same pattern is a kernel candidate.
-            This prevents premature abstraction — the most expensive kind of technical debt.
-        </div>
-    </div>
-    <div class="stats-row" style="margin-top: clamp(20px, 4vw, 36px);">
-        <div class="stat-item">
-            <div class="stat-number">139</div>
-            <div class="stat-label">Commits</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-number">5</div>
-            <div class="stat-label">Contributors</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-number">~140</div>
-            <div class="stat-label">Days of History</div>
-        </div>
+    <p class="medium-headline" style="margin-top: clamp(24px, 5vw, 48px); color: var(--accent);">
+        That's the architecture.<br>That's the discipline.
+    </p>
+    <div class="small-text" style="margin-top: clamp(24px, 4vw, 40px);">
+        amplifier-core · microsoft/amplifier-core
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 11: Sources & Methodology                               -->
-<!-- ============================================================ -->
 <div class="slide">
     <div class="section-label">Sources</div>
     <h2 class="medium-headline">Research Methodology</h2>
@@ -1039,26 +1043,6 @@ cleanup_fn = <span class="code-keyword">await</span> module.<span class="code-fn
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- SLIDE 12: Closing                                             -->
-<!-- ============================================================ -->
-<div class="slide center">
-    <div class="section-label">The Discipline</div>
-    <p class="subhead" style="max-width: 720px; line-height: 1.7; margin-top: 12px; color: var(--parchment-90);">
-        The kernel does five things: load modules, manage sessions, dispatch events,
-        coordinate protocols, and fork child sessions.
-    </p>
-    <p class="subhead" style="max-width: 720px; line-height: 1.7; margin-top: clamp(16px, 3vw, 28px); color: var(--parchment-70);">
-        Everything else — every provider, every tool, every orchestration strategy, every
-        logging decision, every safety policy — is a loadable module at the edge.
-    </p>
-    <p class="medium-headline" style="margin-top: clamp(24px, 5vw, 48px); color: var(--accent);">
-        That's the architecture.<br>That's the discipline.
-    </p>
-    <div class="small-text" style="margin-top: clamp(24px, 4vw, 40px);">
-        amplifier-core · microsoft/amplifier-core
-    </div>
-</div>
 
 <!-- Navigation -->
 <div class="nav" id="nav"></div>
