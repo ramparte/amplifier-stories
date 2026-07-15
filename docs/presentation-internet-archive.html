@@ -491,93 +491,101 @@
     </style>
 </head>
 <body>
+    <!--
+      NARRATIVE SPINE — Taming the Internet Archive
 
-    <!-- Slide 1: Title -->
+      ABT: AND robotdad set out to download 2.3M pre-WWI documents to train a
+           "timecapsule" LLM; BUT the Internet Archive fought back with
+           undocumented rate limits and a hard 250-item pagination wall;
+           THEREFORE conversational engineering with Amplifier — delete the
+           official library, discover a hidden bulk API, enumerate systematically
+           — produced a stable multi-day pipeline that cataloged 2.3M and selected
+           ~1.4M with zero HTTP 429 errors.
+
+      PAYOFF (named up front): a disciplined Catalog → Filter → Download pipeline
+      that ran unattended for days — 2.3M cataloged, ~1.4M chosen, zero rate-limit
+      errors — where the real win was the human+AI collaboration itself.
+
+      BEATS (proof-first; payoff at beat 5 of 10, before the midpoint of 5):
+        1. proof     — the pipeline shipped: 2.3M cataloged, ~1.4M downloaded, zero 429s, no babysitting.
+                       advances: grounds the THEREFORE — conversational engineering solved a real production problem.
+        2. setup     — the goal: a timecapsule LLM on pre-1914 data only, ~15× bigger than Hayk's proof-of-concept.
+                       advances: establishes the AND and introduces the vision + the named precedent it leans on.
+        3. tension   — Crisis #1: HTTP 429 undocumented rate limits; the official library refuses to help.
+                       advances: establishes the BUT.
+        4. mechanism — delete the 784-line official library; build a custom adaptive rate limiter. (one claim)
+                       advances: HOW the first wall fell.
+        5. payoff    — the disciplined Catalog→Filter→Download pipeline: 2.3M in, ~1.4M out, multi-day stable.
+                       advances: lands the payoff before midpoint.
+        6. tension   — Crisis #2: search reports 2.3M results but hands back only 250 — a hard wall.
+                       advances: the second complication that threatened the payoff.
+        7. turn      — the breakthrough: the Archive has a second, hidden bulk-export API built for scale.
+                       advances: the pivot from stuck to scalable.
+        8. mechanism — stop paginating; enumerate identifiers directly and bulk-fetch. (one claim)
+                       advances: HOW scale was actually achieved.
+        9. takeaway  — the collaboration was the breakthrough: human calls + AI execution.
+                       advances: the durable lesson the audience keeps.
+       10. takeaway  — this was just the download layer; the story (and the code) continues.
+                       advances: what the audience does next.
+
+        + Sources & Methodology (audit-trail slide, not a beat) at the end.
+        Slides = 10 beats + 1 = 11.
+    -->
+
+    <!-- beat 1: proof -->
     <div class="slide active center">
         <div class="status-badge">Active</div>
         <div class="section-label">HUMAN-AI COLLABORATION &bull; REAL-WORLD ENGINEERING</div>
-        <h1 class="headline">Taming the Internet Archive</h1>
-        <p class="subhead">How robotdad &amp; Amplifier built production-scale download infrastructure<br>for 2.3 million historical documents</p>
-        <p class="tagline">
-            A story about API wrestling, rate limit nightmares,<br>and what's possible with conversational development
-        </p>
-    </div>
-
-    <!-- Slide 2: The Vision -->
-    <div class="slide">
-        <div class="section-label">THE VISION</div>
-        <h2 class="headline">Building a Timecapsule LLM</h2>
-        <p class="subhead">What if you trained an AI that doesn't know about computers, smartphones, or the internet?</p>
-        <div class="card">
-            <h3>The Challenge</h3>
-            <p>Train a language model exclusively on pre-World War I data (before 1914). An AI with the language, knowledge, and perspective of the 19th and early 20th centuries.</p>
-        </div>
-        <div class="card">
-            <h3>What This Requires</h3>
-            <p>A massive corpus of historical documents. Newspapers, books, periodicals&mdash;millions of them. All from before 1914. All digitized, downloadable, processable.</p>
-        </div>
-    </div>
-
-    <!-- Slide 3: Inspiration -->
-    <div class="slide">
-        <div class="section-label">STANDING ON SHOULDERS</div>
-        <h2 class="headline">Inspired by Hayk Grigorian's TimeCapsuleLLM</h2>
-        <p class="subhead">Proof-of-concept that showed training LLMs on historical data only</p>
-        <div class="card">
-            <h3>The Original TimeCapsuleLLM</h3>
-            <p><strong>Hayk Grigorian</strong> pioneered this concept with his TimeCapsuleLLM project:</p>
-            <ul>
-                <li><strong>Scope:</strong> London, 1800-1875</li>
-                <li><strong>Dataset:</strong> 136,344 documents (90GB)</li>
-                <li><strong>Key insight:</strong> Train from scratch on historical data only</li>
-                <li><strong>Repository:</strong> <a href="https://github.com/haykgrigo3/TimeCapsuleLLM" target="_blank">github.com/haykgrigo3/TimeCapsuleLLM</a></li>
-            </ul>
-        </div>
-        <div class="comparison">
-            <div class="before accent">
-                <h3>Hayk's Proof-of-Concept</h3>
-                <div class="big-number-sm">136K</div>
-                <p>Documents, London-focused<br>Single city, 75-year span</p>
-            </div>
-            <div class="after">
-                <h3>Our Production Scale</h3>
-                <div class="big-number-sm">2.3M</div>
-                <p><strong>~15&times; larger dataset</strong><br>Global pre-WWI scope<br>Multiple countries, 114-year span</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide 4: The Scale -->
-    <div class="slide">
-        <div class="section-label">THE CHALLENGE</div>
-        <h2 class="headline">The Scale</h2>
+        <h1 class="headline">2.3 million documents, zero rate-limit errors, no babysitting</h1>
+        <p class="subhead">robotdad and Amplifier built download infrastructure that ran for days against the Internet Archive and won.</p>
         <div class="stat-grid">
             <div class="stat">
                 <div class="stat-number">2.3M</div>
-                <div class="stat-label">Items to download<br>from Internet Archive</div>
+                <div class="stat-label">Items cataloged</div>
             </div>
             <div class="stat">
-                <div class="stat-number">83K+</div>
-                <div class="stat-label">Historical newspapers<br>to catalog</div>
+                <div class="stat-number">~1.4M</div>
+                <div class="stat-label">High-quality docs selected</div>
             </div>
             <div class="stat">
-                <div class="stat-number">~200K</div>
-                <div class="stat-label">Books across<br>various collections</div>
+                <div class="stat-number">0</div>
+                <div class="stat-label">HTTP 429 errors in production</div>
             </div>
         </div>
-        <p class="subhead text-center mt-lg">
-            And Internet Archive has completely undocumented rate limits.
-        </p>
+        <p class="tagline">A story about API wrestling, rate-limit nightmares, and conversational development. Here's how that zero happened.</p>
     </div>
 
-    <!-- Slide 5: Crisis 1 - HTTP 429 -->
+    <!-- beat 2: setup -->
+    <div class="slide">
+        <div class="section-label">THE GOAL</div>
+        <h2 class="headline">The goal: an AI that stops learning at 1914</h2>
+        <p class="subhead">A &ldquo;timecapsule LLM&rdquo; trained <em>only</em> on pre-World War I text &mdash; language, knowledge, and perspective with no computers, no internet, no modern world.</p>
+        <div class="card">
+            <h3>Standing on shoulders</h3>
+            <p>The concept comes from <strong>Hayk Grigorian's TimeCapsuleLLM</strong> &mdash; a proof that you can train a model from scratch on historical data only (London, 1800&ndash;1875; 136,344 documents). <a href="https://github.com/haykgrigo3/TimeCapsuleLLM" target="_blank">github.com/haykgrigo3/TimeCapsuleLLM</a></p>
+        </div>
+        <div class="comparison">
+            <div class="before accent">
+                <h3>Hayk's proof-of-concept</h3>
+                <div class="big-number-sm">136K</div>
+                <p>Documents, London only<br>Single city, 75-year span</p>
+            </div>
+            <div class="after">
+                <h3>This project's ambition</h3>
+                <div class="big-number-sm">2.3M</div>
+                <p><strong>~15&times; larger</strong><br>Global pre-WWI scope, 114-year span</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- beat 3: tension -->
     <div class="slide">
         <div class="text-center">
             <div class="section-label">CRISIS #1</div>
             <div class="icon-hero">&#x1F6A8;</div>
             <div class="big-number">HTTP 429</div>
-            <h2 class="medium-headline">You are being rate limited.</h2>
-            <p class="subhead">The official Internet Archive library provides zero assistance with rate limiting.</p>
+            <h2 class="medium-headline">The Archive said &ldquo;stop&rdquo; &mdash; and the official library wouldn't help</h2>
+            <p class="subhead">Internet Archive's rate limits are undocumented, and its own Python library refuses to manage them for you.</p>
         </div>
         <div class="code-block">
 <span class="code-comment"># What happened</span>
@@ -588,30 +596,28 @@ Made delays longer &rarr; STILL BANNED</span>
 
 <span class="code-comment"># Found in the docs:</span>
 "The internetarchive library does not provide
-assistance with complying with rate limiting."
-
-<span class="code-comment"># &#x1F624;</span></div>
+assistance with complying with rate limiting."</div>
     </div>
 
-    <!-- Slide 6: Solution - Custom Rate Limiter -->
+    <!-- beat 4: mechanism -->
     <div class="slide">
         <div class="section-label">THE NUCLEAR OPTION</div>
-        <h2 class="headline">Delete the Official Library</h2>
-        <p class="subhead">robotdad's decision: <strong>784 lines gone.</strong> Amplifier rebuilt it from scratch.</p>
+        <h2 class="headline">We deleted the official library and built our own rate limiter</h2>
+        <p class="subhead">robotdad's call: <strong>784 lines gone.</strong> Amplifier rebuilt the download layer lower-level, with adaptive backoff tuned to the Archive's real behavior.</p>
         <div class="split">
             <div>
-                <h3 class="accent-heading">Custom Rate Limiter</h3>
+                <h3 class="accent-heading">Custom adaptive rate limiter</h3>
                 <ul class="bullet-list">
                     <li><strong>Base delay:</strong> 3.0 seconds</li>
                     <li><strong>Max delay:</strong> 120 seconds</li>
                     <li><strong>On error:</strong> delay &times; 2.5</li>
                     <li><strong>On HTTP 429:</strong> delay &times; 4.0</li>
-                    <li><strong>Ban detection:</strong> Exit after 5 consecutive 429s</li>
+                    <li><strong>Ban detection:</strong> exit after 5 consecutive 429s</li>
                 </ul>
             </div>
             <div>
                 <div class="card">
-                    <h3>The Result</h3>
+                    <h3>The result</h3>
                     <p><strong>Stable downloads.</strong> No more bans. The pipeline ran for hours without incident.</p>
                     <p class="note-text">Sometimes you need to go lower-level than the official library.</p>
                 </div>
@@ -619,51 +625,67 @@ assistance with complying with rate limiting."
         </div>
     </div>
 
-    <!-- Slide 7: Crisis 2 - Pagination Wall -->
+    <!-- beat 5: payoff -->
+    <div class="slide">
+        <div class="text-center">
+            <div class="section-label">THE PAYOFF</div>
+            <h2 class="headline">Catalog &rarr; filter &rarr; download: 2.3M in, ~1.4M chosen out</h2>
+            <p class="subhead">The win wasn't downloading everything &mdash; it was a disciplined, selective pipeline that ran unattended for days.</p>
+        </div>
+        <div class="thirds">
+            <div class="card text-center">
+                <h3>1. Discovery &amp; catalog</h3>
+                <div class="stat-number mt-md">2.3M</div>
+                <p>Items cataloged from Internet Archive</p>
+            </div>
+            <div class="card text-center">
+                <h3>2. Quality filtering</h3>
+                <div class="icon-card mt-md">&#x1F50D;</div>
+                <p>Completeness, OCR quality, and metadata criteria applied</p>
+            </div>
+            <div class="card text-center">
+                <h3>3. Final download</h3>
+                <div class="stat-number mt-md">~1.4M</div>
+                <p>High-quality documents selected for processing</p>
+            </div>
+        </div>
+        <div class="stat-grid mt-lg">
+            <div class="stat"><div class="icon-card">&#x2705;</div><div class="stat-label">Multi-day stable downloads</div></div>
+            <div class="stat"><div class="icon-card">&#x2705;</div><div class="stat-label">Zero HTTP 429 errors</div></div>
+            <div class="stat"><div class="icon-card">&#x2705;</div><div class="stat-label">No human intervention needed</div></div>
+        </div>
+    </div>
+
+    <!-- beat 6: tension -->
     <div class="slide">
         <div class="section-label">CRISIS #2</div>
-        <h2 class="headline">The Pagination Wall</h2>
-        <p class="subhead">The API says there are 2.3M results. But we can only get 250 items.</p>
+        <h2 class="headline">The API promised 2.3M results &mdash; and handed back 250</h2>
+        <p class="subhead">Stable downloads were useless if we couldn't enumerate what to download. The search API hit a hard wall.</p>
         <div class="comparison">
             <div class="before accent">
-                <h3>What the API Reports</h3>
+                <h3>What the API reports</h3>
                 <div class="big-number-md">2.3M</div>
                 <p>numFound: 2,346,892<br>Total results available</p>
             </div>
             <div class="after error">
-                <h3>What We Can Actually Get</h3>
+                <h3>What we could actually get</h3>
                 <div class="big-number-md error">250</div>
-                <p>Page 1-5: 50 items each<br>Page 6: 0 items &larr; Hard wall</p>
+                <p>Pages 1&ndash;5: 50 items each<br>Page 6: 0 items &larr; hard wall</p>
             </div>
         </div>
+        <div class="quote">&ldquo;I'm very angry right now. Are we overcomplicating the search? This worked at some point.&rdquo;</div>
+        <p class="subhead">&mdash; robotdad, mid-debugging, after AND-NOT operators, simpler queries, new collections, and five reads of the docs all hit the same wall.</p>
     </div>
 
-    <!-- Slide 8: Debugging Marathon -->
-    <div class="slide">
-        <div class="section-label">THE DEBUGGING MARATHON</div>
-        <h2 class="headline">Hours of Trying Everything</h2>
-        <ul class="bullet-list">
-            <li>Tried <code>AND NOT</code> operators &rarr; same wall at 250</li>
-            <li>Simplified queries &rarr; same wall at 250</li>
-            <li>Changed collection parameters &rarr; same wall at 250</li>
-            <li>Adjusted pagination offsets &rarr; same wall at 250</li>
-            <li>Read the API docs five times &rarr; same wall at 250</li>
-        </ul>
-        <div class="quote">"I'm very angry right now."</div>
-        <div class="quote">"Are we overcomplicating the search? What is going on here?"</div>
-        <div class="quote">"This worked at some point. Cool cool cool."</div>
-        <p class="subhead mt-lg">&mdash; robotdad, during the debugging session</p>
-    </div>
-
-    <!-- Slide 9: The Breakthrough -->
+    <!-- beat 7: turn -->
     <div class="slide">
         <div class="section-label">THE BREAKTHROUGH</div>
-        <h2 class="headline">Discovery: A Different API</h2>
-        <p class="subhead">Internet Archive has TWO completely separate systems.</p>
+        <h2 class="headline">The Archive has a second, hidden API built for scale</h2>
+        <p class="subhead">The wall wasn't ours to climb &mdash; it was the wrong door. Internet Archive runs two completely separate systems.</p>
         <div class="comparison">
             <div class="before">
                 <h3>Search API</h3>
-                <p><strong>Nice web interface</strong><br>Great for browsing<br>Hard 10K pagination limit<br>We hit wall at 250</p>
+                <p><strong>Nice web interface</strong><br>Great for browsing<br>Hard pagination limit<br>We hit the wall at 250</p>
                 <p class="small-footnote">&#x274C; Not for bulk access</p>
             </div>
             <div class="after">
@@ -676,171 +698,94 @@ assistance with complying with rate limiting."
 <span class="code-comment"># The bulk export endpoint</span>
 <span class="code-green">https://archive.org/metadata/{identifier}</span>
 
-<span class="code-comment"># Just give it an ID, get full metadata back. Every time.</span></div>
+<span class="code-comment"># Give it an ID, get full metadata back. Every time.</span></div>
     </div>
 
-    <!-- Slide 10: The New Architecture -->
+    <!-- beat 8: mechanism -->
     <div class="slide">
         <div class="section-label">THE SOLUTION</div>
-        <h2 class="headline">Pattern Enumeration</h2>
-        <p class="subhead">Don't rely on search pagination. Enumerate systematically.</p>
+        <h2 class="headline">Stop paginating &mdash; enumerate identifiers directly</h2>
+        <p class="subhead">With a bulk endpoint that takes an ID, the job became generating IDs systematically instead of begging search for pages.</p>
         <div class="thirds">
             <div class="card">
                 <h3>1. Discovery</h3>
-                <p>Use search API to find initial identifiers and collection patterns</p>
+                <p>Use the search API just to find initial identifiers and collection patterns</p>
             </div>
             <div class="card">
                 <h3>2. Enumeration</h3>
-                <p>Generate identifiers systematically: date-based scanning, sequential patterns</p>
+                <p>Generate identifiers systematically: date-based scanning and sequential patterns</p>
             </div>
             <div class="card">
-                <h3>3. Bulk Fetch</h3>
-                <p>Use bulk export API to get metadata for each identifier (with custom rate limiter)</p>
+                <h3>3. Bulk fetch</h3>
+                <p>Pull metadata per identifier via the bulk API &mdash; through the custom rate limiter</p>
             </div>
         </div>
         <div class="code-block">
-<span class="code-comment"># Example: Newspaper identifier patterns</span>
+<span class="code-comment"># Newspaper identifier patterns</span>
 <span class="code-green">sim_american-journal-of-science_1800-01-01_1_1
 sim_american-journal-of-science_1800-02-01_1_2
 sim_american-journal-of-science_1800-03-01_1_3</span>
 
-<span class="code-comment"># Collection prefix + date + volume + issue
-# Beautiful. Predictable. Enumeratable.</span></div>
+<span class="code-comment"># Collection + date + volume + issue. Predictable. Enumeratable.</span></div>
     </div>
 
-    <!-- Slide 11: Victory -->
+    <!-- beat 9: takeaway -->
     <div class="slide">
-        <div class="text-center">
-            <div class="section-label">VICTORY</div>
-            <h2 class="headline">Production Pipeline: Catalog &rarr; Filter &rarr; Download</h2>
-            <p class="subhead">Selectivity and discipline, not just downloading everything</p>
-        </div>
-        <div class="thirds">
-            <div class="card text-center">
-                <h3>1. Discovery &amp; Catalog</h3>
-                <div class="stat-number mt-md">2.3M</div>
-                <p>Items cataloged from Internet Archive</p>
-            </div>
-            <div class="card text-center">
-                <h3>2. Quality Filtering</h3>
-                <div class="icon-card mt-md">&#x1F50D;</div>
-                <p>Applied quality criteria: completeness, OCR quality, metadata</p>
-            </div>
-            <div class="card text-center">
-                <h3>3. Final Download</h3>
-                <div class="stat-number mt-md">~1.4M</div>
-                <p>High-quality documents selected for processing</p>
-            </div>
-        </div>
-        <div class="stat-grid mt-lg">
-            <div class="stat">
-                <div class="icon-card">&#x2705;</div>
-                <div class="stat-label">Multi-day stable downloads</div>
-            </div>
-            <div class="stat">
-                <div class="icon-card">&#x2705;</div>
-                <div class="stat-label">Zero HTTP 429 errors</div>
-            </div>
-            <div class="stat">
-                <div class="icon-card">&#x2705;</div>
-                <div class="stat-label">No human intervention needed</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide 12: The Collaboration -->
-    <div class="slide">
-        <div class="section-label">HOW WE WORKED TOGETHER</div>
-        <h2 class="headline">Human-AI Partnership on Real Engineering</h2>
+        <div class="section-label">WHAT ACTUALLY WON</div>
+        <h2 class="headline">The collaboration was the breakthrough</h2>
+        <p class="subhead">Neither side would have solved this alone this fast. Human judgment set direction; AI execution made it real.</p>
         <div class="split">
             <div class="card">
-                <h3>robotdad's Role</h3>
+                <h3>robotdad's role</h3>
                 <ul>
-                    <li><strong>Strategic decisions:</strong> "Delete the official library"</li>
-                    <li><strong>Direction:</strong> "Try pattern enumeration instead"</li>
-                    <li><strong>Debugging intuition:</strong> Knowing what to question next</li>
-                    <li><strong>Frustration that drove breakthroughs:</strong> Questioning assumptions when stuck</li>
+                    <li><strong>Strategic calls:</strong> &ldquo;Delete the official library&rdquo;</li>
+                    <li><strong>Direction:</strong> &ldquo;Try pattern enumeration instead&rdquo;</li>
+                    <li><strong>Debugging intuition:</strong> knowing what to question next</li>
+                    <li><strong>Productive frustration:</strong> challenging assumptions when stuck</li>
                 </ul>
             </div>
             <div class="card">
-                <h3>Amplifier's Role</h3>
+                <h3>Amplifier's role</h3>
                 <ul>
-                    <li><strong>Implementation:</strong> Writing the custom rate limiter code</li>
-                    <li><strong>Discovery:</strong> Finding bulk export API documentation</li>
-                    <li><strong>Testing:</strong> Rapidly trying different approaches</li>
-                    <li><strong>Execution:</strong> Building the production pipeline</li>
+                    <li><strong>Implementation:</strong> writing the custom rate limiter</li>
+                    <li><strong>Discovery:</strong> surfacing the bulk export API</li>
+                    <li><strong>Iteration:</strong> rapidly trying different approaches</li>
+                    <li><strong>Execution:</strong> building the production pipeline</li>
                 </ul>
-            </div>
-        </div>
-        <p class="subhead text-center mt-lg">
-            Neither alone would have solved this as efficiently.<br>The collaboration was the breakthrough.
-        </p>
-    </div>
-
-    <!-- Slide 13: What This Demonstrates -->
-    <div class="slide">
-        <div class="section-label">WHAT AMPLIFIER CAN DO</div>
-        <h2 class="headline">Real Production Engineering Through Conversation</h2>
-        <div class="thirds">
-            <div class="card">
-                <h3>&#x1F527; Build Custom Infrastructure</h3>
-                <p>When libraries don't cut it, build from scratch. Custom rate limiters, adaptive backoff, production error handling.</p>
-            </div>
-            <div class="card">
-                <h3>&#x1F50D; Research &amp; Discover</h3>
-                <p>Find obscure API documentation, dig through GitHub issues, surface technical solutions you didn't know existed.</p>
-            </div>
-            <div class="card">
-                <h3>&#x26A1; Rapid Iteration</h3>
-                <p>Try dozens of approaches in hours. Test theories immediately. Get from "it doesn't work" to "production-stable" fast.</p>
-            </div>
-            <div class="card">
-                <h3>&#x1F3D7;&#xFE0F; Architectural Pivots</h3>
-                <p>When the approach isn't working, redesign. Pattern enumeration, bulk APIs, hybrid strategies&mdash;whatever it takes.</p>
-            </div>
-            <div class="card">
-                <h3>&#x1F4CA; Production Scale</h3>
-                <p>Not toy projects. 2.3M items. Multi-day pipelines. Real error handling. Actual production systems.</p>
-            </div>
-            <div class="card">
-                <h3>&#x1F91D; True Collaboration</h3>
-                <p>You make the calls, Amplifier executes. Debugging marathons together. Your intuition + AI implementation.</p>
             </div>
         </div>
     </div>
 
-    <!-- Slide 14: What's Next -->
+    <!-- beat 10: takeaway -->
     <div class="slide">
         <div class="section-label">WHAT'S NEXT</div>
-        <h2 class="headline">The Story Continues</h2>
+        <h2 class="headline">This was just the download layer &mdash; the story continues</h2>
         <div class="split">
             <div class="card">
-                <h3>&#x1F4C4; Part 2: OCR at Scale</h3>
-                <p><strong>Next story coming soon:</strong></p>
+                <h3>&#x1F4C4; Part 2: OCR at scale</h3>
                 <ul>
-                    <li>Rust layer for 46&times; speedup</li>
+                    <li>A Rust layer for 46&times; speedup</li>
                     <li>143 million text corrections</li>
                     <li>Processing 2.3M historical documents</li>
-                    <li>Another human-AI engineering collaboration</li>
                 </ul>
             </div>
             <div class="card">
-                <h3>&#x1F9E0; Part 3: Training the Timecapsule LLM</h3>
-                <p><strong>The ultimate goal:</strong></p>
+                <h3>&#x1F9E0; Part 3: Training the timecapsule LLM</h3>
                 <ul>
                     <li>Training on pre-WWI data only</li>
-                    <li>An AI that doesn't know about modern tech</li>
-                    <li>19th century language and perspective</li>
-                    <li>Full training story when complete</li>
+                    <li>An AI that doesn't know modern tech</li>
+                    <li>19th-century language and perspective</li>
                 </ul>
             </div>
         </div>
-        <p class="subhead text-center mt-lg">
-            This download infrastructure was just the beginning.
-        </p>
+        <div class="card card-narrow mt-lg">
+            <h3>See the code &mdash; it's all open source</h3>
+            <p><a href="https://github.com/robotdad/timecapsule-data" target="_blank">github.com/robotdad/timecapsule-data</a></p>
+            <p>&#x2705; Custom rate limiter with adaptive backoff &nbsp;&#x2705; Bulk export API integration &nbsp;&#x2705; Pattern enumeration &nbsp;&#x2705; Production-tested error handling</p>
+        </div>
     </div>
 
-    <!-- Slide 15: Sources & Methodology -->
+    <!-- Sources & Methodology -->
     <div class="slide">
         <div class="section-label">SOURCES</div>
         <h2 class="medium-headline">Research Methodology</h2>
@@ -857,28 +802,6 @@ sim_american-journal-of-science_1800-03-01_1_3</span>
         </div>
     </div>
 
-    <!-- Slide 16: Call to Action -->
-    <div class="slide center">
-        <div class="section-label">EXPLORE &amp; TRY</div>
-        <h2 class="headline">See the Code</h2>
-        <p class="subhead">The entire project is open source</p>
-        <div class="card card-narrow mt-lg">
-            <h3>timecapsule-data repository</h3>
-            <p>
-                <a href="https://github.com/robotdad/timecapsule-data" target="_blank">github.com/robotdad/timecapsule-data</a>
-            </p>
-            <p>
-                &#x2705; Custom rate limiter with adaptive backoff<br>
-                &#x2705; Bulk export API integration<br>
-                &#x2705; Pattern enumeration strategies<br>
-                &#x2705; Production-tested error handling
-            </p>
-        </div>
-        <p class="subhead mt-lg">
-            Curious what you can build with Amplifier?<br>
-            This was built through conversational development sessions.
-        </p>
-    </div>
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
