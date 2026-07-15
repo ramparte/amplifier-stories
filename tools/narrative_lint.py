@@ -30,8 +30,22 @@ from typing import Any
 # Regexes
 # ---------------------------------------------------------------------------
 
-SLIDE_DIV_RE = re.compile(r'class="slide( active)?"')
-SLIDE_OPEN_RE = re.compile(r'<div\s+class="slide( active)?"[^>]*>')
+# Match any <div> whose class attribute contains `slide` as a whole class token
+# (e.g. class="slide", "slide active", "slide center", "slide slide-statement").
+# `slide-title`/`slide-body`/`slide-counter` are DIFFERENT single tokens and are
+# correctly NOT matched, since we require `slide` as a standalone word token.
+SLIDE_OPEN_RE = re.compile(r'<div\b[^>]*\bclass="([^"]*)"[^>]*>', re.IGNORECASE)
+
+
+def _class_is_slide(class_value: str) -> bool:
+    """True iff the class attribute has `slide` as a standalone token."""
+    return "slide" in class_value.split()
+
+
+def count_slide_divs(html: str) -> int:
+    return sum(1 for m in SLIDE_OPEN_RE.finditer(html) if _class_is_slide(m.group(1)))
+
+
 BEAT_COMMENT_RE = re.compile(r"<!--\s*beat\s+\d+\s*:\s*(\w+)\s*-->", re.IGNORECASE)
 SPINE_COMMENT_RE = re.compile(r"<!--(.*?)-->", re.DOTALL)
 H1_H2_RE = re.compile(r"<(h1|h2)\b[^>]*>(.*?)</\1>", re.IGNORECASE | re.DOTALL)
@@ -282,7 +296,7 @@ def lint_html(html: str, filename: str = "<string>") -> dict[str, Any]:
     """Run all checks against an HTML string and return the result dict."""
     roles = parse_beat_roles(html)
     beat_count = len(roles)
-    slide_count = len(SLIDE_DIV_RE.findall(html))
+    slide_count = count_slide_divs(html)
     spine = find_spine_comment(html)
     slide_blocks = split_slide_blocks(html)
 
