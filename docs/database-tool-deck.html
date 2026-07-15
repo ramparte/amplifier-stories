@@ -348,29 +348,76 @@
     </style>
 </head>
 <body>
-    <!-- Slide 1: Title -->
+    <!--
+      ============================================================
+      NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
+      ============================================================
+
+      ABT:
+        AND AI agents need real data access to be useful - they have to be able
+            to query the database;
+        BUT raw SQL is dangerous: one hallucination away from
+            `DROP TABLE production_data`, so unrestricted access is a non-starter;
+        THEREFORE the database tool wraps every query in six layers of defense,
+            giving agents read-only, bounded data access with zero write risk.
+
+      PAYOFF (named up front):
+        Read-only structured results with no escape hatch - the database itself
+        rejects writes before any app code runs, so even a hallucinated
+        `DROP TABLE` never lands. Agents get the data; the data stays safe.
+
+      BEATS (proof-first; payoff lands at beat 3 of 8, before the midpoint):
+        1. proof     - an agent issues a SELECT and gets structured rows back, with writes rejected by the driver.
+                       advances: grounds the AND - safe data access actually works.
+        2. tension   - but raw SQL is dangerous: one hallucination is DROP TABLE production_data.
+                       advances: establishes the BUT.
+        3. payoff    - six layers of defense mean a write can't land, even a hallucinated one.
+                       advances: lands the THEREFORE (payoff before midpoint).
+        4. mechanism - Layer 1: read-only at the driver itself - no escape hatch. (one claim)
+                       advances: HOW writes are stopped before app code runs.
+        5. mechanism - Layer 2: query validation blocks DDL/DML/pragmas before execution. (one claim)
+                       advances: HOW dangerous statements are caught early.
+        6. mechanism - Layers 3 & 4: row limits and timeouts keep every query bounded. (one claim)
+                       advances: HOW runaway queries are contained.
+        7. turn      - what's actually shipped: SQLite done, Postgres/MySQL planned, one commit.
+                       advances: pivots from design to honest current status.
+        8. takeaway  - safe data access for every agent - six layers, zero compromises.
+                       advances: what the audience keeps.
+
+        + Sources & Methodology (audit-trail slide, not a beat) at the end.
+        Slides = 8 beats + 1 = 9.
+    -->
+
+    <!-- beat 1: proof -->
     <div class="slide active center">
-        <div class="section-label">Tool Module</div>
-        <h1 class="headline">Database Tool</h1>
-        <p class="subhead">Safe SQL queries for AI agents.<br>Enterprise-grade data access without the risk.</p>
+        <div class="section-label">Tool Module &middot; amplifier-tool-database</div>
+        <h1 class="medium-headline">Agents run <code style="color:#98D4A0;">SELECT</code> and get structured rows &mdash; writes are rejected outright.</h1>
+        <p class="subhead" style="max-width:760px;">A <code style="color:#98D4A0;">database_query</code> tool call returns clean, bounded data. The connection is opened read-only, so write operations never reach your tables.</p>
+        <div class="code-block" style="max-width:760px;text-align:left;"><span class="code-comment"># Agent issues a database_query tool call &rarr; gets structured data back</span>
+{
+  <span class="code-string">"query"</span>: <span class="code-string">"SELECT name, email FROM users WHERE active = 1"</span>,
+  <span class="code-string">"row_limit"</span>: 500
+}
+&rarr; { <span class="code-string">"columns"</span>: [<span class="code-string">"name"</span>, <span class="code-string">"email"</span>], <span class="code-string">"row_count"</span>: 247,
+     <span class="code-string">"truncated"</span>: <span class="code-keyword">false</span>, <span class="code-string">"execution_time"</span>: <span class="code-string">"0.023s"</span> }</div>
         <div style="display:inline-block;padding:4px 16px;border-radius:20px;font-size:var(--font-small);font-weight:600;letter-spacing:1px;text-transform:uppercase;background:rgba(94,92,230,0.15);color:#5E5CE6;border:1px solid rgba(94,92,230,0.3);margin-top:12px;">Inactive</div>
-        <div class="small-text" style="margin-top: 24px;">January 2026</div>
+        <div class="small-text" style="margin-top: 12px;">January 2026</div>
     </div>
 
-    <!-- Slide 2: The Problem -->
+    <!-- beat 2: tension -->
     <div class="slide center">
         <div class="section-label">The Problem</div>
-        <h2 class="headline">Agents need data access</h2>
-        <p class="subhead" style="max-width: 700px;">But SQL is dangerous</p>
+        <h2 class="headline">One hallucination away from <code style="color:#FF7AC6;">DROP TABLE</code>.</h2>
+        <p class="subhead" style="max-width: 700px;">Agents need data access &mdash; but raw SQL is dangerous.</p>
         <div class="highlight-box" style="max-width: 800px; margin-top: 40px;">
             Give an AI agent unrestricted database access and you're one hallucination away from <code style="color:#FF7AC6;">DROP TABLE production_data</code>. We need data access, but we need it safe.
         </div>
     </div>
 
-    <!-- Slide 3: Six-Layer Safety System -->
+    <!-- beat 3: payoff -->
     <div class="slide">
-        <div class="section-label">Safety Architecture</div>
-        <h2 class="medium-headline">Six-layer safety system</h2>
+        <div class="section-label">The Payoff &middot; Safety Architecture</div>
+        <h2 class="medium-headline">Six layers of defense mean a write can't land &mdash; even a hallucinated one.</h2>
         <ul class="feature-list">
             <li><span class="check">&#10003;</span> <strong>Layer 1:</strong>&nbsp; Read-only database connections</li>
             <li><span class="check">&#10003;</span> <strong>Layer 2:</strong>&nbsp; DDL/DML statement blocking</li>
@@ -379,20 +426,23 @@
             <li><span class="check">&#10003;</span> <strong>Layer 5:</strong>&nbsp; SQLite-specific pragma restrictions</li>
             <li><span class="check">&#10003;</span> <strong>Layer 6:</strong>&nbsp; Graceful error handling &amp; logging</li>
         </ul>
+        <div class="highlight-box">
+            Defense in depth: multiple independent layers must all fail before any damage can occur. The next slides open up the ones that matter most.
+        </div>
     </div>
 
-    <!-- Slide 4: Read-Only by Design -->
+    <!-- beat 4: mechanism -->
     <div class="slide">
         <div class="section-label">Layer 1</div>
-        <h2 class="medium-headline">Read-only by design</h2>
+        <h2 class="medium-headline">The database itself refuses to be written to.</h2>
         <div class="halves">
             <div class="card">
                 <div class="card-title">Database-Level Enforcement</div>
-                <div class="card-text">SQLite connections open with <code style="color:#98D4A0;">?mode=ro</code> URI parameter. Write operations are rejected by the driver itself before any application code runs.</div>
+                <div class="card-text">SQLite connections open with the <code style="color:#98D4A0;">?mode=ro</code> URI parameter. Write operations are rejected by the driver itself before any application code runs.</div>
             </div>
             <div class="card">
                 <div class="card-title">No Escape Hatch</div>
-                <div class="card-text">Even if query validation fails, the database itself rejects write operations. Defense in depth means multiple layers must fail before damage occurs.</div>
+                <div class="card-text">Even if query validation somehow failed, the database still rejects writes. That is what defense in depth buys you &mdash; multiple layers must fail before damage occurs.</div>
             </div>
         </div>
         <div class="highlight-box">
@@ -400,10 +450,10 @@
         </div>
     </div>
 
-    <!-- Slide 5: Query Validation -->
+    <!-- beat 5: mechanism -->
     <div class="slide">
         <div class="section-label">Layer 2</div>
-        <h2 class="medium-headline">Query validation</h2>
+        <h2 class="medium-headline">Dangerous statements are blocked before they ever execute.</h2>
         <div class="code-block"><span class="code-comment"># Blocked patterns (case-insensitive regex)</span>
 DANGEROUS_PATTERNS = [
     r'\b(DROP|CREATE|ALTER|TRUNCATE)\b',      <span class="code-comment"># DDL</span>
@@ -417,10 +467,10 @@ DANGEROUS_PATTERNS = [
     <span class="code-keyword">raise</span> ValueError(<span class="code-string">"Query contains forbidden operations"</span>)</div>
     </div>
 
-    <!-- Slide 6: Performance Guardrails -->
+    <!-- beat 6: mechanism -->
     <div class="slide">
         <div class="section-label">Layers 3 &amp; 4</div>
-        <h2 class="medium-headline">Performance guardrails</h2>
+        <h2 class="medium-headline">Every query is bounded in size and time.</h2>
         <div class="halves">
             <div class="card">
                 <div class="card-title">Row Limits</div>
@@ -443,34 +493,10 @@ DANGEROUS_PATTERNS = [
         </div>
     </div>
 
-    <!-- Slide 7: Code Example -->
-    <div class="slide">
-        <div class="section-label">Usage</div>
-        <h2 class="medium-headline">Safe query execution</h2>
-        <div class="code-block"><span class="code-comment"># Agent issues a database_query tool call</span>
-{
-  <span class="code-string">"name"</span>: <span class="code-string">"database_query"</span>,
-  <span class="code-string">"parameters"</span>: {
-    <span class="code-string">"connection_string"</span>: <span class="code-string">"sqlite:///data/app.db?mode=ro"</span>,
-    <span class="code-string">"query"</span>: <span class="code-string">"SELECT name, email FROM users WHERE active = 1"</span>,
-    <span class="code-string">"row_limit"</span>: 500
-  }
-}
-
-<span class="code-comment"># Returns structured data</span>
-{
-  <span class="code-string">"columns"</span>: [<span class="code-string">"name"</span>, <span class="code-string">"email"</span>],
-  <span class="code-string">"rows"</span>: [...],
-  <span class="code-string">"row_count"</span>: 247,
-  <span class="code-string">"truncated"</span>: <span class="code-keyword">false</span>,
-  <span class="code-string">"execution_time"</span>: <span class="code-string">"0.023s"</span>
-}</div>
-    </div>
-
-    <!-- Slide 8: Development Snapshot -->
+    <!-- beat 7: turn -->
     <div class="slide center">
         <div class="section-label">Development Snapshot</div>
-        <h2 class="medium-headline">Built in a single commit</h2>
+        <h2 class="medium-headline">What's actually shipped: SQLite done, the rest planned &mdash; in one commit.</h2>
         <div class="stat-row">
             <div class="stat">
                 <div class="stat-number">1</div>
@@ -484,15 +510,11 @@ DANGEROUS_PATTERNS = [
                 <div class="stat-number">67</div>
                 <div class="stat-label">Test Functions</div>
             </div>
-            <div class="stat">
-                <div class="stat-number">1</div>
-                <div class="stat-label">Contributor</div>
-            </div>
         </div>
         <div class="halves" style="max-width: 800px; margin-left: auto; margin-right: auto;">
             <div class="card">
                 <div class="card-title">SQLite: Shipped</div>
-                <div class="card-text">Full adapter with read-only connections, file-based access, and pragma safety. 352 lines in <code style="color:#98D4A0;">adapters/sqlite.py</code>.</div>
+                <div class="card-text">Full adapter with read-only connections, file-based access, and pragma safety. 352 lines in <code style="color:#98D4A0;">adapters/sqlite.py</code>. Authored by a single contributor (Sam Schillace).</div>
             </div>
             <div class="card">
                 <div class="card-title">PostgreSQL / MySQL: Planned</div>
@@ -501,7 +523,20 @@ DANGEROUS_PATTERNS = [
         </div>
     </div>
 
-    <!-- Slide 9: Sources & Methodology -->
+    <!-- beat 8: takeaway -->
+    <div class="slide center">
+        <h2 class="headline">Safe data access<br>for every agent.</h2>
+        <p class="subhead" style="margin-top: 24px; max-width: 700px;">
+            Six independent layers of protection. Zero compromises.<br>
+            The agent gets the data &mdash; and <code style="color:#FF7AC6;">DROP TABLE</code> never lands.
+        </p>
+        <div class="small-text" style="margin-top: 60px;">
+            amplifier-tool-database<br>
+            Part of the Amplifier ecosystem
+        </div>
+    </div>
+
+    <!-- Sources & Methodology -->
     <div class="slide">
         <div class="section-label">Sources &amp; Methodology</div>
         <h2 class="medium-headline">How we got these numbers</h2>
@@ -533,18 +568,7 @@ DANGEROUS_PATTERNS = [
         </div>
     </div>
 
-    <!-- Slide 10: CTA -->
-    <div class="slide center">
-        <h2 class="headline">Safe data access<br>for every agent.</h2>
-        <p class="subhead" style="margin-top: 24px; max-width: 700px;">
-            Six layers of protection. Zero compromises.<br>
-            One commit that solves the hardest problem in agent-database interaction.
-        </p>
-        <div class="small-text" style="margin-top: 60px;">
-            amplifier-tool-database<br>
-            Part of the Amplifier ecosystem
-        </div>
-    </div>
+    <!-- Navigation -->
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
