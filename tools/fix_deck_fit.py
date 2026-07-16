@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Idempotently inject a fit-safe formatting override so slide content never
-clips off the bottom. Content/narrative is never touched.
+clips off the bottom, with vertical scroll as an escape valve. Content/narrative
+is never touched. Re-running REPLACES any previously injected block (so the
+override can be upgraded in place).
 
-Root cause of clipping (per context/storyteller-instructions.md): slides use
-`justify-content: center` but lost `overflow-y: auto`, so tall content is
-centered and its top/bottom are clipped with no way to scroll. This override:
-  - restores `overflow-y: auto` on every slide (scroll safety net),
-  - top-aligns content slides (grows downward, scrolls instead of clipping),
-  - keeps `.center` title/frame slides centered ONLY when short,
-  - caps runaway hero numbers so a 160px stat can't push content off-screen.
+Root cause of clipping: in JS slide-mode the body has `overflow:hidden` and each
+`.slide` uses `min-height:100vh` with no cap. When content is taller than the
+viewport the slide GROWS past 100vh (min-height, not max-height) and the extra
+height is clipped by the hidden body overflow -- with no way to reach it.
+
+The fix caps each slide to the viewport (`max-height:100dvh`) and gives it
+`overflow-y:auto`, so tall content scrolls INSIDE the slide (the escape valve)
+instead of being clipped. Content slides also top-align so they grow downward.
 
 Usage:
     python tools/fix_deck_fit.py docs/a.html docs/b.html ...
@@ -20,29 +23,35 @@ import re
 import sys
 from pathlib import Path
 
-MARKER = "injected by fix_deck_fit"
+BEGIN = "/* --- BEGIN fit-safe formatting (fix_deck_fit) --- */"
+END = "/* --- END fit-safe formatting (fix_deck_fit) --- */"
 
-FIT_CSS = """
-/* --- fit-safe formatting (injected by fix_deck_fit) --- */
-.slide{overflow-y:auto!important;overflow-x:hidden!important;}
-/* content slides flow from the top so tall content scrolls instead of clipping */
-.slide:not(.center){justify-content:flex-start!important;}
-/* a centered slide that is too tall stops centering and flows from the top */
-@media (max-height:820px){.slide.center{justify-content:flex-start!important;}}
+FIT_CSS = f"""
+{BEGIN}
+/* every slide can scroll; content flows from the top (no center-clip) */
+.slide{{overflow-y:auto!important;overflow-x:hidden!important;}}
+.slide:not(.center){{justify-content:flex-start!important;}}
+@media (max-height:820px){{.slide.center{{justify-content:flex-start!important;}}}}
+/* JS slide-mode: cap the slide to the viewport and scroll INSIDE it (escape valve) */
+html.js .slide{{max-height:100vh;max-height:100dvh;overflow-y:auto!important;-webkit-overflow-scrolling:touch;}}
+/* no-JS: slides are position:relative and the page scrolls naturally */
 /* cap runaway hero numbers so a huge stat can't shove content off-screen */
-.velocity-number,.stat-value,.big-number,.metric-value,.stat-num,.hero-number,.stat-number{
-  font-size:clamp(40px,8vw,96px)!important;line-height:1.05!important;}
+.velocity-number,.stat-value,.big-number,.metric-value,.stat-num,.hero-number,.stat-number{{
+  font-size:clamp(40px,8vw,96px)!important;line-height:1.05!important;}}
+{END}
 """
 
+BLOCK_RE = re.compile(re.escape(BEGIN) + r".*?" + re.escape(END), re.DOTALL)
 
-def inject_fit(html: str) -> tuple[str, bool]:
-    if MARKER in html:
-        return html, False
+
+def inject_fit(html: str) -> str:
+    # Remove any prior injected block so we can upgrade it in place.
+    html = BLOCK_RE.sub("", html)
     m = re.search(r"</style>", html, re.IGNORECASE)
     if not m:
-        return html, False
+        return html
     idx = m.start()
-    return html[:idx] + FIT_CSS + html[idx:], True
+    return html[:idx] + FIT_CSS + html[idx:]
 
 
 def main(argv: list[str]) -> int:
@@ -52,14 +61,14 @@ def main(argv: list[str]) -> int:
         if not p.exists():
             print(f"MISSING {p}")
             continue
-        html = p.read_text(encoding="utf-8")
-        html, did = inject_fit(html)
-        if did:
-            p.write_text(html, encoding="utf-8")
+        original = p.read_text(encoding="utf-8")
+        updated = inject_fit(original)
+        if updated != original:
+            p.write_text(updated, encoding="utf-8")
             changed += 1
             print(f"FIXED {p.name}")
         else:
-            print(f"ok    {p.name}: already has fit override")
+            print(f"ok    {p.name}: no change")
     print(f"\n{changed} file(s) changed")
     return 0
 
