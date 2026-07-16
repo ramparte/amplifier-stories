@@ -1,24 +1,42 @@
-// make-a-deck.dot -- amplifier-stories narrative-deck pipeline (PHASE 1: linear).
+// make-a-deck.dot -- amplifier-stories narrative-deck pipeline (PHASE 2: gated).
 //
 // Turns a topic (graph goal) into a self-contained narrative HTML deck that
-// passes tools/narrative_lint.py. Linear happy-path only -- no gates / loops:
+// passes tools/narrative_lint.py, with an automated STRUCTURAL GATE + bounded
+// loop-back after render:
 //
-//     start -> research -> spine -> render -> done
+//     start -> reset -> research -> spine -> render -> lint
+//     lint --pass----> done                (deck is linter-clean)
+//     lint --retry---> render              (HARD-FAIL, retries remain; render fixes it)
+//     lint --flagged-> flagged -> done     (retries exhausted; mark FAIL, stop)
 //
-// Data-flow (all via the report_outcome tool -> Outcome.context_updates, which
-// the loop-pipeline engine merges into shared context; later nodes read the
-// keys as $tokens):
+// Data-flow (all via the report_outcome tool / tool-node parse_json ->
+// Outcome.context_updates, which the loop-pipeline engine merges into shared
+// context; later nodes read the keys as $tokens):
+//   reset     seeds neutral $lint_feedback + clears the retry counter (runs once)
 //   research  emits context key  research_json
 //   spine     reads $research_json, emits  spine_json
-//   render    reads $research_json + $spine_json, writes the deck, emits deck_path
+//   render    reads $research_json + $spine_json (+ $lint_feedback on retry),
+//             writes the deck
+//   lint      runs pipelines/lint_gate.sh -> narrative_lint.py on the deck and
+//             emits (parse_json) route in {pass|retry|flagged}, lint_hard_fail,
+//             lint_attempt, and lint_feedback (failing HARD-check names+details)
+//
+// GATE DESIGN NOTE: the lint tool node ALWAYS exits 0 and carries the pass/fail
+// verdict in the parsed `route` key (routed by condition="context.route=..."
+// edges), rather than via outcome=fail. A tool node that returned FAIL would
+// discard its stdout, losing the lint_feedback we must feed back to render.
+//
+// Bound: 3 loop-backs (1 initial lint + 3 re-renders). After that lint emits
+// route=flagged -> the `flagged` node -> done (pipeline outcome FAIL) instead of
+// spinning; the engine's max_steps guard is the backstop.
 //
 // $goal expands from graph[goal=...] below. The output path is baked as a
-// literal absolute path in the render prompt (phase 2 can parameterize it).
+// literal absolute path in the render prompt (phase 3 can parameterize it).
 
 digraph MakeADeck {
     graph [
         goal="the narrative_lint deck reviewer we built in amplifier-stories (tools/narrative_lint.py): what it checks and why",
-        label="amplifier-stories: make-a-deck (phase 1 linear)",
+        label="amplifier-stories: make-a-deck (phase 2: narrative_lint gate + loop-back)",
         output_path="/home/ramparte/dev/ANext/amplifier-stories/ai_working/pipeline-test/deck.html",
         default_fidelity="full",
         default_thread_id="make-a-deck",
@@ -45,9 +63,56 @@ digraph MakeADeck {
     // -- Stage 3: render (self-contained HTML deck, linter-clean) -----------
     render [
         label="Render",
-        prompt="Build ONE self-contained HTML deck from the research ($research_json) and the spine ($spine_json), following /home/ramparte/dev/ANext/amplifier-stories/context/storyteller-instructions.md EXACTLY: the Narrative Layer, the HTML template, the progressive-enhancement rules, and the Sources & Methodology slide.\n\nWrite the finished file with write_file to this EXACT absolute path (create nothing under docs/):\n  /home/ramparte/dev/ANext/amplifier-stories/ai_working/pipeline-test/deck.html\n\nSTRUCTURAL REQUIREMENTS -- a deterministic linter (tools/narrative_lint.py) checks these; follow them precisely or it HARD-FAILS:\n1. SPINE COMMENT: the FIRST thing inside <body> is a single HTML comment carrying the spine. It MUST literally contain the tokens `ABT:` (with the And/But/Therefore sentence), `Payoff:` (the named payoff), and an `advances:` note for EVERY beat.\n2. ONE SLIDE PER BEAT: render EXACTLY ONE `<div class=\"slide\">` per spine beat, in order. The first beat's slide is `<div class=\"slide active\">`. Each beat slide begins with an HTML comment `<!-- beat N: role -->` (N = beat number, role = that beat's role; beat 1 role = frame) and leads with an <h1> or <h2> that is a CLAIM headline (an assertion) -- NEVER a bare topic label like Overview / Metrics / Features / Architecture / Summary.\n3. SOURCES SLIDE: add exactly ONE final `<div class=\"slide\">` for Sources & Methodology (its heading text must contain `Sources` or `Research Methodology`; list the git/gh/grep commands from the research). This is the ONLY slide with NO beat comment. Therefore total `<div class=\"slide\">` count == number of beats + 1.\n4. PROGRESSIVE ENHANCEMENT: include `<script>document.documentElement.classList.add('js')</script>` in <head> BEFORE <style>; default `.slide{display:flex}`; a `html:not(.js) .slide{...visible...}` no-JS fallback; and `html.js .slide{display:none}` + `html.js .slide.active{display:flex}`.\n5. FIT-SAFE: add `html.js .slide{max-height:100dvh;overflow-y:auto;}` so slides cap to the viewport and scroll. Size big numbers with clamp(); NEVER a fixed font-size >= 72px outside clamp().\n6. Keep a `More Amplifier Stories` link: `<a href=\"index.html\" class=\"more-stories\">More Amplifier Stories</a>`.\n7. Include the standard slide navigation JS (keyboard + click + dots + touch/swipe) from the template so the deck actually works.\n\nEvery number/name on a slide must come from $research_json -- add nothing unverified. After writing the file, call report_outcome with status=success and context_updates containing ONE key `deck_path` set to the absolute path you wrote."
+        prompt="RETRY-AWARE GATE FEEDBACK: after this deck is written it is checked by a deterministic structural linter (tools/narrative_lint.py). If a PRIOR lint run HARD-FAILED this deck, the exact failing checks are listed here (this is empty / '(first attempt...)' on the first pass):\\n  $lint_feedback\\nIf that feedback lists real failures, you are REWRITING an existing deck: fix EXACTLY those issues and nothing else regresses. The usual culprits map 1:1 to the checks -- a `<!-- beat N: role -->` comment without a matching `<div class=\\\"slide\\\">` (or vice-versa: beat/slide parity), a missing `frame` first beat, no `proof` beat within the first THREE beats, a missing `payoff` beat, a missing/incomplete spine comment (must contain `ABT:`, `Payoff:`, and an `advances:` note per beat), or a missing Sources & Methodology slide. Re-emit the FULL corrected file to the same path.\\n\\nBuild ONE self-contained HTML deck from the research ($research_json) and the spine ($spine_json), following /home/ramparte/dev/ANext/amplifier-stories/context/storyteller-instructions.md EXACTLY: the Narrative Layer, the HTML template, the progressive-enhancement rules, and the Sources & Methodology slide.\n\nWrite the finished file with write_file to this EXACT absolute path (create nothing under docs/):\n  /home/ramparte/dev/ANext/amplifier-stories/ai_working/pipeline-test/deck.html\n\nSTRUCTURAL REQUIREMENTS -- a deterministic linter (tools/narrative_lint.py) checks these; follow them precisely or it HARD-FAILS:\n1. SPINE COMMENT: the FIRST thing inside <body> is a single HTML comment carrying the spine. It MUST literally contain the tokens `ABT:` (with the And/But/Therefore sentence), `Payoff:` (the named payoff), and an `advances:` note for EVERY beat.\n2. ONE SLIDE PER BEAT: render EXACTLY ONE `<div class=\"slide\">` per spine beat, in order. The first beat's slide is `<div class=\"slide active\">`. Each beat slide begins with an HTML comment `<!-- beat N: role -->` (N = beat number, role = that beat's role; beat 1 role = frame) and leads with an <h1> or <h2> that is a CLAIM headline (an assertion) -- NEVER a bare topic label like Overview / Metrics / Features / Architecture / Summary.\n3. SOURCES SLIDE: add exactly ONE final `<div class=\"slide\">` for Sources & Methodology (its heading text must contain `Sources` or `Research Methodology`; list the git/gh/grep commands from the research). This is the ONLY slide with NO beat comment. Therefore total `<div class=\"slide\">` count == number of beats + 1.\n4. PROGRESSIVE ENHANCEMENT: include `<script>document.documentElement.classList.add('js')</script>` in <head> BEFORE <style>; default `.slide{display:flex}`; a `html:not(.js) .slide{...visible...}` no-JS fallback; and `html.js .slide{display:none}` + `html.js .slide.active{display:flex}`.\n5. FIT-SAFE: add `html.js .slide{max-height:100dvh;overflow-y:auto;}` so slides cap to the viewport and scroll. Size big numbers with clamp(); NEVER a fixed font-size >= 72px outside clamp().\n6. Keep a `More Amplifier Stories` link: `<a href=\"index.html\" class=\"more-stories\">More Amplifier Stories</a>`.\n7. Include the standard slide navigation JS (keyboard + click + dots + touch/swipe) from the template so the deck actually works.\n\nEvery number/name on a slide must come from $research_json -- add nothing unverified. After writing the file, call report_outcome with status=success and context_updates containing ONE key `deck_path` set to the absolute path you wrote."
     ]
 
-    // -- Linear flow --------------------------------------------------------
-    start -> research -> spine -> render -> done
+    // -- Stage 0: reset (once-per-run gate state) ---------------------------
+    // Clears the bounded-retry counter and seeds neutral $lint_feedback context
+    // so the FIRST render sees an empty feedback token. Runs exactly once (it is
+    // NOT on the lint->render loop), so the retry counter can't leak between runs.
+    reset [
+        shape=parallelogram,
+        label="Reset gate",
+        tool_command="bash /home/ramparte/dev/ANext/amplifier-stories/pipelines/lint_gate.sh reset",
+        parse_json="true"
+    ]
+
+    // -- Stage 4: lint (automated STRUCTURAL GATE) --------------------------
+    // Runs tools/narrative_lint.py on the rendered deck via lint_gate.sh, which
+    // ALWAYS exits 0 and emits one line of JSON (parse_json merges it into
+    // context): route in {pass|retry|flagged}, lint_hard_fail, lint_attempt, and
+    // lint_feedback (the failing HARD-check names+details fed back to render).
+    // Gate always-succeeds-and-captures so the failing-check feedback survives
+    // into context; the pass/fail DECISION is carried by the `route` key and the
+    // condition edges below (a tool node that returns FAIL would discard stdout,
+    // losing the feedback -- hence route-key routing instead of outcome=fail).
+    lint [
+        shape=parallelogram,
+        label="Structural lint gate",
+        tool_command="bash /home/ramparte/dev/ANext/amplifier-stories/pipelines/lint_gate.sh check",
+        parse_json="true"
+    ]
+
+    // -- Flagged terminal (retries exhausted, human review) -----------------
+    // Reached only when the deck still HARD-FAILs after the bounded retries.
+    // Exits non-zero on purpose so the pipeline's final outcome is FAIL (the
+    // human-visible flag) with the unresolved lint_feedback in failure_reason --
+    // rather than silently reporting success or spinning forever.
+    flagged [
+        shape=parallelogram,
+        label="Flagged (unresolved)",
+        tool_command="echo 'DECK FLAGGED: still HARD-FAILs after bounded lint retries (attempt $lint_attempt). Unresolved checks: $lint_feedback. Human review required.'; exit 1"
+    ]
+
+    // -- Flow with the structural gate + bounded loop-back ------------------
+    //   start -> reset -> research -> spine -> render -> lint
+    //   lint --pass---->  done      (deck is clean)
+    //   lint --retry--->  render    (HARD-FAIL, retries remain; render fixes it)
+    //   lint --flagged->  flagged -> done  (retries exhausted; mark & stop)
+    start -> reset -> research -> spine -> render -> lint
+
+    lint -> done    [label="pass",    condition="context.route=pass"]
+    lint -> render  [label="retry",   condition="context.route=retry"]
+    lint -> flagged [label="flagged", condition="context.route=flagged"]
+    flagged -> done
 }
