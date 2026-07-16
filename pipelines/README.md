@@ -1,35 +1,91 @@
 # make-a-deck — Attractor deck pipeline
 
-Phase 2: an Attractor pipeline that turns a topic into a narrative HTML deck and
-then puts it through an **automated structural gate** (`tools/narrative_lint.py`)
-with a **bounded loop-back to `render`** when the deck HARD-FAILs.
+Phase 3: an Attractor pipeline that turns a topic into a narrative HTML deck,
+puts it through an **automated structural gate** (`tools/narrative_lint.py`) with
+a **bounded loop-back to `render`**, AND wraps the generation in **two
+independent, FULLY-ISOLATED fact-check gates** so we never build a narrative on a
+hallucinated fact and never ship a deck whose claims aren't supported.
 
 ```
-start → reset → research → spine → render → lint
-                                              ├─ pass ───────→ done
-                                              ├─ retry ──────→ render   (loop back, ≤3×)
-                                              └─ flagged ────→ flagged → done  (FAIL)
+start → reset → research → research_factcheck → rfc_gate → spine → render → lint → deck_factcheck → dfc_gate → done
+                                                  ├ pass ─→ spine                     ├ pass ─→ deck_factcheck        ├ pass ─→ done
+                                                  ├ fail ─→ research (re-gather ≤2×)   ├ retry ─→ render (≤3×)          ├ fail ─→ render (fix ≤2×)
+                                                  └ flagged ─→ flagged (FAIL)          └ flagged ─→ flagged (FAIL)     └ flagged ─→ flagged (FAIL)
 ```
 
-- **reset** — (tool node) clears the bounded-retry counter and seeds a neutral
-  `$lint_feedback` so the first `render` sees empty feedback. Runs **once** per
-  run (it is not on the loop), so the counter can't leak between runs.
-- **research** — gathers VERIFIED facts about the topic (git/gh/grep/read), emits
-  context key `research_json`.
-- **spine** — reads `$research_json`, writes a narrative spine per the v2 contract
-  in `context/storyteller-instructions.md`, emits `spine_json`.
-- **render** — reads `$research_json` + `$spine_json` (**and `$lint_feedback` on a
-  retry**), writes a self-contained HTML deck to the output path. Its prompt is
-  retry-aware: if `$lint_feedback` lists failing checks it rewrites the deck to
-  fix exactly those.
+## Phase 3: two isolated fact-check gates
+
+Each `*_factcheck` node runs with **`fidelity="truncate"`** → a **fresh, isolated
+session** whose preamble is *only* the graph goal + run id (see the Attractor
+`fidelity.py` `_build_truncate_preamble`). It therefore has **no conversational
+knowledge** of how the research/spine/render turns were produced. It re-derives
+every fact from ground truth and sees **only the specific artifact file** we tell
+it to read.
+
+### Why files (not `$token`/`report_outcome`)
+
+In this backend, **LLM (box) nodes return prose** — their `report_outcome` /
+`context_updates` are **not** captured (verified: phase-2 `research`/`spine`/
+`render` all log as `Plain text response`, `context_updates=None`), and `$token`
+prompt-expansion only resolves keys a **tool node** put into context. So an LLM
+node can neither hand a big artifact to a downstream node via context **nor**
+carry a routing verdict. We therefore hand artifacts between nodes as **files at
+fixed absolute paths** (under `ai_working/pipeline-test/`), and split each
+fact-check gate — exactly like the existing `render → lint(gate)` pair — into:
+
+1. an **isolated LLM checker** (`fidelity="truncate"`) that reads the artifact
+   file, re-derives the facts, and writes back its findings + a **one-word verdict
+   file** (`.rfc_verdict` / `.dfc_verdict`, `pass`|`fail`); and
+2. a tiny **tool router** (`parallelogram`, `parse_json`) that reads the verdict
+   file, applies the **bounded-retry counter** (`pipelines/factcheck_gate.sh`),
+   and emits the routing key into context **deterministically**.
+
+**Artifact files** (all cleared each run by `reset`): `research.json`
+(research→checker), `research_verified.json` (checker→spine/render/deck-gate),
+`research_flags.txt` + `.rfc_verdict` (checker→`rfc_gate`), `spine.json`
+(spine→render), `deck.html` (render→lint/deck-gate), `deck_flags.txt` +
+`.dfc_verdict` (checker→`dfc_gate`).
+
+**Routing keys don't collide:** `lint` uses `route`; the fact-check gates use
+`rfc_route` and `dfc_route` (emitted by their tool routers). The `$token`s that
+actually expand are the ones a tool node populates: `$lint_feedback` (lint),
+`$research_flags` (`rfc_gate`/reset seed), `$deck_flags` (`dfc_gate`/reset seed).
+On a `fail` a gate consumes one unit of retry budget and loops back; once the
+budget is spent a still-failing gate emits `flagged` (≤2 loop-backs) instead of
+spinning. `reset` clears all three counters + artifacts once per run.
+
+- **reset** — (tool node) clears **all three** bounded-retry counters (lint + both
+  fact-check gates), the verdict files, and the per-run artifact files, and seeds
+  neutral `$lint_feedback` / `$research_flags` / `$deck_flags`. Runs **once** per
+  run (not on any loop), so nothing (stale fact or verdict) leaks between runs.
+- **research** — gathers VERIFIED facts (git/gh/grep/read) and **writes
+  `research.json`**; on a re-gather loop it reads `$research_flags` to fix exactly
+  the claims the fact-checker flagged.
+- **research_factcheck** — (isolated, `fidelity="truncate"`) reads `research.json`,
+  re-verifies every claim against ground truth, and writes `research_verified.json`
+  (bad claims removed/corrected), `research_flags.txt`, and `.rfc_verdict`.
+- **rfc_gate** — (tool node) `factcheck_gate.sh rfc`: reads `.rfc_verdict` + the
+  counter, emits `rfc_route ∈ {pass|fail|flagged}` and `$research_flags`
+  (`pass`→spine, `fail`→research, `flagged`→flagged).
+- **spine** — reads `research_verified.json`, writes a narrative spine per the v2
+  contract in `context/storyteller-instructions.md` to `spine.json`.
+- **render** — reads `research_verified.json` + `spine.json` (**and
+  `$lint_feedback` / `$deck_flags` on a retry**), writes `deck.html`. Retry-aware:
+  fixes exactly the failing lint checks and/or the unsupported deck claims.
 - **lint** — (tool node) runs `pipelines/lint_gate.sh check`, which lints the deck
-  with `narrative_lint.py --json` and emits **one line of JSON** (`parse_json`
-  merges it into context): `route ∈ {pass|retry|flagged}`, `lint_hard_fail`,
-  `lint_attempt`, and **`lint_feedback`** (the failing HARD-check names+details).
-  Condition edges route on `context.route`.
-- **flagged** — reached only when the deck still HARD-FAILs after **3** retries;
-  it exits non-zero so the pipeline's final outcome is **FAIL** (the human-visible
-  flag) rather than spinning, then routes to `done`.
+  with `narrative_lint.py --json` and emits **one line of JSON** (`parse_json`):
+  `route ∈ {pass|retry|flagged}`, `lint_hard_fail`, `lint_attempt`, and
+  **`lint_feedback`**. Condition edges route on `context.route`.
+- **deck_factcheck** — (isolated, `fidelity="truncate"`) reads `deck.html` +
+  `research_verified.json`, confirms every deck claim (incl. frame-slide framing)
+  is supported by the verified research, and writes `deck_flags.txt` + `.dfc_verdict`.
+- **dfc_gate** — (tool node) `factcheck_gate.sh dfc`: reads `.dfc_verdict` + the
+  counter, emits `dfc_route ∈ {pass|fail|flagged}` and `$deck_flags`
+  (`pass`→done, `fail`→render, `flagged`→flagged).
+- **flagged** — reached when the deck still HARD-FAILs after **3** lint retries, or
+  when either fact-check gate exhausts its **2** loop-backs; it exits non-zero so
+  the pipeline's final outcome is **FAIL** (the human-visible flag) rather than
+  spinning, then routes to `done`.
 
 ## Phase 2: the structural gate
 
@@ -54,6 +110,8 @@ emits `route=flagged` → the `flagged` node → `done` (FAIL). The engine's
 | File | Purpose |
 |------|---------|
 | `make-a-deck.dot` | The pipeline graph. The **topic is `graph[goal=...]`**; the output path is a literal absolute path in the `render` node prompt (also mirrored as `graph[output_path=...]`). |
+| `lint_gate.sh` | Structural-gate wrapper (`reset`/`check`) for the `lint` node; also clears the two fact-check counters on `reset`. |
+| `factcheck_gate.sh` | Bounded-retry counter for the two isolated fact-check gates (`reset`/`rfc`/`dfc`): turns each checker's semantic `pass`/`fail` verdict into a counter-bounded `rfc_route`/`dfc_route` (`pass`/`fail`/`flagged`) so a failing checker routes to `flagged` (≤2 loop-backs) instead of spinning. |
 | `make-a-deck.bundle.yaml` | Overlay bundle. Includes `attractor:bundles/attractor-pipeline`, points `session.orchestrator.config.dot_file` at the `.dot`, and redeclares the `attractor-agent-anthropic` child **with an inline `loop-agent` orchestrator** (required by the recursion guard). |
 
 ## One-time setup (register bundles)

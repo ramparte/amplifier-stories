@@ -34,7 +34,12 @@ MODE="${1:-check}"
 
 if [ "$MODE" = "reset" ]; then
     rm -f "$COUNTER" "$LINT_OUT"
-    printf '%s\n' '{"route": "start", "lint_hard_fail": "", "lint_attempt": 0, "lint_feedback": "(first attempt: no prior lint feedback)"}'
+    # PHASE 3: also clear BOTH fact-check gate counters, verdict files, AND the
+    # per-run artifact files (research.json, research_verified.json, spine.json,
+    # deck_flags.txt, ...) so neither a stale FACT nor a stale VERDICT can leak in
+    # from a previous run. reset runs ONCE per run (start -> reset -> ...).
+    bash "$REPO/pipelines/factcheck_gate.sh" reset
+    printf '%s\n' '{"route": "start", "lint_hard_fail": "", "lint_attempt": 0, "lint_feedback": "(first attempt: no prior lint feedback)", "research_flags": "(first pass: no prior fact-check flags)", "deck_flags": "(first pass: no prior deck fact-check flags)"}'
     exit 0
 fi
 
