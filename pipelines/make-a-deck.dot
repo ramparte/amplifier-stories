@@ -1,0 +1,53 @@
+// make-a-deck.dot -- amplifier-stories narrative-deck pipeline (PHASE 1: linear).
+//
+// Turns a topic (graph goal) into a self-contained narrative HTML deck that
+// passes tools/narrative_lint.py. Linear happy-path only -- no gates / loops:
+//
+//     start -> research -> spine -> render -> done
+//
+// Data-flow (all via the report_outcome tool -> Outcome.context_updates, which
+// the loop-pipeline engine merges into shared context; later nodes read the
+// keys as $tokens):
+//   research  emits context key  research_json
+//   spine     reads $research_json, emits  spine_json
+//   render    reads $research_json + $spine_json, writes the deck, emits deck_path
+//
+// $goal expands from graph[goal=...] below. The output path is baked as a
+// literal absolute path in the render prompt (phase 2 can parameterize it).
+
+digraph MakeADeck {
+    graph [
+        goal="the narrative_lint deck reviewer we built in amplifier-stories (tools/narrative_lint.py): what it checks and why",
+        label="amplifier-stories: make-a-deck (phase 1 linear)",
+        output_path="/home/ramparte/dev/ANext/amplifier-stories/ai_working/pipeline-test/deck.html",
+        default_fidelity="full",
+        default_thread_id="make-a-deck",
+        default_max_retry=1
+    ]
+    rankdir=LR
+
+    // -- Structural nodes ---------------------------------------------------
+    start [shape=Mdiamond, label="Start"]
+    done  [shape=Msquare,  label="Done"]
+
+    // -- Stage 1: research (verified facts only) ----------------------------
+    research [
+        label="Research",
+        prompt="Gather VERIFIED facts about the topic: $goal.\n\nThe PRIMARY source for this topic lives in this repo: /home/ramparte/dev/ANext/amplifier-stories/tools/narrative_lint.py (read it in full). Research the surrounding repo and related repos under /home/ramparte/dev/ANext using bash: run `git log`, `gh`, `grep`/`rg`, `wc -l`, and read files. Prefer microsoft/* and ramparte/* repos; never the anthropics/* forks.\n\nHARD RULE: EVERY metric / date / name / claim MUST trace to actual command output you ran -- never fabricate. If you cannot verify something, do NOT state it as fact; list it under unverified_notes instead. For narrative_lint.py specifically, enumerate exactly which HARD checks and WARN checks it runs and WHY each one exists (what failure mode it guards against), grounded in the source.\n\nWhen finished, call the report_outcome tool with status=success and context_updates containing ONE key `research_json` whose value is a compact JSON STRING encoding this object: {title, topic, verified_metrics:[{claim, value, source_command, evidence}], timeline, contributors, feature_status, core_story, unverified_notes}. Every field must be grounded in a command you actually ran."
+    ]
+
+    // -- Stage 2: spine (narrative contract v2) -----------------------------
+    spine [
+        label="Spine",
+        prompt="Using ONLY the verified research in $research_json, write a narrative spine that follows the v2 contract in /home/ramparte/dev/ANext/amplifier-stories/context/storyteller-instructions.md -- READ that file first, especially the '## Narrative Layer' section.\n\nProduce: (1) a one-line ABT in And / But / Therefore form; (2) a named Payoff (the climax the deck drives toward); (3) an ordered list of 6-8 beats. Each beat has a role from: frame | proof | setup | tension | mechanism | turn | payoff | takeaway, a one-line CLAIM, and an `advances` note saying how it serves the ABT.\n\nHARD RULES: beat 1 role MUST be `frame` (an orientation hook -- what this is / the problem it solves / why it matters -- not a bland title card). A `proof` beat MUST land within the first THREE beats. Every beat MUST have an `advances` note. A `payoff` beat MUST be present, landing in the back half as the climax. Mechanism beats make ONE claim each (no catalog beats).\n\nWhen finished, call report_outcome with status=success and context_updates containing ONE key `spine_json` whose value is a compact JSON STRING encoding: {abt:{and,but,therefore}, payoff, beats:[{n, role, claim, advances}]}."
+    ]
+
+    // -- Stage 3: render (self-contained HTML deck, linter-clean) -----------
+    render [
+        label="Render",
+        prompt="Build ONE self-contained HTML deck from the research ($research_json) and the spine ($spine_json), following /home/ramparte/dev/ANext/amplifier-stories/context/storyteller-instructions.md EXACTLY: the Narrative Layer, the HTML template, the progressive-enhancement rules, and the Sources & Methodology slide.\n\nWrite the finished file with write_file to this EXACT absolute path (create nothing under docs/):\n  /home/ramparte/dev/ANext/amplifier-stories/ai_working/pipeline-test/deck.html\n\nSTRUCTURAL REQUIREMENTS -- a deterministic linter (tools/narrative_lint.py) checks these; follow them precisely or it HARD-FAILS:\n1. SPINE COMMENT: the FIRST thing inside <body> is a single HTML comment carrying the spine. It MUST literally contain the tokens `ABT:` (with the And/But/Therefore sentence), `Payoff:` (the named payoff), and an `advances:` note for EVERY beat.\n2. ONE SLIDE PER BEAT: render EXACTLY ONE `<div class=\"slide\">` per spine beat, in order. The first beat's slide is `<div class=\"slide active\">`. Each beat slide begins with an HTML comment `<!-- beat N: role -->` (N = beat number, role = that beat's role; beat 1 role = frame) and leads with an <h1> or <h2> that is a CLAIM headline (an assertion) -- NEVER a bare topic label like Overview / Metrics / Features / Architecture / Summary.\n3. SOURCES SLIDE: add exactly ONE final `<div class=\"slide\">` for Sources & Methodology (its heading text must contain `Sources` or `Research Methodology`; list the git/gh/grep commands from the research). This is the ONLY slide with NO beat comment. Therefore total `<div class=\"slide\">` count == number of beats + 1.\n4. PROGRESSIVE ENHANCEMENT: include `<script>document.documentElement.classList.add('js')</script>` in <head> BEFORE <style>; default `.slide{display:flex}`; a `html:not(.js) .slide{...visible...}` no-JS fallback; and `html.js .slide{display:none}` + `html.js .slide.active{display:flex}`.\n5. FIT-SAFE: add `html.js .slide{max-height:100dvh;overflow-y:auto;}` so slides cap to the viewport and scroll. Size big numbers with clamp(); NEVER a fixed font-size >= 72px outside clamp().\n6. Keep a `More Amplifier Stories` link: `<a href=\"index.html\" class=\"more-stories\">More Amplifier Stories</a>`.\n7. Include the standard slide navigation JS (keyboard + click + dots + touch/swipe) from the template so the deck actually works.\n\nEvery number/name on a slide must come from $research_json -- add nothing unverified. After writing the file, call report_outcome with status=success and context_updates containing ONE key `deck_path` set to the absolute path you wrote."
+    ]
+
+    // -- Linear flow --------------------------------------------------------
+    start -> research -> spine -> render -> done
+}
