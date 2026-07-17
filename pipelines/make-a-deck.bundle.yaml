@@ -1,0 +1,36 @@
+bundle:
+  name: make-a-deck
+  version: 0.1.0
+  description: >
+    amplifier-stories deck pipeline (phase 1: linear research -> spine -> render).
+    Overlay on attractor:bundles/attractor-pipeline that points the loop-pipeline
+    orchestrator at pipelines/make-a-deck.dot and supplies an inline-orchestrator
+    Anthropic child agent (required by the loop-pipeline recursion guard).
+
+includes:
+  - bundle: attractor:bundles/attractor-pipeline
+
+# Point the pipeline orchestrator at our DOT graph. The goal (topic) lives in
+# graph[goal=...] inside the .dot; there is no --dot-file / --goal CLI flag in
+# this core, so it is passed here via orchestrator config.
+session:
+  orchestrator:
+    config:
+      dot_file: /home/ramparte/dev/ANext/amplifier-stories/pipelines/make-a-deck.dot
+
+# RECURSION GUARD (critical): the loop-pipeline backend reads each child agent's
+# orchestrator ONLY from the INLINE agents.<name>.session.orchestrator.module and
+# does NOT resolve `bundle:` refs. attractor-pipeline.yaml declares its child
+# agents as bundle-refs only, so a bundle-ref-only child trips the guard
+# (session.orchestrator.module=None -> would re-enter loop-pipeline). We must
+# redeclare the Anthropic child here WITH an inline loop-agent orchestrator.
+agents:
+  attractor-agent-anthropic:
+    bundle: attractor:agents/attractor-agent-anthropic
+    session:
+      orchestrator:
+        module: loop-agent
+        source: git+https://github.com/microsoft/amplifier-bundle-attractor@main#subdirectory=modules/loop-agent
+        config:
+          max_tool_rounds_per_input: 50
+          default_command_timeout_ms: 120000
