@@ -9,6 +9,22 @@ spine; then map it 1:1 to slides; then make each slide well-formed. These three
 contracts are mandatory. A deck that is pretty and accurate but not compelling
 has failed.
 
+### Contract 0 — Title cover slide (the deck's first slide)
+
+Every deck opens with a **near-wordless title cover**, BEFORE the `frame` beat:
+
+- It is the FIRST `<div class="slide title-slide active">` — and the **only** slide
+  with the `active` class. It carries **no** `<!-- beat N: role -->` comment.
+- **Title:** a punchy deck name of **five words or fewer**, in an `<h1>`
+  (e.g. *"Superpowers"*, *"The Foundry"*, *"400 Tabs to 100"*).
+- **Subtitle (optional):** one short descriptor phrase (not a sentence) in a
+  `<p class="subtitle">` beneath the title
+  (e.g. *"TDD discipline for AI agents"*, *"22 production features in one day"*).
+- The cover is pure orientation-by-name; the `frame` beat that follows still does
+  the real orientation work (what this is / the problem / why it matters).
+- Slide accounting therefore becomes: **title cover + one slide per beat + Sources
+  slide** = `beats + 2` total `slide` divs.
+
 ### Contract 1 — The narrative spine (produce this BEFORE any slides)
 
 Write the spine first, as an explicit artifact. It has three parts:
@@ -167,6 +183,42 @@ Before creating a deck, gather:
 - Use `.center` class only for title slides that need vertical centering
 - Always include `overflow-y: auto` on slides
 
+**CRITICAL - Fill the width, fit one viewport (hard rule).** Decks are **16:9
+widescreen**. Every slide MUST fit within one viewport (`100dvh`) at 100% zoom
+**without needing to scroll**. The #1 failure mode is *vertical stacking*: a
+headline, then a paragraph, then a wide stat/steps/rules/card block, then a
+transition line — all stacked top-to-bottom — which overflows while the right
+half of the slide sits empty. To avoid it:
+
+- **Use the two-column `.slide.split` layout for ANY slide that has a supporting
+  visual block** (a stat grid, numbered steps, a rules list, cards, a diagram).
+  Put the *narrative* (section label, headline, body, handoff) in `.col-main` on
+  the left, and the *supporting block* in `.col-aside` on the right. See the
+  `.slide.split` CSS below.
+- **Keep copy tight** so the left column fits: headline ≤ ~2 lines, body ≤ ~3
+  lines. Trim rather than shrink.
+- **Text-only slides** (no supporting block) may stay single-column; add
+  `.center` so short content sits centered rather than clinging to the top.
+- Use the **conservative type scale** below (it runs ~20% smaller than a naive
+  scale) — this is what makes decks fit by construction. Do not exceed it.
+
+Split-layout HTML shape:
+
+```html
+<div class="slide split">
+  <!-- beat N: role -->
+  <div class="col-main">
+    <div class="section-label">Kicker</div>
+    <h2>Claim headline (≤ 2 lines)</h2>
+    <p class="body">One tight paragraph.</p>
+    <p class="handoff">Transition into the next beat.</p>
+  </div>
+  <div class="col-aside">
+    <div class="stat-grid">…</div>   <!-- or .steps / .rules / cards -->
+  </div>
+</div>
+```
+
 Start with this structure:
 
 ```html
@@ -220,6 +272,36 @@ Start with this structure:
             align-items: center;
             justify-content: center;
         }
+
+        /* Conservative type scale — decks are 16:9 and MUST fit one viewport.
+           Runs ~20% smaller than a naive scale; do NOT exceed these. */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); }
+
+        /* Horizontal split — narrative left, supporting visual right.
+           Use for ANY slide with a stat grid / steps / rules / cards so wide
+           blocks sit BESIDE the text instead of stacking below and overflowing. */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
         /* Landscape mobile: reduce vertical padding */
         @media (max-height: 500px) and (orientation: landscape) {

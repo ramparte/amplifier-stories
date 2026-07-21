@@ -58,6 +58,7 @@ max_retries = int(os.environ["MAX_RETRIES"])
 HARD_CHECKS = (
     "spine_present",
     "beat_markers",
+    "title_slide",
     "beat_slide_parity",
     "frame_first",
     "proof_early",

@@ -94,6 +94,7 @@ CARD_CLASS_SUBSTRINGS = (
 HARD_CHECKS = (
     "spine_present",
     "beat_markers",
+    "title_slide",
     "beat_slide_parity",
     "frame_first",
     "proof_early",
@@ -102,6 +103,7 @@ HARD_CHECKS = (
 )
 
 WARN_CHECKS = (
+    "title_brevity",
     "topic_label_headlines",
     "tile_grid_catalog",
     "big_number_clip_risk",
@@ -175,13 +177,71 @@ def check_beat_markers(roles: list[str]) -> tuple[str, str]:
     return "pass", f"{len(roles)} beat markers found: {', '.join(roles)}"
 
 
-def check_beat_slide_parity(beat_count: int, slide_count: int) -> tuple[str, str]:
-    detail = f"beats={beat_count} slides={slide_count}"
-    if slide_count == beat_count + 1:
+def check_beat_slide_parity(
+    beat_count: int, slide_count: int, has_title_slide: bool = False
+) -> tuple[str, str]:
+    # Non-beat slides = an optional title cover (before beat 1) + a Sources slide.
+    # base = one slide per beat, plus the title cover when present.
+    base = beat_count + (1 if has_title_slide else 0)
+    detail = f"beats={beat_count} slides={slide_count}" + (
+        " +title" if has_title_slide else ""
+    )
+    if slide_count == base + 1:  # + Sources slide
         return "pass", detail
-    if slide_count == beat_count:
+    if slide_count == base:  # missing the Sources slide
         return "warn", detail + " (no separate Sources slide)"
     return "fail", detail
+
+
+def _first_slide_is_title(slide_blocks: list[str]) -> bool:
+    """True iff the first slide div carries the `title-slide` class token."""
+    if not slide_blocks:
+        return False
+    classes = CLASS_ATTR_RE.findall(slide_blocks[0])
+    return any("title-slide" in value.split() for value in classes)
+
+
+def check_title_slide(slide_blocks: list[str]) -> tuple[str, str]:
+    """The deck must open with a near-wordless title/cover slide BEFORE beat 1.
+
+    Detected structurally: the first `<div class="slide ...">` must include the
+    `title-slide` class token, must NOT carry a `<!-- beat N: role -->` comment
+    (it precedes the frame beat), and must carry a heading to hold the title.
+    """
+    if not slide_blocks:
+        return "fail", "no slides found"
+    first = slide_blocks[0]
+    if not _first_slide_is_title(slide_blocks):
+        return (
+            "fail",
+            "first slide is not a title cover (class must include 'title-slide')",
+        )
+    if BEAT_COMMENT_RE.search(first):
+        return "fail", "title slide must not carry a beat comment (it precedes beat 1)"
+    if not H1_H2_RE.search(first):
+        return "fail", "title slide has no <h1>/<h2> title text"
+    return "pass", "title cover slide present before beat 1"
+
+
+def check_title_brevity(slide_blocks: list[str]) -> tuple[str, str]:
+    """The title (the title slide's <h1>) should be 5 words or fewer.
+
+    The subtitle is not counted -- render it as a separate element (e.g. a
+    `subtitle` paragraph), not inside the <h1>.
+    """
+    if not _first_slide_is_title(slide_blocks):
+        return "na", "no title slide"
+    first = slide_blocks[0]
+    m = re.search(r"<h1\b[^>]*>(.*?)</h1>", first, re.IGNORECASE | re.DOTALL)
+    if m is None:
+        m = re.search(r"<h2\b[^>]*>(.*?)</h2>", first, re.IGNORECASE | re.DOTALL)
+    if m is None:
+        return "warn", "title slide has no <h1> title to measure"
+    title_text = normalize_headline(m.group(1))
+    words = len(title_text.split())
+    if words > 5:
+        return "warn", f"title is {words} words (>5): {title_text!r}"
+    return "pass", f"title is {words} words: {title_text!r}"
 
 
 def check_frame_first(roles: list[str], spine: str | None) -> tuple[str, str]:
@@ -315,14 +375,20 @@ def lint_html(html: str, filename: str = "<string>") -> dict[str, Any]:
         status, detail = status_detail
         return {"status": status, "detail": detail}
 
+    has_title_slide = _first_slide_is_title(slide_blocks)
+
     checks = {
         "spine_present": _entry(check_spine_present(html, spine)),
         "beat_markers": _entry(check_beat_markers(roles)),
-        "beat_slide_parity": _entry(check_beat_slide_parity(beat_count, slide_count)),
+        "title_slide": _entry(check_title_slide(slide_blocks)),
+        "beat_slide_parity": _entry(
+            check_beat_slide_parity(beat_count, slide_count, has_title_slide)
+        ),
         "frame_first": _entry(check_frame_first(roles, spine)),
         "proof_early": _entry(check_proof_early(roles, spine)),
         "payoff_present": _entry(check_payoff_present(roles)),
         "sources_slide": _entry(check_sources_slide(html)),
+        "title_brevity": _entry(check_title_brevity(slide_blocks)),
         "topic_label_headlines": _entry(check_topic_label_headlines(html)),
         "tile_grid_catalog": _entry(check_tile_grid_catalog(slide_blocks)),
         "big_number_clip_risk": _entry(check_big_number_clip_risk(html)),

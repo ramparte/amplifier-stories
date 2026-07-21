@@ -29,7 +29,11 @@ Beats (frame-first, proof-early; each advances the ABT):
   4. payoff   -- advances: lands the THEREFORE -- the climax
   5. takeaway -- advances: what the audience keeps
 -->
-  <div class="slide active center">
+  <div class="slide title-slide active center">
+    <h1>Build the Gate</h1>
+    <p class="subtitle">shipping fast without shipping blind</p>
+  </div>
+  <div class="slide center">
     <!-- beat 1: frame -->
     <h1>We shipped fast, but couldn't tell if it worked</h1>
   </div>
@@ -214,7 +218,53 @@ def test_good_deck_passes_payoff_present():
 def test_good_deck_has_matching_beats_and_slides():
     result = lint_html(GOOD_DECK_HTML, "good.html")
     assert result["beats"] == 5
-    assert result["slides"] == 6  # 5 beats + Sources slide
+    assert result["slides"] == 7  # title cover + 5 beats + Sources slide
+    assert result["checks"]["beat_slide_parity"]["status"] == "pass"
+
+
+def test_good_deck_passes_title_slide():
+    result = lint_html(GOOD_DECK_HTML, "good.html")
+    assert result["checks"]["title_slide"]["status"] == "pass"
+
+
+def test_good_deck_title_brevity_passes():
+    # "Build the Gate" is 3 words (<= 5)
+    result = lint_html(GOOD_DECK_HTML, "good.html")
+    assert result["checks"]["title_brevity"]["status"] == "pass"
+
+
+def test_deck_without_title_slide_fails_title_slide():
+    # NO_FRAME_DECK opens straight into a beat slide -- no title cover.
+    result = lint_html(NO_FRAME_DECK_HTML, "no_frame.html")
+    assert result["checks"]["title_slide"]["status"] == "fail"
+    assert result["hard_fail"] is True
+
+
+def test_long_title_warns_title_brevity():
+    deck = """<!DOCTYPE html>
+<html><body>
+<!--
+ABT: AND a; BUT b; THEREFORE c.
+Payoff: the payoff.
+Beats:
+  1. frame  -- advances: orients
+  2. proof  -- advances: the AND
+  3. payoff -- advances: the THEREFORE
+-->
+  <div class="slide title-slide active">
+    <h1>This Title Has Far Too Many Words To Fit</h1>
+    <p class="subtitle">a subtitle</p>
+  </div>
+  <div class="slide"><!-- beat 1: frame --><h1>Orient the audience here</h1></div>
+  <div class="slide"><!-- beat 2: proof --><h2>The leverage is real</h2></div>
+  <div class="slide"><!-- beat 3: payoff --><h2>The climax lands</h2></div>
+  <div class="slide"><h2>Sources &amp; Research Methodology</h2></div>
+</body></html>"""
+    result = lint_html(deck, "long_title.html")
+    assert result["checks"]["title_slide"]["status"] == "pass"
+    assert result["checks"]["title_brevity"]["status"] == "warn"
+    # brevity is a WARN, so it must not by itself hard-fail the deck
+    assert result["checks"]["title_brevity"]["status"] != "fail"
 
 
 def test_deck_opening_with_proof_fails_frame_first_only():
