@@ -3,557 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>590 Million Corrections in 7 Hours: OCR Cleanup at Scale with Rust</title>
+    <title>43 Million Fixes, 21 Minutes</title>
     <script>document.documentElement.classList.add('js')</script>
-
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            /* Accent - Rust Orange */
-            --accent: #FF6B35;
-            --accent-dim: rgba(255, 107, 53, 0.15);
-            --accent-glow: rgba(255, 107, 53, 0.25);
-
-            /* Fluid typography */
-            --font-headline: clamp(36px, 8vw, 72px);
-            --font-medium-headline: clamp(24px, 5vw, 48px);
-            --font-subhead: clamp(16px, 3vw, 32px);
-            --font-body: clamp(14px, 2.5vw, 24px);
-            --font-small: clamp(12px, 1.8vw, 16px);
-            --font-big-number: clamp(60px, 18vw, 160px);
-            --font-card-number: clamp(36px, 8vw, 72px);
-            --font-label: clamp(14px, 2vw, 24px);
-            --font-section-label: clamp(12px, 1.5vw, 14px);
-            --font-code: clamp(12px, 1.8vw, 18px);
-            --font-quote: clamp(18px, 4vw, 36px);
-            --font-metric-number: clamp(28px, 5vw, 48px);
-
-            /* Fluid spacing */
-            --padding-slide: clamp(20px, 5vw, 80px);
-            --gap-grid: clamp(16px, 3vw, 40px);
-            --gap-ladder: clamp(16px, 3vw, 32px);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
+            --bg: #0b0d12;
+            --bg2: #12151d;
+            --fg: #f4f6fb;
+            --muted: #aab3c5;
+            --accent: #ff8a3d;
+            --accent2: #4dd2c0;
+            --line: rgba(255,255,255,0.12);
+        }
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-        }
-
-        /* ── Slide System ── */
         .slide {
             display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
-            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: flex-start;
             overflow-y: auto;
             overflow-x: hidden;
+            background: radial-gradient(120% 120% at 15% 10%, var(--bg2) 0%, var(--bg) 60%);
         }
 
-        .slide.active {
-            display: flex;
-        }
-
-        .center {
-            text-align: center;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* ── Typography ── */
-        .section-label {
-            font-size: var(--font-section-label);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: clamp(8px, 2vw, 16px);
-        }
-
-        .headline {
-            font-size: var(--font-headline);
-            font-weight: 700;
-            letter-spacing: -1px;
-            line-height: 1.1;
-            color: var(--text-primary);
-            margin-bottom: clamp(16px, 3vw, 40px);
-        }
-
-        .medium-headline {
-            font-size: var(--font-medium-headline);
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            line-height: 1.15;
-            color: var(--accent);
-            margin-bottom: clamp(16px, 4vw, 40px);
-        }
-
-        .subhead {
-            font-size: var(--font-subhead);
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        .highlight {
-            color: var(--accent);
-        }
-
-        .emphasis {
-            color: var(--accent);
-            font-weight: 700;
-        }
-
-        /* ── Feature Status Badge ── */
-        .status-badge {
-            display: inline-block;
-            padding: clamp(4px, 0.5vw, 6px) clamp(12px, 2vw, 20px);
-            background: rgba(48, 209, 88, 0.15);
-            border: 1px solid rgba(48, 209, 88, 0.4);
-            border-radius: 100px;
-            font-size: var(--font-small);
-            font-weight: 600;
-            color: #30d158;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: clamp(16px, 3vw, 32px);
-        }
-
-        /* ── Responsive Grids ── */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-            gap: var(--gap-grid);
-            width: 100%;
-            max-width: 1400px;
-        }
-
-        .split {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--gap-grid);
-            width: 100%;
-            max-width: 1400px;
-        }
-
-        .quads {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-            gap: var(--gap-grid);
-            width: 100%;
-            max-width: 1400px;
-        }
-
-        /* ── Cards ── */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(16px, 4vw, 32px);
-            text-align: center;
-        }
-
-        .card-number {
-            font-size: var(--font-card-number);
-            font-weight: 800;
-            color: var(--accent);
-            line-height: 1.1;
-            margin-bottom: clamp(8px, 1.5vw, 16px);
-        }
-
-        .card-label {
-            font-size: var(--font-label);
-            color: var(--text-secondary);
-            line-height: 1.3;
-        }
-
-        .card-detail {
-            font-size: var(--font-small);
-            color: var(--text-tertiary);
-            margin-top: clamp(8px, 1.5vw, 16px);
-            line-height: 1.4;
-        }
-
-        /* ── Big Stat ── */
-        .big-stat {
-            text-align: center;
-            max-width: 1000px;
-        }
-
-        .big-number {
-            font-size: var(--font-big-number);
-            font-weight: 800;
-            color: var(--accent);
-            line-height: 1;
-            margin-bottom: clamp(8px, 2vw, 24px);
-        }
-
-        .big-label {
-            font-size: var(--font-medium-headline);
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: clamp(16px, 4vw, 48px);
-        }
-
-        .big-context {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        /* ── Code Block ── */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-left: 4px solid var(--accent);
-            border-radius: clamp(8px, 1.5vw, 12px);
-            padding: clamp(16px, 3vw, 32px);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: var(--font-code);
-            line-height: 1.7;
-            color: var(--text-secondary);
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            max-width: 1200px;
-            width: 100%;
-        }
-
-        .code-block .error {
-            color: #ff453a;
-            font-weight: 600;
-        }
-
-        .code-block .success {
-            color: #30d158;
-            font-weight: 600;
-        }
-
-        /* ── Content Lists ── */
-        .content-list {
-            list-style: none;
-            padding: 0;
-            max-width: 1200px;
-            width: 100%;
-        }
-
-        .content-list li {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-            margin-bottom: clamp(12px, 2vw, 20px);
-            padding-left: clamp(28px, 4vw, 44px);
-            position: relative;
-        }
-
-        .content-list li::before {
-            content: "\2192";
-            position: absolute;
-            left: 0;
-            color: var(--accent);
-            font-size: var(--font-body);
-        }
-
-        /* ── Comparison / Before-After ── */
-        .comparison {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--gap-grid);
-            width: 100%;
-            max-width: 1400px;
-        }
-
-        .side {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(20px, 4vw, 40px);
-        }
-
-        .side.bad {
-            border-color: #ff453a;
-            border-width: 2px;
-        }
-
-        .side.good {
-            border-color: var(--accent);
-            border-width: 2px;
-        }
-
-        .side-title {
-            font-size: var(--font-subhead);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: clamp(12px, 2vw, 24px);
-        }
-
-        .side-metric {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.7;
-        }
-
-        .metric-number-bad {
-            font-size: var(--font-metric-number);
-            font-weight: 800;
-            color: #ff453a;
-            display: block;
-            margin-top: clamp(12px, 2vw, 20px);
-        }
-
-        .metric-number-good {
-            font-size: var(--font-metric-number);
-            font-weight: 800;
-            color: var(--accent);
-            display: block;
-            margin-top: clamp(12px, 2vw, 20px);
-        }
-
-        /* ── Ladder / Timeline ── */
-        .ladder {
-            display: flex;
-            flex-direction: column;
-            gap: var(--gap-ladder);
-            max-width: 1200px;
-            width: 100%;
-        }
-
-        .ladder-step {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-left: 4px solid var(--accent);
-            border-radius: clamp(8px, 1.5vw, 12px);
-            padding: clamp(16px, 3vw, 32px);
-        }
-
-        .step-number {
-            font-size: var(--font-small);
-            font-weight: 700;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: clamp(4px, 1vw, 12px);
-        }
-
-        .step-title {
-            font-size: var(--font-subhead);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: clamp(4px, 1vw, 12px);
-        }
-
-        .step-details {
-            font-size: var(--font-small);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        /* ── Quote ── */
-        .quote-block {
-            max-width: 900px;
-            width: 100%;
-            padding: clamp(20px, 4vw, 48px);
-            border-left: 4px solid var(--accent);
-            background: var(--surface-1);
-            border-radius: clamp(8px, 1.5vw, 12px);
-        }
-
-        .quote-text {
-            font-size: var(--font-quote);
-            font-style: italic;
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        .quote-author {
-            font-size: var(--font-small);
-            color: var(--text-tertiary);
-            margin-top: clamp(12px, 2vw, 24px);
-            font-style: normal;
-        }
-
-        /* ── CTA Button ── */
-        .cta-button {
-            display: inline-block;
-            padding: clamp(14px, 2.5vw, 24px) clamp(32px, 6vw, 60px);
-            background: var(--accent);
-            color: #fff;
-            text-decoration: none;
-            border-radius: 100px;
-            font-size: var(--font-body);
-            font-weight: 600;
-            transition: transform 0.2s ease, opacity 0.2s ease;
-            min-height: 44px;
-            min-width: 44px;
-        }
-
-        .cta-button:hover {
-            transform: scale(1.05);
-            opacity: 0.9;
-        }
-
-        /* ── Summary Text ── */
-        .summary-text {
-            font-size: var(--font-subhead);
-            color: var(--text-secondary);
-            text-align: center;
-            max-width: 900px;
-            margin-top: clamp(20px, 4vw, 48px);
-            line-height: 1.4;
-        }
-
-        /* ── Inline Stats Row ── */
-        .stats-row {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: var(--gap-grid);
-            margin-top: clamp(20px, 4vw, 48px);
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: var(--font-medium-headline);
-            font-weight: 800;
-            color: var(--accent);
-        }
-
-        .stat-label {
-            font-size: var(--font-small);
-            color: var(--text-secondary);
-        }
-
-        /* ── Sources Slide ── */
-        .sources-content {
-            font-size: var(--font-small);
-            color: var(--text-secondary);
-            line-height: 1.7;
-            max-width: 1000px;
-        }
-
-        .sources-content strong {
-            color: var(--text-primary);
-        }
-
-        .sources-content p {
-            margin-bottom: clamp(8px, 1.5vw, 14px);
-        }
-
-        .sources-content ul {
-            list-style: disc;
-            padding-left: clamp(16px, 3vw, 28px);
-            margin-bottom: clamp(8px, 1.5vw, 14px);
-        }
-
-        .sources-content li {
-            margin-bottom: clamp(4px, 0.8vw, 8px);
-        }
-
-        .sources-content code {
-            background: var(--surface-1);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 0.9em;
-        }
-
-        /* ── Navigation ── */
-        .nav {
-            position: fixed;
-            bottom: clamp(24px, 4vw, 40px);
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: clamp(6px, 1vw, 10px);
-            z-index: 100;
-        }
-
-        .nav-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 8px;
-            min-height: 8px;
-        }
-
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.4);
-        }
-
-        .slide-counter {
-            position: fixed;
-            bottom: clamp(24px, 4vw, 40px);
-            right: clamp(16px, 3vw, 40px);
-            font-size: var(--font-small);
-            color: var(--text-tertiary);
-            z-index: 100;
-        }
-
-        /* ── More Stories Link ── */
-        .more-stories {
-            position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: clamp(11px, 1.5vw, 12px);
-            color: rgba(255,255,255,0.3);
-            text-decoration: none;
-            z-index: 100;
-        }
-
-        .more-stories:hover {
-            color: rgba(255,255,255,0.5);
-        }
-
-        /* ── Landscape Mobile ── */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px var(--padding-slide) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
-        }
-
-        /* ── Accessibility ── */
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-    
+        .slide.active { display: flex; }
 
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        /* No-JS fallback: all slides visible + scrollable */
         html:not(.js) .slide {
             display: flex !important;
             position: relative !important;
@@ -566,305 +51,421 @@
             min-height: 100dvh;
         }
 
-        /* Progressive enhancement: JS-only slide mode */
+        /* JS-only slide mode */
         html.js { overflow: hidden; }
         html.js body { overflow: hidden; overscroll-behavior: none; }
-        html.js .slide { display: none; }
+        html.js .slide { display: none; transition: transform .5s ease, opacity .5s ease; }
         html.js .slide.active { display: flex; }
+        /* Fit-safe: cap to viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--muted); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(14px, 2vw, 22px); }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.22em;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: clamp(14px, 2vw, 22px);
+        }
+        h2 + .body, h1 + .body { margin-top: clamp(16px, 2.4vw, 26px); }
+        .body { color: var(--muted); max-width: 46ch; }
+        .body + .body { margin-top: clamp(10px, 1.4vw, 16px); }
+        .handoff {
+            margin-top: clamp(18px, 3vw, 30px);
+            color: var(--accent2);
+            font-size: clamp(13px, 1.7vw, 17px);
+            max-width: 44ch;
+        }
+        strong { color: var(--fg); }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: clamp(14px, 1.8vw, 22px);
+            width: 100%;
+        }
+        .stat {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px, 2.2vw, 26px);
+        }
+        .stat-number {
+            font-size: clamp(26px, 4.4vw, 46px);
+            font-weight: 800;
+            line-height: 1;
+            color: var(--fg);
+            letter-spacing: -0.02em;
+        }
+        .stat-number.accent { color: var(--accent); }
+        .stat-number.accent2 { color: var(--accent2); }
+        .stat-label {
+            margin-top: clamp(8px, 1.2vw, 12px);
+            font-size: clamp(12px, 1.5vw, 15px);
+            color: var(--muted);
+            line-height: 1.35;
+        }
+
+        /* Big single number (payoff) */
+        .big-number {
+            font-size: clamp(48px, 12vw, 120px);
+            font-weight: 800;
+            line-height: 0.95;
+            letter-spacing: -0.03em;
+            color: var(--accent);
+        }
+        .big-sub { margin-top: clamp(10px, 1.6vw, 18px); color: var(--muted); font-size: clamp(14px, 2vw, 20px); }
+
+        /* Steps / rules list */
+        .steps { list-style: none; width: 100%; display: flex; flex-direction: column; gap: clamp(12px, 1.6vw, 18px); }
+        .steps li {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 12px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 22px);
+            color: var(--fg);
+            font-size: clamp(14px, 1.8vw, 18px);
+        }
+        .steps li span { display: block; color: var(--muted); font-size: clamp(12px, 1.5vw, 15px); margin-top: 4px; }
+
+        .code-block {
+            background: #05060a;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 22px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(11px, 1.4vw, 14px);
+            line-height: 1.7;
+            color: #d5dbe8;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-x: auto;
+        }
+        .code-comment { color: #6f7a90; }
+
+        .meta-line { margin-top: clamp(20px, 3vw, 32px); font-size: clamp(12px, 1.6vw, 15px); color: var(--muted); }
+
+        /* Nav */
+        .nav { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 90; }
+        .nav-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.22); cursor: pointer; transition: background .3s, transform .3s; }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter { position: fixed; bottom: 22px; right: 24px; font-size: clamp(11px, 1.4vw, 13px); color: rgba(255,255,255,0.4); z-index: 90; }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        .sources-body { max-width: 62ch; }
+        .sources-body p { color: var(--muted); margin-bottom: 8px; }
+        .sources-body ul { margin: 10px 0 10px 20px; }
+        .sources-body li { color: var(--muted); margin-bottom: 6px; }
+        .sources-body code { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 0.9em; color: #d5dbe8; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <!--
-      NARRATIVE SPINE — 590 Million Corrections in 7 Hours (OCR + Rust)
+<!--
+  SPINE
+  ABT: AND training an LLM on pre-WWI history means cleaning an Internet-Archive-scale corpus of OCR errors; BUT pure-Python cleanup can't scale to that many documents; THEREFORE robotdad moved the engine into Rust (PyO3 + Rayon), fixing tens of millions of errors in minutes at near-perfect precision.
+  Payoff: The 100k-document benchmark - 43,314,454 substitutions across 80,447 files in 21 minutes at 99.98% precision.
+  Beats:
+    1. frame     - To train an LLM on pre-WWI history you first have to clean OCR noise out of an Internet-Archive-scale corpus.  advances: orients the audience on the AND, the corpus and cleanup problem that create the stakes.
+    2. proof     - One measured run applied 43,314,454 substitutions to 80,447 files in 21 minutes.  advances: establishes the AND is real leverage, landing hard verified evidence within the first three beats.
+    3. tension   - Pure-Python cleanup can't scale to millions of documents, so this couldn't stay in Python.  advances: establishes the BUT, the scaling wall that forces the architectural move.
+    4. setup     - timecapsule-data is robotdad's (Marc Goodner, Microsoft) MIT-licensed corpus-collection project, built over 120 commits Jan 17-24.  advances: introduces the named project and human author before the argument leans on them.
+    5. mechanism - The cleanup engine is Rust, exposed to Python via PyO3 and parallelized across 24 threads with Rayon.  advances: shows HOW the leverage works, one claim - the hybrid Rust+PyO3+Rayon architecture.
+    6. mechanism - 150+ regex OCR-correction patterns run at ~64 files/s (51 MB/s) on a Ryzen 5950X.  advances: one claim on the pattern layer and its measured throughput, the concrete speed behind the AND.
+    7. payoff    - On the 100k Internet Archive benchmark it hit 99.98% precision - 1,014,036 candidates checked, only 225 dictionary false positives.  advances: lands the THEREFORE, the climax - fast AND near-perfect.
+    8. takeaway  - Human-directed, AI-executed performance engineering: put the hot loop in Rust, keep the judgment human.  advances: generalizes the pattern the audience keeps, the durable point behind the THEREFORE.
+-->
 
-      ABT: AND robotdad had 1.4M historical documents that needed heavy OCR
-           cleanup; BUT a pure-Python cleanup would take 33.75 days — unworkable;
-           THEREFORE a hybrid Python + Rust pipeline (450 pre-compiled patterns,
-           PyO3, Rayon) did it in 7h14m at 99.98% precision — conversational
-           performance engineering that turned a month into an afternoon.
-
-      PAYOFF (named up front): 590 million corrections across 1.17M files in
-      7h14m — 111.9× faster than the Python baseline — and trustworthy, because a
-      testing ladder caught a bug that would have made 1.2M false corrections.
-
-      BEATS (proof-first; payoff at beat 5 of 10, before the midpoint of 5):
-        1. proof     — 590M corrections in 7h14m; 111.9× faster; a month's work in an afternoon.
-                       advances: grounds the THEREFORE — the result is real.
-        2. setup     — the corpus: 1.4M pre-WWI scans, 99.78% needing cleanup (long-s, li→h, watermarks).
-                       advances: establishes the AND and introduces the corpus + the artifacts the argument leans on.
-        3. tension   — the Python baseline: 33.75 days. "We can't wait a month."
-                       advances: establishes the BUT.
-        4. mechanism — Python orchestrates, Rust processes via PyO3, Rayon parallelizes 450 pre-compiled patterns. (one claim)
-                       advances: HOW the speed is won.
-        5. payoff    — production run: 1.17M files, 590M corrections, 7h14m, 111.9×.
-                       advances: lands the payoff before midpoint.
-        6. mechanism — a 10×-scaling testing ladder (100 → 1K → 100K files) proved it before production. (one claim)
-                       advances: HOW the result was made trustworthy, cheaply.
-        7. turn      — the ladder caught a pattern-sync bug: 1.2M false positives stopped; 99.98% precision.
-                       advances: the pivot — speed is worthless without correctness; validation earned trust.
-        8. takeaway  — knowing when to stop was a data-driven call: pivot from regex to statistical filtering.
-                       advances: the judgment lesson the audience keeps.
-        9. takeaway  — domain knowledge + rapid implementation: human calls, AI execution.
-                       advances: the collaboration lesson.
-       10. takeaway  — a clean corpus, ready for training (open source, try it).
-                       advances: what the audience does next.
-
-        + Sources & Methodology (audit-trail slide, not a beat) at the end.
-        Slides = 10 beats + 1 = 11.
-    -->
-
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="status-badge">Active</div>
-        <h1 class="headline">590 million corrections in <span class="highlight">7 hours</span> &mdash; a month's work in an afternoon</h1>
-        <p class="subhead">OCR cleanup at scale, built conversationally by robotdad &amp; Amplifier with a Python + Rust pipeline.</p>
-        <div class="stats-row">
-            <div class="stat-item"><div class="stat-number">590M</div><div class="stat-label">corrections</div></div>
-            <div class="stat-item"><div class="stat-number">7h 14m</div><div class="stat-label">total runtime</div></div>
-            <div class="stat-item"><div class="stat-number">111.9&times;</div><div class="stat-label">faster than Python</div></div>
-        </div>
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>43 Million Fixes,<br>21 Minutes</h1>
+        <p class="subtitle">A Rust + PyO3 OCR cleanup pipeline</p>
     </div>
 
-    <!-- beat 2: setup -->
     <div class="slide center">
-        <div class="section-label">The Corpus</div>
-        <h2 class="medium-headline">1.4 million historical scans, riddled with OCR artifacts</h2>
-        <div class="thirds">
-            <div class="card">
-                <div class="card-number">1.4M</div>
-                <div class="card-label">Documents downloaded</div>
-            </div>
-            <div class="card">
-                <div class="card-number">99.78%</div>
-                <div class="card-label">Needed OCR cleanup</div>
-            </div>
-            <div class="card">
-                <div class="card-number" style="font-size: var(--font-subhead);">pre-1800 to 1914</div>
-                <div class="card-label">Pre-WWI scans</div>
-            </div>
-        </div>
-        <div class="code-block" style="margin-top: clamp(16px,3vw,32px); text-align:left;">"Congre<span class="error">&#383;</span>s <span class="error">&#383;</span>hall make no law"   <span class="success"># long-&#383; reads as f</span>
-"pub<span class="error">h</span>sh the report"          <span class="success"># li&#8594;h confusion</span>
-"TI<span class="error">1</span>E committee met"           <span class="success"># I&#8594;1 confusion</span>
-"Chapter Five<span class="error"> &#8212; Downloaded from Google Books</span>"  <span class="success"># watermark</span></div>
-        <p class="summary-text">Old printing + decades-old OCR = <span class="emphasis">artifacts everywhere</span>.</p>
+        <!-- beat 1: frame -->
+        <div class="section-label">The Problem</div>
+        <h2>Training an LLM on pre-WWI history starts with cleaning OCR noise out of an Internet-Archive-scale corpus.</h2>
+        <p class="body">robotdad's timecapsule-data collects temporally-filtered text for LLM training. The Internet Archive index it draws on holds roughly 2.3M items for the years 0&ndash;1914, about 1.5M of them eligible to download &mdash; and their OCR text is riddled with systematic scanning errors.</p>
+        <p class="handoff">The question isn't whether the corpus is big. It's how fast you can clean it.</p>
     </div>
 
-    <!-- beat 3: tension -->
-    <div class="slide center">
-        <div class="section-label">The Baseline</div>
-        <div class="big-stat">
-            <div class="big-number">33.75</div>
-            <div class="big-label">Days in Python</div>
-            <div class="big-context">
-                Python baseline: 0.4 files/second<br>
-                1.17M files &times; 2.5 seconds each<br><br>
-                <span class="emphasis">&ldquo;We can't wait a month for this.&rdquo;</span>
-            </div>
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">The Proof</div>
+            <h2>One measured run fixed 43,314,454 errors in 21 minutes.</h2>
+            <p class="body">On a 100,000-document Internet Archive benchmark, the pipeline applied 43.3 million substitutions to 80,447 files &mdash; 99.8% of the files it processed &mdash; in about 21 minutes.</p>
+            <p class="handoff">That kind of throughput is exactly what pure Python couldn't reach.</p>
         </div>
-    </div>
-
-    <!-- beat 4: mechanism -->
-    <div class="slide">
-        <div class="section-label">The Solution</div>
-        <h2 class="medium-headline">Python orchestrates; Rust does the heavy lifting</h2>
-        <ul class="content-list">
-            <li><span class="emphasis">Python orchestration:</span> file discovery, pattern management, reporting</li>
-            <li><span class="emphasis">Rust processing:</span> CPU-intensive regex over text, via a PyO3 bridge</li>
-            <li><span class="emphasis">~450 pre-compiled patterns:</span> 150+ long-&#383;, 200+ OCR fixes, 50+ watermark, 50+ misc &mdash; zero per-file compile cost</li>
-            <li><span class="emphasis">Rayon parallelization:</span> all 16 cores saturated</li>
-        </ul>
-        <div class="comparison" style="margin-top: clamp(16px,3vw,32px);">
-            <div class="side bad">
-                <div class="side-title">Python baseline</div>
-                <div class="side-metric">
-                    &bull; Interpreted bytecode<br>
-                    &bull; Regex compiled per file<br>
-                    &bull; Single-threaded (GIL)<br>
-                    &bull; String copying overhead
-                    <span class="metric-number-bad">0.4 files/sec</span>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number accent">43,314,454</div>
+                    <div class="stat-label">substitutions applied</div>
                 </div>
-            </div>
-            <div class="side good">
-                <div class="side-title">Rust + PyO3</div>
-                <div class="side-metric">
-                    &bull; Compiled native code (~10&times;)<br>
-                    &bull; Pre-compiled regex (~5&times;)<br>
-                    &bull; 16-core parallelism (~2.3&times;)<br>
-                    &bull; Zero-copy strings (~1.5&times;)
-                    <span class="metric-number-good">44.75 files/sec</span>
+                <div class="stat">
+                    <div class="stat-number">80,447</div>
+                    <div class="stat-label">files modified (99.8% of processed)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number accent2">21 min</div>
+                    <div class="stat-label">runtime on the 100k benchmark</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">~538</div>
+                    <div class="stat-label">avg substitutions per file</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 5: payoff -->
     <div class="slide center">
-        <div class="section-label">The Payoff</div>
-        <h2 class="medium-headline">1.17M files, 590M corrections, 111.9&times; faster</h2>
-        <div class="thirds">
-            <div class="card">
-                <div class="card-number">1.17M</div>
-                <div class="card-label">Files processed</div>
-            </div>
-            <div class="card">
-                <div class="card-number">590M</div>
-                <div class="card-label">Corrections made</div>
-            </div>
-            <div class="card">
-                <div class="card-number">7h 14m</div>
-                <div class="card-label">Total runtime</div>
-            </div>
-        </div>
-        <div class="stats-row">
-            <div class="stat-item">
-                <div class="stat-number">111.9&times;</div>
-                <div class="stat-label">faster than the 33.75-day Python baseline</div>
-            </div>
-        </div>
-        <p class="summary-text">33 days collapsed to a single afternoon. But raw speed was only trustworthy because of what came next.</p>
+        <!-- beat 3: tension -->
+        <div class="section-label">The Wall</div>
+        <h2>Pure-Python cleanup couldn't scale to millions of documents.</h2>
+        <p class="body">A corpus of this size needs unicode normalization, language detection, triage, boilerplate stripping and hundreds of correction passes per file. Done in pure Python across an eligible pool of ~1.5M documents, that work doesn't finish on a useful timeline &mdash; so the engine couldn't stay in Python.</p>
+        <p class="handoff">The fix was to move the hot loop out of Python entirely.</p>
     </div>
 
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">Validation</div>
-        <h2 class="medium-headline">A testing ladder proved it before production</h2>
-        <div class="ladder">
-            <div class="ladder-step">
-                <div class="step-number">Test 1: 100 files</div>
-                <div class="step-title">Smoke test</div>
-                <div class="step-details">10 seconds &bull; 20,099 substitutions &bull; does it run without crashing?</div>
-            </div>
-            <div class="ladder-step">
-                <div class="step-number">Test 2: 1,000 files</div>
-                <div class="step-title">Pattern validation</div>
-                <div class="step-details">28 seconds &bull; 157,146 substitutions &bull; vocabulary extraction surfaces a pattern-sync bug</div>
-            </div>
-            <div class="ladder-step">
-                <div class="step-number">Test 3: 100,000 files</div>
-                <div class="step-title">Precision test</div>
-                <div class="step-details">21 minutes &bull; 43.3M substitutions &bull; measure precision at scale</div>
-            </div>
+    <div class="slide split">
+        <!-- beat 4: setup -->
+        <div class="col-main">
+            <div class="section-label">The Project</div>
+            <h2>timecapsule-data is robotdad's MIT-licensed corpus-collection project.</h2>
+            <p class="body">Built by robotdad &mdash; Marc Goodner at Microsoft, who authored all 120 commits &mdash; timecapsule-data collects temporally-filtered text corpora for LLM training. The OCR-cleanup work landed in a tight burst, January 17&ndash;24, 2026.</p>
+            <p class="handoff">Inside that burst, the cleanup engine was rewritten from the ground up.</p>
         </div>
-        <p class="summary-text">Each rung scaled 10&times; &mdash; catching failures cheaply before they cost hours.</p>
-    </div>
-
-    <!-- beat 7: turn -->
-    <div class="slide center">
-        <div class="section-label">Why It's Trustworthy</div>
-        <h2 class="medium-headline">The ladder caught a bug that would have wrecked 1.2M words</h2>
-        <div class="quote-block">
-            <div class="quote-text">&ldquo;Wait, those are perfectly valid words. What's happening?&rdquo;</div>
-            <div class="quote-author">&mdash; robotdad, reviewing vocabulary analysis</div>
-        </div>
-        <p class="summary-text">A Python&harr;Rust pattern-sync issue was flagging <span class="emphasis">1.2M false positives</span> &mdash; caught before production. Final precision on 100K files: <span class="emphasis">99.98%</span> (only 225 false positives out of 1,014,036 flags).</p>
-    </div>
-
-    <!-- beat 8: takeaway -->
-    <div class="slide">
-        <div class="section-label">Judgment</div>
-        <h2 class="medium-headline">Knowing when to stop was a data-driven call</h2>
-        <p class="subhead" style="margin-bottom: clamp(16px, 3vw, 32px);">The last 225 errors weren't fixable with regex &mdash; and Amplifier said so with evidence.</p>
-        <ul class="content-list">
-            <li>Random capitalization from fundamental OCR failure</li>
-            <li>Garbage text from completely failed scans</li>
-            <li>Mixed-language encoding errors and unusual proper nouns</li>
-        </ul>
-        <p class="summary-text"><span class="emphasis">The decision:</span> stop adding patterns; pivot to statistical noise filtering instead of chasing diminishing returns.</p>
-    </div>
-
-    <!-- beat 9: takeaway -->
-    <div class="slide">
-        <div class="section-label">How It Worked</div>
-        <h2 class="medium-headline">Domain knowledge + rapid implementation</h2>
-        <div class="comparison">
-            <div class="side good">
-                <div class="side-title">robotdad</div>
-                <div class="side-metric">
-                    &bull; Identified the performance bottleneck<br>
-                    &bull; Made the architectural call (Rust)<br>
-                    &bull; Defined the pattern categories<br>
-                    &bull; Directed testing &amp; validation<br>
-                    &bull; Decided when to stop iterating
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">120</div>
+                    <div class="stat-label">commits, all by Marc Goodner</div>
                 </div>
-            </div>
-            <div class="side good">
-                <div class="side-title">Amplifier</div>
-                <div class="side-metric">
-                    &bull; Implemented the Rust core + PyO3<br>
-                    &bull; Built the 450+ pattern library<br>
-                    &bull; Benchmarked approaches<br>
-                    &bull; Integrated Rayon parallelization<br>
-                    &bull; Generated validation reports
+                <div class="stat">
+                    <div class="stat-number accent2">Jan 17&ndash;24</div>
+                    <div class="stat-label">project timeline, 2026</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number accent">MIT</div>
+                    <div class="stat-label">github.com/robotdad/timecapsule-data</div>
                 </div>
             </div>
         </div>
-        <p class="summary-text">Conversational performance engineering: from &ldquo;this will take 33 days&rdquo; to a shipped Rust pipeline &mdash; in days, not weeks.</p>
     </div>
 
-    <!-- beat 10: takeaway -->
-    <div class="slide center">
-        <div class="section-label">The Outcome</div>
-        <h2 class="medium-headline">A clean corpus, ready for training</h2>
-        <div class="split">
-            <div class="card">
-                <div class="card-number">1.17M</div>
-                <div class="card-label">Clean documents, long-&#383; normalized, watermarks stripped</div>
-            </div>
-            <div class="card">
-                <div class="card-number" style="font-size: var(--font-subhead);">Open source</div>
-                <div class="card-label">450+ pattern library &bull; Rust core with PyO3 &bull; tested on 1.17M files</div>
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Architecture</div>
+            <h2>The cleanup engine is Rust, called from Python via PyO3 and parallelized with Rayon.</h2>
+            <p class="body">The Rust/PyO3 library was added Jan 20; OCR was consolidated to Rust-only by Jan 23; Rayon parallelization landed Jan 24. It fans work out across 24 threads with <code>par_iter().for_each()</code> over file pairs.</p>
+            <p class="handoff">On top of that engine sits the layer that does the actual fixing.</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># Cargo.toml dependencies</span>
+pyo3  = "0.27.0"
+rayon = "1.10"
+regex = "1.11"
+
+<span class="code-comment"># src/lib.rs</span>
+use pyo3::prelude::*;
+use rayon::prelude::*;
+
+file_pairs.par_iter()
+    .for_each(...);  <span class="code-comment"># 24 threads</span></div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 6: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Pattern Layer</div>
+            <h2>150+ regex correction patterns run at ~64 files/s on a Ryzen 5950X.</h2>
+            <p class="body">Tier 1 cleanup applies 150+ documented OCR-correction patterns &mdash; long-s, ligatures, ll&rarr;U, rn&rarr;m and word run-togethers. Benchmarked on a Ryzen 5950X with NVMe storage, it sustained 64.3 files/s and 50.9 MB/s.</p>
+            <p class="handoff">Fast is only half the story. The other half is being right.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number accent">150+</div>
+                    <div class="stat-label">documented OCR-correction patterns</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">64.3</div>
+                    <div class="stat-label">files / second</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number accent2">50.9</div>
+                    <div class="stat-label">MB / second</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">24</div>
+                    <div class="stat-label">threads, Ryzen 5950X</div>
+                </div>
             </div>
         </div>
-        <p class="subhead" style="margin: clamp(16px,3vw,32px) 0;">Next story: training a timecapsule LLM that doesn't know about WWI.</p>
-        <a href="https://github.com/robotdad/timecapsule-data" class="cta-button">View timecapsule-data on GitHub</a>
     </div>
 
-    <!-- Sources & Methodology -->
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>Near-perfect precision: 99.98% on the 100k Internet Archive benchmark.</h2>
+            <p class="body">Vocabulary validation over 761.9M words surfaced 1,014,036 suspicious candidates. Only 225 turned out to be dictionary false positives &mdash; 99.98% precision. Just 972 confusable words remained, meaning the patterns caught ~99.9% of systematic OCR confusions.</p>
+            <p class="handoff">Fast <em>and</em> near-perfect &mdash; because a human made the architectural calls.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number accent">99.98%</div>
+                    <div class="stat-label">precision in noise detection</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">1,014,036</div>
+                    <div class="stat-label">suspicious candidates checked</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number accent2">225</div>
+                    <div class="stat-label">dictionary false positives</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">972</div>
+                    <div class="stat-label">confusable words remaining (~99.9% caught)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Takeaway</div>
+        <h2>Put the hot loop in Rust; keep the judgment human.</h2>
+        <p class="body">This is human-directed, AI-executed performance engineering. The pattern is general: when pure Python hits a scaling wall, move the hot loop into a compiled, parallel engine behind a PyO3 boundary &mdash; and let a person keep making the architectural calls. robotdad made every one of those calls here.</p>
+        <p class="handoff">Tens of millions of fixes in minutes, at precision you can trust.</p>
+    </div>
+
+    <!-- Sources & Methodology (no beat comment) -->
     <div class="slide">
         <div class="section-label">Sources</div>
-        <h2 class="medium-headline">Research Methodology</h2>
-        <div class="sources-content">
-            <p><strong>Data as of:</strong> February 2026</p>
-            <p><strong>Feature status:</strong> Active &mdash; project is open source at <code>github.com/robotdad/timecapsule-data</code></p>
+        <h2>Sources &amp; Research Methodology</h2>
+        <div class="sources-body">
+            <p><strong>Data as of:</strong> January 24, 2026 (last commit in the source repo)</p>
+            <p><strong>Feature status:</strong> Active / open source &mdash; Tier 1 (Rust patterns) &amp; Tier 2 (SymSpell) implemented; Tier 3 (LLM) documented as future work</p>
+            <p><strong>Primary source:</strong> github.com/robotdad/timecapsule-data (MIT) &mdash; verified via <code>gh repo view robotdad/timecapsule-data</code></p>
             <p><strong>Research performed:</strong></p>
             <ul>
-                <li>Based on development sessions between robotdad (Brian Krabach) and Amplifier</li>
-                <li>Repository: <code>github.com/robotdad/timecapsule-data</code></li>
+                <li>Dependencies &amp; imports: <code>cat rust-ocr-clean/Cargo.toml</code>; <code>grep -nE 'use pyo3|use rayon|par_iter' src/lib.rs</code></li>
+                <li>Pattern count: <code>grep -nE '150\+' README.md docs/OCR_CLEANING.md docs/OCR_VOCAB_ANALYSIS.md</code></li>
+                <li>Throughput: <code>grep -nE '64 files/s|50.9|24 threads|Ryzen 5950X' docs/OCR_VOCAB_ANALYSIS.md</code></li>
+                <li>Benchmark run &amp; precision: <code>sed -n '5,30p' docs/OCR_VOCAB_ANALYSIS.md</code> (43,314,454 subs; 99.98%)</li>
+                <li>Commit history: <code>git log --format='%ci %h %s' | grep -iE 'rayon|rust-only|pyo3'</code>; <code>git rev-list --count HEAD</code> (120)</li>
+                <li>Author: <code>gh api users/robotdad --jq '{login,name,company}'</code> (Marc Goodner, Microsoft)</li>
             </ul>
-            <p><strong>Metrics source:</strong></p>
-            <ul>
-                <li>Processing logs from production runs (1.17M files, 590M corrections, 7h14m runtime)</li>
-                <li>Performance comparisons from benchmarking during development sessions</li>
-                <li>Precision metrics from vocabulary extraction analysis (99.98%, 225/1,014,036 false positives)</li>
-            </ul>
-            <p><strong>Gaps &amp; estimates:</strong></p>
-            <ul>
-                <li>Exact commit counts not researched for this deck</li>
-                <li>Performance multiplier breakdowns (~10&times; compiled, ~5&times; regex, ~2.3&times; parallel, ~1.5&times; zero-copy) are approximate decomposition of the overall 111.9&times; speedup</li>
-                <li>Pattern counts (150+, 200+, 50+, 50+) are approximate categories totaling ~450</li>
-            </ul>
-            <p><strong>Primary contributors:</strong> robotdad (Brian Krabach) &mdash; project creator and domain expert</p>
+            <p><strong>Corpus scale:</strong> ~2.3M Internet Archive items indexed for years 0&ndash;1914; ~1.5M eligible; measured cleanup run = 100,000 documents.</p>
+            <p><strong>Gaps:</strong> Only one timed run (100k docs, 21 min) is documented; no Python baseline benchmark exists in the repo, so no speedup multiplier is claimed.</p>
+            <p><strong>Primary contributor:</strong> robotdad (Marc Goodner, Microsoft) &mdash; 120 of 120 commits.</p>
         </div>
     </div>
-
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
 
-    <!-- More stories link -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -873,41 +474,34 @@
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = () => showSlide(i);
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard navigation
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click navigation
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe navigation
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
-
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
-
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

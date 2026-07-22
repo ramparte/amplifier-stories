@@ -3,400 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>dotviewer &mdash; See Your Architecture</title>
+    <title>The Poster Comes Alive</title>
     <script>document.documentElement.classList.add('js')</script>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --accent: #2ECC71;
-            --accent-dim: rgba(46, 204, 113, 0.15);
-            --accent-glow: rgba(46, 204, 113, 0.3);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 36px);
-            --fs-h3: clamp(18px, 3vw, 24px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 1.8vw, 15px);
-
-            /* Spacing */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
+            --bg: #0b0e14;
+            --bg-2: #12161f;
+            --fg: #eef1f6;
+            --muted: #9aa4b6;
+            --accent: #5cc8ff;
+            --accent-2: #7bffb0;
+            --line: rgba(255,255,255,0.10);
         }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Slide base */
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
             padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
+            background: radial-gradient(1200px 700px at 15% 10%, rgba(92,200,255,0.06), transparent 60%), var(--bg);
         }
+
         .slide.active { display: flex; }
-        .slide.center {
-            text-align: center;
-            align-items: center;
-            justify-content: center;
+
+        /* Progressive enhancement: no-JS fallback -- all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
         }
 
-        /* Typography */
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s ease;
+            max-height: 100dvh;
+            overflow-y: auto;
+        }
+        html.js .slide.active { display: flex; }
+
+        /* Centering opt-in */
+        .center { text-align: center; align-items: center; justify-content: center; }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 700; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(14px,2vw,22px); font-weight: 400; }
+
         .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
             color: var(--accent);
-            margin-bottom: var(--space-sm);
-        }
-        .headline {
-            font-size: var(--fs-hero);
             font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.08;
-            margin-bottom: var(--space-md);
-        }
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            margin-bottom: var(--space-md);
-        }
-        .subhead {
-            font-size: var(--fs-h3);
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(680px, 90vw);
-        }
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: var(--space-sm);
+            margin-bottom: clamp(14px, 2vw, 22px);
         }
 
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            font-size: var(--fs-small);
+        .body { color: var(--muted); margin-top: clamp(14px, 2vw, 20px); max-width: 40ch; }
+        .handoff {
+            margin-top: clamp(18px, 2.6vw, 28px);
+            color: var(--accent-2);
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: 100px;
-            background: rgba(46, 204, 113, 0.15);
-            color: #2ECC71;
-            margin-top: var(--space-sm);
+            max-width: 42ch;
         }
+        h1 + .body, h2 + .body { margin-top: clamp(16px,2.2vw,24px); }
 
-        /* Grids */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
+        /* Horizontal split */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
         }
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .quads {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
+        /* Stat grid */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: clamp(14px,2vw,20px); }
+        .stat {
+            background: var(--bg-2);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px,2.4vw,24px);
         }
-        .card h3, .card h4 {
-            color: var(--text-primary);
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-        .card p, .card li {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.5;
-        }
-        .card .icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: var(--space-xs);
-        }
-
-        /* Card with accent border top */
-        .card-accent {
-            border-top: 2px solid var(--accent);
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            color: #BFC0C5;
-            margin-top: var(--space-md);
-        }
-        .code-comment { color: rgba(255,255,255,0.35); }
-        .code-cmd { color: #2ECC71; }
-        .code-flag { color: #3498DB; }
-        .code-string { color: #FF9F0A; }
-        .code-var { color: #64D2FF; }
-
-        /* Flow steps */
-        .flow-steps {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            max-width: min(800px, 95vw);
-        }
-        .flow-step {
-            display: flex;
-            align-items: flex-start;
-            gap: var(--space-md);
-        }
-        .flow-number {
-            flex-shrink: 0;
-            width: clamp(36px, 5vw, 48px);
-            height: clamp(36px, 5vw, 48px);
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--accent);
-        }
-        .flow-content h4 {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .flow-content p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-        .flow-arrow {
-            width: 2px;
-            height: var(--space-sm);
-            background: var(--accent-dim);
-            margin-left: clamp(17px, 2.3vw, 23px);
-        }
-
-        /* Velocity stats */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
-            gap: var(--space-lg);
-            margin-top: var(--space-lg);
-        }
-        .velocity-stat { text-align: center; }
-        .velocity-number {
-            font-size: clamp(48px, 12vw, 96px);
+        .stat-value {
+            font-size: clamp(30px, 6vw, 56px);
             font-weight: 800;
-            letter-spacing: -0.04em;
             line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #3498DB);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--accent);
+            letter-spacing: -0.02em;
         }
-        .velocity-label {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
+        .stat-label { margin-top: 8px; color: var(--muted); font-size: clamp(12px,1.5vw,14px); }
 
-        /* Timeline */
-        .timeline {
+        /* Steps / rules */
+        .steps { display: flex; flex-direction: column; gap: clamp(12px,1.8vw,18px); }
+        .step {
             display: flex;
-            flex-direction: column;
-            gap: 0;
-            margin-top: var(--space-lg);
-            max-width: min(700px, 95vw);
+            gap: clamp(12px,1.6vw,16px);
+            align-items: flex-start;
+            background: var(--bg-2);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(14px,2vw,20px);
         }
-        .timeline-item {
-            display: flex;
-            gap: var(--space-md);
-            padding-bottom: var(--space-md);
-            position: relative;
-        }
-        .timeline-item:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            left: clamp(30px, 4vw, 40px);
-            top: clamp(36px, 5vw, 48px);
-            bottom: 0;
-            width: 2px;
-            background: var(--accent-dim);
-        }
-        .timeline-date {
-            flex-shrink: 0;
-            width: clamp(60px, 8vw, 80px);
-            height: clamp(60px, 8vw, 80px);
+        .step-num {
+            flex: 0 0 auto;
+            width: clamp(30px,4vw,38px);
+            height: clamp(30px,4vw,38px);
             border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-        }
-        .timeline-date .day {
-            font-size: var(--fs-h3);
+            background: rgba(92,200,255,0.14);
             color: var(--accent);
-            line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800;
+            font-size: clamp(14px,1.8vw,18px);
         }
-        .timeline-date .month {
-            font-size: var(--fs-small);
-            color: var(--accent);
-            text-transform: uppercase;
-        }
-        .timeline-text h4 {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .timeline-text p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
+        .step-text { min-width: 0; }
+        .step-text strong { color: var(--fg); }
+        .step-text span { display:block; color: var(--muted); font-size: clamp(13px,1.6vw,15px); margin-top: 4px; }
 
-        /* Quote / callout box */
-        .callout {
-            background: var(--accent-dim);
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(10px,1.5vw,14px); }
+        .rules li {
+            background: var(--bg-2);
+            border: 1px solid var(--line);
             border-left: 3px solid var(--accent);
-            border-radius: var(--radius-sm);
-            padding: var(--space-md);
-            margin-top: var(--space-md);
-            max-width: min(700px, 95vw);
+            border-radius: 10px;
+            padding: clamp(12px,1.8vw,16px) clamp(14px,2vw,18px);
+            color: var(--fg);
         }
-        .callout p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-            font-style: italic;
+        .rules li b { color: var(--accent); }
+
+        /* Code */
+        .code-block {
+            background: #0a0d13;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(16px,2.2vw,22px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(12px,1.5vw,15px);
+            line-height: 1.7;
+            color: #d7e3f0;
+            white-space: pre-wrap;
+            overflow-x: auto;
         }
-        .callout .attribution {
-            font-style: normal;
-            color: var(--text-tertiary);
-            font-size: var(--fs-small);
-            margin-top: var(--space-xs);
+        .code-comment { color: #6f7b8f; }
+        .code-block .k { color: var(--accent-2); }
+
+        /* Sources */
+        .sources-body { color: var(--muted); line-height: 1.6; max-width: 70ch; }
+        .sources-body p { margin-top: 10px; }
+        .sources-body ul { margin: 10px 0 0 20px; }
+        .sources-body li { margin-top: 6px; font-size: clamp(12px,1.5vw,15px); }
+        .sources-body code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            background: rgba(255,255,255,0.06);
+            border-radius: 5px;
+            padding: 1px 6px;
+            color: #cfe6f5;
+            font-size: 0.9em;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(123,255,176,0.14);
+            color: var(--accent-2);
+            border: 1px solid rgba(123,255,176,0.3);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: clamp(11px,1.4vw,13px);
+            font-weight: 700;
+            letter-spacing: 0.04em;
         }
 
         /* Navigation */
         .nav {
             position: fixed;
-            bottom: 28px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 26px;
+            right: 26px;
             display: flex;
-            gap: 8px;
+            gap: 9px;
             z-index: 100;
         }
         .nav-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px; height: 9px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.22);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background 0.3s, transform 0.3s;
         }
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.35); }
         .slide-counter {
             position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
+            bottom: 24px;
+            left: 26px;
+            font-size: clamp(11px,1.4vw,13px);
+            color: var(--muted);
             z-index: 100;
+            letter-spacing: 0.06em;
         }
 
-        /* Sources slide specifics */
-        .sources-content {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.7;
-            max-width: min(800px, 95vw);
-        }
-        .sources-content strong {
-            color: var(--text-primary);
-        }
-        .sources-content code {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-small);
-            background: var(--surface-1);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .sources-content ul {
-            padding-left: var(--space-md);
-            margin: var(--space-xs) 0;
-        }
-        .sources-content li {
-            margin-bottom: var(--space-xs);
-        }
-
-        /* More stories link */
         .more-stories {
             position: fixed;
             bottom: 10px;
@@ -409,416 +248,228 @@
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
 
-        /* Landscape mobile */
         @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
+            .slide { padding: 16px clamp(20px,5vw,80px) 60px; }
+            .slide.center { justify-content: flex-start; }
         }
 
-        /* Reduced motion */
         @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* Touch targets */
-        @media (hover: none) {
-            .nav-dot {
-                min-width: 16px;
-                min-height: 16px;
-            }
-        }
-
-        /* Highlight accent text */
-        .accent { color: var(--accent); }
-
-        /* Inline list with subtle bullets */
-        .feature-list {
-            list-style: none;
-            padding: 0;
-        }
-        .feature-list li {
-            padding-left: var(--space-md);
-            position: relative;
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: var(--space-xs);
-        }
-        .feature-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.6em;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-        }
-
-        /* Interaction demo mockup */
-        .interaction-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .interaction-card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-            border-left: 3px solid var(--accent);
-        }
-        .interaction-card .action {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-small);
-            color: var(--accent);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-        .interaction-card h4 {
-            color: var(--text-primary);
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-        .interaction-card p {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.5;
-        }
-
-        /* Scheme swatches */
-        .scheme-strip {
-            display: flex;
-            gap: var(--space-xs);
-            margin-top: var(--space-sm);
-            flex-wrap: wrap;
-        }
-        .scheme-swatch {
-            width: clamp(40px, 6vw, 56px);
-            height: clamp(28px, 4vw, 36px);
-            border-radius: 6px;
-            border: 1px solid var(--border-visible);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 9px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        /* Architecture entity boxes */
-        .arch-entities {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .entity-box {
-            background: var(--surface-2);
-            border: 1px solid var(--border-visible);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-            text-align: center;
-        }
-        .entity-box .icon {
-            font-size: clamp(32px, 6vw, 56px);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box h4 {
-            font-size: var(--fs-h3);
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.4;
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
     </style>
 </head>
 <body>
+<!--
+SPINE
+ABT: AND Amplifier agents describe the systems they build as static Graphviz .dot graphs and the ANext workspace holds hundreds of them; BUT rendered to a flat image a big graph is just a poster -- you can look but you can't hover a node, search one, drag it, collapse a subsystem, or follow a single edge; THEREFORE dotviewer turns any .dot into a living, navigable map inside one self-contained HTML file, so you can actually explore the architecture instead of squinting at it.
+Payoff: Drop-and-explore -- the poster becomes a living map (hover to preview and highlight neighbors, click an edge to follow the arrow, double-click a cluster to collapse a whole subsystem) all in one file you just opened.
+Beats:
+  1. frame     -- Agents draw systems as .dot graphs, but a rendered graph is a poster you look at, not a map you use.  advances: orients the audience on what .dot graphs are and the core pain (static image), setting up the AND and the BUT in one hook.
+  2. proof     -- Hundreds of .dot files (363), the biggest past 700 lines (736).  advances: establishes the AND with hard numbers -- the raw material is real and at scale.
+  3. tension   -- At 700+ lines the poster problem bites: no hover, search, drag, collapse, or edge-follow.  advances: sharpens the BUT -- makes the cost of a flat image concrete where graphs are largest.
+  4. setup     -- dotviewer is the fix: one self-contained 1,679-line HTML file rendering Graphviz in-browser.  advances: introduces the named tool and its shape -- the pivot toward the THEREFORE.
+  5. mechanism -- Drop a .dot in, or run the dotview shim, and it renders with two CDN libs and zero local assets.  advances: shows the one entry-point claim -- getting a graph in is frictionless.
+  6. mechanism -- Follow the wiring: hover a node to preview and light up neighbors, click an edge to pan to its target.  advances: shows the single most map-like capability -- tracing connections a poster can't.
+  7. payoff    -- The poster comes alive: focus a node, collapse a cluster, search with a live count, reflow the layout.  advances: lands the THEREFORE as the climax -- the static image is now a living map.
+  8. takeaway  -- Built over 7 commits in two days, the whole navigable viewer ships in one file you can just open.  advances: what the audience keeps -- any .dot graph becomes explorable with one portable HTML file.
+-->
 
-    <!--
-      ============================================================
-      NARRATIVE SPINE (built from the deck's existing verified content; no fresh research)
-      ============================================================
-
-      ABT:
-        AND Amplifier agents generate DOT graphs of the systems they build;
-        BUT rendered to a flat PNG, a 200-node graph is a poster, not a tool -
-            you can't hover, search, drag, or follow a single dependency;
-        THEREFORE dotviewer makes them interactive in one self-contained HTML file:
-            open it, drop a .dot, and the poster becomes a living, navigable map.
-
-      PAYOFF (named up front):
-        Every element is a doorway - hover highlights neighbors, click focuses,
-        drag untangles, and clicking an edge walks you down the dependency chain.
-        The static render turns into an explorable map.
-
-      BEATS (proof-first; payoff lands at beat 4 of 8, before the midpoint):
-        1. proof     - one self-contained 1,679-line HTML file already turns any .dot into an interactive map; built in a weekend.
-                       advances: grounds the AND - it exists and works, zero install.
-        2. tension   - a 200-node graph rendered to PNG is a poster, not a tool.
-                       advances: establishes the BUT (static renders are unusable).
-        3. mechanism - open the file, drop a .dot, Viz.js renders it client-side. (one claim)
-                       advances: HOW you get from file to live graph, no backend.
-        4. payoff    - every element is a doorway: hover, focus, drag, walk edges.
-                       advances: lands the THEREFORE (payoff before midpoint).
-        5. mechanism - clusters are first-class: spotlight, drag, collapse. (one claim)
-                       advances: HOW it stays readable at real-world scale.
-        6. mechanism - two libraries, zero backend - why it's one portable file. (one claim)
-                       advances: HOW the whole thing ships as a single page.
-        7. turn      - it's part of amplifier-toolkit; works with any DOT file.
-                       advances: pivot from a tool to its ecosystem role.
-        8. takeaway  - stop squinting at PNGs; open the file and explore.
-                       advances: what the audience keeps + where to go.
-
-        + Sources & Methodology (audit-trail slide, not a beat) at the end - reused verbatim.
-        Slides = 8 beats + 1 = 9.
-    -->
-
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Developer Tools &middot; Amplifier Toolkit</div>
-        <h1 class="headline">One HTML file makes any DOT graph explorable</h1>
-        <p class="subhead">dotviewer is a single self-contained page &mdash; no install, no server, no uploads. Drop in a <code>.dot</code> and it becomes an interactive, zoomable map. It was built in a weekend.</p>
-        <div class="velocity-grid" style="grid-template-columns:repeat(3,1fr);max-width:760px;margin-left:auto;margin-right:auto">
-            <div class="velocity-stat"><div class="velocity-number">1,679</div><div class="velocity-label">Lines &mdash; one self-contained file</div></div>
-            <div class="velocity-stat"><div class="velocity-number">7</div><div class="velocity-label">Commits over 2 days</div></div>
-            <div class="velocity-stat"><div class="velocity-number">0</div><div class="velocity-label">Installs &mdash; opens in any browser</div></div>
-        </div>
-        <div class="status-badge">Single HTML &middot; Zero Install</div>
-        <div class="small-text">May 2026 &middot; ramparte/amplifier-toolkit</div>
+    <!-- TITLE COVER (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>The Poster Comes Alive</h1>
+        <p class="subtitle">One HTML file that makes .dot graphs navigable</p>
     </div>
 
-    <!-- beat 2: tension -->
-    <div class="slide">
-        <div class="section-label">The Problem</div>
-        <h2 class="headline">Rendered to a flat PNG, your architecture is a poster, not a tool</h2>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x1F50D;</div>
-                <h3>Squinting at PNGs</h3>
-                <p>Static renders of complex graphs are unreadable. Dozens of nodes and edges blur into an indistinguishable tangle at any zoom level.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x2699;&#xFE0F;</div>
-                <h3>Tool Installation</h3>
-                <p>Graphviz desktop apps, VS Code extensions, online services requiring uploads &mdash; every option adds friction before you can see your graph.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F6AB;</div>
-                <h3>No Interaction</h3>
-                <p>Traditional viewers are read-only. You can't hover to see connections, drag nodes to untangle clusters, or search for what matters.</p>
-            </div>
+    <!-- BEAT 1 -->
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Setup</div>
+            <h2>Agents draw systems as .dot graphs &mdash; but a rendered graph is a poster, not a map</h2>
+            <p class="body">Amplifier agents describe the systems they build as static Graphviz <code>.dot</code> files. Render one and you get a flat image: something to look at, not something you can use.</p>
+            <p class="handoff">And it's not one stray file &mdash; this is everywhere.</p>
         </div>
-        <div class="callout">
-            <p>Architecture diagrams generated as DOT are only useful if people can actually explore them. A 200-node graph rendered to PNG is a poster, not a tool.</p>
-        </div>
-    </div>
-
-    <!-- beat 3: mechanism -->
-    <div class="slide">
-        <div class="section-label">The Solution</div>
-        <h2 class="headline">Open the file, drop a .dot, and it renders in the browser</h2>
-        <p class="subhead">Everything is self-contained with two CDN libraries &mdash; Viz.js renders your graph client-side, so there is no server round-trip and nothing to upload.</p>
-        <div class="flow-steps">
-            <div class="flow-step">
-                <div class="flow-number">1</div>
-                <div class="flow-content">
-                    <h4>Open dotviewer.html</h4>
-                    <p>A single 1,679-line HTML file. Double-click it or serve it locally &mdash; everything is self-contained.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">2</div>
-                <div class="flow-content">
-                    <h4>Drop a .dot file</h4>
-                    <p>Drag any <code>.dot</code> or <code>.gv</code> file onto the canvas. Viz.js (Graphviz compiled to WebAssembly) renders it client-side.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">3</div>
-                <div class="flow-content">
-                    <h4>Explore interactively</h4>
-                    <p>Pan, zoom, hover, click, drag, search, collapse clusters, follow edges &mdash; the graph becomes navigable.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 4: payoff -->
-    <div class="slide">
-        <div class="section-label">Interactive Exploration</div>
-        <h2 class="medium-headline">Every element is a doorway &mdash; the poster becomes a living map</h2>
-        <p class="subhead">The interactions chain together into one continuous exploration, not a menu of buttons.</p>
-        <div class="flow-steps">
-            <div class="flow-step">
-                <div class="flow-number">&#x2192;</div>
-                <div class="flow-content">
-                    <h4>Hover a node &mdash; highlight neighbors</h4>
-                    <p>Unrelated elements dim; directly connected nodes and edges light up, and the info panel previews incoming/outgoing connections.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">&#x2192;</div>
-                <div class="flow-content">
-                    <h4>Click a node &mdash; focus mode</h4>
-                    <p>Everything except the chosen node, its edges, and neighbors fades to near-invisible. The node glows with a drop-shadow highlight.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">&#x2192;</div>
-                <div class="flow-content">
-                    <h4>Drag a node &mdash; untangle</h4>
-                    <p>Reposition any node; connected edges redraw dynamically as straight center-to-center lines, keeping the graph readable.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">&#x2192;</div>
-                <div class="flow-content">
-                    <h4>Click an edge &mdash; walk the chain</h4>
-                    <p>The viewport pans to the target node and selects it. Click edge after edge to walk a dependency chain &mdash; a navigation tool, not decoration.</p>
-                </div>
-            </div>
-        </div>
-        <div class="callout">
-            <p>Press Escape to dismiss focus mode, clear search, close the info panel, and restore full visibility in one keystroke.</p>
-        </div>
-    </div>
-
-    <!-- beat 5: mechanism -->
-    <div class="slide">
-        <div class="section-label">Cluster Intelligence</div>
-        <h2 class="headline">Clusters are first-class &mdash; spotlight, drag, and collapse to tame complexity</h2>
-        <p class="subhead">Subgraphs are interactive citizens, not just background rectangles.</p>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x1F4A1;</div>
-                <h3>Cluster Spotlight</h3>
-                <p>Click a cluster's background to spotlight its contents &mdash; member nodes stay bright, everything outside dims. Boundary-crossing edges show at reduced opacity.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x270B;</div>
-                <h3>Cluster Drag</h3>
-                <p>Drag a cluster background to move the entire group &mdash; contained nodes, nested child clusters, and labels move together via bounding-box containment.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F5DC;&#xFE0F;</div>
-                <h3>Double-Click Collapse</h3>
-                <p>Double-click a cluster to collapse it into a compact representation, hiding internal nodes. Double-click again to expand.</p>
-            </div>
-        </div>
-        <div class="callout">
-            <p>Cluster membership uses bounding-box containment rather than DOM hierarchy &mdash; a rewrite that fixed broken detection when SVG groups don't nest the way you'd expect.</p>
-            <div class="attribution">&mdash; commit 0c85cf2, April 1 2026</div>
-        </div>
-    </div>
-
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">Under the Hood</div>
-        <h2 class="medium-headline">Two libraries, zero backend &mdash; that's why it ships as one portable file</h2>
-        <div class="halves">
-            <div class="card">
-                <h3>Tech Stack</h3>
-                <ul class="feature-list">
-                    <li><strong>Viz.js 3.11.0</strong> &mdash; Graphviz compiled to WebAssembly, renders DOT to SVG client-side</li>
-                    <li><strong>svg-pan-zoom 3.6.1</strong> &mdash; smooth pan and zoom for SVG elements</li>
-                    <li><strong>Vanilla JS</strong> &mdash; no framework, no bundler, no build step</li>
-                    <li><strong>CSS transitions</strong> &mdash; all dimming, glowing, and highlighting via CSS classes</li>
-                    <li><strong>localStorage</strong> &mdash; persists color scheme preference across sessions</li>
-                </ul>
-            </div>
-            <div class="card">
-                <h3>Keyboard Shortcuts</h3>
-                <div class="code-block"><span class="code-cmd">Home / 0</span>    Fit graph to viewport
-<span class="code-cmd">+ / -</span>        Zoom in / out
-<span class="code-cmd">Escape</span>       Clear selection &amp; search
-
-<span class="code-flag">Hover node</span>   Preview info + highlight neighbors
-<span class="code-flag">Click node</span>   Focus mode (dims all else)
-<span class="code-flag">Drag node</span>    Reposition (edges redraw)
-<span class="code-flag">Click edge</span>   Pan to &amp; select target node
-<span class="code-flag">Dbl-click</span>    Collapse / expand cluster</div>
-            </div>
-        </div>
-        <div class="callout">
-            <p>Edge click targets use invisible 20px-wide stroke paths for easy clicking &mdash; you don't need pixel-perfect aim to follow a dependency chain. Six color schemes and four layout directions are one click away.</p>
-        </div>
-    </div>
-
-    <!-- beat 7: turn -->
-    <div class="slide">
-        <div class="section-label">The Bigger Picture</div>
-        <h2 class="headline">Where agents draw, dotviewer lets you explore</h2>
-        <p class="subhead">dotviewer lives in <strong>amplifier-toolkit</strong> alongside reusable bundles, recipes, scripts, skills, and tools &mdash; and it works with <em>any</em> valid DOT file, not just ones Amplifier generates.</p>
-        <div class="halves">
-            <div class="card">
-                <h4 class="accent">For Amplifier Users</h4>
-                <p>The Amplifier platform generates DOT graphs for architecture diagrams, bundle documentation, and dependency maps. dotviewer makes those artifacts explorable instead of static.</p>
-            </div>
-            <div class="card">
-                <h4 class="accent">For Anyone with DOT Files</h4>
-                <p>CI/CD pipelines, database schemas, state machines, org charts &mdash; if Graphviz can render it, dotviewer can make it interactive.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 8: takeaway -->
-    <div class="slide center">
-        <div class="section-label">Try It</div>
-        <h2 class="headline">Stop squinting at PNGs &mdash; open the file and explore</h2>
-        <p class="subhead">One self-contained HTML page, zero install, any <code>.dot</code>. The graph your agents drew becomes a map you can walk &mdash; hover, focus, drag, and follow edges through your system.</p>
-        <div class="status-badge">ramparte/amplifier-toolkit &middot; dotviewer.html</div>
-    </div>
-
-    <!-- Sources & Methodology (audit-trail slide, not a beat) -->
-    <div class="slide">
-        <div class="section-label">Sources &amp; Methodology</div>
-        <h2 class="medium-headline">How this deck was built</h2>
-        <div class="sources-content">
-            <p><strong>Primary Source</strong></p>
-            <ul>
-                <li>Direct inspection of <code>dotviewer.html</code> (1,679 lines) in the <code>ramparte/amplifier-toolkit</code> repository</li>
-                <li>Git log: <code>git log --oneline --all -- dotviewer.html</code> &mdash; 7 commits from March 31 &ndash; April 1, 2026</li>
-                <li>Full commit history: <code>git log --oneline --since="60 days ago" --no-merges</code> for development context</li>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><b>.dot</b> = a Graphviz graph description agents emit for the systems they build</li>
+                <li>Rendered to a flat image, you can <b>look</b> &mdash; but you can't touch it</li>
+                <li>A poster on the wall, not a map you navigate</li>
             </ul>
+        </div>
+    </div>
 
-            <p style="margin-top: var(--space-md);"><strong>Data Points (all verified from source)</strong></p>
-            <ul>
-                <li><strong>Line count:</strong> 1,679 lines &mdash; via <code>wc -l dotviewer.html</code></li>
-                <li><strong>Commits:</strong> 7 total across 2 days (f672668 through df9d8c3)</li>
-                <li><strong>Insertions:</strong> 1,380 lines added from first to final commit &mdash; via <code>git diff --stat f672668..df9d8c3</code></li>
-                <li><strong>Color schemes:</strong> 6 (Dark, Light, Midnight, Solarized Dark, Blueprint, High Contrast) &mdash; from SCHEMES object in source</li>
-                <li><strong>Layout directions:</strong> 4 (TB, LR, BT, RL) &mdash; from rankdir-select element</li>
-                <li><strong>CDN dependencies:</strong> viz-js/viz@3.11.0 and svg-pan-zoom@3.6.1 &mdash; from script tags</li>
-                <li><strong>Contributors:</strong> Sam Schillace (4 commits), Amplifier Dev (3 commits) &mdash; via <code>git log --format="%an"</code></li>
+    <!-- BEAT 2 -->
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">The Scale</div>
+            <h2>Hundreds of these graphs live in the workspace &mdash; the biggest past 700 lines</h2>
+            <p class="body">This isn't a corner case. Across the ANext workspace the raw material is real and at scale, so the poster problem is worth solving.</p>
+            <p class="handoff">And when a graph gets this big, the flat image starts to hurt.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-value">363</div>
+                    <div class="stat-label">.dot files in the workspace (last count)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">736</div>
+                    <div class="stat-label">lines in the largest single .dot (03-graph-model.dot)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BEAT 3 -->
+    <div class="slide split">
+        <!-- beat 3: tension -->
+        <div class="col-main">
+            <div class="section-label">The Cost</div>
+            <h2>At 700+ lines, the poster problem bites hard</h2>
+            <p class="body">A flat image of a graph this size gives you no way to interrogate it. Five things you'd want to do &mdash; and can't &mdash; right where the graphs are largest.</p>
+            <p class="handoff">Therefore: make the poster something you can actually use.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>Can't <b>hover</b> a node to see what it is</li>
+                <li>Can't <b>search</b> for one node among hundreds</li>
+                <li>Can't <b>drag</b> a node out of the tangle</li>
+                <li>Can't <b>collapse</b> a whole subsystem</li>
+                <li>Can't <b>follow</b> a single dependency edge</li>
             </ul>
+        </div>
+    </div>
 
-            <p style="margin-top: var(--space-md);"><strong>Methodology</strong></p>
-            <ul>
-                <li>All feature descriptions sourced from reading the actual HTML, CSS classes, and JavaScript functions</li>
-                <li>Interaction model documented from the help panel content embedded in the source (lines 201&ndash;238)</li>
-                <li>No metrics were fabricated or estimated &mdash; every number traces to a git or file-system command</li>
+    <!-- BEAT 4 -->
+    <div class="slide split">
+        <!-- beat 4: setup -->
+        <div class="col-main">
+            <div class="section-label">The Fix</div>
+            <h2>dotviewer: one self-contained HTML file that renders Graphviz in the browser</h2>
+            <p class="body">dotviewer is a single <code>.dot</code> viewer &mdash; 1,679 lines, 71,177 bytes &mdash; that renders Graphviz in-browser and layers interactivity on top. Its only dependencies are two CDN scripts.</p>
+            <p class="handoff">So how do you get a graph in? You just drop it.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-value">1,679</div>
+                    <div class="stat-label">lines in dotviewer.html (single file)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">2</div>
+                    <div class="stat-label">CDN libraries: @viz-js/viz 3.11.0 + svg-pan-zoom 3.6.1</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BEAT 5 -->
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Getting In</div>
+            <h2>Drop a .dot file in &mdash; or run the tiny dotview shim &mdash; and it renders</h2>
+            <p class="body">The viewer accepts <code>.dot</code>, <code>.gv</code>, and <code>.graphviz</code> via a file picker or a "Drop a .dot file here" overlay. A 47-line <code>dotview</code> bash shim embeds any file into a temp copy and opens it (WSL2-aware).</p>
+            <p class="handoff">Once it's on screen, you can start tracing the wiring.</p>
+        </div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-text"><strong>Drop or open</strong><span>Drag a .dot onto the overlay, or click "Open .dot"</span></div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-text"><strong>Or run dotview</strong><span>47-line shim injects the .dot and opens the browser</span></div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-text"><strong>Renders instantly</strong><span>Two CDN libs, zero local asset files</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BEAT 6 -->
+    <div class="slide split">
+        <!-- beat 6: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Following the Wiring</div>
+            <h2>Hover a node to light up its neighbors, click an edge to follow the arrow</h2>
+            <p class="body">This is the single most map-like thing a poster can't do: trace connections. Hover previews a node's info and highlights its neighbors; clicking an edge follows the arrow and pans straight to its target.</p>
+            <p class="handoff">And that's just the start of what the live map lets you do.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><b>Hover a node</b> &mdash; preview its info panel and highlight its neighbors</li>
+                <li><b>Click an edge</b> &mdash; follow the arrow and pan to select the target</li>
+                <li><b>Drag a node</b> &mdash; pull it out of the tangle</li>
             </ul>
+        </div>
+    </div>
 
-            <p style="margin-top: var(--space-md);"><strong>Contributor:</strong> Sam Schillace &middot; <strong>Deck generated:</strong> May 2026</p>
+    <!-- BEAT 7 -->
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Poster Comes Alive</div>
+            <h2>Focus a node, collapse a subsystem, search live, reflow on demand</h2>
+            <p class="body">The static image is now a living map. Click to focus a node and dim the rest, double-click a cluster to collapse a whole subsystem, search with a live match count, and flip layout direction &mdash; all in the one file you just opened.</p>
+            <p class="handoff">And the whole thing fits in a single portable file.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><b>Focus</b> &mdash; click a node to dim everything else</li>
+                <li><b>Collapse</b> &mdash; double-click a cluster to fold a subsystem</li>
+                <li><b>Search</b> &mdash; live match count as you type</li>
+                <li><b>Reflow</b> &mdash; toggle layout TB / LR / BT / RL</li>
+                <li><b>Recolor</b> &mdash; 6 luminance-aware color schemes</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- BEAT 8 -->
+    <div class="slide split">
+        <!-- beat 8: takeaway -->
+        <div class="col-main">
+            <div class="section-label">What You Keep</div>
+            <h2>Built over 7 commits in two days &mdash; the whole viewer ships in one file</h2>
+            <p class="body">From first commit to final polish, dotviewer went from a 447-line pan/zoom viewer to a 1,679-line navigable map. Any .dot graph, anywhere, becomes explorable with one portable HTML file you can just open.</p>
+            <p class="handoff">The poster you used to squint at is now a map you explore.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-value">7</div>
+                    <div class="stat-label">commits, 2026-03-31 to 2026-04-01</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">447</div>
+                    <div class="stat-label">lines at first commit &rarr; 1,679 today</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SOURCES (no beat comment) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="sources-body">
+            <p><span class="badge">STATUS: COMMITTED &amp; CLEAN ON MAIN</span></p>
+            <p><strong>Data as of:</strong> fact-check re-run against ramparte/amplifier-toolkit (remote git@github.com:ramparte/amplifier-toolkit.git, branch main). 7 commits, all dated 2026-03-31 to 2026-04-01.</p>
+            <p><strong>Research performed:</strong></p>
+            <ul>
+                <li>File size: <code>wc -l dotviewer.html; wc -c dotviewer.html</code> &rarr; 1679 lines / 71177 bytes; <code>wc -l dotview; wc -c dotview</code> &rarr; 47 content lines / 1091 bytes</li>
+                <li>Dependencies: <code>grep -nE 'https?://' dotviewer.html | grep -v 'w3.org'</code> &rarr; @viz-js/viz@3.11.0, svg-pan-zoom@3.6.1; <code>grep -c '&lt;style'</code> = 1, <code>grep -c '&lt;script src'</code> = 2</li>
+                <li>Interactivity: <code>sed -n '210,236p' dotviewer.html</code> + <code>grep -nE 'isDragging|panToNode|spotlight|collapseCluster|expandCluster|searchCount'</code></li>
+                <li>Color schemes: <code>grep -n "label: '" dotviewer.html</code> &rarr; 6 (Dark, Light, Midnight, Solarized Dark, Blueprint, High Contrast)</li>
+                <li>Workspace scale: <code>find . -name '*.dot' -type f | grep -v node_modules | grep -v '/.git/' | wc -l</code> &rarr; 363; largest via <code>xargs wc -l | sort -rn | head</code> &rarr; 736 (03-graph-model.dot)</li>
+                <li>Timeline &amp; contributors: <code>git log --format='%h %an %ad %s' --date=iso -- dotviewer.html</code>; <code>git log --format='%an' -- dotviewer.html | sort | uniq -c</code></li>
+            </ul>
+            <p><strong>Gaps:</strong> The .dot file count (363) drifts as the workspace changes &mdash; presented as "hundreds of." No per-graph node count is asserted; the scale claim is line- and file-count based. No test suite, benchmark, or adoption telemetry exists, so no performance or usage claims are made.</p>
+            <p><strong>Primary contributors:</strong> Sam Schillace (4 commits on dotviewer.html), Amplifier Dev (3 commits).</p>
         </div>
     </div>
 
@@ -826,18 +477,48 @@
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
 
-    <!-- More stories link -->
+    <!-- More stories link - REQUIRED -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -846,29 +527,26 @@
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.target.closest('a')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
@@ -876,11 +554,10 @@
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

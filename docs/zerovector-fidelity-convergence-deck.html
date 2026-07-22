@@ -3,60 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>ZeroVector &mdash; Zero Translation Loss: Fidelity Convergence Architecture</title>
+    <title>Zero Translation Loss</title>
     <script>document.documentElement.classList.add('js')</script>
-<style>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --accent: #E74C3C;
-            --accent-dim: rgba(231, 76, 60, 0.15);
-            --accent-glow: rgba(231, 76, 60, 0.3);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 36px);
-            --fs-h3: clamp(18px, 3vw, 24px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 1.8vw, 15px);
-
-            /* Spacing */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
+            --bg: #0a0e14;
+            --bg2: #10151f;
+            --fg: #f2f5fa;
+            --muted: #9aa7bd;
+            --accent: #4fd1c5;
+            --accent2: #7f9cf5;
+            --warn: #f6ad55;
+            --card: #161c28;
+            --line: rgba(255,255,255,0.09);
         }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Slide base */
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
@@ -64,372 +36,255 @@
             flex-direction: column;
             overflow-y: auto;
             overflow-x: hidden;
+            background: radial-gradient(circle at 20% 10%, var(--bg2), var(--bg) 70%);
         }
+
         .slide.active { display: flex; }
-        .slide.center {
+
+        /* No-JS fallback: all slides visible & scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+
+        /* Fit-safe: cap slides to the viewport, scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide {
+            transition: transform 0.5s cubic-bezier(0.22,1,0.36,1), opacity 0.5s ease;
+        }
+
+        /* Centering opt-in */
+        .center {
             text-align: center;
             align-items: center;
             justify-content: center;
         }
 
-        /* Typography */
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); font-weight: 400; }
+
         .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.5vw, 13px);
+            font-weight: 700;
             color: var(--accent);
-            margin-bottom: var(--space-sm);
+            margin-bottom: clamp(14px, 2.5vw, 22px);
         }
-        .headline {
-            font-size: var(--fs-hero);
-            font-weight: 700;
+
+        h2 { margin-bottom: clamp(14px, 2.5vw, 22px); }
+        .body { color: var(--muted); max-width: 40ch; margin-bottom: clamp(14px, 2.5vw, 20px); }
+        .handoff {
+            color: var(--accent2);
+            font-style: italic;
+            max-width: 42ch;
+            margin-top: clamp(10px, 2vw, 16px);
+        }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: clamp(12px, 2vw, 20px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px, 2.5vw, 26px);
+        }
+        .stat-num {
+            font-size: clamp(30px, 6vw, 56px);
+            font-weight: 800;
+            line-height: 1;
+            color: var(--accent);
             letter-spacing: -0.03em;
-            line-height: 1.08;
-            margin-bottom: var(--space-md);
         }
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            margin-bottom: var(--space-md);
-        }
-        .subhead {
-            font-size: var(--fs-h3);
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(680px, 90vw);
-        }
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: var(--space-sm);
+        .stat-label {
+            font-size: clamp(12px, 1.6vw, 14px);
+            color: var(--muted);
+            margin-top: 8px;
         }
 
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: 100px;
-            background: rgba(231, 76, 60, 0.15);
-            color: #E74C3C;
-            margin-top: var(--space-sm);
-        }
-
-        /* Grids */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .quads {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .fifths {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-        .card h3, .card h4 {
-            color: var(--text-primary);
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-        .card p, .card li {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.5;
-        }
-        .card .icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: var(--space-xs);
-        }
-
-        /* Card with accent border top */
-        .card-accent {
-            border-top: 2px solid var(--accent);
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            color: #BFC0C5;
-            margin-top: var(--space-md);
-        }
-        .code-comment { color: rgba(255,255,255,0.35); }
-        .code-cmd { color: #E74C3C; }
-        .code-flag { color: #E74C3C; }
-        .code-string { color: #FF9F0A; }
-        .code-var { color: #64D2FF; }
-
-        /* Flow steps */
-        .flow-steps {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            max-width: min(800px, 95vw);
-        }
-        .flow-step {
+        /* Steps / rules */
+        .steps { display: flex; flex-direction: column; gap: clamp(10px, 1.8vw, 16px); }
+        .step {
             display: flex;
             align-items: flex-start;
-            gap: var(--space-md);
+            gap: 14px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(12px, 2vw, 18px) clamp(14px, 2.2vw, 20px);
         }
-        .flow-number {
-            flex-shrink: 0;
-            width: clamp(36px, 5vw, 48px);
-            height: clamp(36px, 5vw, 48px);
+        .step-n {
+            flex: 0 0 auto;
+            width: 30px; height: 30px;
             border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
+            background: rgba(79,209,197,0.15);
+            color: var(--accent);
+            font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+        }
+        .step-body { min-width: 0; }
+        .step-title { font-weight: 700; font-size: clamp(14px, 1.9vw, 18px); }
+        .step-sub { color: var(--muted); font-size: clamp(12px, 1.6vw, 15px); margin-top: 3px; }
+
+        /* Chain flow */
+        .chain { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .chain-node {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: var(--muted);
+        }
+        .chain-arrow { color: var(--accent); font-weight: 700; }
+        .chain.new .chain-node {
+            background: rgba(79,209,197,0.12);
+            border-color: rgba(79,209,197,0.4);
+            color: var(--fg);
+            font-weight: 700;
+            font-size: clamp(14px, 2vw, 19px);
+            padding: 12px 18px;
+        }
+
+        /* Rules / bands list */
+        .rules { display: flex; flex-direction: column; gap: clamp(8px, 1.5vw, 12px); }
+        .rule {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--accent);
-        }
-        .flow-content h4 {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .flow-content p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-        .flow-arrow {
-            width: 2px;
-            height: var(--space-sm);
-            background: var(--accent-dim);
-            margin-left: clamp(17px, 2.3vw, 23px);
-        }
-
-        /* Architecture diagram */
-        .arch-entities {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .entity-box {
-            background: var(--surface-2);
-            border: 1px solid var(--border-visible);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-            text-align: center;
-        }
-        .entity-box .icon {
-            font-size: clamp(32px, 6vw, 56px);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box h4 {
-            font-size: var(--fs-h3);
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        /* Velocity stats */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
-            gap: var(--space-lg);
-            margin-top: var(--space-lg);
-        }
-        .velocity-stat { text-align: center; }
-        .velocity-number {
-            font-size: clamp(48px, 12vw, 96px);
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #FF6B6B);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .velocity-label {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
-
-        /* Quote / callout box */
-        .callout {
-            background: var(--accent-dim);
+            gap: 14px;
+            background: var(--card);
+            border: 1px solid var(--line);
             border-left: 3px solid var(--accent);
-            border-radius: var(--radius-sm);
-            padding: var(--space-md);
-            margin-top: var(--space-md);
-            max-width: min(700px, 95vw);
+            border-radius: 10px;
+            padding: clamp(10px, 1.6vw, 15px) clamp(14px, 2vw, 18px);
         }
-        .callout p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-            font-style: italic;
-        }
-        .callout .attribution {
-            font-style: normal;
-            color: var(--text-tertiary);
-            font-size: var(--fs-small);
-            margin-top: var(--space-xs);
-        }
+        .rule-name { font-weight: 600; font-size: clamp(13px, 1.7vw, 16px); }
+        .rule-val { color: var(--accent); font-weight: 700; font-size: clamp(13px, 1.7vw, 16px); white-space: nowrap; }
 
-        /* Convergence diagram */
-        .convergence-loop {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-lg);
-            margin-top: var(--space-lg);
-            max-width: min(800px, 95vw);
-        }
-        .convergence-loop .loop-header {
-            font-size: var(--fs-h3);
-            font-weight: 700;
+        code {
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            background: rgba(255,255,255,0.06);
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-size: 0.9em;
             color: var(--accent);
-            margin-bottom: var(--space-md);
-            text-align: center;
-        }
-        .convergence-flow {
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            line-height: 2;
-            color: #BFC0C5;
         }
 
-        /* Lens table */
-        .lens-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .lens-card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-left: 3px solid var(--accent);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-        .lens-card .lens-name {
-            font-size: var(--fs-h3);
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: var(--space-xs);
-        }
-        .lens-card .lens-question {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
+        .eyebrow-quote {
+            border-left: 3px solid var(--accent2);
+            padding-left: clamp(14px, 2vw, 20px);
+            color: var(--muted);
             font-style: italic;
-        }
-        .lens-card .lens-route {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: var(--space-xs);
+            max-width: 46ch;
+            margin-top: clamp(16px, 2.5vw, 22px);
         }
 
-        /* Navigation */
+        /* Sources slide */
+        .sources { max-width: 60ch; }
+        .sources p { color: var(--muted); margin-bottom: 10px; }
+        .sources ul { list-style: none; margin: 10px 0; }
+        .sources li {
+            color: var(--muted);
+            margin-bottom: 8px;
+            padding-left: 16px;
+            position: relative;
+        }
+        .sources li::before { content: "›"; position: absolute; left: 0; color: var(--accent); }
+
+        .status-badge {
+            display: inline-block;
+            background: rgba(79,209,197,0.15);
+            color: var(--accent);
+            border: 1px solid rgba(79,209,197,0.4);
+            border-radius: 999px;
+            padding: 5px 14px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-top: clamp(18px, 3vw, 28px);
+        }
+
+        /* Navigation dots */
         .nav {
             position: fixed;
-            bottom: 28px;
+            bottom: 26px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 8px;
-            z-index: 100;
+            gap: 9px;
+            z-index: 90;
         }
         .nav-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px; height: 9px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.22);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background 0.3s, transform 0.3s;
         }
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
         .slide-counter {
             position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            z-index: 100;
+            top: 22px;
+            right: 26px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
+            z-index: 90;
+            letter-spacing: 0.05em;
         }
 
-        /* Sources slide specifics */
-        .sources-content {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.7;
-            max-width: min(800px, 95vw);
-        }
-        .sources-content strong {
-            color: var(--text-primary);
-        }
-        .sources-content code {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-small);
-            background: var(--surface-1);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .sources-content ul {
-            padding-left: var(--space-md);
-            margin: var(--space-xs) 0;
-        }
-        .sources-content li {
-            margin-bottom: var(--space-xs);
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
         }
 
-        /* More stories link */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
         .more-stories {
             position: fixed;
             bottom: 10px;
@@ -441,397 +296,249 @@
             z-index: 100;
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
-
-        /* Landscape mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
-        }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* Touch targets */
-        @media (hover: none) {
-            .nav-dot {
-                min-width: 16px;
-                min-height: 16px;
-            }
-        }
-
-        /* Highlight accent text */
-        .accent { color: var(--accent); }
-
-        /* Inline list with subtle bullets */
-        .feature-list {
-            list-style: none;
-            padding: 0;
-        }
-        .feature-list li {
-            padding-left: var(--space-md);
-            position: relative;
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: var(--space-xs);
-        }
-        .feature-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.6em;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-        }
-    
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+    </style>
 </head>
 <body>
-    <!--
-      ============================================================
-      NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
-      ============================================================
+<!--
+SPINE
+ABT: AND every product travels a chain of handoffs from intent to ship; BUT every handoff is lossy compression, and linear pipelines have no way to measure how much of the original intent survived; THEREFORE ZeroVector collapses the chain to Intent -> Crew -> Artifact and loops until it can prove, against a measured target, that intent made it through.
+Payoff: Fidelity is a measured dial, not a hope: the convergence loop keeps routing to the weakest lens until overall fidelity clears the per-domain target, so "is the intent still intact?" has a number, not a shrug.
+Beats:
+  1. frame     -- ZeroVector treats the intent-to-ship pipeline as lossy compression and asks a question quality never does: does the artifact still faithfully represent what was intended?  advances: Orients the audience on the AND and the stakes -- names the intent->ship chain and reframes the whole problem as translation loss, not craftsmanship.
+  2. proof     -- Fidelity is a concrete definition backed by code: overall score is the arithmetic mean of five lenses, and the engine ships with 626 tests across 17 files.  advances: Establishes the AND is real and buildable -- lands hard evidence early that fidelity is defined and instrumented, not a slogan.
+  3. tension   -- The old flow was a 9-stage handoff chain, and every arrow silently degraded the original intent with no way to measure the loss.  advances: Establishes the BUT -- shows the specific failure the linear pipeline cannot see or measure.
+  4. turn      -- ZeroVector collapses those nine stages into a single loop: Intent -> Crew -> Artifact, replacing linear handoffs with one convergence engine.  advances: The pivot from AND/BUT to THEREFORE -- the structural move that makes measured fidelity possible.
+  5. mechanism -- Five fidelity lenses score the artifact, and the loop always routes to the single weakest lens's dedicated agent to close that gap.  advances: Shows HOW the loop works -- one claim: it targets the weakest lens rather than doing everything at once.
+  6. mechanism -- The loop keeps iterating until overall fidelity clears a per-domain target (0.75 content to 0.88 platform), capped at 8 passes.  advances: Shows HOW convergence terminates -- one claim: a measured stopping condition, calibrated per domain, that makes "done" provable.
+  7. payoff    -- Fidelity becomes a measured dial: the artifact is CONVERGED only when it can prove intent survived to the target, not when someone declares it good.  advances: Lands the THEREFORE as the climax -- optimizing translation loss, not just quality, turns "is intent intact?" into a number.
+  8. takeaway  -- Measure the loss, not just the craft: if every handoff degrades intent, the win is making that degradation visible and driving it toward zero.  advances: What the audience keeps -- generalizes the fidelity-over-quality principle beyond this one bundle.
+-->
 
-      ABT:
-        AND every product travels a chain of handoffs from intent to ship;
-        BUT every arrow is lossy compression - designer interprets PM, engineer
-            interprets designer - and linear pipelines have no way to measure how much
-            of the original intent survived;
-        THEREFORE ZeroVector collapses the chain to Intent -> Crew -> Artifact and runs
-            a convergence loop that scores five fidelity lenses and routes to the
-            weakest until fidelity clears a target - optimizing fidelity, not just
-            quality.
-
-      PAYOFF (named up front):
-        State your intent once, get exactly what you meant - the artifact IS the thing,
-        and its fidelity is measured to a target (default 0.85), not hoped for.
-
-      BEATS (proof-first; payoff lands at beat 4 of 9, midpoint = 5, so before the midpoint):
-        1. proof     - it's real and rigorous: shipped in 4 days, 63 commits, 5 agents, 6 crews, 5,017 lines of tests.
-                       advances: grounds the AND - ZeroVector exists and is serious, not a manifesto.
-        2. tension   - every handoff from intent to ship loses signal; there's no feedback loop.
-                       advances: establishes the BUT.
-        3. turn      - collapse the chain to Intent -> Crew -> Artifact; optimize fidelity over quality.
-                       advances: the pivot from AND to THEREFORE.
-        4. payoff    - state intent once; fidelity is measured to a target, not hoped for.
-                       advances: lands the payoff before the midpoint.
-        5. mechanism - a five-agent crew, each agent the quality gate for the next. (one claim)
-                       advances: HOW the work gets done with judgment.
-        6. mechanism - five fidelity lenses scored 0-1; the weakest gets fixed first. (one claim)
-                       advances: HOW translation loss is measured.
-        7. mechanism - the convergence loop routes and re-scores until fidelity clears 0.85. (one claim)
-                       advances: HOW fidelity is driven to target under human gates.
-        8. takeaway  - one architecture, six domain-tuned crews.
-                       advances: how far the pattern generalizes.
-        9. takeaway  - the fidelity layer drops into any bundle - rigor, not vibe coding.
-                       advances: the durable, reusable value the audience keeps.
-
-      + Sources & Methodology (audit-trail slide, not a beat) at the end.
-      Slides = 9 beats + 1 = 10.
-    -->
-
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Architecture &amp; Philosophy &middot; Amplifier Bundle</div>
-        <h2 class="medium-headline">ZeroVector isn't a manifesto &mdash; it shipped in 4 days with a 5,000-line test suite</h2>
-        <p class="subhead">State your intent once. Get exactly what you meant. Zero translation loss through fidelity convergence &mdash; and it's already a working, tested bundle.</p>
-        <div class="velocity-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(140px, 30%), 1fr)); max-width: min(680px, 95vw);">
-            <div class="velocity-stat">
-                <div class="velocity-number">63</div>
-                <div class="velocity-label">commits in 4 days</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">5</div>
-                <div class="velocity-label">agents</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">6</div>
-                <div class="velocity-label">domain crews</div>
-            </div>
-        </div>
-        <div class="small-text" style="margin-top: var(--space-lg);">25 test files &middot; 5,017 lines of tests &middot; 772 lines of Python modules &middot; March 6&ndash;9, 2026 &middot; michaeljabbour/amplifier-bundle-zerovector</div>
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>Zero Translation Loss</h1>
+        <p class="subtitle">measuring how much intent survives to ship</p>
     </div>
 
-    <!-- beat 2: tension -->
-    <div class="slide">
-        <div class="section-label">The Problem</div>
-        <h2 class="medium-headline">Every handoff from intent to ship loses signal</h2>
-        <div class="code-block"><span class="code-comment"># The traditional translation chain &mdash; every arrow is lossy compression</span>
-
-<span class="code-var">Intent</span> &rarr; <span class="code-string">Sketch</span> &rarr; <span class="code-string">Wireframe</span> &rarr; <span class="code-string">Mockup</span> &rarr; <span class="code-string">Handoff</span> &rarr; <span class="code-string">Dev Interpretation</span> &rarr; <span class="code-string">Build</span> &rarr; <span class="code-string">Review</span> &rarr; <span class="code-flag">Ship</span>
-
-<span class="code-comment"># By the time you ship, what % of the original intent survived?</span></div>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x1F50A;</div>
-                <h3>Signal Decay</h3>
-                <p>Each step from vision to product is a lossy compression. Requirements get misread, context gets dropped, nuance evaporates.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F500;</div>
-                <h3>Interpretation Drift</h3>
-                <p>Designer interprets PM. Engineer interprets designer. Reviewer interprets engineer. The original intent is nowhere in the chain.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x2753;</div>
-                <h3>No Feedback Loop</h3>
-                <p>Linear pipelines have no mechanism to measure how much of the original intent survived into the final artifact.</p>
-            </div>
-        </div>
-        <div class="callout">
-            <p>A beautifully crafted artifact that solves the wrong problem has high quality but low fidelity. Quality without fidelity is wasted effort.</p>
-            <div class="attribution">&mdash; Zero-Vector Design, Fidelity Framework</div>
-        </div>
-    </div>
-
-    <!-- beat 3: turn -->
-    <div class="slide">
-        <div class="section-label">The Reframe</div>
-        <h2 class="headline">Collapse the chain:<br>Intent &rarr; Crew &rarr; Artifact</h2>
-        <p class="subhead">The person with the vision directs a crew of AI agents and moves directly from intent to working artifact &mdash; no lossy handoffs in between.</p>
-        <div class="code-block"><span class="code-comment"># OLD: 8 lossy handoffs</span>
-<span class="code-string">Intent &rarr; Sketch &rarr; Wireframe &rarr; Mockup &rarr; Handoff &rarr; Dev &rarr; Build &rarr; Review &rarr; Ship</span>
-
-<span class="code-comment"># NEW: Zero translation loss</span>
-<span class="code-cmd">Intent &rarr; Crew &rarr; Artifact</span>
-
-<span class="code-comment"># The artifact IS the thing. Not a picture of the thing.</span></div>
-        <div class="halves">
-            <div class="card card-accent">
-                <h3>Fidelity Over Quality</h3>
-                <p><em>Quality</em> asks: is this well-made? <em>Fidelity</em> asks: does this faithfully represent what was intended? ZeroVector optimizes for fidelity first, because quality without fidelity is wasted effort.</p>
-            </div>
-            <div class="card card-accent">
-                <h3>Crew, Not Assistants</h3>
-                <p>Agents are crew members with roles, standards, and contracts &mdash; not assistants waiting for literal instructions. Each executes with judgment within their domain.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 4: payoff -->
     <div class="slide center">
-        <div class="section-label">The Payoff</div>
-        <h2 class="headline">State your intent once.<br>Get exactly what you meant.</h2>
-        <p class="subhead">Because the artifact IS the thing &mdash; not a picture of it &mdash; its faithfulness to your intent can be <span class="accent">measured to a target</span>, not merely hoped for.</p>
-        <div class="callout" style="text-align:left;">
-            <p style="font-style:normal;">The convergence loop terminates when the mean of five fidelity lens scores meets a domain target &mdash; default <strong class="accent">0.85</strong>. Fidelity stops being a feeling and becomes a number you converge on.</p>
+        <!-- beat 1: frame -->
+        <div class="section-label">The Question Quality Never Asks</div>
+        <h1>Your pipeline is lossy compression from intent to ship</h1>
+        <p class="body" style="max-width: 52ch; margin-top: clamp(16px,3vw,24px);">
+            ZeroVector is an Amplifier bundle that treats the road from intent to
+            artifact as a chain of handoffs &mdash; and reframes the whole problem
+            as translation loss, not craftsmanship.
+        </p>
+        <div class="eyebrow-quote">
+            &ldquo;Fidelity asks: does this faithfully represent what was intended?&rdquo;
+            Quality asks whether it&rsquo;s well-made. These are not the same question.
         </div>
+        <p class="handoff" style="max-width: 52ch;">So the first job is to define fidelity precisely enough to measure it.</p>
     </div>
 
-    <!-- beat 5: mechanism -->
-    <div class="slide">
-        <div class="section-label">The Crew</div>
-        <h2 class="medium-headline">A five-agent crew, where each agent is the quality gate for the next</h2>
-        <p class="subhead">Together they eliminate translation loss at every stage &mdash; intent, structure, build, scoring, delivery.</p>
-        <div class="fifths">
-            <div class="entity-box">
-                <div class="icon">&#x1F50D;</div>
-                <h4>Intent Analyst</h4>
-                <p>Decode intent, surface constraints, define what success looks like</p>
-            </div>
-            <div class="entity-box">
-                <div class="icon">&#x1F3D7;&#xFE0F;</div>
-                <h4>Architect</h4>
-                <p>Translate intent into structure, interfaces, and ordered tasks</p>
-            </div>
-            <div class="entity-box">
-                <div class="icon">&#x1F528;</div>
-                <h4>Builder</h4>
-                <p>Implement the artifact from spec, meeting every acceptance criterion</p>
-            </div>
-            <div class="entity-box">
-                <div class="icon">&#x1F9D0;</div>
-                <h4>Critic</h4>
-                <p>Score all five fidelity lenses, identify the priority gap, route action</p>
-            </div>
-            <div class="entity-box">
-                <div class="icon">&#x1F680;</div>
-                <h4>Shipper</h4>
-                <p>Package, commit, document, and deliver the finished artifact</p>
-            </div>
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">Defined, Not Sloganeered</div>
+            <h2>Fidelity has a formula and a test suite behind it</h2>
+            <p class="body">
+                The overall score is the arithmetic mean of five lens scores &mdash;
+                <code>sum(lens_scores) / len(lens_scores)</code> &mdash; and the bundle
+                ships instrumented, not aspirational.
+            </p>
+            <p class="handoff">If it&rsquo;s this concrete, what exactly was broken before?</p>
         </div>
-    </div>
-
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">Fidelity Scoring</div>
-        <h2 class="medium-headline">Five fidelity lenses, scored 0&ndash;1 &mdash; and the weakest gets fixed first</h2>
-        <p class="subhead">Every lens measures translation loss at a specific stage. The Critic scores all five simultaneously; the weakest lens gets routed to first.</p>
-        <div class="lens-grid">
-            <div class="lens-card">
-                <div class="lens-name">1. Intent Clarity</div>
-                <div class="lens-question">Is the original intent fully understood and unambiguous?</div>
-                <div class="lens-route">If weak &rarr; Return to intent capture with user</div>
-            </div>
-            <div class="lens-card">
-                <div class="lens-name">2. Specification</div>
-                <div class="lens-question">Does the spec completely and correctly capture the intent?</div>
-                <div class="lens-route">If weak &rarr; Revise spec, fill gaps, trace requirements</div>
-            </div>
-            <div class="lens-card">
-                <div class="lens-name">3. Implementation</div>
-                <div class="lens-question">Does the artifact faithfully implement the spec?</div>
-                <div class="lens-route">If weak &rarr; Continue building, fix deviations from spec</div>
-            </div>
-            <div class="lens-card">
-                <div class="lens-name">4. Quality</div>
-                <div class="lens-question">Does the artifact meet quality standards &mdash; tests, style, correctness?</div>
-                <div class="lens-route">If weak &rarr; Add tests, fix bugs, improve readability</div>
-            </div>
-            <div class="lens-card">
-                <div class="lens-name">5. Ship-Readiness</div>
-                <div class="lens-question">Is the artifact packaged and deliverable?</div>
-                <div class="lens-route">If weak &rarr; Complete docs, clean commits, resolve blockers</div>
-            </div>
-        </div>
-        <div class="small-text" style="margin-top: var(--space-md); max-width: min(700px, 95vw);">
-            <strong class="accent">Priority rule:</strong> When lenses tie, prioritize earlier in the pipeline. Upstream fixes compound downstream.
-        </div>
-    </div>
-
-    <!-- beat 7: mechanism -->
-    <div class="slide">
-        <div class="section-label">Core Architecture</div>
-        <h2 class="medium-headline">The convergence loop routes and re-scores until fidelity clears 0.85</h2>
-        <p class="subhead">Not a linear pipeline &mdash; a convergence engine that keeps acting on the weakest lens until overall fidelity meets the target.</p>
-        <div class="convergence-loop">
-            <div class="loop-header">fidelity-convergence.yaml</div>
-            <div class="convergence-flow"><span class="code-cmd">DECODE-INTENT</span> &rarr; <span class="code-flag">(GATE 1: approve spec)</span>
-  &rarr; <span class="code-cmd">ASSESS</span> all five lenses simultaneously <span class="code-var">(score 0.0&ndash;1.0)</span>
-  &rarr; <span class="code-flag">while</span> <span class="code-var">fidelity_score</span> &lt; <span class="code-var">target_fidelity</span>:
-      route to <span class="code-cmd">weakest lens</span> &rarr; act &rarr; re-assess
-  &rarr; <span class="code-flag">(GATE 2: approve converged artifact)</span>
-  &rarr; <span class="code-cmd">FINISH</span> <span class="code-var">(merge / pr / keep / discard)</span></div>
-        </div>
-        <div class="thirds">
-            <div class="card">
-                <h4 class="accent">Default Target: 0.85</h4>
-                <p>The loop terminates when the arithmetic mean of all five lens scores meets the domain-specific target.</p>
-            </div>
-            <div class="card">
-                <h4 class="accent">Max 8 Iterations</h4>
-                <p>A safety bound prevents infinite loops. Persistent failures get Builder the Critic's exact findings for targeted fixes.</p>
-            </div>
-            <div class="card">
-                <h4 class="accent">2 Human Gates</h4>
-                <p>Approval after spec and after convergence. The human stays in control &mdash; the crew does the work.</p>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-num">626</div>
+                    <div class="stat-label">test-function definitions</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">17</div>
+                    <div class="stat-label">test files</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">148</div>
+                    <div class="stat-label">tests in the largest file</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">5</div>
+                    <div class="stat-label">fidelity lenses averaged</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 8: takeaway -->
-    <div class="slide">
-        <div class="section-label">Domain Tuning</div>
-        <h2 class="medium-headline">One architecture, six domain-tuned crews</h2>
-        <p class="subhead">Same five agents, domain-tuned prompts per crew. Each mode calibrates fidelity targets and lens priorities for its domain.</p>
-        <div class="thirds">
-            <div class="card card-accent">
-                <h3><span class="accent">/crew</span></h3>
-                <p><strong>General</strong> &mdash; Any domain. Auto-adapts. The Intent Analyst surfaces the correct domain from your intent.</p>
-                <div class="small-text">Target: 0.85</div>
+    <div class="slide split">
+        <!-- beat 3: tension -->
+        <div class="col-main">
+            <div class="section-label">The Old Flow</div>
+            <h2>Nine handoffs, and every arrow silently lost intent</h2>
+            <p class="body">
+                Each step reinterprets the last &mdash; designer reads PM, engineer reads
+                designer. The linear pipeline had no way to measure how much of the
+                original intent survived.
+            </p>
+            <p class="handoff">The problem isn&rsquo;t any one stage &mdash; it&rsquo;s the chain itself.</p>
+        </div>
+        <div class="col-aside">
+            <div class="chain">
+                <span class="chain-node">Intent</span><span class="chain-arrow">&rarr;</span>
+                <span class="chain-node">Sketch</span><span class="chain-arrow">&rarr;</span>
+                <span class="chain-node">Wireframe</span><span class="chain-arrow">&rarr;</span>
+                <span class="chain-node">Mockup</span><span class="chain-arrow">&rarr;</span>
+                <span class="chain-node">Handoff</span><span class="chain-arrow">&rarr;</span>
+                <span class="chain-node">Dev Interpretation</span><span class="chain-arrow">&rarr;</span>
+                <span class="chain-node">Build</span><span class="chain-arrow">&rarr;</span>
+                <span class="chain-node">Review</span><span class="chain-arrow">&rarr;</span>
+                <span class="chain-node">Ship</span>
             </div>
-            <div class="card card-accent">
-                <h3><span class="accent">/crew-build</span></h3>
-                <p><strong>Code</strong> &mdash; Features, apps, tools, scripts. TDD tasks, test-first build, spec compliance.</p>
-                <div class="small-text">Target: 0.85</div>
+            <p class="body" style="margin-top: clamp(16px,3vw,22px);">
+                &ldquo;Every handoff loses information. The final artifact is a degraded
+                version of the original intent.&rdquo;
+            </p>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 4: turn -->
+        <div class="col-main">
+            <div class="section-label">The Structural Move</div>
+            <h2>Nine stages collapse into one loop: Intent &rarr; Crew &rarr; Artifact</h2>
+            <p class="body">
+                ZeroVector replaces the linear discover&rarr;specify&rarr;build&rarr;review&rarr;ship
+                pipeline with a single convergence engine driven by a crew of five agents.
+            </p>
+            <p class="handoff">Collapsing the chain is what makes measured fidelity possible &mdash; here&rsquo;s how the loop runs.</p>
+        </div>
+        <div class="col-aside">
+            <div class="chain new">
+                <span class="chain-node">Intent</span><span class="chain-arrow">&rarr;</span>
+                <span class="chain-node">Crew</span><span class="chain-arrow">&rarr;</span>
+                <span class="chain-node">Artifact</span>
             </div>
-            <div class="card card-accent">
-                <h3><span class="accent">/crew-product</span></h3>
-                <p><strong>UX</strong> &mdash; Flows, specs, validation, strategy. Jobs-to-be-done, user-centricity, decision points.</p>
-                <div class="small-text">Target: 0.80</div>
-            </div>
-            <div class="card card-accent">
-                <h3><span class="accent">/crew-platform</span></h3>
-                <p><strong>Infra</strong> &mdash; Modules, APIs, architecture. Contracts, migration paths, breaking change analysis.</p>
-                <div class="small-text">Target: 0.88</div>
-            </div>
-            <div class="card card-accent">
-                <h3><span class="accent">/crew-research</span></h3>
-                <p><strong>Analysis</strong> &mdash; Investigation, synthesis, papers. Evidence standards, source strategy, actionability.</p>
-                <div class="small-text">Target: 0.80</div>
-            </div>
-            <div class="card card-accent">
-                <h3><span class="accent">/crew-content</span></h3>
-                <p><strong>Writing</strong> &mdash; Docs, curriculum, posts. Audience-fit, narrative arc, clarity.</p>
-                <div class="small-text">Target: 0.75</div>
+            <div class="stat-grid" style="margin-top: clamp(18px,3vw,26px);">
+                <div class="stat">
+                    <div class="stat-num">5</div>
+                    <div class="stat-label">crew agents</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">6</div>
+                    <div class="stat-label">recipes</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">6</div>
+                    <div class="stat-label">modes</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 9: takeaway -->
-    <div class="slide">
-        <div class="section-label">Composability &amp; Philosophy</div>
-        <h2 class="headline">The fidelity layer drops into any bundle &mdash; rigor, not vibe coding</h2>
-        <p class="subhead">The fidelity behavior is extractable and standalone. Any Amplifier bundle gets five-lens scoring, a live dashboard, and the fidelity state tool in two lines &mdash; grounded in seven principles of Zero-Vector Design.</p>
-        <div class="code-block"><span class="code-comment"># Add fidelity diagnostics to ANY bundle &mdash; 2 lines</span>
-
-<span class="code-var">includes:</span>
-  - <span class="code-flag">bundle:</span> <span class="code-string">zerovector:behaviors/fidelity</span>
-
-<span class="code-comment"># You get: zerovector:critic (5-lens scoring), tool-fidelity-state,</span>
-<span class="code-comment"># hooks-fidelity-reporter (live dashboard), fidelity-framework context</span></div>
-        <div class="halves">
-            <div class="card">
-                <h3>Evidence Before Claims</h3>
-                <p>A score without evidence is a guess. Every lens score must cite specific evidence &mdash; test results, file paths, requirements, concrete metrics. "Looks good" is not evidence.</p>
-            </div>
-            <div class="card">
-                <h3>Not Vibe Coding</h3>
-                <p>Seven principles of Zero-Vector Design (founded by Erika Flowers): work in the medium, regenerate don't patch, judge by outputs, compound early precision. Rigorous, intentional, crew-directed work.</p>
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">How The Loop Works</div>
+            <h2>It always routes to the single weakest lens, not everything at once</h2>
+            <p class="body">
+                Five lenses score the artifact; the loop finds the lowest-scoring lens and
+                sends it to that lens&rsquo;s dedicated agent to close the gap.
+            </p>
+            <p class="handoff">Targeting the weakest lens is only half the loop &mdash; when does it stop?</p>
+        </div>
+        <div class="col-aside">
+            <div class="rules">
+                <div class="rule"><span class="rule-name">Intent Clarity</span><span class="rule-val">intent-analyst</span></div>
+                <div class="rule"><span class="rule-name">Specification</span><span class="rule-val">architect</span></div>
+                <div class="rule"><span class="rule-name">Implementation</span><span class="rule-val">builder</span></div>
+                <div class="rule"><span class="rule-name">Quality</span><span class="rule-val">critic</span></div>
+                <div class="rule"><span class="rule-name">Ship-Readiness</span><span class="rule-val">shipper</span></div>
             </div>
         </div>
     </div>
 
-    <!-- Sources & Methodology (audit-trail slide, not a beat) -->
+    <div class="slide split">
+        <!-- beat 6: mechanism -->
+        <div class="col-main">
+            <div class="section-label">When It Stops</div>
+            <h2>The loop runs until fidelity clears a per-domain target, capped at 8 passes</h2>
+            <p class="body">
+                A while-loop continues while <code>fidelity_score &lt; target_fidelity</code>
+                and breaks when it clears the target &mdash; a stopping condition calibrated
+                per domain so &ldquo;done&rdquo; is provable, not declared.
+            </p>
+            <p class="handoff">A measured stopping point is what turns fidelity into a dial.</p>
+        </div>
+        <div class="col-aside">
+            <div class="rules">
+                <div class="rule"><span class="rule-name">Content</span><span class="rule-val">0.75</span></div>
+                <div class="rule"><span class="rule-name">Product / Research</span><span class="rule-val">0.80</span></div>
+                <div class="rule"><span class="rule-name">Default / Build / General</span><span class="rule-val">0.85</span></div>
+                <div class="rule"><span class="rule-name">Platform</span><span class="rule-val">0.88</span></div>
+                <div class="rule"><span class="rule-name">Max iterations</span><span class="rule-val">8</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>Fidelity becomes a measured dial, not a hope</h2>
+            <p class="body">
+                Each lens score is clamped to [0,1]; the artifact reports
+                <code>CONVERGED</code> only when overall fidelity reaches the target &mdash;
+                otherwise <code>NEEDS_WORK</code>. &ldquo;Is the intent intact?&rdquo; now has a number.
+            </p>
+            <p class="handoff">Optimizing translation loss &mdash; not just quality &mdash; is the whole point.</p>
+        </div>
+        <div class="col-aside">
+            <div class="rules">
+                <div class="rule"><span class="rule-name">0.80 &ndash; 1.00</span><span class="rule-val">Strong</span></div>
+                <div class="rule"><span class="rule-name">0.60 &ndash; 0.79</span><span class="rule-val">Moderate</span></div>
+                <div class="rule"><span class="rule-name">0.30 &ndash; 0.59</span><span class="rule-val">Significant gap</span></div>
+                <div class="rule"><span class="rule-name">0.00 &ndash; 0.29</span><span class="rule-val">Critical gap</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">What To Keep</div>
+        <h1>Measure the loss, not just the craft</h1>
+        <p class="body" style="max-width: 54ch; margin-top: clamp(16px,3vw,24px);">
+            If every handoff degrades intent, the win isn&rsquo;t polishing each stage &mdash;
+            it&rsquo;s making the degradation visible and driving it toward zero.
+        </p>
+        <div class="eyebrow-quote">
+            Fidelity is translation loss between intent and artifact. Quality asks
+            &ldquo;is this well-made?&rdquo;; fidelity asks &ldquo;does this faithfully
+            represent what was intended?&rdquo;
+        </div>
+        <span class="status-badge">ZeroVector v0.3.0 &middot; Active</span>
+    </div>
+
+    <!-- Sources & Methodology (no beat comment) -->
     <div class="slide">
-        <div class="section-label">Sources &amp; Methodology</div>
-        <h2 class="medium-headline">How this deck was built</h2>
-        <div class="sources-content">
-            <p><strong>Primary source:</strong> <code>michaeljabbour/amplifier-bundle-zerovector</code> on GitHub</p>
+        <div class="section-label">Sources</div>
+        <h2>Sources &amp; Research Methodology</h2>
+        <div class="sources">
+            <p><strong>Data as of:</strong> HEAD commit <code>2812b2c</code>, dated 2026-07-01 (ZeroVector v0.3.0).</p>
+            <p><strong>Repository:</strong> <code>michaeljabbour/amplifier-bundle-zerovector</code> (cloned to /tmp/zerovector-src). Thin Amplifier bundle depending on <code>github.com/microsoft/amplifier-foundation@main</code>; credits Zero-Vector Design by Erika Flowers.</p>
+            <p><strong>Feature status:</strong> Active &mdash; v0.3.0 fidelity convergence architecture rewrite.</p>
+            <p><strong>Commands run:</strong></p>
             <ul>
-                <li><strong>63 commits</strong> from <strong>1 contributor</strong> (Michael J. Jabbour), March 6&ndash;9, 2026</li>
-                <li>Repository cloned and inspected: <code>git log</code>, <code>git shortlog -sn</code>, <code>find</code>, <code>wc -l</code></li>
-                <li>Commit distribution: 2 commits (Mar 6), 51 commits (Mar 8), 10 commits (Mar 9)</li>
+                <li>Test count: <code>grep -rn 'def test_' tests/ --include='*.py' | wc -l</code> &rarr; 626; <code>find tests/ -name 'test_*.py' | wc -l</code> &rarr; 17.</li>
+                <li>Largest test file: per-file <code>grep -c 'def test_'</code> &rarr; 148 in tests/modes/test_crew_domain_modes.py.</li>
+                <li>Lenses &amp; mean: <code>sed -n '30,36p;85p' modules/tool-fidelity-state/.../__init__.py</code>.</li>
+                <li>Targets: <code>sed -n '24p'</code> module + fidelity-framework.md domain table (lines 71&ndash;78) + recipe line 32.</li>
+                <li>Loop: <code>sed -n '152,154p' recipes/fidelity-convergence.yaml</code> (while / max 8 / break_when).</li>
+                <li>Chain &amp; definition: <code>sed -n '13,23p' context/zerovector-principles.md</code>; <code>sed -n '13p;29,32p' skills/fidelity-framework.md</code>.</li>
+                <li>Inventory: <code>ls agents/ modes/ recipes/</code> &rarr; 5 agents, 6 modes, 6 recipes.</li>
+                <li>Contributors: <code>git log --format='%an &lt;%ae&gt;' | sort | uniq -c</code> &rarr; 64 commits, Michael J. Jabbour.</li>
             </ul>
-
-            <p style="margin-top: var(--space-md);"><strong>Files examined:</strong></p>
-            <ul>
-                <li><code>README.md</code> &mdash; 15,408 bytes, comprehensive architecture documentation</li>
-                <li><code>bundle.md</code> &mdash; v0.3.0 entry point with STANDING-ORDER enforcement</li>
-                <li><code>context/fidelity-framework.md</code> &mdash; five-lens scoring rubric and evidence requirements</li>
-                <li><code>context/zerovector-principles.md</code> &mdash; seven ZVD principles and philosophy</li>
-                <li>5 agent definitions, 6 mode definitions, 6 recipe definitions, 2 behavior files</li>
-                <li>3 Python modules (772 total lines): tool-fidelity-state, hooks-fidelity-reporter, hooks-crew-gate</li>
-            </ul>
-
-            <p style="margin-top: var(--space-md);"><strong>Line counts (non-git, non-investigation):</strong></p>
-            <ul>
-                <li>Agent markdown: <strong>990 lines</strong> across 5 agents</li>
-                <li>Context documentation: <strong>1,264 lines</strong> across 6 context files</li>
-                <li>Recipe YAML: <strong>1,357 lines</strong> across 6 recipes</li>
-                <li>Test suite: <strong>5,017 lines</strong> across 25 test files</li>
-            </ul>
-
-            <p style="margin-top: var(--space-md);"><strong>Philosophy source:</strong> <a href="https://zerovector.design/" style="color: var(--accent);">zerovector.design</a> by Erika Flowers</p>
-
-            <p style="margin-top: var(--space-md);"><strong>No metrics were fabricated.</strong> All numbers come from <code>git log</code>, <code>git shortlog</code>, <code>wc -l</code>, and <code>find</code> against the cloned repository.</p>
+            <p><strong>Gaps:</strong> README self-describes &ldquo;two Python modules&rdquo; while three module dirs exist on disk (tool-fidelity-state 198, hooks-fidelity-reporter 388, hooks-crew-gate 186 LOC) &mdash; an internal repo doc inconsistency, reported not resolved. Not every mode/recipe file&rsquo;s full contents were read.</p>
+            <p><strong>Primary contributor:</strong> Michael J. Jabbour &mdash; 64 of 64 commits (100%).</p>
         </div>
     </div>
 
@@ -839,18 +546,48 @@ html.js .slide.active{display:flex;}
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
 
-    <!-- More stories link -->
+    <!-- More stories link - REQUIRED -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -859,41 +596,34 @@ html.js .slide.active{display:flex;}
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
-
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
-
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

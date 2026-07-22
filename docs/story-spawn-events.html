@@ -3,468 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Integrated Session Spawning & Event-Driven Orchestration</title>
+    <title>One Way To Spawn</title>
     <script>document.documentElement.classList.add('js')</script>
-
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --accent: #FF2D92;
-            --accent-glow: rgba(255, 45, 146, 0.3);
-            --bg: #000;
-            --bg-card: rgba(255, 255, 255, 0.05);
-            --border: rgba(255, 255, 255, 0.1);
-            --text: #fff;
-            --text-dim: rgba(255, 255, 255, 0.6);
-            
-            --font-headline: clamp(32px, 8vw, 72px);
-            --font-medium: clamp(24px, 5vw, 48px);
-            --font-subhead: clamp(16px, 3vw, 28px);
-            --font-body: clamp(14px, 2vw, 18px);
-            --font-small: clamp(12px, 1.5vw, 14px);
-            --font-big-number: clamp(48px, 15vw, 120px);
-            
-            --padding-slide: clamp(20px, 5vw, 80px);
-            --gap-grid: clamp(16px, 3vw, 32px);
+            --bg: #0a0a0f;
+            --fg: #f4f4f6;
+            --muted: #9a9aa8;
+            --accent: #6ea8fe;
+            --accent2: #7ee0c0;
+            --card: #16161f;
+            --border: #26263a;
+            --warn: #f7b955;
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-        }
+        html, body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
 
         .slide {
             display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
-            padding: clamp(60px, 10vw, 100px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
             overflow-y: auto;
             overflow-x: hidden;
+            transition: transform 0.5s ease, opacity 0.5s ease;
         }
+        .slide.active { display: flex; }
 
-        .slide.active {
-            display: flex;
-        }
-
-        .center {
-            text-align: center;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Typography */
-        .section-label {
-            font-size: var(--font-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: var(--accent);
-            margin-bottom: 16px;
-        }
-
-        .headline {
-            font-size: var(--font-headline);
-            font-weight: 700;
-            letter-spacing: -2px;
-            line-height: 1.1;
-            margin-bottom: 24px;
-        }
-
-        .medium-headline {
-            font-size: var(--font-medium);
-            font-weight: 600;
-            letter-spacing: -1px;
-            line-height: 1.2;
-            margin-bottom: 20px;
-        }
-
-        .subhead {
-            font-size: var(--font-subhead);
-            color: var(--text-dim);
-            max-width: 700px;
-            line-height: 1.5;
-        }
-
-        .small-text {
-            font-size: var(--font-small);
-            color: var(--text-dim);
-            margin-top: 24px;
-        }
-
-        /* Gradient text */
-        .gradient-text {
-            background: linear-gradient(135deg, var(--accent), #FF9F0A);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* Cards */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--gap-grid);
-            margin-top: 40px;
-            width: 100%;
-            max-width: 1200px;
-        }
-
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: clamp(20px, 4vw, 32px);
-        }
-
-        .card h3 {
-            font-size: clamp(18px, 2.5vw, 22px);
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: var(--text);
-        }
-
-        .card p {
-            font-size: var(--font-body);
-            color: var(--text-dim);
-            line-height: 1.6;
-        }
-
-        .card.accent {
-            border-color: var(--accent);
-            background: linear-gradient(135deg, rgba(255, 45, 146, 0.1), transparent);
-        }
-
-        .card-icon {
-            font-size: 32px;
-            margin-bottom: 16px;
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: clamp(16px, 3vw, 24px);
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: clamp(12px, 1.8vw, 15px);
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-top: 24px;
-            max-width: 900px;
-        }
-
-        .code-block .comment { color: rgba(255, 255, 255, 0.4); }
-        .code-block .keyword { color: #FF2D92; }
-        .code-block .function { color: #64D2FF; }
-        .code-block .string { color: #30D158; }
-        .code-block .class { color: #FF9F0A; }
-        .code-block .param { color: #BF5AF2; }
-
-        /* Stats */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
-            gap: var(--gap-grid);
-            margin-top: 40px;
-            width: 100%;
-            max-width: 900px;
-        }
-
-        .stat {
-            text-align: center;
-            padding: clamp(20px, 4vw, 32px);
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-        }
-
-        .stat-number {
-            font-size: var(--font-big-number);
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent), #FF9F0A);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1;
-        }
-
-        .stat-label {
-            font-size: var(--font-small);
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 8px;
-        }
-
-        /* Phase indicator */
-        .phase-badge {
-            display: inline-block;
-            padding: 8px 16px;
-            background: var(--accent);
-            color: #000;
-            font-size: var(--font-small);
-            font-weight: 700;
-            border-radius: 20px;
-            margin-bottom: 20px;
-        }
-
-        /* Comparison */
-        .comparison {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--gap-grid);
-            margin-top: 32px;
-            width: 100%;
-            max-width: 1000px;
-        }
-
-        .comparison-col h4 {
-            font-size: var(--font-small);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--text-dim);
-            margin-bottom: 16px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .comparison-col.before h4 { color: #FF6B6B; }
-        .comparison-col.after h4 { color: #30D158; }
-
-        .comparison-col ul {
-            list-style: none;
-            font-size: var(--font-body);
-            line-height: 2;
-        }
-
-        .comparison-col.before li::before {
-            content: "\2717 ";
-            color: #FF6B6B;
-        }
-
-        .comparison-col.after li::before {
-            content: "\2713 ";
-            color: #30D158;
-        }
-
-        /* Flow diagram */
-        .flow {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            margin-top: 40px;
-        }
-
-        .flow-box {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px 24px;
-            text-align: center;
-            min-width: 120px;
-        }
-
-        .flow-box.accent {
-            border-color: var(--accent);
-            background: linear-gradient(135deg, rgba(255, 45, 146, 0.15), transparent);
-        }
-
-        .flow-arrow {
-            font-size: 24px;
-            color: var(--accent);
-        }
-
-        /* Links */
-        .pr-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            justify-content: center;
-            margin-top: 32px;
-        }
-
-        .pr-link {
-            display: inline-block;
-            padding: 12px 20px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--accent);
-            text-decoration: none;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: var(--font-small);
-            transition: all 0.2s;
-        }
-
-        .pr-link:hover {
-            border-color: var(--accent);
-            background: rgba(255, 45, 146, 0.1);
-        }
-
-        /* Timeline */
-        .timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            margin-top: 32px;
-            max-width: 800px;
-        }
-
-        .timeline-item {
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-        }
-
-        .timeline-marker {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--accent);
-            color: #000;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .timeline-content h4 {
-            font-size: clamp(16px, 2vw, 20px);
-            margin-bottom: 4px;
-        }
-
-        .timeline-content p {
-            font-size: var(--font-body);
-            color: var(--text-dim);
-        }
-
-        /* Sources */
-        .sources-content {
-            color: var(--text-dim);
-            line-height: 1.7;
-            font-size: var(--font-body);
-            max-width: 800px;
-            margin-top: 24px;
-        }
-
-        .sources-content strong { color: var(--text); }
-
-        .sources-content ul {
-            list-style: none;
-            margin: 8px 0 16px;
-        }
-
-        .sources-content li::before {
-            content: "\203a ";
-            color: var(--accent);
-            font-weight: 700;
-        }
-
-        /* Navigation */
-        .nav {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            z-index: 100;
-            padding: 8px 12px;
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 20px;
-            border: 1px solid var(--border);
-        }
-
-        .nav-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
-
-        .nav-dot:hover {
-            background: rgba(255, 255, 255, 0.6);
-        }
-
-        .slide-counter {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            font-size: 14px;
-            color: var(--text-dim);
-            font-family: 'SF Mono', monospace;
-            z-index: 100;
-        }
-
-        .more-stories {
-            position: fixed;
-            bottom: 30px;
-            left: 30px;
-            font-size: var(--font-small);
-            color: var(--text-dim);
-            text-decoration: none;
-            z-index: 100;
-            transition: color 0.2s;
-        }
-        .more-stories:hover { color: var(--accent); }
-
-        /* Highlight box */
-        .highlight-box {
-            background: linear-gradient(135deg, rgba(255, 45, 146, 0.15), transparent);
-            border: 1px solid var(--accent);
-            border-radius: 12px;
-            padding: clamp(20px, 4vw, 32px);
-            margin-top: 32px;
-            max-width: 700px;
-        }
-
-        .highlight-box p {
-            font-size: var(--font-subhead);
-            line-height: 1.6;
-        }
-
-        /* Responsive adjustments */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px var(--padding-slide) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-                padding-top: 40px;
-            }
-            .more-stories { display: none; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-    
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
         html:not(.js) .slide {
             display: flex !important;
             position: relative !important;
@@ -477,367 +44,405 @@
             min-height: 100dvh;
         }
 
-        /* Progressive enhancement: JS-only slide mode */
         html.js { overflow: hidden; }
         html.js body { overflow: hidden; overscroll-behavior: none; }
-        html.js .slide { display: none; }
+        html.js .slide { display: none; max-height: 100dvh; overflow-y: auto; }
         html.js .slide.active { display: flex; }
+
+        .center { text-align: center; align-items: center; justify-content: center; }
+
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); }
+
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: clamp(14px, 2vw, 22px);
+        }
+        .body { color: var(--muted); margin-top: clamp(14px, 2vw, 22px); max-width: 46ch; }
+        .handoff { color: var(--fg); opacity: 0.85; margin-top: clamp(16px, 2.4vw, 26px); max-width: 46ch; font-style: italic; }
+        h1 + .body, h2 + .body { margin-top: clamp(16px, 2.4vw, 26px); }
+
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: clamp(14px, 2vw, 22px); }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.4vw, 26px);
+        }
+        .stat-value { font-size: clamp(30px, 5vw, 52px); font-weight: 700; color: var(--accent2); line-height: 1; letter-spacing: -0.02em; }
+        .stat-label { font-size: clamp(12px, 1.5vw, 15px); color: var(--muted); margin-top: clamp(8px, 1.2vw, 12px); line-height: 1.35; }
+
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(9px, 1.4vw, 14px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(9px, 1.4vw, 14px) clamp(12px, 1.8vw, 18px);
+            color: var(--fg);
+        }
+        .steps li b { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 8px; }
+
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(12px, 1.8vw, 18px);
+        }
+        .rules li .k { display: block; color: var(--accent2); font-weight: 600; font-size: clamp(14px, 1.8vw, 18px); margin-bottom: 4px; }
+        .rules li .v { color: var(--muted); font-size: clamp(13px, 1.6vw, 16px); }
+
+        .prlist { list-style: none; display: flex; flex-direction: column; gap: clamp(9px, 1.4vw, 14px); }
+        .prlist li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: clamp(10px, 1.5vw, 15px) clamp(12px, 1.8vw, 18px);
+            display: flex; align-items: baseline; gap: 12px;
+        }
+        .prlist .pr { font-weight: 700; color: var(--fg); min-width: 5.5ch; }
+        .prlist .prflag { font-size: clamp(11px, 1.4vw, 13px); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
+        .prflag.merged { color: var(--accent2); }
+        .prflag.closed { color: #ff8b8b; }
+        .prflag.open { color: var(--warn); }
+        .prlist .desc { color: var(--muted); font-size: clamp(12px, 1.5vw, 15px); }
+
+        .code-block {
+            background: #05050a;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 22px);
+            font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.5vw, 15px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #d6d6e6;
+        }
+        .code-block .cmt { color: #6d6d84; }
+        .code-block .del { color: #ff8b8b; }
+        .code-block .add { color: var(--accent2); }
+
+        .kicker-num { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+        .sources-body { color: var(--muted); line-height: 1.6; max-width: 60ch; }
+        .sources-body p { margin-top: clamp(8px, 1.2vw, 12px); }
+        .sources-body ul { margin: clamp(8px, 1.2vw, 12px) 0 0 1.2em; }
+        .sources-body li { margin-bottom: 6px; }
+        .sources-body code { background: var(--card); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-family: "SF Mono", Menlo, monospace; font-size: 0.9em; color: var(--accent2); }
+
+        .badge {
+            display: inline-block;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 5px 14px;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent2);
+            margin-top: clamp(14px, 2vw, 22px);
+        }
+
+        .nav { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100; }
+        .nav-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.22); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+        .nav-dot.active { background: var(--accent); transform: scale(1.35); }
+        .slide-counter { position: fixed; bottom: 24px; right: 28px; font-size: clamp(11px, 1.5vw, 13px); color: var(--muted); z-index: 100; font-variant-numeric: tabular-nums; }
+
+        .more-stories {
+            position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px); color: rgba(255,255,255,0.3);
+            text-decoration: none; z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
     </style>
 </head>
 <body>
 <!--
-SPINE — Integrated session spawning & event-driven orchestration
-ABT: AND Amplifier spawns sessions everywhere — the CLI, Foreman, background
-     tasks; BUT each did it with its own duplicated logic (~400 lines), sessions
-     were islands that couldn't react to one another, and every background task
-     was hand-rolled asyncio; THEREFORE one primitive, spawn_bundle(), unified
-     all spawning and grew into a cross-session event and trigger platform —
-     shipped across 4 repos with 500+ tests and zero regressions.
-Payoff: "spawn_bundle(), zero regressions" — a single unified entry point
-     replaces ~400 lines of duplicated spawning across 4 repos and adds
-     cross-session events, reactive triggers, and declarative background
-     sessions, all backward compatible.
+SPINE
+ABT: AND Amplifier spawned sessions in many places -- the CLI, the Foreman orchestrator, background tasks -- each with its own hand-rolled logic; BUT that duplicated spawning was brittle (Foreman even carried a bespoke _write_worker_session_state helper alongside raw load_bundle()+create_session()); THEREFORE a coordinated effort introduced spawn_bundle() -- one async primitive with an event/trigger/background platform around it -- and Foreman deleted its hand-rolled spawner to adopt it.
+Payoff: The single-primitive proof -- Foreman's refactor commit ba97a86 rips out _write_worker_session_state and the raw load_bundle()+create_session() path, replacing it with one call to spawn_bundle(), and PR #2 merges on 2026-02-17.
 Beats:
-  1. proof     — one primitive replaced ~400 lines; 500+ tests, 0 regressions. advances: opens on the payoff/AND (the shipped outcome)
-  2. setup     — spawn_bundle(): THE unified entry point.                      advances: names the primitive the argument leans on
-  3. tension   — before: fragmented spawning, no events, manual asyncio.       advances: establishes the BUT (the problem)
-  4. mechanism — the core primitive unifies bundle/config/context/execution.   advances: shows HOW unification works
-  5. payoff    — CLI and Foreman on one source of truth, zero regressions.     advances: lands the THEREFORE before the midpoint
-  6. mechanism — cross-session events via a pub/sub EventRouter.               advances: shows sessions can now react to each other
-  7. mechanism — reactive triggers define WHEN a session starts.               advances: shows activation became declarative
-  8. mechanism — background sessions become declarative config.               advances: shows long-running work stopped being hand-rolled
-  9. takeaway  — from fragmented spawning to an event-driven platform.         advances: what the audience keeps
+  beat 1 (frame)     advances: Orients the audience on the AND -- the scattered spawning world and why a single primitive would matter.
+  beat 2 (proof)     advances: Delivers early evidence that the unifying primitive is real and concrete -- establishes the credibility behind the AND.
+  beat 3 (tension)   advances: Establishes the BUT -- the concrete pain of duplicated, hand-rolled spawning that the primitive exists to remove.
+  beat 4 (mechanism) advances: Shows HOW the primitive replaces bespoke logic -- one disciplined path instead of many ad-hoc ones.
+  beat 5 (mechanism) advances: Shows HOW the primitive scales past one call into reactive, event-driven orchestration -- deepening the value behind the AND.
+  beat 6 (turn)      advances: The pivot from AND to THEREFORE -- the coordinated proposal didn't land wholesale, forcing the question of how the code still reached users.
+  beat 7 (payoff)    advances: Lands the THEREFORE as the climax -- the primitive is adopted in production and the code survives even where the PRs didn't merge.
+  beat 8 (takeaway)  advances: Generalizes the THEREFORE into what the audience keeps -- consolidate behind one primitive and ship it as a reusable bundle.
 -->
 
-<!-- beat 1: proof -->
-<div class="slide active center">
-    <div class="section-label">Amplifier Feature</div>
-    <h1 class="medium-headline">One primitive replaced ~400 lines<br>of <span class="gradient-text">duplicated spawning</span></h1>
-    <p class="subhead">Unified session spawning across the CLI, Foreman, and background tasks &mdash; delivered in 5 phases across 4 repositories, with zero regressions.</p>
-    <div class="stats-grid" style="max-width: 720px;">
-        <div class="stat">
-            <div class="stat-number">500+</div>
-            <div class="stat-label">Tests Passing</div>
+    <!-- Title cover (precedes beat 1; only slide with active) -->
+    <div class="slide title-slide active center">
+        <h1>One Way To Spawn</h1>
+        <p class="subtitle">Unifying session spawning behind spawn_bundle()</p>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 1: frame -->
+        <div class="section-label">The setup</div>
+        <h1>Amplifier spawned sessions in several places &mdash; each its own way</h1>
+        <p class="body">The CLI's <code>session_spawner.py</code>, the Foreman orchestrator, and background tasks each carried their own spawning logic. This is the story of collapsing that into one primitive.</p>
+        <p class="handoff">First, proof that the single primitive is real.</p>
+    </div>
+
+    <!-- beat 2: proof -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The primitive</div>
+            <h2>spawn_bundle() is documented as THE primitive for all session spawning</h2>
+            <p class="body">A single async function &mdash; <code>async def spawn_bundle</code> at line 259 of a 696-line module &mdash; that all other spawning patterns are told to build on.</p>
+            <p class="handoff">So what did it replace?</p>
         </div>
-        <div class="stat">
-            <div class="stat-number">0</div>
-            <div class="stat-label">Regressions</div>
-        </div>
-        <div class="stat">
-            <div class="stat-number">~400</div>
-            <div class="stat-label">Duplicated Lines Removed</div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-value">1</div>
+                    <div class="stat-label">async function: spawn_bundle</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">696</div>
+                    <div class="stat-label">lines in spawn.py</div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="small-text">Session cbbd5d39 &bull; February 2026 &bull; 4 PRs across the ecosystem</div>
-</div>
 
-<!-- beat 2: setup -->
-<div class="slide center">
-    <div class="section-label">The Solution</div>
-    <h2 class="medium-headline">Every session now spawns<br>through <span class="gradient-text">one function</span></h2>
-    <p class="subhead"><code style="color:var(--accent)">spawn_bundle()</code> is THE unified entry point: it handles bundle resolution, config inheritance, context passing, background execution, and event emission.</p>
-    <div class="flow">
-        <div class="flow-box">Bundle</div>
-        <span class="flow-arrow">&rarr;</span>
-        <div class="flow-box accent">spawn_bundle()</div>
-        <span class="flow-arrow">&rarr;</span>
-        <div class="flow-box">Session</div>
-        <span class="flow-arrow">&rarr;</span>
-        <div class="flow-box">Events</div>
-    </div>
-</div>
-
-<!-- beat 3: tension -->
-<div class="slide">
-    <div class="section-label">The Problem</div>
-    <h2 class="medium-headline">Before this, spawning was<br>duplicated and isolated</h2>
-    <p class="subhead">Every consumer reinvented session spawning &mdash; and the copies drifted apart.</p>
-    <div class="thirds">
-        <div class="card">
-            <div class="card-icon">&#128203;</div>
-            <h3>~400 lines duplicated</h3>
-            <p>CLI and Foreman each had their own spawning logic. Same patterns, different implementations, diverging behavior.</p>
+    <!-- beat 3: tension -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The pain</div>
+            <h2>Before it, Foreman hand-rolled its own worker spawning</h2>
+            <p class="body">Foreman is Amplifier's worker orchestrator. It spawned workers with <code>load_bundle()</code> + <code>PreparedBundle.create_session()</code> and a bespoke <code>_write_worker_session_state</code> helper.</p>
+            <p class="handoff">The primitive exists to delete exactly this.</p>
         </div>
-        <div class="card">
-            <div class="card-icon">&#128263;</div>
-            <h3>No event communication</h3>
-            <p>Sessions were islands. When Session A completed, Session B had no way to know or react.</p>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#9881;&#65039;</div>
-            <h3>Manual asyncio everywhere</h3>
-            <p>Background tasks required hand-rolled async patterns. No declarative way to define long-running sessions.</p>
+        <div class="col-aside">
+            <div class="code-block"><span class="cmt"># Foreman, before spawn_bundle()</span>
+<span class="cmt"># Uses amplifier_foundation's load_bundle()</span>
+<span class="cmt"># and PreparedBundle.create_session()</span>
+from amplifier_foundation import load_bundle
+bundle = await load_bundle(...)
+async def _write_worker_session_state(...):
+    ...</div>
         </div>
     </div>
-</div>
 
-<!-- beat 4: mechanism -->
-<div class="slide">
-    <div class="phase-badge">Phase 1A</div>
-    <h2 class="medium-headline">The core primitive unifies bundle,<br>config, context, and execution</h2>
-    <div class="code-block"><span class="comment"># New kernel events in amplifier-core</span>
-<span class="keyword">class</span> <span class="class">EventType</span>(Enum):
-    SESSION_COMPLETED = <span class="string">"session_completed"</span>
-    SESSION_ERROR = <span class="string">"session_error"</span>
-
-<span class="comment"># The core primitive in amplifier-foundation</span>
-<span class="keyword">async def</span> <span class="function">spawn_bundle</span>(
-    <span class="param">bundle</span>: str | BundleConfig,
-    <span class="param">instruction</span>: str,
-    <span class="param">parent_session</span>: AmplifierSession | None = None,
-    <span class="param">background</span>: bool = False,
-) -> <span class="class">SpawnResult</span>:
-    <span class="string">"""Spawn a session from a bundle - THE unified entry point."""</span></div>
-    <div class="thirds" style="margin-top: 24px;">
-        <div class="card accent">
-            <h3>SpawnResult</h3>
-            <p>Dataclass with session, task handle, and result access.</p>
+    <!-- beat 4: mechanism -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">How it works</div>
+            <h2>One disciplined path: 12 explicit numbered phases</h2>
+            <p class="body">spawn_bundle() unifies bundle resolution, config and context inheritance, and execution into 12 phases &mdash; with fine-grained <code>inherit_providers</code>, <code>inherit_tools</code>, <code>inherit_hooks</code>, and context controls.</p>
+            <p class="handoff">And around that one call grew a whole platform.</p>
         </div>
-        <div class="card accent">
-            <h3>SessionStorage</h3>
-            <p>Protocol for custom storage backends.</p>
-        </div>
-        <div class="card accent">
-            <h3>35 test cases</h3>
-            <p>Comprehensive coverage of every spawning scenario.</p>
-        </div>
-    </div>
-</div>
-
-<!-- beat 5: payoff -->
-<div class="slide">
-    <div class="phase-badge">Phase 1B</div>
-    <h2 class="medium-headline">CLI and Foreman now share<br>one source of truth &mdash; <span class="gradient-text">zero regressions</span></h2>
-    <div class="comparison">
-        <div class="comparison-col before">
-            <h4>Before</h4>
-            <ul>
-                <li>CLI: custom spawn_sub_session()</li>
-                <li>Foreman: custom worker spawning</li>
-                <li>~400 lines of duplicated logic</li>
-                <li>Diverging behavior over time</li>
-            </ul>
-        </div>
-        <div class="comparison-col after">
-            <h4>After</h4>
-            <ul>
-                <li>CLI: uses spawn_bundle()</li>
-                <li>Foreman: uses spawn_bundle()</li>
-                <li>Single source of truth</li>
-                <li>ForemanSessionStorage impl</li>
+        <div class="col-aside">
+            <ul class="steps">
+                <li><b>1&ndash;3</b>Bundle Resolution &middot; Config Inheritance &middot; Session Identity</li>
+                <li><b>4&ndash;6</b>Session Creation &middot; Infrastructure Wiring &middot; Init</li>
+                <li><b>7&ndash;9</b>Post-Init Wiring &middot; Context Inheritance &middot; Pre-Execute Hook</li>
+                <li><b>10&ndash;12</b>Execution &middot; Persistence &middot; Cleanup</li>
             </ul>
         </div>
     </div>
-    <div class="highlight-box">
-        <p><strong>122+ tests passing.</strong> Both CLI and Foreman work identically &mdash; the migration was invisible to users.</p>
-    </div>
-</div>
 
-<!-- beat 6: mechanism -->
-<div class="slide">
-    <div class="phase-badge">Phase 2</div>
-    <h2 class="medium-headline">Sessions can finally<br>talk to each other</h2>
-    <p class="subhead">A pub/sub event system lets one session react to what another one does.</p>
-    <div class="code-block"><span class="comment"># Session A emits an event when it completes</span>
-<span class="keyword">await</span> session_a.<span class="function">emit_event</span>(<span class="string">"analysis_complete"</span>, {<span class="string">"findings"</span>: results})
-
-<span class="comment"># Session B subscribes and reacts</span>
-<span class="keyword">async for</span> event <span class="keyword">in</span> router.<span class="function">subscribe</span>(<span class="string">"analysis_complete"</span>):
-    <span class="keyword">await</span> <span class="function">process_findings</span>(event.payload)</div>
-    <div class="thirds" style="margin-top: 24px;">
-        <div class="card">
-            <h3>SessionEvent</h3>
-            <p>Typed event dataclass with source, type, and payload.</p>
+    <!-- beat 5: mechanism -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The platform</div>
+            <h2>Around it grew a cross-session, event-driven platform</h2>
+            <p class="body">Sessions can now react to each other and run reactively &mdash; a pub/sub router for events, a protocol for when a session activates, and declarative config for long-running work.</p>
+            <p class="handoff">A coordinated proposal tried to ship all of this at once.</p>
         </div>
-        <div class="card">
-            <h3>EventRouter</h3>
-            <p>Central pub/sub broker for cross-session communication.</p>
-        </div>
-        <div class="card">
-            <h3>20 test cases</h3>
-            <p>Emission, subscription, timeouts, and error handling.</p>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><span class="k">EventRouter</span><span class="v">294-line pub/sub with emit(), subscribe(), wait_for_event(), wildcard '*' and source-session filtering.</span></li>
+                <li><span class="k">TriggerSource protocol</span><span class="v">6 TriggerType values; 3 shipped: SessionEventTrigger, TimerTrigger, ManualTrigger (401-line triggers.py).</span></li>
+                <li><span class="k">BackgroundSessionManager</span><span class="v">Declarative BackgroundSessionConfig; start(config) returns a session id (596-line background.py).</span></li>
+            </ul>
         </div>
     </div>
-</div>
 
-<!-- beat 7: mechanism -->
-<div class="slide">
-    <div class="phase-badge">Phase 3</div>
-    <h2 class="medium-headline">Triggers define <span class="gradient-text">when</span> a session starts,<br>not just how</h2>
-    <div class="thirds">
-        <div class="card">
-            <div class="card-icon">&#9201;&#65039;</div>
-            <h3>TimerTrigger</h3>
-            <p>Schedule sessions on intervals. Cron-like patterns for periodic tasks.</p>
+    <!-- beat 6: turn -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The turn</div>
+            <h2>Four same-suffix PRs were proposed &mdash; but only one merged</h2>
+            <p class="body">A coordinated 4-repo effort shared the title suffix "Integrated Session Spawning &amp; Event-Driven Orchestration." Only Foreman's PR #2 merged; the others didn't land wholesale.</p>
+            <p class="handoff">So how did the code still reach users?</p>
         </div>
-        <div class="card">
-            <div class="card-icon">&#128225;</div>
-            <h3>SessionEventTrigger</h3>
-            <p>React to events from other sessions. Chain workflows together.</p>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#127919;</div>
-            <h3>ManualTrigger</h3>
-            <p>Programmatic activation from code when conditions are met.</p>
+        <div class="col-aside">
+            <ul class="prlist">
+                <li><span class="pr">#2</span><span class="prflag merged">Merged</span><span class="desc">foreman &middot; 2026-02-17</span></li>
+                <li><span class="pr">#9</span><span class="prflag closed">Closed</span><span class="desc">core &middot; not merged</span></li>
+                <li><span class="pr">#63</span><span class="prflag closed">Closed</span><span class="desc">foundation &middot; not merged</span></li>
+                <li><span class="pr">#81</span><span class="prflag open">Open</span><span class="desc">cli &middot; still open</span></li>
+            </ul>
         </div>
     </div>
-    <div class="code-block" style="margin-top: 24px;"><span class="comment"># One protocol, many trigger types</span>
-<span class="keyword">class</span> <span class="class">TriggerType</span>(Enum):
-    FILE_CHANGE = <span class="string">"file_change"</span>
-    TIMER = <span class="string">"timer"</span>
-    SESSION_EVENT = <span class="string">"session_event"</span>
-    WEBHOOK = <span class="string">"webhook"</span></div>
-</div>
 
-<!-- beat 8: mechanism -->
-<div class="slide">
-    <div class="phase-badge">Phase 4 &amp; 5</div>
-    <h2 class="medium-headline">Background sessions become<br><span class="gradient-text">declarative config</span></h2>
-    <p class="subhead">No more hand-rolled asyncio &mdash; describe a long-running pool and let the manager run it. Foreman adopts it with graceful fallback.</p>
-    <div class="code-block"><span class="class">BackgroundSessionConfig</span>(
-    <span class="param">name</span>=<span class="string">"code-reviewer"</span>,
-    <span class="param">bundle</span>=<span class="string">"review:code-review"</span>,
-    <span class="param">triggers</span>=[
-        <span class="class">SessionEventTrigger</span>(<span class="string">"pr_opened"</span>),
-        <span class="class">TimerTrigger</span>(interval=<span class="param">3600</span>)
-    ],
-    <span class="param">pool_size</span>=<span class="param">3</span>,
-    <span class="param">restart_policy</span>=<span class="string">"on_failure"</span>
-)</div>
-    <div class="highlight-box">
-        <p>Foreman uses <strong>background_sessions</strong> declaratively via an optional-import pattern, with automatic fallback to original behavior when the feature isn't present. Proven end-to-end with 6 integration tests.</p>
-    </div>
-</div>
-
-<!-- beat 9: takeaway -->
-<div class="slide center">
-    <div class="section-label">The Result</div>
-    <h2 class="medium-headline">From fragmented spawning to<br>an <span class="gradient-text">event-driven platform</span></h2>
-    <p class="subhead">Five phases, four repositories, one primitive underneath all of it.</p>
-    <div class="timeline" style="margin-top: 40px;">
-        <div class="timeline-item">
-            <div class="timeline-marker">1</div>
-            <div class="timeline-content">
-                <h4>amplifier-core</h4>
-                <p>New SESSION_COMPLETED and SESSION_ERROR events</p>
-            </div>
+    <!-- beat 7: payoff -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The proof</div>
+            <h2>Commit ba97a86 deletes the hand-rolled spawner for one call</h2>
+            <p class="body">Foreman's refactor (Paul Payne, 2026-02-04) removes <code>_write_worker_session_state</code> and the raw <code>load_bundle()</code>+<code>create_session()</code> path, adds <code>await spawn_bundle(...)</code>. PR #2 merged; the reusable primitives ship via the standalone amplifier-bundle-orchestration bundle.</p>
+            <p class="handoff">The code survived even where the PRs didn't.</p>
         </div>
-        <div class="timeline-item">
-            <div class="timeline-marker">2</div>
-            <div class="timeline-content">
-                <h4>amplifier-foundation</h4>
-                <p>spawn_bundle(), EventRouter, Triggers, BackgroundSessionManager</p>
-            </div>
-        </div>
-        <div class="timeline-item">
-            <div class="timeline-marker">3</div>
-            <div class="timeline-content">
-                <h4>amplifier-app-cli</h4>
-                <p>Migrated spawn_sub_session() to use spawn_bundle()</p>
-            </div>
-        </div>
-        <div class="timeline-item">
-            <div class="timeline-marker">4</div>
-            <div class="timeline-content">
-                <h4>amplifier-bundle-foreman</h4>
-                <p>Worker spawning + background_sessions support</p>
-            </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="cmt"># refactor: use spawn_bundle() for worker spawning</span>
+<span class="del">- async def _write_worker_session_state(...):</span>
+<span class="del">- from amplifier_foundation import load_bundle</span>
+<span class="del">- bundle = await load_bundle(...)</span>
+<span class="add">+ result = await spawn_bundle(...)</span>
+<span class="cmt"># orchestrator.py: 396 lines changed  (+331 / -259)</span></div>
         </div>
     </div>
-</div>
 
-<!-- Sources & Methodology -->
-<div class="slide">
-    <div class="section-label">Sources &amp; Methodology</div>
-    <h2 class="medium-headline">How this story was verified</h2>
-    <div class="sources-content">
-        <p><strong>Data as of:</strong> February 2026 &bull; Source session cbbd5d39 (&ldquo;Built with Amplifier&rdquo;).</p>
-        <p><strong>Pull requests (primary evidence):</strong></p>
-        <ul>
-            <li>microsoft/amplifier-core #9 &mdash; SESSION_COMPLETED / SESSION_ERROR kernel events</li>
-            <li>microsoft/amplifier-foundation #63 &mdash; spawn_bundle(), EventRouter, Triggers, BackgroundSessionManager</li>
-            <li>microsoft/amplifier-app-cli #81 &mdash; CLI migration to spawn_bundle()</li>
-            <li>payneio/amplifier-bundle-foreman #2 &mdash; worker spawning + background_sessions</li>
-        </ul>
-        <p><strong>Test counts</strong> (35, 20, 122+, 6; 500+ total) and the ~400-line duplication figure are reported from the implementation session and the PR descriptions, not independently re-run for this deck.</p>
-        <p><strong>Not claimed:</strong> no release version tag is associated with these changes; figures are as-reported at session time.</p>
-        <div class="pr-links">
-            <a href="https://github.com/microsoft/amplifier-core/pull/9" class="pr-link" target="_blank">amplifier-core #9</a>
-            <a href="https://github.com/microsoft/amplifier-foundation/pull/63" class="pr-link" target="_blank">amplifier-foundation #63</a>
-            <a href="https://github.com/microsoft/amplifier-app-cli/pull/81" class="pr-link" target="_blank">amplifier-app-cli #81</a>
-            <a href="https://github.com/payneio/amplifier-bundle-foreman/pull/2" class="pr-link" target="_blank">amplifier-bundle-foreman #2</a>
+    <!-- beat 8: takeaway -->
+    <div class="slide center">
+        <div class="section-label">What to keep</div>
+        <h1>One primitive plus an extractable bundle beats four coupled PRs</h1>
+        <p class="body">The reusable code &mdash; spawn.py, events.py, triggers.py, background.py &mdash; lives in microsoft/amplifier-bundle-orchestration, and Foreman runs on it today. Consolidate behind one primitive, then ship it as a reusable bundle.</p>
+        <span class="badge">Feature status: shipped on main (orchestration bundle); Foreman PR #2 merged</span>
+    </div>
+
+    <!-- Sources & Methodology (audit trail, not a beat) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="sources-body">
+            <p><strong>Data as of:</strong> research verified against microsoft/amplifier-bundle-orchestration and payneio/amplifier-bundle-foreman clones.</p>
+            <p><strong>Feature status:</strong> Orchestration primitives committed on main; Foreman adoption (PR #2) merged 2026-02-17. core #9 &amp; foundation #63 CLOSED; cli #81 OPEN.</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>wc -l amplifier_orchestration/spawn.py</code> &middot; <code>grep -n 'def spawn_bundle' spawn.py</code> (696 lines; line 259)</li>
+                <li><code>grep -n 'PHASE ' amplifier_orchestration/spawn.py</code> (12 phases)</li>
+                <li><code>wc -l events.py triggers.py background.py</code> (294 / 401 / 596 lines)</li>
+                <li><code>git show --stat ba97a86</code> &middot; <code>git show ba97a86 -- '*orchestrator.py'</code> (+331 / -259; orchestrator.py 396 changed)</li>
+                <li><code>git show --stat a5429c2 2ef847c</code> (orchestration bundle extraction)</li>
+                <li><code>gh pr list --repo &lt;repo&gt; --search 'Integrated Session Spawning' --state all</code> (core #9, foundation #63, foreman #2, cli #81)</li>
+            </ul>
+            <p><strong>Gaps:</strong> "500+ tests" and "zero regressions" were NOT verified and are excluded. Feature-specific test functions total ~124 (orchestration 77 + foreman 47). The full spawn_bundle suite could not run locally (test_spawn.py needs amplifier_core); test_events.py + test_triggers.py passed 42/42.</p>
+            <p><strong>Primary contributor:</strong> Paul Payne &mdash; author of spawn_bundle(), EventRouter, triggers, BackgroundSessionManager, the orchestration bundle, and the Foreman integration (8 of 11 orchestration commits; all 4 foreman feature commits).</p>
         </div>
     </div>
-</div>
 
-<!-- Navigation -->
-<div class="nav" id="nav"></div>
-<div class="slide-counter" id="counter"></div>
-<a href="index.html" class="more-stories">More Amplifier Stories</a>
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
-<script>
-    const slides = document.querySelectorAll('.slide');
-    let currentSlide = 0;
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-    function showSlide(n) {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (n + slides.length) % slides.length;
-        slides[currentSlide].classList.add('active');
-        updateNav();
-    }
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
 
-    function updateNav() {
-        const nav = document.getElementById('nav');
-        const counter = document.getElementById('counter');
-        nav.innerHTML = '';
-        slides.forEach((_, i) => {
-            const dot = document.createElement('div');
-            dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-            dot.onclick = () => showSlide(i);
-            nav.appendChild(dot);
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
+            updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
-        counter.textContent = `${currentSlide + 1} / ${slides.length}`;
-    }
 
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight' || e.key === ' ') {
-            e.preventDefault();
-            showSlide(currentSlide + 1);
-        }
-        if (e.key === 'ArrowLeft') {
-            e.preventDefault();
-            showSlide(currentSlide - 1);
-        }
-    });
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
+        });
 
-    // Click navigation
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('.nav') || e.target.closest('.pr-link') || e.target.closest('.more-stories')) return;
-        if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-        else showSlide(currentSlide - 1);
-    });
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
 
-    // Touch/swipe navigation
-    let touchStartX = 0;
-    let touchEndX = 0;
-    const SWIPE_THRESHOLD = 50;
-
-    document.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-
-    document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > SWIPE_THRESHOLD) {
-            if (diff > 0) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
-        }
-    }, { passive: true });
-
-    updateNav();
-</script>
-
+        updateNav();
+    </script>
 </body>
 </html>

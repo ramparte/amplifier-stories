@@ -2,425 +2,218 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EXO Protocol - Deep Dive</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Expressed Ownership</title>
     <script>document.documentElement.classList.add('js')</script>
-
     <style>
-        :root {
-            --accent: #00CED1;
-            --accent-light: #40E0D0;
-            --accent-glow: rgba(0, 206, 209, 0.3);
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --border-subtle: rgba(255,255,255,0.12);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-            --success: #30D158;
-            --warning: #FF9F0A;
-            --purple: #9B7BFF;
-            --blue: #0078D4;
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f4f4f6;
+            --muted: #a0a0ac;
+            --accent: #7c9cff;
+            --accent2: #ffd166;
+            --card: #16161f;
+            --line: rgba(255,255,255,0.12);
         }
 
-        .deck { }
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
 
         .slide {
             display: flex;
+            width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
             padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
         }
 
         .slide.active { display: flex; }
 
-        .slide.center {
-            justify-content: center;
+        /* No-JS fallback: all slides visible + scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+
+        /* Fit-safe: cap slides to viewport and allow scroll */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide {
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
+
+        .center {
+            text-align: center;
             align-items: center;
-            text-align: center;
+            justify-content: center;
         }
 
-        .slide.center > .grid-2,
-        .slide.center > .grid-3,
-        .slide.center > .grid-4 {
-            width: 100%;
-            max-width: 960px;
-        }
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 700; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: 24px; max-width: 26ch; }
 
-        /* Typography */
         .section-label {
-            font-size: clamp(11px, 1.5vw, 14px);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: var(--accent);
-            margin-bottom: 16px;
-        }
-
-        .headline {
-            font-size: clamp(36px, 8vw, 72px);
-            font-weight: 700;
-            letter-spacing: -2px;
-            line-height: 1.1;
-            margin-bottom: 24px;
-        }
-
-        .subhead {
-            font-size: clamp(18px, 3vw, 32px);
-            font-weight: 400;
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        .body-text {
-            font-size: clamp(14px, 2vw, 18px);
-            line-height: 1.6;
-            color: var(--text-secondary);
-        }
-
-        .slide-intro {
-            font-size: clamp(16px, 2.5vw, 22px);
-            line-height: 1.5;
-            color: var(--text-secondary);
-            max-width: 800px;
-            margin-bottom: 32px;
-        }
-
-        .accent { color: var(--accent); }
-        .text-primary { color: var(--text-primary); }
-
-        /* Badges */
-        .badge {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
-            color: #000;
-            font-size: clamp(12px, 1.5vw, 16px);
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            padding: 12px 32px;
-            border-radius: 100px;
-            margin-bottom: 32px;
-            box-shadow: 0 8px 32px var(--accent-glow);
-        }
-
-        .status-badge {
-            display: inline-block;
-            background: var(--surface-2);
-            border: 1px solid var(--border-subtle);
-            color: var(--text-tertiary);
-            font-size: clamp(10px, 1.2vw, 12px);
-            font-weight: 600;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            padding: 6px 16px;
-            border-radius: 100px;
-            margin-top: 24px;
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            padding: clamp(20px, 4vw, 32px);
-        }
-
-        .card-title {
-            font-size: clamp(18px, 3vw, 24px);
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: var(--accent);
-        }
-
-        .card-title--light { color: var(--text-primary); }
-
-        .card-icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: 16px;
-        }
-
-        /* Grids */
-        .grid-2 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: clamp(16px, 3vw, 32px);
-        }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: clamp(16px, 3vw, 24px);
-        }
-
-        .grid-4 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: clamp(12px, 2vw, 20px);
-        }
-
-        /* Lists */
-        .bullet-list { list-style: none; padding-left: 0; }
-
-        .bullet-list li {
-            position: relative;
-            padding-left: 24px;
-            margin-bottom: 12px;
-            font-size: clamp(14px, 2vw, 18px);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .bullet-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 10px;
-            width: 8px;
-            height: 8px;
-            background: var(--accent);
-            border-radius: 50%;
-        }
-
-        /* Quotes */
-        .quote-block {
-            background: linear-gradient(135deg, rgba(0, 206, 209, 0.1) 0%, transparent 100%);
-            border-left: 4px solid var(--accent);
-            border-radius: 0 16px 16px 0;
-            padding: clamp(20px, 4vw, 32px);
-            margin: 24px 0;
-        }
-
-        .quote-text {
-            font-size: clamp(18px, 3vw, 28px);
-            font-style: italic;
-            line-height: 1.4;
-            color: var(--text-primary);
-        }
-
-        .quote-text-sm {
-            font-size: clamp(16px, 2.5vw, 22px);
-            font-style: italic;
-            line-height: 1.4;
-            color: var(--text-primary);
-        }
-
-        /* Highlight boxes */
-        .highlight-box {
-            background: linear-gradient(135deg, rgba(0, 206, 209, 0.15) 0%, rgba(64, 224, 208, 0.05) 100%);
-            border: 1px solid var(--accent);
-            border-radius: 16px;
-            padding: clamp(20px, 4vw, 32px);
-            margin-top: 24px;
-        }
-
-        .highlight-box.warning {
-            background: rgba(255, 159, 10, 0.1);
-            border-color: var(--warning);
-        }
-
-        .highlight-text {
-            color: var(--text-primary);
-            font-size: clamp(14px, 2vw, 18px);
-            line-height: 1.6;
-        }
-
-        .highlight-title {
-            font-size: clamp(18px, 3vw, 24px);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-
-        .warning-text {
-            color: var(--warning);
-            font-weight: 600;
-        }
-
-        .cta-text {
-            font-size: clamp(18px, 3vw, 24px);
-            color: var(--text-primary);
-            font-weight: 600;
-            text-align: center;
-        }
-
-        /* Type table */
-        .type-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 24px;
-        }
-
-        .type-table th,
-        .type-table td {
-            padding: 16px;
-            text-align: left;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .type-table th {
             font-size: clamp(12px, 1.5vw, 14px);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.18em;
             color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 20px;
         }
 
-        .type-table td {
-            font-size: clamp(14px, 2vw, 16px);
-            color: var(--text-secondary);
+        .body { color: var(--fg); margin-top: 22px; max-width: 42ch; }
+        .handoff { color: var(--muted); margin-top: 24px; max-width: 42ch; font-style: italic; }
+        .note { color: var(--muted); margin-top: 18px; max-width: 44ch; font-size: clamp(13px, 1.6vw, 16px); }
+
+        strong { color: var(--accent2); }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
         }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-        .type-table tr:last-child td { border-bottom: none; }
-
-        .type-label { font-weight: 600; }
-        .type-idea { color: var(--accent); }
-        .type-knowledge { color: var(--blue); }
-        .type-expression { color: var(--purple); }
-        .type-outcome { color: var(--success); }
-
-        /* Vault visual */
-        .vault-visual {
-            background: linear-gradient(135deg, rgba(0, 206, 209, 0.1) 0%, rgba(64, 224, 208, 0.05) 100%);
-            border: 2px solid var(--accent);
-            border-radius: 24px;
-            padding: clamp(32px, 6vw, 48px);
-            text-align: center;
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: clamp(14px, 2vw, 22px);
         }
-
-        .vault-icon {
-            font-size: clamp(48px, 10vw, 80px);
-            margin-bottom: 24px;
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(18px, 2.4vw, 28px);
         }
-
-        .vault-title {
-            font-size: clamp(24px, 4vw, 36px);
+        .stat-number {
+            font-size: clamp(34px, 6vw, 64px);
             font-weight: 700;
-            margin-bottom: 16px;
-            color: var(--accent);
+            line-height: 1;
+            color: var(--accent2);
+            letter-spacing: -0.02em;
+        }
+        .stat-label {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: clamp(13px, 1.6vw, 16px);
         }
 
-        /* Analogy cards */
-        .analogy-card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            padding: clamp(20px, 4vw, 32px);
-            text-align: center;
+        /* Rules / typed list */
+        .rules { display: flex; flex-direction: column; gap: clamp(12px, 1.8vw, 18px); }
+        .rule {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 20px) clamp(16px, 2.2vw, 24px);
         }
+        .rule .rule-name { font-weight: 700; color: var(--fg); font-size: clamp(15px, 2vw, 20px); }
+        .rule .rule-def { color: var(--muted); margin-top: 6px; font-size: clamp(13px, 1.6vw, 16px); }
 
-        .analogy-icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: 16px;
+        /* Steps */
+        .steps { display: flex; flex-direction: column; gap: clamp(12px, 1.8vw, 18px); }
+        .step {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 20px);
         }
-
-        .analogy-title {
-            font-size: clamp(16px, 2.5vw, 20px);
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--text-primary);
+        .step-num {
+            flex: 0 0 auto;
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #0a0a0f;
+            font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
         }
+        .step-text { font-size: clamp(14px, 1.8vw, 18px); }
+        .step-text b { color: var(--accent2); }
 
-        .analogy-desc {
-            font-size: clamp(13px, 1.8vw, 15px);
-            color: var(--text-secondary);
-            line-height: 1.5;
+        /* Sources slide */
+        .small-text { font-size: clamp(13px, 1.6vw, 16px); }
+        .small-text ul { margin: 12px 0 12px 20px; }
+        .small-text li { margin-bottom: 8px; }
+        code {
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            background: rgba(255,255,255,0.08);
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-size: 0.88em;
         }
-
-        /* Sources */
-        .sources-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .sources-list li {
-            font-size: clamp(13px, 1.8vw, 16px);
-            color: var(--text-secondary);
-            padding: 8px 0;
-            border-bottom: 1px solid var(--surface-1);
-            line-height: 1.5;
-        }
-
-        .sources-list li:last-child { border-bottom: none; }
-
-        .sources-label {
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-
-        /* Utility classes */
-        .mt-16 { margin-top: 16px; }
-        .mt-24 { margin-top: 24px; }
-        .mt-32 { margin-top: 32px; }
-        .mb-0 { margin-bottom: 0; }
-        .mb-16 { margin-bottom: 16px; }
-        .mb-32 { margin-bottom: 32px; }
-        .text-center { text-align: center; }
-        .constrained { max-width: 800px; }
-        .constrained-sm { max-width: 700px; }
-        .auto-center { margin-left: auto; margin-right: auto; }
-        .flush { margin-top: 0; margin-bottom: 0; }
+        .sources-body { max-width: 60ch; }
+        .sources-body p { margin-top: 12px; }
 
         /* Navigation */
         .nav {
             position: fixed;
-            bottom: 32px;
+            bottom: 28px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 8px;
-            z-index: 100;
-            flex-wrap: wrap;
-            max-width: 80%;
-            justify-content: center;
+            gap: 10px;
+            z-index: 90;
         }
-
         .nav-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px; height: 9px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.25);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: background 0.3s, transform 0.3s;
         }
-
-        .nav-dot.active {
-            background: var(--accent);
-            box-shadow: 0 0 12px var(--accent-glow);
-        }
-
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
         .slide-counter {
             position: fixed;
-            bottom: 24px;
-            right: 32px;
-            font-size: clamp(11px, 1.5vw, 14px);
-            color: rgba(255,255,255,0.4);
-            font-family: 'SF Mono', monospace;
-            z-index: 100;
+            top: 22px;
+            right: 26px;
+            font-size: 13px;
+            color: var(--muted);
+            z-index: 90;
         }
-
-        .back-link {
-            position: fixed;
-            top: 24px;
-            left: 32px;
-            font-size: clamp(12px, 1.5vw, 14px);
-            color: var(--text-secondary);
-            text-decoration: none;
-            z-index: 100;
-            transition: color 0.3s ease;
-        }
-
-        .back-link:hover { color: var(--accent); }
 
         .more-stories {
             position: fixed;
@@ -434,420 +227,252 @@
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
 
-        /* Reduced motion */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: center; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
-
-        /* Landscape mobile */
-        @media (max-height: 500px) {
-            .slide {
-                padding: clamp(40px, 6vw, 60px) clamp(20px, 5vw, 80px) clamp(60px, 8vw, 80px);
-            }
-            .headline {
-                font-size: clamp(28px, 6vw, 48px);
-                margin-bottom: 16px;
-            }
-            .subhead {
-                font-size: clamp(16px, 2.5vw, 24px);
-            }
-        }
-    
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
-        html:not(.js) .slide {
-            display: flex !important;
-            position: relative !important;
-            opacity: 1 !important;
-            pointer-events: auto !important;
-            visibility: visible !important;
-            transform: none !important;
-            width: 100%;
-            min-height: 100vh;
-            min-height: 100dvh;
-        }
-
-        /* Progressive enhancement: JS-only slide mode */
-        html.js { overflow: hidden; }
-        html.js body { overflow: hidden; overscroll-behavior: none; }
-        html.js .deck { height: 100vh; height: 100dvh; overflow: hidden; }
-        html.js .slide { display: none; }
-        html.js .slide.active { display: flex; }
     </style>
 </head>
 <body>
-    <a href="index.html" class="back-link">&larr; Back to Overview</a>
+<!--
+SPINE
+ABT: AND we have built systems that capture nearly everything we express — clicks, words, creations, and lived experience; BUT with AI, those systems now author digital memories ABOUT us that we did not write, cannot access, and cannot control — expression has been severed from ownership; THEREFORE EXO is a protocol-first, tech-agnostic framework that makes what you express attributable, protected, and portable again — proposed as a natural fit for Amplifier.
+Payoff: The university analogy made concrete — you should leave with what you learned and your thesis (your expression), while the curriculum and lab equipment (the platform) stay behind — that is what EXO reattaches.
+Beats:
+  1. frame     — EXO (Expressed Ownership) is a protocol-first framework for making what you express attributable, protected, and portable in the age of AI — today it's a concept, not code.  advances: orients the audience on what this is and why it matters, setting up the AND/BUT tension and honestly flagging pre-implementation status up front.
+  2. proof     — The severing is already real, and attribution CAN be tracked: Amplifier already records AI co-authorship on 10 of its last 50 commits.  advances: grounds the abstract AND/BUT in one verified fact early — attribution is already technically recorded — proving the gap EXO closes is bridgeable, not hypothetical.
+  3. tension   — Capture went from monitoring to authoring — your expression is now owned by the systems that record it, not by you.  advances: sharpens the BUT — names the exact break (expression severed from ownership) the THEREFORE must repair.
+  4. mechanism — EXO separates ownership into four types — Idea, Knowledge, Expression, Outcome.  advances: delivers the single core move of the THEREFORE — a clean rule for who owns what, making reattachment tractable.
+  5. setup     — EXO builds on prior art — Data Dignity, Solid, SSI & DIDs, Web3 smart contracts — reframed as one portable protocol.  advances: locates the THEREFORE in a credible lineage so the framework reads as synthesis, not a solo claim, before the payoff leans on it.
+  6. turn      — Amplifier could be the right vehicle: it already captures session transcripts, tracks attribution via co-authored commits, and is modular and event-driven.  advances: pivots from AND/BUT to a concrete path for the THEREFORE — an existing system whose verified behaviors match what EXO needs.
+  7. payoff    — You should leave with what you learned and your thesis — your expression — while the platform's curriculum and equipment stay behind. That is what EXO reattaches.  advances: lands the THEREFORE as the climax — the university analogy makes ownership-reattachment vivid and memorable.
+  8. takeaway  — EXO is an open, pre-implementation invitation — the protocol is defined, no code exists yet, and Amplifier is a proposed starting point.  advances: leaves the audience with an honest, actionable stance — the reattachment is designed but not built, and here's where it could begin.
+-->
 
-    <div class="deck">
+    <!-- Title cover (no beat) -->
+    <div class="slide title-slide active center">
+        <h1>Expressed Ownership</h1>
+        <p class="subtitle">Reattaching what you express to who owns it</p>
+    </div>
 
-    <!--
-      ============================================================
-      NARRATIVE SPINE (built from the deck's existing conceptual content; no fresh research)
-      ============================================================
-
-      ABT:
-        AND we have built systems that capture everything we express - our words,
-            creations, clicks, and lived experience;
-        BUT with AI those systems now author digital memories ABOUT us that we don't
-            own, can't access, and can't control - expression has been severed from ownership;
-        THEREFORE EXO (Expressed Ownership) reattaches them: a protocol that makes what
-            you express attributable, protected, and portable - the way you leave a
-            university with what you learned.
-
-      PAYOFF (named up front):
-        Your Vault - "you own what you express, you decide what's seen, and everything
-        else stays private." Expression, ownership, and outcome reunited.
-
-      proof_deferred_reason: EXO is a pre-implementation conceptual framework with no
-        code or git metrics, so beat 1 opens on the strongest concrete EVIDENCE available -
-        a real-world ownership boundary (the university) that already works cleanly -
-        rather than on empirical product metrics. (role kept as 'proof'.)
-
-      BEATS (proof-first; payoff lands at beat 4 of 9, before the midpoint):
-        1. proof     - a clean ownership boundary already works in the real world: a university.
-                       advances: grounds the AND - the expression/ownership split is real and coherent.
-        2. tension   - online, AI severs expression from ownership: memories about us we can't control.
-                       advances: establishes the BUT (the harm).
-        3. setup     - EXO names the fix: Expressed Ownership, version control for human input.
-                       advances: introduces EXO, the entity the rest leans on.
-        4. payoff    - the Vault: you own what you express, you decide what's seen.
-                       advances: lands the THEREFORE (payoff before midpoint).
-        5. mechanism - not all expression is owned alike: EXO names four kinds. (one claim)
-                       advances: HOW ownership becomes precise.
-        6. mechanism - clear boundaries strengthen institutions, not weaken them. (one claim)
-                       advances: HOW both individuals and orgs win.
-        7. mechanism - it stands on prior art but stays protocol-first, tech-agnostic. (one claim)
-                       advances: HOW it is grounded and buildable today.
-        8. turn      - Amplifier could be the right vehicle for EXO.
-                       advances: pivot from concept to where it actually gets built.
-        9. takeaway  - Expression -> Ownership -> Outcome: an open exploration, get involved.
-                       advances: what the audience keeps + where to go next.
-
-        + Sources & Methodology (audit-trail slide, not a beat) at the end - reused verbatim.
-        Slides = 9 beats + 1 = 10.
-    -->
-
-        <!-- beat 1: proof -->
-        <div class="slide center active">
-            <div class="section-label">A Boundary That Already Works</div>
-            <h2 class="headline">Clean ownership boundaries<br>already work: a university</h2>
-            <div class="quote-block flush mb-32 constrained auto-center" style="text-align:left">
-                <div class="quote-text">&ldquo;Think of it like a university: you can&rsquo;t take the curriculum with you, but you leave with what you&rsquo;ve learned. Your thesis is yours; the lab equipment is not.&rdquo;</div>
-            </div>
-            <div class="grid-2 constrained auto-center" style="text-align:left">
-                <div class="card">
-                    <div class="card-title">What you keep</div>
-                    <ul class="bullet-list">
-                        <li><strong>Learning</strong> &mdash; experience and insight are yours</li>
-                        <li><strong>Thesis</strong> &mdash; your expression, contextually attributed</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <div class="card-title card-title--light">What stays behind</div>
-                    <ul class="bullet-list">
-                        <li><strong>Curriculum</strong> &mdash; knowledge stays with the institution</li>
-                        <li><strong>Lab equipment</strong> &mdash; the tools stay too</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="body-text mt-24 text-center constrained-sm auto-center">The distinction between what you express and what you own is not abstract &mdash; it already governs how people move through institutions.</div>
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Frame</div>
+            <h2>EXO reattaches what you express to who owns it — and today it's a concept, not code</h2>
+            <p class="body">EXO (Expressed Ownership) is a protocol-first, tech-agnostic framework for making what you express <strong>attributable, protected, and portable</strong> in the age of AI.</p>
+            <p class="handoff">Its status is honest up front: a pre-implementation framework, defined but not yet built.</p>
         </div>
-
-        <!-- beat 2: tension -->
-        <div class="slide">
-            <div class="section-label">The Problem</div>
-            <h2 class="headline">With AI, your expression is severed from your ownership</h2>
-            <div class="grid-2 mt-24">
-                <div>
-                    <div class="quote-block flush">
-                        <div class="quote-text">&ldquo;We&rsquo;ve created systems that track everything&mdash;what we click, where we go, what we write, say, and buy. But these systems now do more than monitor.&rdquo;</div>
-                    </div>
-                    <div class="body-text mt-24">
-                        With AI, these systems predict our behavior, summarize our actions, and construct digital memories about us. Yet these memories aren&rsquo;t ours. We didn&rsquo;t author them. We can&rsquo;t access them. We have no control over where they end up.
-                    </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">source files implementing EXO — it's a conceptual framework, no code yet</div>
                 </div>
-                <div class="card">
-                    <div class="card-title">The Core Questions</div>
-                    <ul class="bullet-list">
-                        <li>What happens when <strong>expression</strong> separates from <strong>ownership</strong>?</li>
-                        <li>What happens when <strong>access</strong> separates from <strong>authorship</strong>?</li>
-                        <li>What happens when <strong>learning</strong> separates from <strong>control</strong>?</li>
-                    </ul>
-                    <div class="highlight-box warning mt-16">
-                        <div class="highlight-text warning-text">EXO aims to restore balance to this equation.</div>
-                    </div>
+                <div class="stat">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">promises of the protocol: attributable, protected, portable</div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- beat 3: setup -->
-        <div class="slide">
-            <div class="section-label">The Solution</div>
-            <h2 class="headline">EXO reattaches expression to ownership</h2>
-            <div class="slide-intro">
-                EXO &mdash; <span class="accent">Expressed Ownership</span> &mdash; is a framework for clearly <span class="accent">attributing</span>, <span class="accent">protecting</span>, and <span class="accent">sharing</span> what people express, whether through language, creativity, research, code, ideas, or lived experience.
-            </div>
-            <div class="grid-3">
-                <div class="card text-center">
-                    <div class="card-icon">&#x1f3d7;&#xfe0f;</div>
-                    <div class="card-title card-title--light">Underlies Systems</div>
-                    <div class="body-text">It doesn&rsquo;t replace the systems we use. It underlies them.</div>
-                </div>
-                <div class="card text-center">
-                    <div class="card-icon">&#x1f4d0;</div>
-                    <div class="card-title card-title--light">Shapes Boundaries</div>
-                    <div class="body-text">Gives shape and boundary to ideas, knowledge, expressions, and outcomes.</div>
-                </div>
-                <div class="card text-center">
-                    <div class="card-icon">&#x1f504;</div>
-                    <div class="card-title card-title--light">Version Control</div>
-                    <div class="body-text">Think of it as version control for human input&mdash;traceable, portable, permissioned.</div>
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">Proof</div>
+            <h2>The gap is bridgeable: attribution can already be tracked</h2>
+            <p class="body">AI systems now author memories about us that we didn't write and can't access. Yet attribution is not hypothetical — <strong>Amplifier already records AI co-authorship</strong> on its commits.</p>
+            <p class="handoff">If a tool can already mark who authored what, then reattaching ownership is an engineering gap, not a fantasy.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">10 / 50</div>
+                    <div class="stat-label">of amplifier-foundation's last 50 commit bodies carry a <code>Co-authored-by</code> trailer</div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- beat 4: payoff -->
-        <div class="slide">
-            <div class="section-label">Privacy by Default</div>
-            <h2 class="headline">Your Vault: you own what you express, and you decide what&rsquo;s seen</h2>
-            <div class="grid-2 mt-24">
-                <div class="vault-visual">
-                    <div class="vault-icon">&#x1f510;</div>
-                    <div class="vault-title">Your Vault</div>
-                    <div class="body-text text-primary">
-                        A private, encrypted space for all your expressions.
-                    </div>
+    <div class="slide center">
+        <!-- beat 3: tension -->
+        <div class="section-label">The Break</div>
+        <h2>Capture went from monitoring to authoring — and your expression became theirs</h2>
+        <p class="body">The systems that record you no longer just watch. With AI, they compose digital memories <strong>about</strong> you. What you express is now owned by the platforms that capture it, not by you.</p>
+        <p class="handoff">Expression has been severed from ownership. The rest of this deck is about reattaching them.</p>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Mechanism</div>
+            <h2>EXO separates ownership into four clean types</h2>
+            <p class="body">The core move is a rule for who owns what — making reattachment tractable instead of vague.</p>
+            <p class="handoff">With ownership typed, the framework can borrow from prior art to make it real.</p>
+        </div>
+        <div class="col-aside">
+            <div class="rules">
+                <div class="rule">
+                    <div class="rule-name">Idea</div>
+                    <div class="rule-def">Attributed to you</div>
                 </div>
-                <div>
-                    <div class="card mb-16">
-                        <div class="card-title card-title--light">What It Provides</div>
-                        <ul class="bullet-list">
-                            <li><strong>Zero-Knowledge Proofs</strong>&mdash;prove authorship without revealing content</li>
-                            <li><strong>Personal AI Agents</strong>&mdash;work with your vault, not monitoring you</li>
-                            <li><strong>Vault-to-Vault Sharing</strong>&mdash;controlled access, not public posting</li>
-                        </ul>
-                    </div>
-                    <div class="quote-block flush">
-                        <div class="quote-text-sm">&ldquo;You own what you express, you decide what&rsquo;s seen, and everything else stays private.&rdquo;</div>
-                    </div>
+                <div class="rule">
+                    <div class="rule-name">Knowledge</div>
+                    <div class="rule-def">Owned / licensed by source</div>
+                </div>
+                <div class="rule">
+                    <div class="rule-name">Expression</div>
+                    <div class="rule-def">Contextually co-owned</div>
+                </div>
+                <div class="rule">
+                    <div class="rule-name">Outcome</div>
+                    <div class="rule-def">Fully yours</div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- beat 5: mechanism -->
-        <div class="slide">
-            <div class="section-label">The Framework</div>
-            <h2 class="headline">Not all expression is owned alike &mdash; EXO names four kinds</h2>
-            <table class="type-table">
-                <tr>
-                    <th>Type</th>
-                    <th>Description</th>
-                    <th>Ownership</th>
-                </tr>
-                <tr>
-                    <td><span class="type-label type-idea">Idea</span></td>
-                    <td>A speculative or originating thought</td>
-                    <td><strong>Attributed to you</strong></td>
-                </tr>
-                <tr>
-                    <td><span class="type-label type-knowledge">Knowledge</span></td>
-                    <td>Structured or institutional information</td>
-                    <td>Owned/licensed by source</td>
-                </tr>
-                <tr>
-                    <td><span class="type-label type-expression">Expression</span></td>
-                    <td>A contribution in language, code, or media</td>
-                    <td>Contextually co-owned</td>
-                </tr>
-                <tr>
-                    <td><span class="type-label type-outcome">Outcome</span></td>
-                    <td>What changed in you (insight, skill, growth)</td>
-                    <td><strong>Fully yours</strong></td>
-                </tr>
-            </table>
-            <div class="highlight-box">
-                <div class="highlight-text">
-                    This framework ensures ownership, attribution, and rights are transparent&mdash;giving people clarity and control over what they generate and how it&rsquo;s used.
+    <div class="slide split">
+        <!-- beat 5: setup -->
+        <div class="col-main">
+            <div class="section-label">The Lineage</div>
+            <h2>EXO synthesizes prior art into one portable, tech-agnostic protocol</h2>
+            <p class="body">It doesn't start from zero. It reframes existing efforts as a single portable protocol rather than four separate systems.</p>
+            <p class="handoff">A credible lineage — which points to an existing system that could carry it.</p>
+        </div>
+        <div class="col-aside">
+            <div class="rules">
+                <div class="rule">
+                    <div class="rule-name">Data Dignity</div>
+                    <div class="rule-def">Jaron Lanier</div>
+                </div>
+                <div class="rule">
+                    <div class="rule-name">Solid</div>
+                    <div class="rule-def">Tim Berners-Lee</div>
+                </div>
+                <div class="rule">
+                    <div class="rule-name">SSI &amp; DIDs</div>
+                    <div class="rule-def">Self-sovereign identity</div>
+                </div>
+                <div class="rule">
+                    <div class="rule-name">Web3</div>
+                    <div class="rule-def">Smart contracts</div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- beat 6: mechanism -->
-        <div class="slide">
-            <div class="section-label">Capabilities</div>
-            <h2 class="headline">Clear boundaries strengthen institutions, not weaken them</h2>
-            <div class="grid-2 mt-24">
-                <div class="card">
-                    <div class="card-title">For Individuals</div>
-                    <ul class="bullet-list">
-                        <li><strong>Private vaults</strong> that store raw thoughts and expressions</li>
-                        <li><strong>Consent-based sharing</strong> with conditions for access</li>
-                        <li><strong>Provenance trails</strong> across systems</li>
-                        <li><strong>Experience portability</strong> when you leave organizations</li>
-                    </ul>
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">The Turn</div>
+            <h2>Amplifier could be the right vehicle for EXO</h2>
+            <p class="body">An existing system already shows the behaviors EXO needs — not as a promise, but as things it does today.</p>
+            <p class="handoff">Which sets up the point the whole deck drives toward.</p>
+        </div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-text">Already <b>captures session transcripts</b> of what you express</div>
                 </div>
-                <div class="card">
-                    <div class="card-title">For Organizations</div>
-                    <ul class="bullet-list">
-                        <li><strong>Cleaner handoffs</strong> and offboarding processes</li>
-                        <li><strong>Better IP hygiene</strong> with clear attribution</li>
-                        <li><strong>Knowledge continuity</strong> across people and time</li>
-                        <li><strong>Proper credit</strong> for contributors</li>
-                    </ul>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-text">Already <b>tracks attribution</b> via co-authored commits</div>
                 </div>
-            </div>
-            <div class="highlight-box">
-                <div class="highlight-title">The Key Insight</div>
-                <div class="highlight-text">
-                    Employers offer access to tools and environments; under EXO, the knowledge shared remains protected, the experience gained becomes portable, and expressions contributed are contextually attributed.
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-text">Is <b>modular and event-driven</b> — extensible by design</div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- beat 7: mechanism -->
-        <div class="slide">
-            <div class="section-label">Context</div>
-            <h2 class="headline">EXO stands on prior art &mdash; but stays protocol-first and tech-agnostic</h2>
-            <table class="type-table">
-                <tr>
-                    <th>Framework</th>
-                    <th>What It Offers</th>
-                    <th>How EXO Builds On It</th>
-                </tr>
-                <tr>
-                    <td><strong>Data Dignity</strong> (Lanier)</td>
-                    <td>Attribution, consent, dignity</td>
-                    <td>Adds vault logic + transaction layer</td>
-                </tr>
-                <tr>
-                    <td><strong>Solid</strong> (Berners-Lee)</td>
-                    <td>Decentralized data pods</td>
-                    <td>Adds expression-level granularity</td>
-                </tr>
-                <tr>
-                    <td><strong>SSI &amp; DIDs</strong></td>
-                    <td>Identity ownership</td>
-                    <td>Links identity to evolving ideas</td>
-                </tr>
-                <tr>
-                    <td><strong>Web3 &amp; Smart Contracts</strong></td>
-                    <td>Decentralized logic</td>
-                    <td>Embeds attribution + revocation rules</td>
-                </tr>
-            </table>
-            <div class="body-text mt-24 text-center">
-                EXO is protocol-first, tech-agnostic. Blockchain can help with audit trails and identity proofs, but it&rsquo;s not required.
-            </div>
+    <div class="slide center">
+        <!-- beat 7: payoff -->
+        <div class="section-label">The Payoff</div>
+        <h2>Leave with your thesis — the platform keeps its equipment</h2>
+        <p class="body">When you leave a university, you take <strong>what you learned and your thesis</strong> — your expression. The curriculum and the lab equipment — the platform — stay behind.</p>
+        <p class="handoff">That reattachment of expression to ownership is exactly what EXO is designed to do.</p>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Invitation</div>
+        <h2>EXO is an open, pre-implementation invitation</h2>
+        <p class="body">The protocol is defined. <strong>No code exists yet.</strong> Amplifier is a proposed starting point — where the reattachment of expression to ownership could begin.</p>
+        <p class="handoff">Designed, not built. The next move is to build it.</p>
+    </div>
+
+    <!-- Sources & Methodology (audit trail, not a beat) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="small-text sources-body" style="opacity: 0.82; line-height: 1.6;">
+            <p><strong>Feature status:</strong> Conceptual framework — no code implementation exists (pre-implementation concept, no git metrics).</p>
+            <p><strong>Deck source:</strong> <code>docs/exo-protocol-deck.html</code>, 896 lines, in the amplifier-stories repo.</p>
+            <p><strong>Research performed:</strong></p>
+            <ul>
+                <li>Co-authorship count: <code>git -C amplifier-foundation log --format='%b' -50 | grep -ci 'co-authored-by'</code> → 10 of last 50 commit bodies.</li>
+                <li>No EXO source code: <code>grep -rli 'expressed ownership' --include=*.py --include=*.rs --include=*.ts /home/ramparte/dev/ANext</code> → 0 files.</li>
+                <li>Ownership types &amp; status verbatim: <code>grep -iE 'Status:|Author:|Nature:|Data:' docs/exo-protocol-deck.html</code>.</li>
+                <li>Deck git history: <code>git log --format='%h | %ai | %an | %s' -- docs/exo-protocol-deck.html</code> (first staged 2026-01-30 by Alex Lopez; current version e09aeaf, 2026-07-14).</li>
+                <li>Suggested repo check: <code>git -C amplifier-protocol-bridge remote -v</code> → unrelated to EXO (Amplifier CLI reference implementation for microsoft/amplifier-core).</li>
+            </ul>
+            <p><strong>Gaps:</strong> "Framework originator" (Sam Schillace) is a deck assertion, not independently confirmable from git — earliest committer of the deck file is Alex Lopez. Prior-art frameworks (Data Dignity, Solid, SSI &amp; DIDs, Web3) are the deck's own external references, not verified against any repo. PR #18 (merged 2026-01-31) verified from a corpus markdown snapshot, not a live gh query.</p>
         </div>
-
-        <!-- beat 8: turn -->
-        <div class="slide">
-            <div class="section-label">Strategic Fit</div>
-            <h2 class="headline">Amplifier could be the right vehicle for EXO</h2>
-            <div class="grid-2 mt-24">
-                <div>
-                    <div class="quote-block flush">
-                        <div class="quote-text">&ldquo;Amplifier could be the right vehicle for EXO. This is the right time to think about this paradigm shift.&rdquo;</div>
-                    </div>
-                    <div class="body-text mt-24">
-                        Amplifier already tracks sessions, expressions, and outcomes. It already thinks about attribution (co-authored commits). It already has a philosophy of transparency and user control.
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Natural Alignment</div>
-                    <ul class="bullet-list">
-                        <li><strong>Session transcripts</strong>&mdash;expressions captured</li>
-                        <li><strong>Contribution tracking</strong>&mdash;attribution built-in</li>
-                        <li><strong>Modular architecture</strong>&mdash;EXO as a layer</li>
-                        <li><strong>Event system</strong>&mdash;audit trails exist</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="highlight-box text-center">
-                <div class="cta-text">
-                    EXO isn&rsquo;t just theory&mdash;it could be Amplifier&rsquo;s differentiator.
-                </div>
-            </div>
-        </div>
-
-        <!-- beat 9: takeaway -->
-        <div class="slide center">
-            <div class="section-label">Get Involved</div>
-            <h1 class="headline">Expression &rarr; Ownership &rarr; Outcome</h1>
-            <p class="subhead constrained">
-                EXO is an open exploration. The protocol needs voices, perspectives, and implementation ideas &mdash; and the next steps are already mapped.
-            </p>
-            <div class="grid-3 mt-32">
-                <div class="card text-center">
-                    <div class="card-icon">&#x1f4ac;</div>
-                    <div class="card-title card-title--light">Discuss</div>
-                    <div class="body-text">Share your perspective on expression ownership</div>
-                </div>
-                <div class="card text-center">
-                    <div class="card-icon">&#x1f4c4;</div>
-                    <div class="card-title card-title--light">Read</div>
-                    <div class="body-text">Explore the referenced frameworks and prior art</div>
-                </div>
-                <div class="card text-center">
-                    <div class="card-icon">&#x1f527;</div>
-                    <div class="card-title card-title--light">Build</div>
-                    <div class="body-text">Help shape EXO&rsquo;s proof-of-concept integration with Amplifier</div>
-                </div>
-            </div>
-            <div class="status-badge mt-32">Conceptual &middot; Sam Schillace</div>
-        </div>
-
-        <!-- Sources & Methodology (audit-trail slide, not a beat) -->
-                <div class="slide">
-            <div class="section-label">Transparency</div>
-            <h2 class="headline">Sources &amp; Methodology</h2>
-            <div class="grid-2 mt-24">
-                <div class="card">
-                    <div class="card-title card-title--light">About This Deck</div>
-                    <ul class="sources-list">
-                        <li><span class="sources-label">Status:</span> Conceptual framework&mdash;no code implementation exists</li>
-                        <li><span class="sources-label">Author:</span> Sam Schillace (framework originator)</li>
-                        <li><span class="sources-label">Nature:</span> Philosophical and strategic exploration of Expressed Ownership</li>
-                        <li><span class="sources-label">Data:</span> No git metrics&mdash;this is a pre-implementation concept</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <div class="card-title card-title--light">Referenced Work</div>
-                    <ul class="sources-list">
-                        <li><span class="sources-label">Data Dignity</span>&mdash;Jaron Lanier, &ldquo;Who Owns the Future?&rdquo;</li>
-                        <li><span class="sources-label">Solid Project</span>&mdash;Tim Berners-Lee, Inrupt</li>
-                        <li><span class="sources-label">Self-Sovereign Identity</span>&mdash;DID and Verifiable Credentials standards</li>
-                        <li><span class="sources-label">Web3 Primitives</span>&mdash;Smart contracts, decentralized logic patterns</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="highlight-box">
-                <div class="highlight-text">
-                    This presentation synthesizes conceptual thinking about expression ownership in the context of AI systems. All frameworks referenced are publicly documented. EXO remains an active area of exploration&mdash;contributions and feedback are welcome.
-                </div>
-            </div>
-        </div>
-
     </div>
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
+
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -856,26 +481,25 @@
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = () => showSlide(i);
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
-            if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
         document.addEventListener('click', (e) => {
             if (e.target.closest('.nav')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
@@ -883,11 +507,10 @@
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

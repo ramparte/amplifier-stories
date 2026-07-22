@@ -1,539 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Artifact Viewer Story — Building Blind at 1,538 Lines</title>
-<script>document.documentElement.classList.add('js')</script>
-
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
-  :root {
-    --navy-deep: #070D1A;
-    --navy: #0B1120;
-    --navy-light: #111827;
-    --navy-surface: #1A2332;
-    --navy-border: #1E293B;
-    --blue: #3B82F6;
-    --blue-bright: #60A5FA;
-    --blue-dim: #2563EB;
-    --coral: #FF375F;
-    --coral-dim: rgba(255, 55, 95, 0.15);
-    --green: #30D158;
-    --green-dim: rgba(48, 209, 88, 0.15);
-    --amber: #FFD60A;
-    --amber-dim: rgba(255, 214, 10, 0.12);
-    --violet: #BF5AF2;
-    --violet-dim: rgba(191, 90, 242, 0.12);
-    --text: #E2E8F0;
-    --text-dim: #94A3B8;
-    --text-muted: #64748B;
-    --text-faint: #475569;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  html, body {
-    width: 100%; height: 100%;
-    background: var(--navy-deep);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: var(--text);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* ---- SLIDE ENGINE ---- */
-  .deck { width: 100%; height: 100%; position: relative; }
-
-  .slide {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column;
-    justify-content: center; align-items: center;
-    padding: 60px 80px;
-    opacity: 0;
-    transform: translateX(40px);
-    transition: opacity 0.5s ease, transform 0.5s ease;
-    pointer-events: none;
-    background: var(--navy-deep);
-    overflow: hidden;
-  }
-
-  .slide.active {
-    opacity: 1;
-    transform: translateX(0);
-    pointer-events: all;
-  }
-
-  .slide.exit-left {
-    opacity: 0;
-    transform: translateX(-40px);
-  }
-
-  /* ---- TYPOGRAPHY ---- */
-  .slide-label {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--coral);
-    margin-bottom: 20px;
-  }
-
-  .slide-label.blue { color: var(--blue); }
-  .slide-label.green { color: var(--green); }
-  .slide-label.amber { color: var(--amber); }
-  .slide-label.violet { color: var(--violet); }
-
-  h1 {
-    font-size: 64px;
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -2px;
-    max-width: 900px;
-    text-align: center;
-  }
-
-  h2 {
-    font-size: 48px;
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -1.5px;
-    max-width: 850px;
-  }
-
-  h3 {
-    font-size: 32px;
-    font-weight: 600;
-    line-height: 1.3;
-    letter-spacing: -0.5px;
-  }
-
-  .subtitle {
-    font-size: 22px;
-    font-weight: 400;
-    color: var(--text-dim);
-    margin-top: 16px;
-    line-height: 1.5;
-    max-width: 650px;
-    text-align: center;
-  }
-
-  .big-number {
-    font-size: clamp(56px, 12vw, 120px);
-    font-weight: 900;
-    letter-spacing: -4px;
-    line-height: 1;
-    background: linear-gradient(135deg, var(--coral) 0%, #FF6B8A 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .big-number.blue-grad {
-    background: linear-gradient(135deg, var(--blue) 0%, var(--blue-bright) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-  }
-
-  .big-number.green-grad {
-    background: linear-gradient(135deg, var(--green) 0%, #5BF08E 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-  }
-
-  .big-number.amber-grad {
-    background: linear-gradient(135deg, var(--amber) 0%, #FFE866 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-  }
-
-  .big-number.violet-grad {
-    background: linear-gradient(135deg, var(--violet) 0%, #D98EFF 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-  }
-
-  .mono {
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  /* ---- LAYOUT HELPERS ---- */
-  .content-left {
-    align-items: flex-start;
-    text-align: left;
-  }
-
-  .content-center {
-    align-items: center;
-    text-align: center;
-  }
-
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 48px;
-    width: 100%;
-    max-width: 1100px;
-    align-items: start;
-  }
-
-  .three-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 32px;
-    width: 100%;
-    max-width: 1100px;
-  }
-
-  .stack {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .stack-tight { gap: 6px; }
-  .stack-wide { gap: 24px; }
-
-  /* ---- CARDS ---- */
-  .card {
-    background: var(--navy-light);
-    border: 1px solid var(--navy-border);
-    border-radius: 12px;
-    padding: 24px;
-  }
-
-  .card-glow-coral {
-    border-color: rgba(255, 55, 95, 0.25);
-    box-shadow: 0 0 30px rgba(255, 55, 95, 0.06);
-  }
-
-  .card-glow-blue {
-    border-color: rgba(59, 130, 246, 0.25);
-    box-shadow: 0 0 30px rgba(59, 130, 246, 0.06);
-  }
-
-  .card-glow-green {
-    border-color: rgba(48, 209, 88, 0.2);
-    box-shadow: 0 0 30px rgba(48, 209, 88, 0.05);
-  }
-
-  .card-glow-amber {
-    border-color: rgba(255, 214, 10, 0.2);
-    box-shadow: 0 0 30px rgba(255, 214, 10, 0.05);
-  }
-
-  .card-glow-violet {
-    border-color: rgba(191, 90, 242, 0.2);
-    box-shadow: 0 0 30px rgba(191, 90, 242, 0.05);
-  }
-
-  /* ---- METRIC BLOCKS ---- */
-  .metric {
-    text-align: center;
-    padding: 20px 0;
-  }
-
-  .metric-value {
-    font-size: clamp(32px, 6vw, 56px);
-    font-weight: 800;
-    letter-spacing: -2px;
-    line-height: 1.1;
-  }
-
-  .metric-value.coral { color: var(--coral); }
-  .metric-value.blue { color: var(--blue-bright); }
-  .metric-value.green { color: var(--green); }
-  .metric-value.amber { color: var(--amber); }
-  .metric-value.violet { color: var(--violet); }
-
-  .metric-label {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-dim);
-    margin-top: 6px;
-    letter-spacing: 0.5px;
-  }
-
-  /* ---- LISTS ---- */
-  .insight-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .insight-list li {
-    font-size: 16px;
-    line-height: 1.5;
-    color: var(--text-dim);
-    padding-left: 20px;
-    position: relative;
-  }
-
-  .insight-list li::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 9px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--blue);
-  }
-
-  .insight-list li.coral::before { background: var(--coral); }
-  .insight-list li.green::before { background: var(--green); }
-  .insight-list li.amber::before { background: var(--amber); }
-  .insight-list li.violet::before { background: var(--violet); }
-
-  .insight-list li strong {
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  /* ---- FILE LIST ---- */
-  .file-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    padding: 8px 16px;
-    border-radius: 8px;
-    background: var(--navy);
-    border: 1px solid var(--navy-border);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-  }
-
-  .file-row .fname { color: var(--text); font-weight: 500; }
-  .file-row .flines { color: var(--text-muted); font-weight: 400; font-size: 13px; }
-  .file-row .fdesc { color: var(--text-dim); font-size: 12px; font-family: 'Inter', sans-serif; margin-left: 12px; }
-
-  /* ---- BADGE ---- */
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-  }
-
-  .badge-green { background: var(--green-dim); color: var(--green); }
-  .badge-amber { background: var(--amber-dim); color: var(--amber); }
-  .badge-coral { background: var(--coral-dim); color: var(--coral); }
-  .badge-blue { background: rgba(59, 130, 246, 0.15); color: var(--blue-bright); }
-  .badge-violet { background: var(--violet-dim); color: var(--violet); }
-
-  /* ---- TIMELINE / PROTOCOL BLOCK ---- */
-  .protocol-item {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-  }
-
-  .protocol-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    flex-shrink: 0;
-    background: var(--navy-surface);
-    border: 1px solid var(--navy-border);
-  }
-
-  .protocol-text {
-    font-size: 16px;
-    line-height: 1.5;
-    color: var(--text-dim);
-  }
-
-  .protocol-text strong {
-    color: var(--text);
-    font-weight: 600;
-    display: block;
-  }
-
-  /* ---- ACCEPTANCE TEST / STEP ITEMS ---- */
-  .act-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    border-radius: 8px;
-    background: var(--navy);
-    border: 1px solid var(--navy-border);
-    font-size: 14px;
-    color: var(--text-dim);
-  }
-
-  .act-item .act-num {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 13px;
-    color: var(--blue-bright);
-    min-width: 32px;
-  }
-
-  .act-item .act-name {
-    color: var(--text);
-    font-weight: 500;
-  }
-
-  .act-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    width: 100%;
-    max-width: 920px;
-  }
-
-  /* ---- CRASH ANIMATION ---- */
-  @keyframes glitch {
-    0%, 100% { transform: translate(0); }
-    20% { transform: translate(-2px, 1px); }
-    40% { transform: translate(2px, -1px); }
-    60% { transform: translate(-1px, 2px); }
-    80% { transform: translate(1px, -2px); }
-  }
-
-  .glitch-text {
-    animation: glitch 0.3s ease-in-out infinite;
-    animation-play-state: paused;
-  }
-
-  .slide.active .glitch-text {
-    animation-play-state: running;
-  }
-
-  @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 20px rgba(255, 55, 95, 0.1); }
-    50% { box-shadow: 0 0 40px rgba(255, 55, 95, 0.25); }
-  }
-
-  .pulse-card {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-
-  /* ---- RECURSION VIS ---- */
-  .recursion-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    align-items: center;
-  }
-
-  .recursion-line {
-    height: 3px;
-    border-radius: 2px;
-    background: var(--coral);
-    opacity: 0.6;
-  }
-
-  /* ---- NAVIGATION ---- */
-  .nav-dots {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    z-index: 100;
-  }
-
-  .nav-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--text-faint);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: none;
-    padding: 0;
-  }
-
-  .nav-dot.active {
-    background: var(--coral);
-    width: 24px;
-    border-radius: 4px;
-  }
-
-  .nav-dot:hover:not(.active) {
-    background: var(--text-muted);
-  }
-
-  .slide-counter {
-    position: fixed;
-    bottom: 24px;
-    right: 32px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-faint);
-    font-family: 'JetBrains Mono', monospace;
-    z-index: 100;
-  }
-
-  /* ---- CLICK ZONES ---- */
-  .click-prev, .click-next {
-    position: fixed;
-    top: 0;
-    bottom: 60px;
-    z-index: 50;
-    cursor: pointer;
-  }
-  .click-prev { left: 0; width: 30%; }
-  .click-next { right: 0; width: 70%; }
-
-  /* ---- DECORATIVE ---- */
-  .bg-grid {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
-    background-size: 48px 48px;
-    pointer-events: none;
-  }
-
-  .bg-glow-coral {
-    position: absolute;
-    width: 600px;
-    height: 600px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 55, 95, 0.08) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .bg-glow-blue {
-    position: absolute;
-    width: 500px;
-    height: 500px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(59, 130, 246, 0.07) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .story-link {
-    color: var(--blue-bright);
-    text-decoration: none;
-    font-weight: 600;
-    border-bottom: 1px solid rgba(96,165,250,0.4);
-  }
-  .story-link:hover { color: var(--text); }
-
-  /* ---- RESPONSIVE FINE-TUNING ---- */
-  @media (max-width: 1200px) {
-    h1 { font-size: 48px; }
-    h2 { font-size: 38px; }
-    .slide { padding: 40px 50px; }
-  }
-
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Build, Then Verify</title>
+    <script>document.documentElement.classList.add('js')</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #9a9aa8;
+            --accent: #4da3ff;
+            --accent2: #7CE38B;
+            --card: rgba(255,255,255,0.05);
+            --border: rgba(255,255,255,0.12);
+        }
+
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Core slide CSS */
+        .slide {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
+
+        .slide.active { display: flex; }
+
+        /* No-JS fallback: all slides visible, scrollable */
         html:not(.js) .slide {
             display: flex !important;
             position: relative !important;
@@ -546,494 +54,493 @@
             min-height: 100dvh;
         }
 
-        /* Progressive enhancement: JS-only slide mode */
+        /* JS-only slide mode */
         html.js { overflow: hidden; }
         html.js body { overflow: hidden; overscroll-behavior: none; }
-        html.js .deck { height: 100vh; height: 100dvh; overflow: hidden; }
         html.js .slide { display: none; }
         html.js .slide.active { display: flex; }
+        /* Fit-safe: cap to viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.5vw, 14px);
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: clamp(14px, 2.5vw, 24px);
+        }
+
+        h1, h2 { margin-bottom: clamp(16px, 2.5vw, 26px); }
+        .body { color: var(--fg); max-width: 46ch; margin-bottom: clamp(14px, 2vw, 20px); }
+        .handoff { color: var(--muted); max-width: 46ch; font-style: italic; }
+
+        .badge {
+            display: inline-block;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 6px 16px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--accent2);
+            margin-top: clamp(24px, 4vw, 40px);
+            letter-spacing: 0.04em;
+        }
+
+        /* Horizontal split */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(12px, 2vw, 20px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.5vw, 26px);
+        }
+        .stat-number {
+            font-size: clamp(28px, 5vw, 52px);
+            font-weight: 700;
+            line-height: 1;
+            color: var(--accent);
+            letter-spacing: -0.02em;
+        }
+        .stat-number.green { color: var(--accent2); }
+        .stat-label {
+            font-size: clamp(12px, 1.5vw, 15px);
+            color: var(--muted);
+            margin-top: 8px;
+            line-height: 1.35;
+        }
+
+        /* Numbered steps / rules list */
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(12px, 2vw, 18px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 20px) clamp(16px, 2.5vw, 24px);
+            display: flex;
+            gap: 16px;
+            align-items: baseline;
+        }
+        .steps .num {
+            color: var(--accent2);
+            font-weight: 700;
+            font-size: clamp(15px, 2vw, 20px);
+            flex: 0 0 auto;
+        }
+        .steps .txt { color: var(--fg); }
+        .steps .txt strong { color: var(--fg); }
+        .steps .txt span { color: var(--muted); display: block; font-size: clamp(12px, 1.5vw, 15px); margin-top: 4px; }
+
+        /* Code block */
+        .code-block {
+            background: #05050a;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(14px, 2.5vw, 24px);
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            font-size: clamp(11px, 1.5vw, 14px);
+            line-height: 1.65;
+            color: #d8d8e0;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .code-comment { color: #6b6b7a; }
+
+        /* Sources */
+        .small-text { font-size: clamp(13px, 1.7vw, 16px); }
+        .small-text ul { margin: 10px 0 10px 20px; }
+        .small-text li { margin-bottom: 7px; }
+        .small-text code {
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            background: rgba(255,255,255,0.07);
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        .small-text p { margin-bottom: 8px; }
+
+        /* Navigation dots */
+        .nav {
+            position: fixed;
+            bottom: 26px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 90;
+        }
+        .nav-dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.22);
+            cursor: pointer;
+            transition: background 0.3s, transform 0.3s;
+        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter {
+            position: fixed;
+            bottom: 24px;
+            right: 26px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
+            z-index: 90;
+        }
+
+        html:not(.js) .nav, html:not(.js) .slide-counter { display: none; }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
     </style>
 </head>
 <body>
-
 <!--
-  NARRATIVE SPINE — The Artifact Viewer: Building Blind at 1,538 Lines
-
-  ABT: AND an autonomous AI, handed an exhaustively researched spec and a proven
-       orchestrator method, wrote 1,538 lines of a working feature in ~4 hours;
-       BUT when it tried to look at its own work it fell into a 35-deep recursion
-       loop and forgot the survival protocol, so not one line was ever verified;
-       THEREFORE building blind produces code nobody can trust — the verification
-       loop, not the build, is the half we were missing.
-
-  Payoff: "Building blind" — 1,538 lines that compile but that no one, human or
-          AI, ever looked at. The code might work. Nobody knows.
-
-  Beats (proof-first; payoff lands at beat 5 of 9, before the midpoint):
-    1. proof     — Scorecard: 1,538 lines written, 0/19 verified.   advances: opens on the THEREFORE as evidence
-    2. setup     — Introduce the Artifact Viewer (the feature).      advances: names the project the deck leans on; establishes the AND
-    3. mechanism — The spec was earned pixel by pixel.               advances: AND — the prep was real, not reckless (ONE claim)
-    4. mechanism — The 1,021-line spec doubled as an acceptance test.advances: AND — it was even set up to verify itself (ONE claim)
-    5. payoff    — It wrote 1,538 lines and never looked at one.     advances: lands the THEREFORE — building blind
-    6. proof     — The method had a 440-session, 62-hour pedigree.   advances: AND — the leverage was battle-tested, sharpening the failure
-    7. tension   — The prompt carried survival protocols.            advances: BUT — sets up the safeguard that gets forgotten
-    8. turn      — The 35-deep recursion loop; handoff forgotten.    advances: the pivot AND->THEREFORE, the mechanism of blindness
-    9. takeaway  — Autonomous builds need a verification loop.        advances: what the audience keeps
-    (+ Sources & Methodology — audit trail, not a beat)
+SPINE
+ABT: AND an autonomous Amplifier workflow can turn a written spec into a working feature (the Canvas Artifact Viewer); BUT code that is written but never checked is code nobody can trust, so the build is only half the job; THEREFORE the verification loop is the missing half, and an explicit VERIFIED handoff is what turns generated code into shippable code.
+Payoff: The V3 VERIFIED handoff -- PR #297 lands with "VERIFIED - All 4 bug fixes confirmed working", 10/10 smoke and 5/5 E2E tests passing, and merges to main. The verification half is what made the feature trustworthy.
+Beats:
+  1. frame     -- Users kept leaving Canvas to open VS Code just to read files; Epic 16 brings a VS-Code-style tabbed file browser into the workspace.  advances: orients the audience on what the feature IS and the problem it solves -- the stable situation behind the AND.
+  2. proof     -- It's real and it shipped: Epic 16 in microsoft/workspaces2, owned by Chris Park, built from a written spec.  advances: establishes the AND with verified evidence inside the first three beats.
+  3. setup     -- The build is substantial: the V3 component set sums to ~1,513 lines.  advances: introduces the concrete artifact the argument leans on, so the audience knows the scale.
+  4. tension   -- Generated code nobody has checked is code nobody can trust; volume is not correctness.  advances: establishes the BUT.
+  5. mechanism -- The workflow's answer is the handoff: a written HANDOFF.md recording what was checked and whether it passed.  advances: shows HOW the missing half is closed, one claim.
+  6. turn      -- V3 didn't just build, it ran the checks: 10/10 smoke, 5/5 E2E, an API-level 403 security test, four bug fixes confirmed.  advances: the pivot from BUT to THEREFORE.
+  7. payoff    -- PR #297 lands stamped VERIFIED, merges to main via PR #329, becomes a plugin.  advances: lands the THEREFORE as the climax.
+  8. takeaway  -- Build and verify are two halves of one job; ship the handoff, not just the diff.  advances: generalizes the THEREFORE into a pattern the audience keeps.
 -->
 
-<div class="deck" id="deck">
-
-  <!-- ==================== SLIDE 1 (beat 1: proof) ==================== -->
-  <div class="slide active" data-slide="0">
-    <!-- beat 1: proof -->
-    <div class="bg-glow-coral" style="top: 50%; left: 50%; transform: translate(-50%, -50%); width: 800px; height: 800px;"></div>
-    <div class="bg-grid"></div>
-    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;">
-      <div class="slide-label">The Artifact Viewer &mdash; Building Blind</div>
-      <h1 style="font-size: 56px; max-width: 820px;">1,538 lines shipped.<br><span style="color: var(--coral);">Zero of them verified.</span></h1>
-      <div style="display: flex; gap: clamp(32px, 8vw, 80px); margin-top: 36px; margin-bottom: 40px; flex-wrap: wrap; justify-content: center;">
-        <div class="metric">
-          <div class="metric-value coral" style="font-size: clamp(56px, 12vw, 96px); font-family: 'JetBrains Mono', monospace;">0<span style="font-size: 40px; opacity: 0.5;">/19</span></div>
-          <div class="metric-label" style="font-size: 16px;">features verified</div>
-        </div>
-        <div class="metric">
-          <div class="metric-value coral" style="font-size: clamp(56px, 12vw, 96px); font-family: 'JetBrains Mono', monospace;">0<span style="font-size: 40px; opacity: 0.5;">/10</span></div>
-          <div class="metric-label" style="font-size: 16px;">acceptance acts tested</div>
-        </div>
-      </div>
-      <div style="width: 100%; max-width: 760px;">
-        <div class="three-col" style="gap: 20px;">
-          <div class="card" style="text-align: center; border-color: rgba(255,55,95,0.15);">
-            <div style="font-size: clamp(24px, 5vw, 32px); font-weight: 800; color: var(--text); font-family: 'JetBrains Mono', monospace;">1,538</div>
-            <div style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">lines written</div>
-          </div>
-          <div class="card" style="text-align: center; border-color: rgba(255,55,95,0.15);">
-            <div style="font-size: clamp(24px, 5vw, 32px); font-weight: 800; color: var(--text); font-family: 'JetBrains Mono', monospace;">~4h</div>
-            <div style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">autonomous build</div>
-          </div>
-          <div class="card" style="text-align: center; border-color: rgba(255,55,95,0.15);">
-            <div style="font-size: clamp(24px, 5vw, 32px); font-weight: 800; color: var(--coral); font-family: 'JetBrains Mono', monospace;">35+</div>
-            <div style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">recursion depth at the crash</div>
-          </div>
-        </div>
-      </div>
-      <p style="font-size: 18px; color: var(--text); line-height: 1.6; margin-top: 32px; text-align: center;">
-        The code compiles. It might even work.
-        <span style="color: var(--coral); font-weight: 600;">Nobody knows.</span> Here's how that happened.
-      </p>
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>Build, Then Verify</h1>
+        <p class="subtitle">How the Canvas Artifact Viewer earned trust</p>
     </div>
-  </div>
 
-  <!-- ==================== SLIDE 2 (beat 2: setup) ==================== -->
-  <div class="slide" data-slide="1">
-    <!-- beat 2: setup -->
-    <div class="bg-glow-blue" style="top: -150px; right: -100px;"></div>
-    <div class="bg-grid"></div>
-    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;">
-      <div class="slide-label blue">Meet the Feature</div>
-      <h2 style="text-align: center;">The Artifact Viewer was meant to be how<br><span style="color: var(--blue-bright);">non-technical users see what AI builds</span></h2>
-      <p class="subtitle" style="max-width: 600px;">
-        A file browser and preview system &mdash; the primary way users see and interact with what AI has built for them. A platform component shared across every project type.
-      </p>
-      <div style="display: flex; gap: 12px; margin-top: 36px; flex-wrap: wrap; justify-content: center; max-width: 780px;">
-        <span class="badge badge-green">File Tree with Colored Badges</span>
-        <span class="badge badge-violet">Multi-Strategy Preview</span>
-        <span class="badge badge-amber">Asset Inlining</span>
-        <span class="badge badge-blue">Version History</span>
-        <span class="badge badge-coral">Syntax Highlighting</span>
-      </div>
-      <p style="font-size: 14px; color: var(--text-muted); margin-top: 28px;">
-        This is the thing the AI built &mdash; and then couldn't see.
-      </p>
-    </div>
-  </div>
-
-  <!-- ==================== SLIDE 3 (beat 3: mechanism) ==================== -->
-  <div class="slide" data-slide="2">
-    <!-- beat 3: mechanism -->
-    <div class="bg-grid"></div>
-    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1000px;">
-      <div class="slide-label blue">Act I &mdash; Research</div>
-      <h2 style="text-align: center; margin-bottom: 12px;">The spec was earned pixel by pixel, not guessed</h2>
-      <p style="font-size: 16px; color: var(--text-dim); margin-bottom: 32px; text-align: center; max-width: 620px;">
-        Before writing a line of spec, every pixel of the prior art was studied by hand.
-      </p>
-      <div class="three-col" style="max-width: 900px;">
-        <div class="metric">
-          <div class="metric-value blue" style="font-size: clamp(40px, 8vw, 72px);">2,057</div>
-          <div class="metric-label">lines of Kepler reference code<br>analyzed line by line</div>
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Problem</div>
+            <h2>Users kept leaving Canvas to open VS Code just to read their files</h2>
+            <p class="body">Epic 16, the Artifact Viewer, brings a VS-Code-style tabbed file browser directly into the Canvas workspace &mdash; a unified viewer that "lives on the Canvas workspace... like having VS Code's tab system directly in Canvas."</p>
+            <p class="handoff">The question isn't whether it can be built. It's whether the build can be trusted.</p>
         </div>
-        <div class="metric">
-          <div class="metric-value blue" style="font-size: clamp(40px, 8vw, 72px);">25</div>
-          <div class="metric-label">desktop screenshots<br>studied for every detail</div>
-        </div>
-        <div class="metric">
-          <div class="metric-value blue" style="font-size: clamp(40px, 8vw, 72px);">11</div>
-          <div class="metric-label">interactive HTML mockups<br>built to validate assumptions</div>
-        </div>
-      </div>
-      <p style="font-size: 17px; color: var(--text-dim); margin-top: 24px; text-align: center;">
-        The payoff: <strong style="color: var(--blue-bright);">12 UX insights</strong> discovered that were <strong style="color: var(--text);">not in the original spec</strong> &mdash; flat file lists, invisible resize handles, iOS-style viewport selectors, colored file badges, inlined CSS/JS for preview.
-      </p>
-    </div>
-  </div>
-
-  <!-- ==================== SLIDE 4 (beat 4: mechanism) ==================== -->
-  <div class="slide" data-slide="3">
-    <!-- beat 4: mechanism -->
-    <div class="bg-grid"></div>
-    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%;">
-      <div class="slide-label amber">Act II &mdash; Specification</div>
-      <h2 style="text-align: center; margin-bottom: 10px;">The 1,021-line spec doubled as its own 10-act acceptance test</h2>
-      <p style="font-size: 16px; color: var(--text-dim); margin-bottom: 28px; text-align: center; max-width: 640px;">
-        21 sections, 9 preview strategies &mdash; and a complete user story, <span style="color: var(--text);">"Building a Portfolio Website,"</span> that was both specification and verification in one.
-      </p>
-      <div class="act-grid">
-        <div class="act-item"><span class="act-num" style="color: var(--amber);">01</span><span class="act-name">Project Setup</span></div>
-        <div class="act-item"><span class="act-num" style="color: var(--amber);">02</span><span class="act-name">Initial File Creation</span></div>
-        <div class="act-item"><span class="act-num" style="color: var(--amber);">2.5</span><span class="act-name">Multi-File Navigation</span></div>
-        <div class="act-item"><span class="act-num" style="color: var(--amber);">03</span><span class="act-name">Preview Testing</span></div>
-        <div class="act-item"><span class="act-num" style="color: var(--amber);">04</span><span class="act-name">Iteration &amp; Versions</span></div>
-        <div class="act-item"><span class="act-num" style="color: var(--amber);">05</span><span class="act-name">Adding Images</span></div>
-        <div class="act-item"><span class="act-num" style="color: var(--amber);">06</span><span class="act-name">Cross-Project Reference</span></div>
-        <div class="act-item"><span class="act-num" style="color: var(--amber);">07</span><span class="act-name">Project Snapshot</span></div>
-        <div class="act-item"><span class="act-num" style="color: var(--amber);">08</span><span class="act-name">Error Handling</span></div>
-        <div class="act-item"><span class="act-num" style="color: var(--amber);">09</span><span class="act-name">Exit &amp; Resume</span></div>
-      </div>
-      <p style="font-size: 14px; color: var(--text-muted); margin-top: 22px; font-style: italic; text-align: center;">
-        The most ambitious acceptance test we'd ever written &mdash; designed to be run. It never was.
-      </p>
-    </div>
-  </div>
-
-  <!-- ==================== SLIDE 5 (beat 5: payoff) ==================== -->
-  <div class="slide" data-slide="4">
-    <!-- beat 5: payoff -->
-    <div class="bg-glow-coral" style="top: -100px; left: 50%; transform: translateX(-50%);"></div>
-    <div class="bg-grid"></div>
-    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%;">
-      <div class="slide-label">The Payoff &mdash; Building Blind</div>
-      <h2 style="text-align: center; margin-bottom: 8px;">It wrote 1,538 lines across 10 files &mdash; and never looked at one</h2>
-      <div class="big-number violet-grad" style="margin-top: 16px;">1,538</div>
-      <p style="font-size: 15px; color: var(--text-dim); margin-top: 4px;">lines of React, ~4 hours of autonomous work, all unseen</p>
-
-      <div style="width: 100%; max-width: 700px; margin-top: 28px;">
-        <div class="stack" style="gap: 6px;">
-          <div class="file-row">
-            <span class="fname">ArtifactViewer.tsx</span>
-            <span class="flines" style="color: var(--violet);">617 lines</span>
-            <span class="fdesc">Main popup shell</span>
-          </div>
-          <div class="file-row">
-            <span class="fname">useArtifactStore.ts</span>
-            <span class="flines" style="color: var(--violet);">462 lines</span>
-            <span class="fdesc">Zustand state management</span>
-          </div>
-          <div class="file-row">
-            <span class="fname">CodeView.tsx</span>
-            <span class="flines" style="color: var(--blue-bright);">272 lines</span>
-            <span class="fdesc">PrismJS syntax highlighting</span>
-          </div>
-          <div class="file-row">
-            <span class="fname">PreviewView.tsx</span>
-            <span class="flines" style="color: var(--blue-bright);">255 lines</span>
-            <span class="fdesc">Multi-strategy preview + iframe srcdoc</span>
-          </div>
-          <div class="file-row" style="opacity: 0.7;">
-            <span class="fname">+ 6 more files</span>
-            <span class="flines">~530 lines</span>
-            <span class="fdesc">FileList, detection, versions, viewport, types</span>
-          </div>
-        </div>
-      </div>
-      <p style="font-size: 17px; color: var(--text); margin-top: 26px; text-align: center;">
-        Code that compiles is not code that works. <span style="color: var(--coral); font-weight: 600;">Building blind produced output of unknown quality.</span>
-      </p>
-    </div>
-  </div>
-
-  <!-- ==================== SLIDE 6 (beat 6: proof) ==================== -->
-  <div class="slide" data-slide="5">
-    <!-- beat 6: proof -->
-    <div class="bg-grid"></div>
-    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1000px;">
-      <div class="slide-label green">Act III &mdash; The Blueprint</div>
-      <h2 style="text-align: center; margin-bottom: 10px;">This came from a method with a 440-session, 62-hour pedigree</h2>
-      <p style="font-size: 16px; color: var(--text-dim); margin-bottom: 28px; text-align: center; max-width: 640px;">
-        "The Proven Approach" was no gamble &mdash; it was modeled on a legendary prior autonomous session.
-      </p>
-      <div class="three-col" style="max-width: 760px; margin-bottom: 24px;">
-        <div class="metric" style="padding: 8px 0;">
-          <div class="metric-value green" style="font-size: clamp(32px, 6vw, 48px);">440</div>
-          <div class="metric-label">delegated sub-sessions</div>
-        </div>
-        <div class="metric" style="padding: 8px 0;">
-          <div class="metric-value green" style="font-size: clamp(32px, 6vw, 48px);">147</div>
-          <div class="metric-label">commits</div>
-        </div>
-        <div class="metric" style="padding: 8px 0;">
-          <div class="metric-value green" style="font-size: clamp(32px, 6vw, 48px);">22h</div>
-          <div class="metric-label">active time (62h wall-clock)</div>
-        </div>
-      </div>
-      <div class="card card-glow-green" style="max-width: 720px; text-align: center;">
-        <p style="font-size: 15px; color: var(--text-dim); line-height: 1.6;">
-          <strong style="color: var(--green);">The orchestrator pattern:</strong> the main session <strong style="color: var(--text);">delegates and never touches code directly</strong>. Worker agents implement, test, and report back &mdash; driven by a 528-line implementation prompt covering 19 features.
-        </p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== SLIDE 7 (beat 7: tension) ==================== -->
-  <div class="slide" data-slide="6">
-    <!-- beat 7: tension -->
-    <div class="bg-grid"></div>
-    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 820px;">
-      <div class="slide-label green">Act III &mdash; Safeguards</div>
-      <h2 style="text-align: center; margin-bottom: 12px;">The prompt even carried survival protocols to keep it alive</h2>
-      <p style="font-size: 16px; color: var(--text-dim); margin-bottom: 32px; text-align: center;">
-        Built into the 528-line prompt &mdash; instructions for staying alive across context windows.
-      </p>
-      <div class="stack stack-wide" style="width: 100%;">
-        <div class="protocol-item">
-          <div class="protocol-icon" style="background: var(--green-dim); border-color: rgba(48,209,88,0.2);"><span>&#128196;</span></div>
-          <div class="protocol-text">
-            <strong>Create SESSION-HANDOFF.md</strong>
-            External memory file &mdash; the AI's lifeline across context compactions
-          </div>
-        </div>
-        <div class="protocol-item">
-          <div class="protocol-icon" style="background: var(--green-dim); border-color: rgba(48,209,88,0.2);"><span>&#128260;</span></div>
-          <div class="protocol-text">
-            <strong>Update it after each feature, and read it on compaction to resume</strong>
-            Track what's done and what state the code is in &mdash; never start from scratch, always pick up where you left off
-          </div>
-        </div>
-        <div class="protocol-item">
-          <div class="protocol-icon" style="background: var(--amber-dim); border-color: rgba(255,214,10,0.2);"><span>&#9888;&#65039;</span></div>
-          <div class="protocol-text">
-            <strong>Don't stop until the 10-Act test passes</strong>
-            The acceptance test is both the goal and the finish line
-          </div>
-        </div>
-      </div>
-      <div class="card card-glow-amber" style="margin-top: 28px; text-align: center; width: 100%;">
-        <p style="font-size: 15px; color: var(--amber);">Remember these protocols. In the next four hours, every one of them is forgotten.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== SLIDE 8 (beat 8: turn) ==================== -->
-  <div class="slide" data-slide="7">
-    <!-- beat 8: turn -->
-    <div class="bg-glow-coral" style="top: -100px; left: 50%; transform: translateX(-50%);"></div>
-    <div class="bg-grid"></div>
-    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 940px;">
-      <div class="slide-label">Act V &mdash; The Crash</div>
-      <h2 class="glitch-text" style="text-align: center; margin-bottom: 36px;">Then it tried to watch itself work &mdash; and fell 35 levels deep</h2>
-      <div class="two-col" style="gap: 40px;">
-        <div>
-          <div class="card card-glow-coral pulse-card">
-            <h3 style="font-size: 18px; color: var(--coral); margin-bottom: 12px;">The Recursion Loop</h3>
-            <p style="font-size: 15px; color: var(--text-dim); line-height: 1.6;">
-              The AI reached for <span class="mono" style="color: var(--text); font-size: 14px;">browser-operator</span> to visually verify its own work &mdash; and got stuck in a <strong style="color: var(--coral);">35+ nested recursion loop</strong>: spawning sub-agents to look at the browser, which spawned sub-agents to look at the browser, which spawned&hellip;
-            </p>
-            <div class="recursion-stack" style="margin-top: 16px;">
-              <div class="recursion-line" style="width: 100%;"></div>
-              <div class="recursion-line" style="width: 90%;"></div>
-              <div class="recursion-line" style="width: 80%;"></div>
-              <div class="recursion-line" style="width: 70%;"></div>
-              <div class="recursion-line" style="width: 60%;"></div>
-              <div class="recursion-line" style="width: 50%;"></div>
-              <div class="recursion-line" style="width: 40%;"></div>
-              <div class="recursion-line" style="width: 30%; opacity: 0.4;"></div>
-              <div class="recursion-line" style="width: 20%; opacity: 0.3;"></div>
-              <div class="recursion-line" style="width: 12%; opacity: 0.2;"></div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">Epic 16</div>
+                    <div class="stat-label">Artifact Viewer, in microsoft/workspaces2</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">444</div>
+                    <div class="stat-label">Lines in the epic spec (16-artifact-viewer.md)</div>
+                </div>
             </div>
-            <p class="mono" style="font-size: 12px; color: var(--coral); text-align: center; margin-top: 8px; opacity: 0.7;">depth: 35+ and counting...</p>
-          </div>
         </div>
-        <div class="stack stack-wide">
-          <div class="card" style="border-color: rgba(255,55,95,0.15);">
-            <h3 style="font-size: 16px; color: var(--coral); margin-bottom: 8px;">The Forgotten Protocol</h3>
-            <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">
-              <span class="mono" style="color: var(--text); font-size: 13px;">SESSION-HANDOFF.md</span> was <strong style="color: var(--coral);">never updated</strong>. The survival protocol &mdash; the AI's external memory across compactions &mdash; was the first thing it forgot.
-            </p>
-          </div>
-          <div class="card" style="border-color: rgba(255,55,95,0.15);">
-            <h3 style="font-size: 16px; color: var(--coral); margin-bottom: 8px;">The Blind Builder</h3>
-            <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">
-              1,538 lines that compile &mdash; but nobody, human or AI, had verified they actually <em>work</em>. That is why the scorecard reads 0/19.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- ==================== SLIDE 9 (beat 9: takeaway) ==================== -->
-  <div class="slide" data-slide="8">
-    <!-- beat 9: takeaway -->
-    <div class="bg-grid"></div>
-    <div class="bg-glow-blue" style="top: -200px; left: 50%; transform: translateX(-50%);"></div>
-    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 900px;">
-      <div class="slide-label blue">What the Crash Taught Us</div>
-      <h2 style="text-align: center; margin-bottom: 32px;">Autonomous builds need a verification loop &mdash; the build is only half the job</h2>
-      <div class="stack stack-wide" style="width: 100%; max-width: 800px;">
-        <div class="protocol-item">
-          <div class="protocol-icon" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.25);"><span>&#128065;</span></div>
-          <div class="protocol-text">
-            <strong>Building blind produces output of unknown quality</strong>
-            The build step is only half the job; without a verification loop, "done" means nothing.
-          </div>
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">It's Real</div>
+            <h2>It shipped: Epic 16 in microsoft/workspaces2, owned by Chris Park</h2>
+            <p class="body">The Canvas Artifact Viewer was built from a written spec via Amplifier's autonomous workflow. The repo &mdash; "Workspaces x Canvas" &mdash; is real, the epic is real, the owner is named.</p>
+            <p class="handoff">A working feature exists. Now: how big is what the workflow generated?</p>
         </div>
-        <div class="protocol-item">
-          <div class="protocol-icon" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.25);"><span>&#129504;</span></div>
-          <div class="protocol-text">
-            <strong>External memory only works if you use it</strong>
-            SESSION-HANDOFF.md was the survival protocol. The AI forgot it first. Memory requires discipline.
-          </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number green">Chris Park</div>
+                    <div class="stat-label">Epic 16 owner (gh handle cpark4x)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">2025-11-14</div>
+                    <div class="stat-label">Repo "Workspaces x Canvas" created</div>
+                </div>
+            </div>
         </div>
-        <div class="protocol-item">
-          <div class="protocol-icon" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.25);"><span>&#127916;</span></div>
-          <div class="protocol-text">
-            <strong>The 10-Act test is a powerful spec technique</strong>
-            Specification and verification in one artifact &mdash; a user story that doubles as acceptance criteria.
-          </div>
-        </div>
-      </div>
-      <div class="card" style="margin-top: 28px; border-color: rgba(48,209,88,0.25); text-align: center; max-width: 720px;">
-        <p style="font-size: 16px; color: var(--text-dim); line-height: 1.6;">
-          This crash directly inspired <strong style="color: var(--green);">amplifier-bundle-ui-vision</strong> &mdash; AI building visual-testing tools for itself, born from the necessity of never building blind again.
-        </p>
-      </div>
     </div>
-  </div>
 
-  <!-- ==================== SLIDE 10: SOURCES & METHODOLOGY ==================== -->
-  <div class="slide" data-slide="9">
-    <div class="bg-grid"></div>
-    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 940px;">
-      <div class="slide-label blue">Sources &amp; Methodology</div>
-      <h2 style="text-align: center; margin-bottom: 12px;">Every number here traces to a build artifact</h2>
-      <p style="font-size: 15px; color: var(--text-dim); margin-bottom: 28px; text-align: center; max-width: 660px;">
-        Metrics are drawn from the specification, the implementation prompt, the git history of the ~4-hour autonomous run, and the session's handoff bridges &mdash; no estimates.
-      </p>
-      <div class="two-col" style="gap: 24px;">
-        <div class="stack" style="gap: 8px;">
-          <div class="file-row"><span class="fname">CANVAS-ARTIFACT-VIEWER-SPEC.md</span><span class="fdesc">1,021-line spec &middot; 21 sections &middot; 9 preview strategies</span></div>
-          <div class="file-row"><span class="fname">528-line implementation prompt</span><span class="fdesc">19 features &middot; orchestrator + survival protocols</span></div>
-          <div class="file-row"><span class="fname">10-Act Acceptance Test</span><span class="fdesc">"Building a Portfolio Website" user story</span></div>
-          <div class="file-row"><span class="fname">frontend/src/components/ArtifactViewer/</span><span class="fdesc">1,538 lines across 10 files (git history)</span></div>
+    <div class="slide split">
+        <!-- beat 3: setup -->
+        <div class="col-main">
+            <div class="section-label">The Build</div>
+            <h2>The build is substantial &mdash; the V3 component set sums to ~1,513 lines</h2>
+            <p class="body">The V3 handoff review lists four core files: TabsPane, ProjectPicker, WorkspaceFileBrowser, and the project MCP server. That's real generated code at real scale.</p>
+            <p class="handoff">But scale is not the same as correctness. Volume alone earns no trust.</p>
         </div>
-        <div class="stack" style="gap: 8px;">
-          <div class="file-row"><span class="fname">SESSION-HANDOFF.md</span><span class="fdesc">Survival protocol &mdash; never updated</span></div>
-          <div class="file-row"><span class="fname">VISUAL-TESTING-HANDOFF.md</span><span class="fdesc">Bridge to the verification chapter</span></div>
-          <div class="file-row"><span class="fname">Kepler reference build</span><span class="fdesc">2,057 lines &middot; 25 screenshots &middot; 11 mockups</span></div>
-          <div class="file-row"><span class="fname">amplifier-bundle-ui-vision</span><span class="fdesc">Born from this crash</span></div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">775</div>
+                    <div class="stat-label">TabsPane.tsx</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">312</div>
+                    <div class="stat-label">WorkspaceFileBrowser.tsx</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">238</div>
+                    <div class="stat-label">ProjectPicker.tsx</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">188</div>
+                    <div class="stat-label">projectMcpServer.ts</div>
+                </div>
+            </div>
         </div>
-      </div>
-      <p style="font-size: 14px; color: var(--text-muted); margin-top: 26px; text-align: center;">
-        Canvas &middot; Amplifier Project &middot; February 2026 &nbsp;|&nbsp;
-        <a class="story-link" href="./index.html">More Amplifier Stories</a>
-      </p>
     </div>
-  </div>
 
-</div>
+    <div class="slide center">
+        <!-- beat 4: tension -->
+        <div class="section-label">The Complication</div>
+        <h2>Generated code that nobody has checked is code nobody can trust</h2>
+        <p class="body">Volume is not the same as correctness. A feature that looks finished &mdash; that compiles and renders &mdash; is only half done. The other half is proving it actually works.</p>
+        <p class="handoff">So the workflow needs an answer: how does the build carry proof forward?</p>
+    </div>
 
-<!-- NAVIGATION -->
-<div class="nav-dots" id="navDots"></div>
-<div class="slide-counter" id="slideCounter"></div>
-<div class="click-prev" id="clickPrev"></div>
-<div class="click-next" id="clickNext"></div>
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Mechanism</div>
+            <h2>The workflow's answer is the handoff</h2>
+            <p class="body">A written HANDOFF.md records exactly what was checked and whether it passed. It's the artifact that carries verification forward instead of leaving "does it work?" as an open question.</p>
+            <p class="handoff">And for V3, that handoff had something to report.</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># docs/ai_working/artifact_viewer/HANDOFF.md</span>
+Status: VERIFIED
+All 4 bug fixes confirmed working
 
-<script>
-  const deck = document.getElementById('deck');
-  const slides = deck.querySelectorAll('.slide');
-  const navDotsEl = document.getElementById('navDots');
-  const counterEl = document.getElementById('slideCounter');
-  const total = slides.length;
-  let current = 0;
-  let transitioning = false;
+<span class="code-comment"># the handoff records what was</span>
+<span class="code-comment"># checked, and whether it passed</span></div>
+        </div>
+    </div>
 
-  // Build nav dots
-  for (let i = 0; i < total; i++) {
-    const dot = document.createElement('button');
-    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
-    dot.addEventListener('click', () => goTo(i));
-    navDotsEl.appendChild(dot);
-  }
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">The Turn</div>
+            <h2>V3 didn't just build &mdash; it ran the checks</h2>
+            <p class="body">Smoke tests, end-to-end tests, and an API-level security check all passed, and four bug fixes were confirmed. This is the build passing through the verification loop instead of stopping at "it compiles."</p>
+            <p class="handoff">That passing loop is what turns a diff into something shippable.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number green">10/10</div>
+                    <div class="stat-label">Smoke tests pass</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number green">5/5</div>
+                    <div class="stat-label">E2E artifact viewer tests pass</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">403</div>
+                    <div class="stat-label">API-level security test</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">4</div>
+                    <div class="stat-label">Bug fixes confirmed working</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  function updateCounter() {
-    counterEl.textContent = `${current + 1} / ${total}`;
-  }
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>PR #297 lands stamped VERIFIED &mdash; and merges to main</h2>
+            <p class="body">"Epic 16 Artifact Viewer V3 with verified bug fixes" merged on 2026-01-31. Epic 16 went into main via PR #329 (2026-02-03) and was later refactored into a plugin. The verified half is what made it shippable.</p>
+            <p class="handoff">So what's the lesson to carry out of the room?</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number green">#297</div>
+                    <div class="stat-label">"V3 with verified bug fixes" &mdash; merged 2026-01-31</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">#329</div>
+                    <div class="stat-label">Epic 13 + Epic 16 merged to main, 2026-02-03</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">#338</div>
+                    <div class="stat-label">Refactored into a plugin, 2026-02-06</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  function updateDots() {
-    navDotsEl.querySelectorAll('.nav-dot').forEach((d, i) => {
-      d.className = 'nav-dot' + (i === current ? ' active' : '');
-    });
-  }
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Takeaway</div>
+        <h2>Build and verify are two halves of one job</h2>
+        <p class="body">Ship the handoff, not just the diff. An autonomous workflow can generate a working feature &mdash; but the verification loop is what converts generated code into trusted, merged code. The missing half is non-optional.</p>
+        <span class="badge">Feature status: Shipped &amp; iterated</span>
+    </div>
 
-  function goTo(n) {
-    if (n === current || n < 0 || n >= total || transitioning) return;
-    transitioning = true;
-    const prev = slides[current];
-    const next = slides[n];
-    const direction = n > current ? 1 : -1;
+    <!-- Sources & Methodology (no beat comment) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="small-text" style="opacity:0.85;line-height:1.6;">
+            <p><strong>Data as of:</strong> February 13, 2026 (independently re-checked in a fresh session via live gh/git/grep against microsoft/workspaces2).</p>
+            <p><strong>Feature status:</strong> Shipped and iterated &mdash; V3 merged (PR #297), merged to main (PR #329), refactored into a plugin (PR #338).</p>
+            <p><strong>Research performed:</strong></p>
+            <ul>
+                <li>Epic spec: <code>gh api repos/microsoft/workspaces2/contents/docs/02-requirements/epics/16-artifact-viewer.md</code> (Owner: Chris Park; 444 lines)</li>
+                <li>Repo identity: <code>gh repo view microsoft/workspaces2 --json description,createdAt,pushedAt</code> ("Workspaces x Canvas", created 2025-11-14)</li>
+                <li>V3 verification: <code>gh pr view 297 --repo microsoft/workspaces2</code> + <code>gh api .../HANDOFF.md</code> (merged 2026-01-31 by cpark4x; VERIFIED)</li>
+                <li>Component line counts: <code>gh api .../docs/ai_working/artifact_viewer/HANDOFF.md</code> (TabsPane 775, ProjectPicker 238, WorkspaceFileBrowser 312, projectMcpServer 188 = 1,513)</li>
+                <li>Merge to main: <code>gh api repos/microsoft/workspaces2/commits/bb1b277b62</code> (PR #329, 2026-02-03) and <code>gh pr view 338</code> (plugin refactor, 2026-02-06)</li>
+                <li>Owner identity: <code>gh api users/cpark4x</code> (name "Chris Park")</li>
+            </ul>
+            <p><strong>Gaps:</strong> The "built blind at 1,538 lines," a 1,021-line CANVAS-ARTIFACT-VIEWER-SPEC.md, a 528-line prompt with 19 features, a 35-deep recursion loop, and a forgotten SESSION-HANDOFF.md could NOT be traced to any surviving file or commit and are treated as unverified. The nearest verifiable analogue is the V3 component set summing to 1,513 lines, which was VERIFIED rather than unverified. The named repo bkrabach/claude-trace-viewer is an unrelated claude-trace log viewer and contains no Artifact Viewer.</p>
+            <p><strong>Primary contributor:</strong> Chris Park (cpark4x) &mdash; Epic 16 owner; authored/merged PR #297 and PR #329.</p>
+        </div>
+    </div>
 
-    prev.classList.remove('active');
-    prev.classList.add(direction > 0 ? 'exit-left' : '');
-    prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
-    prev.style.opacity = '0';
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
 
-    next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
-    next.style.opacity = '0';
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
-    requestAnimationFrame(() => {
-      next.classList.add('active');
-      next.style.transform = '';
-      next.style.opacity = '';
-    });
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-    current = n;
-    updateCounter();
-    updateDots();
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
 
-    setTimeout(() => {
-      prev.classList.remove('exit-left');
-      prev.style.transform = '';
-      prev.style.opacity = '';
-      transitioning = false;
-    }, 500);
-  }
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
 
-  function next() { goTo(current + 1); }
-  function prev() { goTo(current - 1); }
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
 
-  // Keyboard navigation
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
-    if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
-    if (e.key === 'Home') { e.preventDefault(); goTo(0); }
-    if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
-  });
+            void next.offsetWidth;
 
-  // Click navigation
-  document.getElementById('clickPrev').addEventListener('click', prev);
-  document.getElementById('clickNext').addEventListener('click', next);
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
 
-  // Touch navigation
-  let touchStartX = 0;
-  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
-  document.addEventListener('touchend', (e) => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
-  });
+            current = n;
+            updateNav();
 
-  updateCounter();
-</script>
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
+        }
 
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
+        });
+
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
 </body>
 </html>

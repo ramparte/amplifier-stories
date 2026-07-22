@@ -1,1120 +1,615 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>amplifier-module-auto-title — Terminal Clarity</title>
-<script>document.documentElement.classList.add('js')</script>
-<style>
-  :root {
-    --accent: #FF2D55;
-    --accent-dim: rgba(255, 45, 85, 0.15);
-    --accent-glow: rgba(255, 45, 85, 0.35);
-    --bg: #000000;
-    --surface-1: #0d0d0d;
-    --surface-2: #1a1a1a;
-    --surface-3: #242424;
-    --surface-4: #2e2e2e;
-    --text-primary: rgba(255,255,255,0.95);
-    --text-secondary: rgba(255,255,255,0.72);
-    --text-tertiary: rgba(255,255,255,0.45);
-    --green: #30D158;
-    --blue: #0A84FF;
-    --yellow: #FFD60A;
-    --purple: #BF5AF2;
-    --teal: #5AC8FA;
-    --orange: #FF9F0A;
-    --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Cascadia Code', 'Consolas', monospace;
-    --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
-  }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Name Every Tab</title>
+    <script>document.documentElement.classList.add('js')</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #0a0a0f;
+            --bg2: #12121c;
+            --fg: #f4f4f8;
+            --muted: #a0a0b4;
+            --accent: #6ee7b7;
+            --accent2: #7dd3fc;
+            --line: rgba(255,255,255,0.10);
+            --card: rgba(255,255,255,0.045);
+        }
 
-  html, body {
-    width: 100%; height: 100%;
-    background: var(--bg);
-    color: var(--text-primary);
-    font-family: var(--font-sans);
-    overflow: hidden;
-    -webkit-font-smoothing: antialiased;
-  }
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
 
-  /* ── Deck container ── */
-  .deck {
-    width: 100vw; height: 100vh;
-    position: relative;
-    overflow: hidden;
-  }
+        .slide {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            justify-content: flex-start;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background:
+                radial-gradient(1200px 600px at 80% -10%, rgba(125,211,252,0.08), transparent 60%),
+                radial-gradient(900px 500px at 0% 110%, rgba(110,231,183,0.07), transparent 60%),
+                var(--bg);
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
 
-  /* ── Slides ── */
-  .slide {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column;
-    justify-content: center; align-items: center;
-    padding: clamp(32px, 5vw, 72px) clamp(40px, 7vw, 120px);
-    opacity: 0;
-    transform: translateX(60px);
-    transition: opacity 0.45s cubic-bezier(.4,0,.2,1), transform 0.45s cubic-bezier(.4,0,.2,1);
-    pointer-events: none;
-  }
-  .slide.active {
-    opacity: 1; transform: translateX(0);
-    pointer-events: all;
-  }
-  .slide.exit {
-    opacity: 0; transform: translateX(-60px);
-  }
+        .slide.active { display: flex; }
 
-  /* ── Typography ── */
-  .eyebrow {
-    font-size: clamp(11px, 1.2vw, 14px);
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 16px;
-  }
-  .headline {
-    font-size: clamp(32px, 5.5vw, 72px);
-    font-weight: 700;
-    line-height: 1.08;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
-    margin-bottom: 20px;
-  }
-  .subhead {
-    font-size: clamp(15px, 1.8vw, 22px);
-    font-weight: 400;
-    line-height: 1.55;
-    color: var(--text-secondary);
-    max-width: 760px;
-  }
-  .accent-word { color: var(--accent); }
-  .green-word { color: var(--green); }
-  .blue-word { color: var(--blue); }
-  .yellow-word { color: var(--yellow); }
-  .purple-word { color: var(--purple); }
+        /* No-JS fallback: all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
 
-  /* ── Layout helpers ── */
-  .full-width { width: 100%; max-width: 1200px; }
-  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; width: 100%; max-width: 1200px; }
-  .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; width: 100%; max-width: 1200px; }
-  .cols-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; max-width: 1200px; }
-  .center { text-align: center; align-items: center; }
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
 
-  /* ── Cards ── */
-  .card {
-    background: var(--surface-2);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 16px;
-    padding: 24px;
-  }
-  .card-accent {
-    border-top: 2px solid var(--accent);
-  }
-  .card-green { border-top: 2px solid var(--green); }
-  .card-blue  { border-top: 2px solid var(--blue); }
-  .card-yellow{ border-top: 2px solid var(--yellow); }
-  .card-purple{ border-top: 2px solid var(--purple); }
-  .card-teal  { border-top: 2px solid var(--teal); }
-  .card-orange{ border-top: 2px solid var(--orange); }
-  .card h3 {
-    font-size: clamp(13px, 1.4vw, 17px);
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: var(--text-primary);
-  }
-  .card p, .card li {
-    font-size: clamp(12px, 1.2vw, 15px);
-    color: var(--text-secondary);
-    line-height: 1.6;
-  }
-  .card ul { padding-left: 18px; }
-  .card li { margin-bottom: 4px; }
+        /* Fit-safe: cap slides to the viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
 
-  /* ── Terminal mockup ── */
-  .terminal {
-    background: #0d1117;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
-    overflow: hidden;
-    font-family: var(--font-mono);
-    width: 100%;
-  }
-  .terminal-bar {
-    background: #1c1c1e;
-    padding: 10px 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-  }
-  .terminal-dot {
-    width: 12px; height: 12px;
-    border-radius: 50%;
-  }
-  .terminal-dot.red    { background: #FF5F57; }
-  .terminal-dot.yellow { background: #FFBD2E; }
-  .terminal-dot.green  { background: #27C93F; }
-  .terminal-tabs {
-    margin-left: 12px;
-    display: flex;
-    gap: 4px;
-    flex: 1;
-    overflow: hidden;
-  }
-  .terminal-tab {
-    padding: 4px 12px;
-    border-radius: 6px 6px 0 0;
-    font-size: 12px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
-  }
-  .terminal-tab.dull {
-    background: rgba(255,255,255,0.05);
-    color: rgba(255,255,255,0.45);
-  }
-  .terminal-tab.bright {
-    background: rgba(255, 45, 85, 0.15);
-    color: var(--accent);
-    border: 1px solid rgba(255, 45, 85, 0.3);
-  }
-  .terminal-tab.alt-1 {
-    background: rgba(48, 209, 88, 0.12);
-    color: var(--green);
-    border: 1px solid rgba(48, 209, 88, 0.25);
-  }
-  .terminal-tab.alt-2 {
-    background: rgba(10, 132, 255, 0.12);
-    color: var(--blue);
-    border: 1px solid rgba(10, 132, 255, 0.25);
-  }
-  .terminal-body {
-    padding: 18px 20px;
-    min-height: 80px;
-  }
-  .terminal-line {
-    font-size: clamp(11px, 1.1vw, 13px);
-    line-height: 1.8;
-    color: rgba(255,255,255,0.75);
-  }
-  .terminal-prompt { color: var(--accent); }
-  .terminal-cmd { color: rgba(255,255,255,0.85); }
-  .terminal-comment { color: rgba(255,255,255,0.35); }
-  .terminal-output { color: var(--green); }
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
 
-  /* ── Code block ── */
-  .code-block {
-    background: #0d1117;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-left: 3px solid var(--accent);
-    border-radius: 12px;
-    padding: 20px 24px;
-    font-family: var(--font-mono);
-    font-size: clamp(11px, 1.15vw, 14px);
-    line-height: 1.75;
-    color: rgba(255,255,255,0.82);
-    width: 100%;
-    overflow-x: auto;
-    white-space: pre;
-  }
-  .code-block .kw   { color: #FF7AB2; }   /* keywords */
-  .code-block .str  { color: #FC6A5D; }   /* strings / escape */
-  .code-block .fn   { color: #41A1C0; }   /* functions */
-  .code-block .var  { color: #FFA14F; }   /* variables */
-  .code-block .cmt  { color: rgba(255,255,255,0.32); } /* comments */
-  .code-block .hl   { color: var(--green); } /* highlighted / output */
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); }
 
-  /* ── Step list ── */
-  .step-list { width: 100%; max-width: 920px; }
-  .step {
-    display: flex;
-    align-items: flex-start;
-    gap: 20px;
-    padding: 18px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
-  }
-  .step:last-child { border-bottom: none; }
-  .step-num {
-    width: 36px; height: 36px;
-    min-width: 36px;
-    border-radius: 50%;
-    background: var(--accent-dim);
-    border: 1px solid var(--accent-glow);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 700;
-    color: var(--accent);
-    margin-top: 2px;
-  }
-  .step-content h4 {
-    font-size: clamp(14px, 1.5vw, 17px);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-  }
-  .step-content p {
-    font-size: clamp(12px, 1.2vw, 14px);
-    color: var(--text-secondary);
-    line-height: 1.6;
-  }
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.5vw, 14px);
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: clamp(14px, 2vw, 22px);
+        }
 
-  /* ── Tag pill ── */
-  .tag {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 12px;
-    border-radius: 100px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-  }
-  .tag-active   { background: rgba(48,209,88,0.15);  color: var(--green);  border: 1px solid rgba(48,209,88,0.3); }
-  .tag-module   { background: rgba(255,45,85,0.12);   color: var(--accent); border: 1px solid rgba(255,45,85,0.25); }
-  .tag-mit      { background: rgba(255,255,255,0.06); color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.12); }
+        h1 .grad, h2 .grad, .grad {
+            background: linear-gradient(100deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-  /* ── Verb list ── */
-  .verb-rows {
-    width: 100%; max-width: 900px;
-    display: flex; flex-direction: column;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px;
-    overflow: hidden;
-  }
-  .verb-row {
-    display: grid;
-    grid-template-columns: 130px 1fr;
-    gap: 20px;
-    padding: 14px 22px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    align-items: baseline;
-  }
-  .verb-row:last-child { border-bottom: none; }
-  .verb-row .vlabel {
-    font-family: var(--font-mono);
-    font-size: clamp(13px, 1.3vw, 16px);
-    font-weight: 700;
-  }
-  .verb-row .vdesc {
-    font-size: clamp(12px, 1.2vw, 15px);
-    color: var(--text-secondary);
-    line-height: 1.5;
-  }
+        .body {
+            color: var(--fg);
+            max-width: 40ch;
+            margin-top: clamp(16px, 2.5vw, 26px);
+        }
+        .body.dim { color: var(--muted); }
 
-  /* ── Rule rows (do / don't) ── */
-  .rule-group {
-    width: 100%; max-width: 960px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
-  }
-  .rule-col h3 {
-    font-size: clamp(13px, 1.3vw, 16px);
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
-  .rule-col.do h3   { color: var(--green); }
-  .rule-col.dont h3 { color: var(--accent); }
-  .rule-item {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    font-size: clamp(12px, 1.2vw, 15px);
-    color: var(--text-secondary);
-    line-height: 1.5;
-  }
-  .rule-item:last-child { border-bottom: none; }
-  .rule-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+        .handoff {
+            color: var(--accent2);
+            margin-top: clamp(18px, 3vw, 30px);
+            max-width: 42ch;
+            font-weight: 600;
+        }
 
-  /* ── File tree ── */
-  .file-tree {
-    background: var(--surface-2);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px;
-    padding: 24px 28px;
-    font-family: var(--font-mono);
-    font-size: clamp(12px, 1.2vw, 15px);
-    line-height: 2;
-    width: 100%; max-width: 640px;
-  }
-  .file-dir  { color: var(--blue); font-weight: 600; }
-  .file-name { color: rgba(255,255,255,0.8); }
-  .file-note { color: rgba(255,255,255,0.32); font-size: 0.85em; }
-  .file-indent { padding-left: 20px; }
-  .file-indent2 { padding-left: 40px; }
-  .file-indent3 { padding-left: 60px; }
+        /* Title slide */
+        .title-slide .subtitle {
+            color: var(--muted);
+            margin-top: clamp(18px, 3vw, 28px);
+            max-width: 30ch;
+        }
+        .title-slide .kicker {
+            text-transform: uppercase;
+            letter-spacing: 0.28em;
+            font-size: clamp(11px, 1.6vw, 14px);
+            color: var(--accent);
+            margin-bottom: clamp(20px, 3vw, 34px);
+            font-weight: 700;
+        }
 
-  /* ── Big stat ── */
-  .big-stat { text-align: center; }
-  .big-stat .number {
-    font-size: clamp(52px, 9vw, 120px);
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1;
-    background: linear-gradient(135deg, var(--accent) 0%, #FF6B8E 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .big-stat .label {
-    font-size: clamp(14px, 1.5vw, 18px);
-    color: var(--text-secondary);
-    margin-top: 8px;
-    font-weight: 500;
-  }
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-  /* ── Divider ── */
-  .divider {
-    width: 48px; height: 3px;
-    background: var(--accent);
-    border-radius: 2px;
-    margin: 20px 0;
-  }
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: clamp(14px, 2vw, 22px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: clamp(16px, 2.4vw, 26px);
+        }
+        .stat .num {
+            font-size: clamp(30px, 5.5vw, 56px);
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            color: var(--accent);
+        }
+        .stat .lbl {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: clamp(12px, 1.6vw, 15px);
+            line-height: 1.35;
+        }
 
-  /* ── Navigation ── */
-  .nav-dots {
-    position: fixed;
-    bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    z-index: 100;
-  }
-  .nav-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.2);
-    cursor: pointer;
-    transition: all 0.25s ease;
-  }
-  .nav-dot.active {
-    width: 22px;
-    border-radius: 4px;
-    background: var(--accent);
-  }
+        /* Numbered steps */
+        .steps { display: flex; flex-direction: column; gap: clamp(12px, 1.8vw, 18px); }
+        .step {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(14px, 2vw, 20px);
+        }
+        .step .n {
+            flex: 0 0 auto;
+            width: clamp(30px, 4vw, 38px);
+            height: clamp(30px, 4vw, 38px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: clamp(14px, 2vw, 18px);
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #0a0a0f;
+        }
+        .step .txt { min-width: 0; }
+        .step .txt strong { display: block; font-size: clamp(14px, 1.9vw, 18px); }
+        .step .txt span { color: var(--muted); font-size: clamp(12px, 1.6vw, 15px); }
 
-  .slide-counter {
-    position: fixed;
-    bottom: 22px; right: 32px;
-    font-size: 12px;
-    color: var(--text-tertiary);
-    font-family: var(--font-mono);
-    z-index: 100;
-  }
+        /* Rules / bullet list */
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(12px, 1.8vw, 18px);
+            color: var(--fg);
+        }
+        .rules li strong { color: var(--accent); }
 
-  .nav-arrow {
-    position: fixed;
-    top: 50%; transform: translateY(-50%);
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    z-index: 100;
-    transition: all 0.2s ease;
-    color: var(--text-secondary);
-    font-size: 18px;
-    line-height: 1;
-    user-select: none;
-  }
-  .nav-arrow:hover { background: rgba(255,45,85,0.15); border-color: var(--accent); color: var(--accent); }
-  .nav-arrow.prev { left: 20px; }
-  .nav-arrow.next { right: 20px; }
+        /* Code block */
+        .code-block {
+            background: #05050a;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px, 2.4vw, 26px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.6vw, 16px);
+            line-height: 1.6;
+            color: #e6e6f0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-x: auto;
+            max-width: 100%;
+        }
+        .code-block .cmt { color: #6b7280; }
+        .code-block .tab {
+            display: block;
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .code-block .dim { color: var(--muted); }
 
-  .more-stories {
-    position: fixed;
-    top: 20px; right: 24px;
-    font-size: 13px;
-    color: var(--text-tertiary);
-    text-decoration: none;
-    z-index: 100;
-    transition: color 0.2s ease;
-  }
-  .more-stories:hover { color: var(--accent); }
+        /* Terminal tabs mockup */
+        .tabs { display: flex; flex-direction: column; gap: 10px; }
+        .tab-row {
+            display: flex;
+            gap: 10px;
+            background: #05050a;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(11px, 1.5vw, 15px);
+            align-items: center;
+        }
+        .tab-row .dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #333; flex: 0 0 auto;
+        }
+        .tab-row.same .label { color: #8a8a99; }
+        .tab-row.named .dot { background: var(--accent); }
+        .tab-row.named .label { color: var(--accent); }
+        .tab-row .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* ── Background accents ── */
-  .bg-glow {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.06;
-    pointer-events: none;
-    z-index: 0;
-  }
+        /* Navigation dots */
+        .nav {
+            position: fixed;
+            bottom: 26px;
+            right: 30px;
+            display: flex;
+            gap: 9px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.22);
+            cursor: pointer;
+            transition: background 0.25s, transform 0.25s;
+        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.35); }
 
-  .slide > * { position: relative; z-index: 1; }
+        .slide-counter {
+            position: fixed;
+            bottom: 26px;
+            left: 30px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
+            z-index: 100;
+            font-variant-numeric: tabular-nums;
+        }
 
-  /* ── Specific slide styles ── */
-  .title-badge-row {
-    display: flex; gap: 10px; align-items: center;
-    margin-bottom: 28px;
-  }
-  .title-module-name {
-    font-family: var(--font-mono);
-    font-size: clamp(22px, 3.5vw, 44px);
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    color: var(--text-primary);
-    margin-bottom: 12px;
-  }
-  .title-tagline {
-    font-size: clamp(18px, 2.8vw, 38px);
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 24px;
-    line-height: 1.25;
-  }
-  .title-meta {
-    font-size: clamp(12px, 1.2vw, 15px);
-    color: var(--text-tertiary);
-    display: flex; gap: 24px; align-items: center;
-  }
-  .title-meta span { display: flex; align-items: center; gap: 6px; }
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
 
-  /* Spacers */
-  .mt-8  { margin-top: 8px; }
-  .mt-12 { margin-top: 12px; }
-  .mt-16 { margin-top: 16px; }
-  .mt-20 { margin-top: 20px; }
-  .mt-28 { margin-top: 28px; }
-  .mt-32 { margin-top: 32px; }
-  .mb-8  { margin-bottom: 8px; }
-  .mb-12 { margin-bottom: 12px; }
-  .mb-16 { margin-bottom: 16px; }
-  .mb-20 { margin-bottom: 20px; }
-  .mb-24 { margin-bottom: 24px; }
-  .mb-28 { margin-bottom: 28px; }
+        .sources p { margin-top: 10px; color: var(--muted); }
+        .sources ul { margin: 12px 0 0 20px; }
+        .sources li { color: var(--muted); margin-top: 8px; }
+        .sources code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            background: rgba(255,255,255,0.06);
+            border-radius: 5px;
+            padding: 2px 6px;
+            color: var(--accent2);
+            font-size: 0.92em;
+        }
+        .sources strong { color: var(--fg); }
 
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+    </style>
 </head>
 <body>
-
 <!--
-NARRATIVE SPINE
-
-ABT: AND one AI session in one terminal is easy to keep track of; BUT run five at
-     once and every tab just reads "zsh" so you fly blind, clicking to rediscover
-     which is which; THEREFORE amplifier-module-auto-title gives each tab a
-     self-describing title with a single printf -- zero overhead, instant clarity.
-
-Payoff: "See your work, not your shell." Every tab reads `project | Action: Focus`
-        at a glance, and the whole feature is one ephemeral printf -- no daemon,
-        no dependency, no runtime cost.
-
-Beats (proof-first; payoff before midpoint):
-  1. proof     -- Same three tabs, before vs after: "zsh, zsh, zsh" vs "my-api | Debug: Auth Flow".  advances: opens on the THEREFORE working (evidence first).
-  2. tension   -- Five identical tabs = flying blind; you click each one to find out.                 advances: establishes the BUT.
-  3. payoff    -- The whole feature is one printf with no dependencies.                                advances: lands the THEREFORE (before midpoint).
-  4. mechanism -- It runs as a five-step pipeline ending in that inline printf.                        advances: shows HOW the title appears (one claim).
-  5. mechanism -- Skill-on-demand keeps base context lean until the title is needed.                   advances: shows HOW it stays cheap (one claim).
-  6. mechanism -- Anti-chatter rules decide when NOT to touch the title.                               advances: shows HOW it avoids noise (one claim).
-  7. mechanism -- A shared verb vocabulary makes every title scannable.                                advances: shows HOW titles stay consistent (one claim).
-  8. mechanism -- It composes into any bundle in two lines of YAML.                                    advances: shows HOW anyone adopts it (one claim).
-  9. proof     -- The entire module is 7 files and an 11-line awareness context.                       advances: proves the "minimal" claim concretely.
- 10. turn      -- A community script became an ecosystem module: @bluzername -> @kenotron -> everyone. advances: pivots from one feature to the community->ecosystem pattern.
- 11. takeaway  -- See your work, not your shell -- add it in two lines.                                advances: what the audience keeps / acts on.
-  +  Sources & Methodology (audit-trail slide, not a beat).
+  NARRATIVE SPINE
+  ABT: AND one Amplifier session in one terminal is trivial to keep track of;
+       BUT run several at once and every tab shows the same generic shell title,
+       so you click blindly to rediscover which is which;
+       THEREFORE amplifier-module-auto-title labels each tab '[project] | [task]'
+       by reusing the already-computed session name, giving instant at-a-glance
+       clarity for free.
+  Payoff: The wall of terminals reads itself — each tab already carries its own
+          '[project] | [task]' title, set with no extra LLM call.
+  Beats:
+    1. frame     — a wall of AI terminals all reading the same generic title is a tracking problem; auto-title makes each tab say what it's doing.  advances: orients the audience on the AND/BUT stakes before any evidence lands.
+    2. proof     — it's real and shipped: kenotron-ms/amplifier-module-auto-title, MIT-licensed, 14-test suite all passing.  advances: establishes the AND — a working, tested thing, not a sketch.
+    3. tension   — with multiple sessions open, every tab shows the same generic shell title, so you fly blind clicking tab to tab.  advances: drives the BUT — makes the pain concrete.
+    4. mechanism — each tab gets a self-describing title '[project] | [task]', e.g. 'my-project | Build: Dashboard UI'.  advances: shows HOW the clarity appears (the human-readable title format).
+    5. mechanism — a prompt:complete hook at priority 200 reuses the session name hooks-session-naming already computed — no separate LLM call.  advances: shows HOW the clarity is free (the zero-extra-LLM engine behind the THEREFORE).
+    6. turn      — it got here through three approaches: skill-driven bash, a fire-and-forget delegate, then a tested prompt:complete hook that writes to /dev/tty and de-dupes.  advances: pivots from AND to THEREFORE — the evolution hardened a neat trick into piped-safe, reliable clarity.
+    7. payoff    — install once with --app and the whole wall of terminals labels itself — every tab is '[project] | [task]', for free.  advances: lands the THEREFORE — instant global clarity with no per-project config and no LLM cost.
+    8. takeaway  — reuse what you've already computed: the cheapest UX win is surfacing data you already have, not calling the model again.  advances: the generalizable pattern the audience keeps.
 -->
 
-<!-- Background glows -->
-<div class="bg-glow" style="width:600px;height:600px;top:-100px;right:-100px;background:var(--accent);"></div>
-<div class="bg-glow" style="width:500px;height:500px;bottom:-150px;left:-100px;background:#BF5AF2;"></div>
-
-<div class="deck" id="deck">
-
-  <!-- beat 1: proof -->
-  <div class="slide active" id="s01">
-    <div class="full-width">
-      <div class="eyebrow">amplifier-module-auto-title</div>
-      <div class="headline">Same three tabs. One reads <span class="accent-word">your work.</span></div>
-      <div class="subhead mb-28" style="max-width:720px;">
-        The only difference is the module. On the left, three shells you can't tell apart. On the right, each tab announces exactly what it's doing.
-      </div>
-
-      <div class="cols-2" style="max-width:1100px;gap:40px;">
-        <div>
-          <div style="font-size:13px;font-weight:600;color:var(--text-tertiary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px;">Without the module</div>
-          <div class="terminal">
-            <div class="terminal-bar">
-              <div class="terminal-dot red"></div>
-              <div class="terminal-dot yellow"></div>
-              <div class="terminal-dot green"></div>
-              <div class="terminal-tabs">
-                <div class="terminal-tab dull">zsh</div>
-                <div class="terminal-tab dull">zsh</div>
-                <div class="terminal-tab dull">zsh</div>
-              </div>
-            </div>
-            <div class="terminal-body">
-              <div class="terminal-line" style="color:rgba(255,255,255,0.35);">Which one is which?</div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div style="font-size:13px;font-weight:600;color:var(--green);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px;">With amplifier-module-auto-title</div>
-          <div class="terminal">
-            <div class="terminal-bar">
-              <div class="terminal-dot red"></div>
-              <div class="terminal-dot yellow"></div>
-              <div class="terminal-dot green"></div>
-              <div class="terminal-tabs">
-                <div class="terminal-tab bright">my-api | Debug: Auth Flow</div>
-                <div class="terminal-tab alt-1">dashboard | Build: UI</div>
-                <div class="terminal-tab alt-2">infra | Infra: K8s</div>
-              </div>
-            </div>
-            <div class="terminal-body">
-              <div class="terminal-line" style="color:var(--green);">Instant context. No clicking required.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="mt-32 full-width" style="max-width:900px;">
-        <div style="font-size:13px;font-weight:600;color:var(--text-tertiary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:16px;">Title format: <span style="color:var(--accent);font-family:var(--font-mono);">[project] | [Action]: [Specific Focus]</span></div>
-        <div class="code-block" style="border-left-color:var(--green);">amplifier-module-auto-title  | <span class="hl">Debug: Auth Flow</span>
-my-project                   | <span style="color:var(--blue);">Build: Dashboard UI</span>
-my-api                       | <span style="color:var(--yellow);">Test: Payment Module</span>
-infra-repo                   | <span style="color:var(--purple);">Infra: Docker Compose</span></div>
-      </div>
+    <!-- Title cover (no beat comment; only slide with active) -->
+    <div class="slide title-slide active center">
+        <p class="kicker">Amplifier Module</p>
+        <h1>Name Every <span class="grad">Tab</span></h1>
+        <p class="subtitle">Self-describing terminal titles, zero LLM overhead</p>
     </div>
-  </div>
 
-  <!-- beat 2: tension -->
-  <div class="slide" id="s02">
-    <div class="full-width">
-      <div class="eyebrow">The Problem</div>
-      <div class="headline" style="max-width:780px;">Run five sessions and you're <span class="accent-word">flying blind.</span></div>
-      <div class="subhead mb-28" style="max-width:700px;">
-        The terminal only ever tells you the shell name. Every concurrent AI session looks exactly the same.
-      </div>
-
-      <div class="terminal" style="max-width:900px;">
-        <div class="terminal-bar">
-          <div class="terminal-dot red"></div>
-          <div class="terminal-dot yellow"></div>
-          <div class="terminal-dot green"></div>
-          <div class="terminal-tabs">
-            <div class="terminal-tab dull">zsh</div>
-            <div class="terminal-tab dull">zsh</div>
-            <div class="terminal-tab dull">zsh</div>
-            <div class="terminal-tab dull">zsh</div>
-          </div>
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The problem in one glance</div>
+            <h2>A wall of AI terminals that all say the same thing is a <span class="grad">tracking problem</span></h2>
+            <p class="body dim">amplifier-module-auto-title makes each tab say what it's actually doing, so you never click tab-to-tab guessing again.</p>
+            <p class="handoff">First: is this a real, shipped thing? →</p>
         </div>
-        <div class="terminal-body">
-          <div class="terminal-line"><span class="terminal-comment">↑ Which one is debugging auth? Which is building the UI?</span></div>
-          <div class="terminal-line"><span class="terminal-comment">   Which is the infra session? You have to click each one to find out.</span></div>
+        <div class="col-aside">
+            <div class="tabs">
+                <div class="tab-row same"><span class="dot"></span><span class="label">zsh</span></div>
+                <div class="tab-row same"><span class="dot"></span><span class="label">zsh</span></div>
+                <div class="tab-row named"><span class="dot"></span><span class="label">my-project | Build: Dashboard UI</span></div>
+                <div class="tab-row same"><span class="dot"></span><span class="label">zsh</span></div>
+            </div>
         </div>
-      </div>
-
-      <div class="cols-3 mt-28" style="max-width:860px;">
-        <div class="card card-accent">
-          <h3>Context switching tax</h3>
-          <p>Click-to-discover every time you need to switch focus. Seconds lost, flow state broken.</p>
-        </div>
-        <div class="card card-accent">
-          <h3>Zero signal</h3>
-          <p>The title tells you the shell name. Not the task. Not the project. Nothing useful.</p>
-        </div>
-        <div class="card card-accent">
-          <h3>Multiply by N</h3>
-          <p>One session is fine. Three? Painful. Five concurrent AI sessions? Chaos.</p>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- beat 3: payoff -->
-  <div class="slide center" id="s03">
-    <div class="full-width" style="max-width:900px;text-align:left;">
-      <div class="eyebrow">The Entire Feature</div>
-      <div class="headline" style="max-width:700px;">All that clarity is <span class="accent-word">one printf.</span></div>
-      <div class="subhead mb-28">No daemon, no dependency, no runtime cost. Everything reduces to a single printf with a universally supported ANSI OSC escape sequence.</div>
-
-      <div class="code-block">
-<span class="cmt"># The complete mechanism — one line of bash</span>
-<span class="fn">printf</span> <span class="str">'\033]0;%s | %s\007'</span> <span class="str">"$(basename "$PWD")"</span> <span class="str">"Debug: Auth Flow"</span>
-
-<span class="cmt"># ANSI OSC sequence breakdown:
-#   \033]0;  →  OSC set title
-#   %s | %s  →  "project | Action: Focus"  
-#   \007     →  BEL terminator (universally supported)
-#
-# Supported by: macOS Terminal, iTerm2, Alacritty, xterm,
-#               rxvt, tmux, screen — virtually everything</span></div>
-
-      <div class="cols-3 mt-28">
-        <div class="card card-green">
-          <h3>Zero runtime overhead</h3>
-          <p>No daemon, no background process, no polling. The title is set and instantly forgotten.</p>
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">It's real and shipped</div>
+            <h2>kenotron-ms/amplifier-module-auto-title is <span class="grad">MIT-licensed and tested</span></h2>
+            <p class="body dim">A single-author project by Ken Chau — 12 commits, in active use as of its last commit — ships with a unit-test suite that all passes.</p>
+            <p class="handoff">So what's the pain it earns the right to solve? →</p>
         </div>
-        <div class="card card-blue">
-          <h3>No Python needed</h3>
-          <p>Pure bash. The skill+context system extends naturally to any toolchain.</p>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="num">14</div>
+                    <div class="lbl">tests, all passing (pytest re-run)</div>
+                </div>
+                <div class="stat">
+                    <div class="num">12</div>
+                    <div class="lbl">commits, single author (Ken Chau)</div>
+                </div>
+                <div class="stat">
+                    <div class="num">MIT</div>
+                    <div class="lbl">licensed &middot; &copy; 2026 Ken Chau</div>
+                </div>
+                <div class="stat">
+                    <div class="num">0</div>
+                    <div class="lbl">pull requests &amp; issues</div>
+                </div>
+            </div>
         </div>
-        <div class="card card-purple">
-          <h3>Optional prefix</h3>
-          <p style="font-family:var(--font-mono);font-size:12px;">export CLAUDE_TITLE_PREFIX="[AI]"<br>→ [AI] my-project | Build: UI</p>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- beat 4: mechanism -->
-  <div class="slide" id="s04">
-    <div class="full-width" style="max-width:960px;">
-      <div class="eyebrow">Mechanism</div>
-      <div class="headline">A five-step pipeline ends in that <span class="accent-word">printf.</span></div>
-
-      <div class="step-list">
-        <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-content">
-            <h4>Awareness context injected at session start</h4>
-            <p>A tiny 11-line context file is loaded. It doesn't carry full rules — just enough to trigger the next step.</p>
-          </div>
+    <div class="slide split">
+        <!-- beat 3: tension -->
+        <div class="col-main">
+            <div class="section-label">The pain, made concrete</div>
+            <h2>Multiple sessions open, and every tab reads the <span class="grad">same generic title</span></h2>
+            <p class="body dim">One session in one terminal is trivial to track. Open several and they all show the same shell default — so you fly blind, clicking tab to tab to rediscover which is which.</p>
+            <p class="handoff">The fix: give every tab a title that describes itself. →</p>
         </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-content">
-            <h4>Agent calls <span style="font-family:var(--font-mono);color:var(--accent);">load_skill("terminal-title")</span> on demand</h4>
-            <p>Full instructions materialize only when needed. The skill-on-demand pattern keeps base context lean.</p>
-          </div>
+        <div class="col-aside">
+            <div class="tabs">
+                <div class="tab-row same"><span class="dot"></span><span class="label">zsh</span></div>
+                <div class="tab-row same"><span class="dot"></span><span class="label">zsh</span></div>
+                <div class="tab-row same"><span class="dot"></span><span class="label">zsh</span></div>
+                <div class="tab-row same"><span class="dot"></span><span class="label">zsh</span></div>
+                <div class="tab-row same"><span class="dot"></span><span class="label">zsh</span></div>
+            </div>
         </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <div class="step-content">
-            <h4>Agent learns the when/how rulebook</h4>
-            <p>Title format, verb vocabulary, and anti-chatter rules are loaded into the active session context.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">4</div>
-          <div class="step-content">
-            <h4>Single inline bash <span style="font-family:var(--font-mono);color:var(--accent);">printf</span> sets the title</h4>
-            <p>One ANSI OSC escape sequence. No daemon, no polling, no server. Ephemeral and instantaneous.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">5</div>
-          <div class="step-content">
-            <h4>Re-triggered on major task switches</h4>
-            <p>Frontend → backend, auth → payments — meaningful transitions update the title. Small follow-ups don't.</p>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- beat 5: mechanism -->
-  <div class="slide" id="s05">
-    <div class="full-width" style="max-width:1100px;">
-      <div class="eyebrow">Architecture Pattern</div>
-      <div class="headline">The full rulebook stays unloaded <span class="accent-word">until it's needed.</span></div>
-
-      <div class="cols-2" style="gap:40px;">
-        <div>
-          <div class="subhead mb-20">The awareness context file is just 11 lines. The full skill only materializes when the session actually needs it — keeping base context lean.</div>
-
-          <div style="display:flex;flex-direction:column;gap:12px;">
-            <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--surface-2);border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
-              <div style="width:42px;height:42px;border-radius:10px;background:rgba(255,45,85,0.15);border:1px solid rgba(255,45,85,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:13px;color:var(--accent);flex-shrink:0;">md</div>
-              <div>
-                <div style="font-size:14px;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);">terminal-title-awareness.md</div>
-                <div style="font-size:12px;color:var(--text-secondary);">11 lines · always loaded · triggers load_skill()</div>
-              </div>
-            </div>
-            <div style="text-align:center;color:var(--text-tertiary);font-size:18px;">↓ calls</div>
-            <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--surface-2);border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
-              <div style="width:42px;height:42px;border-radius:10px;background:rgba(10,132,255,0.15);border:1px solid rgba(10,132,255,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:13px;color:var(--blue);flex-shrink:0;">sk</div>
-              <div>
-                <div style="font-size:14px;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);">terminal-title/SKILL.md</div>
-                <div style="font-size:12px;color:var(--text-secondary);">Full rulebook · loaded on demand only</div>
-              </div>
-            </div>
-            <div style="text-align:center;color:var(--text-tertiary);font-size:18px;">↓ runs</div>
-            <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--surface-2);border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
-              <div style="width:42px;height:42px;border-radius:10px;background:rgba(48,209,88,0.15);border:1px solid rgba(48,209,88,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;color:var(--green);flex-shrink:0;">$_</div>
-              <div>
-                <div style="font-size:14px;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);">printf '\033]0;...\007'</div>
-                <div style="font-size:12px;color:var(--text-secondary);">One bash call · title updated instantly</div>
-              </div>
-            </div>
-          </div>
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">How the clarity appears</div>
+            <h2>Each tab gets a self-describing title: <span class="grad">[project] | [task]</span></h2>
+            <p class="body dim">The format is '[dir-name] | [session name]'. At a glance you read the project and exactly what that session is doing.</p>
+            <p class="handoff">But how does it stay free of extra model calls? →</p>
         </div>
-
-        <div>
-          <div style="font-size:13px;font-weight:600;color:var(--text-tertiary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:16px;">Why this pattern matters</div>
-          <div style="display:flex;flex-direction:column;gap:14px;">
-            <div class="card card-green">
-              <h3>Lean by default</h3>
-              <p>Every session starts lightweight. The full skill only materializes when the agent actually uses it — not just because the feature is installed.</p>
-            </div>
-            <div class="card card-blue">
-              <h3>Principle of least privilege</h3>
-              <p>Context is a resource. Load only what you need, when you need it. This pattern scales to any behavior bundle.</p>
-            </div>
-          </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="cmt"># Real examples from the README</span>
+<span class="tab">my-project | Build: Dashboard UI</span><span class="tab">my-project | Debug: Auth Flow</span><span class="tab">my-project | Test: Payment Module</span>
+<span class="cmt"># Optional prefix via CLAUDE_TITLE_PREFIX</span>
+<span class="dim">export CLAUDE_TITLE_PREFIX='🤖'</span>
+🤖 my-project | Build: Dashboard UI</div>
         </div>
-      </div>
     </div>
-  </div>
 
-  <!-- beat 6: mechanism -->
-  <div class="slide center" id="s06">
-    <div style="max-width:960px;width:100%;text-align:left;">
-      <div class="eyebrow">UX Discipline</div>
-      <div class="headline">Its best feature is knowing when <span class="accent-word">not</span> to act.</div>
-      <div class="subhead mb-32" style="max-width:700px;">
-        A title that updates too often becomes noise; one that never updates is useless. The skill codifies exactly where that line is.
-      </div>
-
-      <div class="rule-group">
-        <div class="rule-col do">
-          <h3>Update the title when…</h3>
-          <div class="rule-item"><span>Session starts for the first time — set the initial context</span></div>
-          <div class="rule-item"><span>Major task switch — frontend → backend, auth → payments</span></div>
-          <div class="rule-item"><span>Pivoting to a distinctly different concern in the same session</span></div>
-          <div class="rule-item"><span>Shifting mode — from building to debugging, from coding to reviewing</span></div>
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">How the clarity is free</div>
+            <h2>A prompt:complete hook <span class="grad">reuses a name it already has</span></h2>
+            <p class="body dim">The hook fires at priority 200 — after hooks-session-naming at 100 — so the session name is already in metadata.json. It emits an ANSI OSC0 escape. No separate LLM call.</p>
+            <p class="handoff">This clean form wasn't the first attempt. →</p>
         </div>
-
-        <div class="rule-col dont">
-          <h3>Don't update for…</h3>
-          <div class="rule-item"><span>Follow-up questions on the same topic</span></div>
-          <div class="rule-item"><span>Small refinements or minor clarifications</span></div>
-          <div class="rule-item"><span>Iterating on the same component or function</span></div>
-          <div class="rule-item"><span>Routine assistant turns within a continuous task</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- beat 7: mechanism -->
-  <div class="slide center" id="s07">
-    <div style="max-width:960px;width:100%;text-align:left;">
-      <div class="eyebrow">Title Format System</div>
-      <div class="headline">A shared verb vocabulary keeps titles <span class="accent-word">scannable.</span></div>
-      <div class="subhead mb-28">Present-tense, specific, always readable at a glance — the same handful of verbs across every session.</div>
-
-      <div class="verb-rows">
-        <div class="verb-row"><span class="vlabel" style="color:var(--blue);">Build:</span><span class="vdesc">Active feature development — adding new functionality</span></div>
-        <div class="verb-row"><span class="vlabel" style="color:var(--accent);">Debug:</span><span class="vdesc">Tracking down bugs, diagnosing unexpected behavior</span></div>
-        <div class="verb-row"><span class="vlabel" style="color:var(--green);">Test:</span><span class="vdesc">Writing or running test suites, verifying behavior</span></div>
-        <div class="verb-row"><span class="vlabel" style="color:var(--purple);">Refactor:</span><span class="vdesc">Improving structure without changing behavior</span></div>
-        <div class="verb-row"><span class="vlabel" style="color:var(--orange);">Infra:</span><span class="vdesc">Docker, CI/CD pipelines, cloud configuration</span></div>
-        <div class="verb-row"><span class="vlabel" style="color:var(--teal);">Explore:</span><span class="vdesc">Getting oriented in a new or unfamiliar codebase</span></div>
-      </div>
-
-      <div class="mt-24 code-block" style="max-width:780px;border-left-color:var(--text-tertiary);">
-<span class="cmt">Pattern: [project-name] | [Verb]: [Specific Focus]
-
-Examples:
-  auth-service  | <span style="color:var(--accent);">Debug: JWT Refresh Token</span>
-  payments-ui   | <span style="color:var(--blue);">Build: Checkout Form</span>
-  backend-api   | <span style="color:var(--green);">Test: Rate Limiting</span></span></div>
-    </div>
-  </div>
-
-  <!-- beat 8: mechanism -->
-  <div class="slide" id="s08">
-    <div class="full-width" style="max-width:1100px;">
-      <div class="eyebrow">Integration</div>
-      <div class="headline">Any bundle can adopt it in <span class="accent-word">two lines of YAML.</span></div>
-      <div class="subhead mb-28">Take just this one behavior, or include the whole module — it's composable at the behavior level.</div>
-
-      <div class="cols-2" style="gap:36px;align-items:start;">
-        <div>
-          <div style="font-size:13px;font-weight:600;color:var(--text-tertiary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;">Behavior-only drop-in (recommended)</div>
-          <div class="code-block" style="font-size:13px;">
-<span class="cmt"># In your bundle.yaml or bundle.md</span>
-<span class="kw">includes</span><span class="fn">:</span>
-  - <span class="kw">bundle</span><span class="fn">:</span> <span class="str">git+https://github.com/kenotron/</span>
-      <span class="str">  amplifier-module-auto-title@main</span>
-      <span class="str">  #subdirectory=behaviors/terminal-title.yaml</span></div>
-
-          <div style="font-size:13px;font-weight:600;color:var(--text-tertiary);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;margin-top:24px;">Full bundle (everything included)</div>
-          <div class="code-block" style="font-size:13px;">
-<span class="cmt"># Gets you: context + skill + script</span>
-<span class="kw">includes</span><span class="fn">:</span>
-  - <span class="kw">bundle</span><span class="fn">:</span> <span class="str">git+https://github.com/kenotron/</span>
-      <span class="str">  amplifier-module-auto-title@main</span></div>
-        </div>
-
-        <div style="display:flex;flex-direction:column;gap:16px;">
-          <div class="card card-green">
-            <h3>The <code style="font-family:var(--font-mono);font-size:12px;">#subdirectory=</code> pattern</h3>
-            <p>Cherry-pick just the terminal-title behavior file from the repository. Your bundle stays minimal — you only compose what you need.</p>
-          </div>
-          <div class="card card-blue">
-            <h3>Drop-in, no config required</h3>
-            <p>Zero configuration needed. The behavior activates automatically. Works on day one.</p>
-          </div>
-          <div class="card card-accent">
-            <h3>Self-dogfooding</h3>
-            <p>The module's own <code style="font-family:var(--font-mono);font-size:12px;">.amplifier/bundle.md</code> includes the behavior. Ken eats his own cooking.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- beat 9: proof -->
-  <div class="slide" id="s09">
-    <div class="full-width" style="max-width:1100px;">
-      <div class="eyebrow">Scope &amp; Structure</div>
-      <div class="headline">The whole module is <span class="accent-word">7 files.</span></div>
-
-      <div class="cols-2" style="gap:48px;align-items:start;">
-        <div>
-          <div class="subhead mb-20" style="max-width:480px;">
-            The entire module fits in your head. No sprawling abstractions, no hidden complexity.
-          </div>
-          <div class="file-tree">
-<span class="file-dir">amplifier-module-auto-title/</span>
-<div class="file-indent"><span class="file-name">bundle.md</span>  <span class="file-note">← root bundle</span></div>
-<div class="file-indent"><span class="file-dir">behaviors/</span></div>
-<div class="file-indent2"><span class="file-name">terminal-title.yaml</span>  <span class="file-note">← composable unit</span></div>
-<div class="file-indent"><span class="file-dir">context/</span></div>
-<div class="file-indent2"><span class="file-name">terminal-title-awareness.md</span>  <span class="file-note">← 11 lines!</span></div>
-<div class="file-indent"><span class="file-dir">skills/</span></div>
-<div class="file-indent2"><span class="file-dir">terminal-title/</span></div>
-<div class="file-indent3"><span class="file-name">SKILL.md</span>  <span class="file-note">← full rulebook</span></div>
-<div class="file-indent"><span class="file-dir">scripts/</span></div>
-<div class="file-indent2"><span class="file-name">set_title.sh</span>  <span class="file-note">← optional helper</span></div>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:column;gap:24px;">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-            <div class="big-stat">
-              <div class="number">7</div>
-              <div class="label">meaningful files</div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step">
+                    <div class="n">1</div>
+                    <div class="txt"><strong>hooks-session-naming runs</strong><span>priority 100 — computes the session name into metadata.json</span></div>
+                </div>
+                <div class="step">
+                    <div class="n">2</div>
+                    <div class="txt"><strong>auto-title fires on prompt:complete</strong><span>priority 200 — reads the name already computed, no LLM inference</span></div>
+                </div>
+                <div class="step">
+                    <div class="n">3</div>
+                    <div class="txt"><strong>Writes the OSC0 escape to /dev/tty</strong><span>reaches the terminal even when stdout/stderr are piped</span></div>
+                </div>
             </div>
-            <div class="big-stat">
-              <div class="number" style="background:linear-gradient(135deg,var(--green) 0%,#5AC8FA 100%);-webkit-background-clip:text;background-clip:text;">11</div>
-              <div class="label">lines in awareness context</div>
-            </div>
-          </div>
-
-          <div style="display:flex;flex-direction:column;gap:12px;">
-            <div class="card card-green">
-              <h3>Author</h3>
-              <p>Ken Chau (<span style="font-family:var(--font-mono);color:var(--accent);">@kenotron</span>)</p>
-            </div>
-            <div class="card card-accent">
-              <h3>License</h3>
-              <p>MIT — use freely, modify, compose into any bundle.</p>
-            </div>
-          </div>
         </div>
-      </div>
     </div>
-  </div>
 
-  <!-- beat 10: turn -->
-  <div class="slide center" id="s10">
-    <div style="max-width:900px;width:100%;text-align:left;">
-      <div class="eyebrow">Community → Ecosystem Pipeline</div>
-      <div class="headline" style="max-width:740px;">A community script became an <span class="accent-word">ecosystem module.</span></div>
-      <div class="subhead mb-32" style="max-width:700px;">
-        This isn't just one feature — it's how a community-discovered pattern gets formalized, composed, and handed to the entire Amplifier ecosystem.
-      </div>
-
-      <div style="position:relative;">
-        <div style="position:absolute;left:28px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--accent),var(--purple),var(--blue));border-radius:1px;"></div>
-
-        <div style="display:flex;flex-direction:column;gap:0;">
-          <div style="display:flex;gap:24px;align-items:flex-start;padding-bottom:28px;">
-            <div style="width:58px;height:58px;border-radius:50%;background:rgba(255,45,85,0.15);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:16px;color:var(--accent);flex-shrink:0;z-index:1;">01</div>
-            <div style="padding-top:12px;">
-              <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Community discovery</div>
-              <div style="font-size:14px;color:var(--text-secondary);line-height:1.6;"><span style="font-family:var(--font-mono);color:var(--teal);">@bluzername</span> publishes <code style="font-family:var(--font-mono);color:var(--text-secondary);">claude-code-terminal-title</code> — a standalone script that solves the problem elegantly but lives outside any framework.</div>
-            </div>
-          </div>
-
-          <div style="display:flex;gap:24px;align-items:flex-start;padding-bottom:28px;">
-            <div style="width:58px;height:58px;border-radius:50%;background:rgba(191,90,242,0.15);border:2px solid var(--purple);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:16px;color:var(--purple);flex-shrink:0;z-index:1;">02</div>
-            <div style="padding-top:12px;">
-              <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Ecosystem adaptation</div>
-              <div style="font-size:14px;color:var(--text-secondary);line-height:1.6;"><span style="font-family:var(--font-mono);color:var(--accent);">@kenotron</span> ports it into Amplifier — restructuring into the skill-on-demand pattern, adding anti-chatter rules, formalizing the verb vocabulary, and making it composable via <code style="font-family:var(--font-mono);color:var(--text-secondary);">#subdirectory=</code>.</div>
-            </div>
-          </div>
-
-          <div style="display:flex;gap:24px;align-items:flex-start;">
-            <div style="width:58px;height:58px;border-radius:50%;background:rgba(10,132,255,0.15);border:2px solid var(--blue);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:16px;color:var(--blue);flex-shrink:0;z-index:1;">03</div>
-            <div style="padding-top:12px;">
-              <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Ecosystem availability</div>
-              <div style="font-size:14px;color:var(--text-secondary);line-height:1.6;">Published as <code style="font-family:var(--font-mono);color:var(--accent);">amplifier-module-auto-title</code> and <code style="font-family:var(--font-mono);color:var(--accent);">amplifier-bundle-terminal-title</code>. Any bundle, anywhere, can include it in two lines of YAML.</div>
-            </div>
-          </div>
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">It got here the hard way</div>
+            <h2>Three approaches hardened a trick into <span class="grad">reliable clarity</span></h2>
+            <p class="body dim">Skill-driven bash first, then a fire-and-forget delegate, then the tested prompt:complete hook that writes to /dev/tty (piped-safe) and de-dupes redundant updates.</p>
+            <p class="handoff">The result: clarity you install once. →</p>
         </div>
-      </div>
+        <div class="col-aside">
+            <ol class="rules">
+                <li><strong>2026-02-26</strong> — skill-driven bash <span>(96c98e4)</span>, adapted from bluzername/claude-code-terminal-title</li>
+                <li><strong>2026-03-12</strong> — fire-and-forget delegate pattern <span>(2e94692)</span></li>
+                <li><strong>2026-03-30</strong> — prompt:complete hook + unit tests <span>(0ce6837, 5f8a75b)</span></li>
+            </ol>
+        </div>
     </div>
-  </div>
 
-  <!-- beat 11: takeaway -->
-  <div class="slide center" id="s11">
-    <div style="text-align:center;max-width:760px;">
-      <div class="eyebrow">Try it today</div>
-      <div class="headline" style="font-size:clamp(28px,5vw,60px);">See your work,<br><span class="accent-word">not your shell.</span></div>
-      <div class="divider" style="margin:20px auto;"></div>
-      <div class="subhead center mb-32" style="max-width:600px;">Two lines of YAML. Zero configuration. Instant clarity across every terminal tab you'll ever open.</div>
-
-      <div class="code-block" style="text-align:left;max-width:640px;margin:0 auto 32px;">
-<span class="cmt"># Add to your bundle</span>
-<span class="kw">includes</span><span class="fn">:</span>
-  - <span class="kw">bundle</span><span class="fn">:</span> <span class="str">git+https://github.com/kenotron/</span>
-      <span class="str">  amplifier-module-auto-title@main</span>
-      <span class="str">  #subdirectory=behaviors/terminal-title.yaml</span></div>
-
-      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
-        <div style="padding:14px 28px;background:var(--accent);border-radius:12px;font-size:16px;font-weight:700;color:white;cursor:default;">
-          github.com/kenotron/amplifier-module-auto-title
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The payoff</div>
+            <h2>Install once with <span class="grad">--app</span> and the whole wall labels itself</h2>
+            <p class="body dim">A global app bundle auto-composes with every session — no per-project config. Every tab becomes '[project] | [task]', with no extra LLM call. The wall of terminals reads itself.</p>
+            <p class="handoff">And there's a pattern worth keeping. →</p>
         </div>
-      </div>
-
-      <div class="title-meta mt-28" style="justify-content:center;">
-        <span>amplifier-module-auto-title</span>
-        <span>·</span>
-        <span>MIT License</span>
-        <span>·</span>
-        <span>@kenotron</span>
-      </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="cmt"># One global install, every session covered</span>
+amplifier bundle add \
+  git+https://github.com/kenotron-ms/amplifier-module-auto-title@main \
+  <span class="tab">--app</span>
+<span class="cmt"># Registers a global app bundle in ~/.amplifier/</span></div>
+        </div>
     </div>
-  </div>
 
-  <!-- Sources & Methodology (audit-trail slide, not a beat) -->
-  <div class="slide" id="s12">
-    <div class="full-width" style="max-width:960px;">
-      <div class="eyebrow">Transparency</div>
-      <div class="headline" style="font-size:clamp(24px,3.5vw,44px);">Sources <span class="accent-word">&amp;</span> Methodology</div>
-
-      <div class="cols-2" style="gap:32px;align-items:start;margin-top:24px;">
-        <div style="display:flex;flex-direction:column;gap:16px;">
-          <div class="card">
-            <h3>Primary source</h3>
-            <p>All data, claims, architecture details, and code examples in this deck were sourced directly from a comprehensive author-provided specification for <code style="font-family:var(--font-mono);font-size:11px;">amplifier-module-auto-title</code>. No external research was performed; no numbers were inferred or invented.</p>
-          </div>
-          <div class="card">
-            <h3>Repository</h3>
-            <p style="font-family:var(--font-mono);font-size:12px;color:var(--accent);">github.com/kenotron/amplifier-module-auto-title</p>
-            <p class="mt-8">Published under MIT license. Primary author: Ken Chau (@kenotron). Community lineage from @bluzername's <code style="font-family:var(--font-mono);font-size:11px;">claude-code-terminal-title</code>.</p>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:column;gap:16px;">
-          <div class="card">
-            <h3>What was and wasn't measured</h3>
-            <p>This deck makes <em>no quantitative performance claims</em> (no "X% faster" benchmarks, no download counts). All metrics cited ("11 lines," "7 files," "1 printf") are direct structural facts from the module, not benchmark results.</p>
-          </div>
-          <div class="card">
-            <h3>Feature status at time of deck</h3>
-            <p>Active — confirmed by the module's own .amplifier/bundle.md including the terminal-title behavior (self-dogfooding). No archived or experimental caveats applicable.</p>
-          </div>
-          <div style="background:var(--surface-2);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 18px;">
-            <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Data as of</div>
-            <div style="font-size:15px;color:var(--text-primary);margin-top:4px;font-family:var(--font-mono);">February 2026</div>
-          </div>
-        </div>
-      </div>
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The pattern to keep</div>
+        <h1>Reuse what you've <span class="grad">already computed</span></h1>
+        <p class="body dim" style="text-align:center;max-width:36ch;">The cheapest UX win is surfacing data you already have — not calling the model again. Auto-title turned a name it already had into instant clarity, for free.</p>
     </div>
-  </div>
 
-</div><!-- /deck -->
+    <!-- Sources & Methodology (no beat comment) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="sources">
+            <p><strong>Data as of:</strong> last commit 2026-03-30 (corpus snapshot)</p>
+            <p><strong>Feature status:</strong> Shipped and in active use &middot; bundle/behavior v2.0.0, hook package v1.0.0</p>
+            <p><strong>Repository:</strong> kenotron-ms/amplifier-module-auto-title (default branch <code>main</code>)</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>git clone …/amplifier-module-auto-title.git; git shortlog -sne --all</code> — sole author Ken Chau across four identities</li>
+                <li><code>git rev-list --count HEAD; gh api commits?per_page=100 --jq length</code> — 12 commits, 2026-02-26 → 2026-03-30</li>
+                <li><code>git log --pretty='%h|%ad|%s' --date=short</code> — three approaches: 96c98e4 → 2e94692 → 0ce6837</li>
+                <li><code>gh api repos/…/pulls?state=all; gh pr list --state all</code> — 0 PRs, 0 issues</li>
+                <li><code>grep -rn 'printf' .</code> — ANSI OSC0 escape in README.md, SKILL.md, scripts/set_title.sh</li>
+                <li><code>grep -c 'def test_' tests/test_hook.py; uv run … pytest tests/ -q</code> — 14 tests, 14 passed</li>
+                <li>Read <code>modules/hooks-auto-title/…/__init__.py</code> — prompt:complete, priority 200, /dev/tty, dedup guard</li>
+            </ul>
+            <p><strong>Gaps:</strong> No numeric CPU/latency figure claimed — "zero overhead" means "no extra LLM call" (verified in code/docs). The "5 tabs / zsh" scenario is illustrative framing (README.md:11), not verbatim. hooks-session-naming's own repo was not inspected this pass.</p>
+            <p><strong>Primary contributor:</strong> Ken Chau (sole author, 12/12 commits).</p>
+        </div>
+    </div>
 
-<!-- Navigation -->
-<a href="/stories" class="more-stories">More Amplifier Stories</a>
-<div class="nav-dots" id="navDots"></div>
-<div class="slide-counter" id="slideCounter">1 / 12</div>
-<div class="nav-arrow prev" id="prevBtn">‹</div>
-<div class="nav-arrow next" id="nextBtn">›</div>
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
 
-<script>
-(function () {
-  const slides = Array.from(document.querySelectorAll('.slide'));
-  const dotsContainer = document.getElementById('navDots');
-  const counter = document.getElementById('slideCounter');
-  const total = slides.length;
-  let current = 0;
-  let animating = false;
+    <!-- More stories link - REQUIRED -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
-  // Build dots
-  slides.forEach((_, i) => {
-    const dot = document.createElement('div');
-    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
-    dot.addEventListener('click', () => goTo(i));
-    dotsContainer.appendChild(dot);
-  });
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-  function updateDots(idx) {
-    document.querySelectorAll('.nav-dot').forEach((d, i) => {
-      d.classList.toggle('active', i === idx);
-    });
-    counter.textContent = (idx + 1) + ' / ' + total;
-  }
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
 
-  function goTo(idx) {
-    if (animating || idx === current || idx < 0 || idx >= total) return;
-    animating = true;
-    const prev = current;
-    const next = idx;
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
 
-    slides[prev].classList.add('exit');
-    slides[prev].classList.remove('active');
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
 
-    // If going backward, override transform direction
-    if (next < prev) {
-      slides[prev].style.transform = 'translateX(60px)';
-      slides[next].style.transform = 'translateX(-60px)';
-    } else {
-      slides[prev].style.transform = '';
-      slides[next].style.transform = '';
-    }
+            void next.offsetWidth;
 
-    requestAnimationFrame(() => {
-      slides[next].classList.add('active');
-      current = next;
-      updateDots(current);
-      setTimeout(() => {
-        slides[prev].classList.remove('exit');
-        slides[prev].style.transform = '';
-        slides[next].style.transform = '';
-        animating = false;
-      }, 480);
-    });
-  }
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
 
-  document.getElementById('prevBtn').addEventListener('click', () => goTo(current - 1));
-  document.getElementById('nextBtn').addEventListener('click', () => goTo(current + 1));
+            current = n;
+            updateNav();
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
-      e.preventDefault(); goTo(current + 1);
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault(); goTo(current - 1);
-    }
-  });
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
+        }
 
-  // Touch/swipe
-  let touchStartX = 0;
-  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
-  document.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(dx) > 50) dx < 0 ? goTo(current + 1) : goTo(current - 1);
-  }, { passive: true });
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
 
-  updateDots(0);
-})();
-</script>
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
+        });
+
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
 </body>
 </html>

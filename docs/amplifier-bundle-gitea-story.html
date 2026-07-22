@@ -3,769 +3,358 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>amplifier-bundle-gitea — Ephemeral Git Servers for Fearless Experimentation</title>
+    <title>Fearless Git for Agents</title>
     <script>document.documentElement.classList.add('js')</script>
-<style>
+    <style>
         :root {
-            --accent: #5856D6;
-            --accent-dim: rgba(88, 86, 214, 0.15);
-            --accent-glow: rgba(88, 86, 214, 0.3);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 36px);
-            --fs-h3: clamp(18px, 3vw, 24px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 1.8vw, 15px);
-
-            /* Spacing */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
+            --bg: #0b0d12;
+            --bg2: #12161f;
+            --fg: #f4f6fb;
+            --muted: #9aa4b8;
+            --accent: #5eead4;
+            --accent2: #7aa2ff;
+            --line: rgba(255,255,255,0.10);
+            --card: rgba(255,255,255,0.04);
         }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
-        }
-
-        /* Slide base */
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
             padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
+            background: radial-gradient(140% 120% at 12% 0%, var(--bg2) 0%, var(--bg) 60%);
         }
         .slide.active { display: flex; }
-        .slide.center {
-            text-align: center;
-            align-items: center;
-            justify-content: center;
+
+        /* No-JS fallback: all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
         }
 
-        /* Typography */
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+        /* Fit-safe: cap slides to the viewport and allow scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide { transition: transform .5s cubic-bezier(.22,.61,.36,1), opacity .5s ease; }
+
+        .center { text-align: center; align-items: center; justify-content: center; }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(14px, 2vw, 22px); }
+
         .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
             color: var(--accent);
-            margin-bottom: var(--space-sm);
-        }
-        .headline {
-            font-size: var(--fs-hero);
             font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.08;
-            margin-bottom: var(--space-md);
+            margin-bottom: clamp(14px, 2vw, 22px);
         }
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            margin-bottom: var(--space-md);
-        }
-        .subhead {
-            font-size: var(--fs-h3);
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(680px, 90vw);
-        }
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: var(--space-sm);
-        }
+        h1, h2 { margin-bottom: clamp(14px, 2vw, 22px); }
+        .body { color: var(--fg); max-width: 46ch; margin-bottom: clamp(12px, 1.8vw, 18px); }
+        .handoff { color: var(--muted); max-width: 46ch; font-style: italic; }
+        .accent { color: var(--accent); }
+        .accent2 { color: var(--accent2); }
 
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: 100px;
-            background: rgba(48, 209, 88, 0.15);
-            color: #30D158;
-            margin-top: var(--space-sm);
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
         }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-        /* Grids */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
+        /* Stat grid */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: clamp(12px, 1.6vw, 18px); }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: clamp(16px, 2vw, 24px);
         }
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .quads {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
+        .stat-num { font-size: clamp(30px, 5vw, 52px); font-weight: 800; line-height: 1; color: var(--accent); letter-spacing: -0.02em; }
+        .stat-label { margin-top: 8px; color: var(--muted); font-size: clamp(12px, 1.5vw, 14px); }
 
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
+        /* Steps */
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.4vw, 16px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 12px;
+            padding: clamp(12px, 1.6vw, 18px) clamp(14px, 2vw, 20px);
         }
-        .card h3, .card h4 {
-            color: var(--text-primary);
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-        .card p, .card li {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.5;
-        }
-        .card .icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: var(--space-xs);
-        }
+        .steps .k { color: var(--accent2); font-weight: 700; }
 
-        /* Card with accent border top */
-        .card-accent {
-            border-top: 2px solid var(--accent);
+        /* Rules / flags list */
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(8px, 1.2vw, 12px); }
+        .rules li {
+            display: flex; align-items: baseline; gap: 10px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(10px, 1.3vw, 14px) clamp(12px, 1.6vw, 16px);
         }
+        .rules .tag { color: var(--accent); font-weight: 700; }
 
-        /* Code blocks */
+        /* Code */
         .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
+            background: #05070b;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px, 2vw, 24px);
+            font-family: "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+            font-size: clamp(13px, 1.7vw, 17px);
             line-height: 1.7;
             white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            color: #BFC0C5;
-            margin-top: var(--space-md);
+            word-break: break-word;
+            color: #d5e3ff;
         }
-        .code-comment { color: rgba(255,255,255,0.35); }
-        .code-cmd { color: #30D158; }
-        .code-flag { color: #5856D6; }
-        .code-string { color: #FF9F0A; }
-        .code-var { color: #64D2FF; }
+        .code-comment { color: #6b7688; }
+        .code-cmd { color: var(--accent); }
 
-        /* Flow steps */
-        .flow-steps {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            max-width: min(800px, 95vw);
+        .loop { display: flex; flex-wrap: wrap; gap: clamp(8px, 1.2vw, 14px); align-items: center; }
+        .loop .node {
+            background: var(--card); border: 1px solid var(--line);
+            border-radius: 999px; padding: 10px 18px; font-weight: 700;
+            font-size: clamp(14px, 1.8vw, 18px);
         }
-        .flow-step {
-            display: flex;
-            align-items: flex-start;
-            gap: var(--space-md);
+        .loop .node.destroy { border-color: rgba(255,120,120,0.4); color: #ffb3b3; }
+        .loop .arrow { color: var(--muted); font-size: clamp(14px, 1.8vw, 20px); }
+
+        /* Sources */
+        .sources { color: var(--muted); line-height: 1.7; max-width: 60ch; }
+        .sources strong { color: var(--fg); }
+        .sources code { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.9em; color: #cfe0ff; }
+        .sources ul { margin: 10px 0 10px 18px; }
+        .sources li { margin-bottom: 6px; }
+        .badge { display: inline-block; background: rgba(94,234,212,0.12); border: 1px solid rgba(94,234,212,0.35); color: var(--accent); border-radius: 999px; padding: 3px 12px; font-size: clamp(11px, 1.4vw, 13px); font-weight: 700; }
+
+        /* Nav */
+        .nav { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 90; }
+        .nav-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.22); cursor: pointer; transition: background .2s, transform .2s; }
+        .nav-dot.active { background: var(--accent); transform: scale(1.25); }
+        .slide-counter { position: fixed; bottom: 24px; right: 26px; color: var(--muted); font-size: 12px; z-index: 90; font-variant-numeric: tabular-nums; }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
         }
-        .flow-number {
-            flex-shrink: 0;
-            width: clamp(36px, 5vw, 48px);
-            height: clamp(36px, 5vw, 48px);
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--accent);
-        }
-        .flow-content h4 {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .flow-content p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-        .flow-arrow {
-            width: 2px;
-            height: var(--space-sm);
-            background: var(--accent-dim);
-            margin-left: clamp(17px, 2.3vw, 23px);
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
 
-        /* Architecture diagram */
-        .arch-entities {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .entity-box {
-            background: var(--surface-2);
-            border: 1px solid var(--border-visible);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-            text-align: center;
-        }
-        .entity-box .icon {
-            font-size: clamp(32px, 6vw, 56px);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box h4 {
-            font-size: var(--fs-h3);
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        /* Velocity stats */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
-            gap: var(--space-lg);
-            margin-top: var(--space-lg);
-        }
-        .velocity-stat { text-align: center; }
-        .velocity-number {
-            font-size: clamp(48px, 12vw, 96px);
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #BF5AF2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .velocity-label {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
-
-        /* Timeline */
-        .timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            margin-top: var(--space-lg);
-            max-width: min(700px, 95vw);
-        }
-        .timeline-item {
-            display: flex;
-            gap: var(--space-md);
-            padding-bottom: var(--space-md);
-            position: relative;
-        }
-        .timeline-item:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            left: clamp(30px, 4vw, 40px);
-            top: clamp(36px, 5vw, 48px);
-            bottom: 0;
-            width: 2px;
-            background: var(--accent-dim);
-        }
-        .timeline-date {
-            flex-shrink: 0;
-            width: clamp(60px, 8vw, 80px);
-            height: clamp(60px, 8vw, 80px);
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-        }
-        .timeline-date .day {
-            font-size: var(--fs-h3);
-            color: var(--accent);
-            line-height: 1;
-        }
-        .timeline-date .month {
-            font-size: var(--fs-small);
-            color: var(--accent);
-            text-transform: uppercase;
-        }
-        .timeline-text h4 {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .timeline-text p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        /* Quote / callout box */
-        .callout {
-            background: var(--accent-dim);
-            border-left: 3px solid var(--accent);
-            border-radius: var(--radius-sm);
-            padding: var(--space-md);
-            margin-top: var(--space-md);
-            max-width: min(700px, 95vw);
-        }
-        .callout p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-            font-style: italic;
-        }
-        .callout .attribution {
-            font-style: normal;
-            color: var(--text-tertiary);
-            font-size: var(--fs-small);
-            margin-top: var(--space-xs);
-        }
-
-        /* Navigation */
-        .nav {
-            position: fixed;
-            bottom: 28px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            z-index: 100;
-        }
-        .nav-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
-        .slide-counter {
-            position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            z-index: 100;
-        }
-
-        /* Sources slide specifics */
-        .sources-content {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.7;
-            max-width: min(800px, 95vw);
-        }
-        .sources-content strong {
-            color: var(--text-primary);
-        }
-        .sources-content code {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-small);
-            background: var(--surface-1);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .sources-content ul {
-            padding-left: var(--space-md);
-            margin: var(--space-xs) 0;
-        }
-        .sources-content li {
-            margin-bottom: var(--space-xs);
-        }
-
-        /* More stories link */
         .more-stories {
-            position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
+            position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
             font-size: clamp(11px, 1.5vw, 12px);
-            color: rgba(255,255,255,0.3);
-            text-decoration: none;
-            z-index: 100;
+            color: rgba(255,255,255,0.3); text-decoration: none; z-index: 100;
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
-
-        /* Landscape mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
-        }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* Touch targets */
-        @media (hover: none) {
-            .nav-dot {
-                min-width: 16px;
-                min-height: 16px;
-            }
-        }
-
-        /* Highlight accent text */
-        .accent { color: var(--accent); }
-
-        /* Inline list with subtle bullets */
-        .feature-list {
-            list-style: none;
-            padding: 0;
-        }
-        .feature-list li {
-            padding-left: var(--space-md);
-            position: relative;
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: var(--space-xs);
-        }
-        .feature-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.6em;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-        }
-    
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+    </style>
 </head>
 <body>
-
 <!--
-  ═══════════════════════════════════════════════════════════════════════════
-  NARRATIVE SPINE  (built from the deck's existing content; no fresh research)
-  ═══════════════════════════════════════════════════════════════════════════
-
-  ABT:
-    AND AI agents do constant git work — branches, commits, issues, PRs;
-    BUT running all of it against production GitHub burns API rate limits and
-        clutters real repos with throwaway experimental noise;
-    THEREFORE amplifier-bundle-gitea stands up disposable Gitea servers to mirror
-        real repos, work freely in isolation, promote results back — then throw
-        the whole thing away.
-
-  PAYOFF (named up front):
-    "Mirror, work, promote — then throw it away." An AI agent drives the entire
-    git lifecycle in seconds against an ephemeral Gitea instance, with zero
-    GitHub impact, and pushes a branch back as a real PR over pure HTTP.
-
-  BEATS (proof-first; payoff lands at beat 3 of 8, before the midpoint):
-    1. proof     — an AI agent ran the full lifecycle by conversation: create →
-                   mirror amplifier-core → work → destroy, zero GitHub noise.
-                   advances: proves the AND + THEREFORE actually work end-to-end.
-    2. tension   — doing that against production GitHub burns rate limits and
-                   clutters real repos.  advances: establishes the BUT.
-    3. payoff    — mirror, work, promote, throw away: disposable Gitea in seconds.
-                   advances: lands the THEREFORE — the point of the bundle.
-    4. mechanism — promotion is pure HTTP via GitHub's Git Data API, no git
-                   binary. (one claim)  advances: shows HOW promote-back works safely.
-    5. mechanism — Docker labels are the only source of truth; opinionated
-                   ephemeral defaults. (one claim)  advances: shows HOW it stays clean.
-    6. mechanism — it's both a CLI and an Amplifier bundle, so agents drive it
-                   natively. (one claim)  advances: shows HOW the agent knew what to do.
-    7. turn      — and it's proven against real infrastructure: ~1:1 test ratio,
-                   no mocks — real containers, real PRs.  advances: earns trust in
-                   the proof.
-    8. takeaway  — a foundational building block for the Digital Twin Universe;
-                   install in one command.  advances: what the audience keeps + does next.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end.
-    Slides = 8 beats + 1 = 9.
+SPINE
+ABT: AND AI agents do constant git work (branches, commits, issues, PRs) as they experiment; BUT running all that against real GitHub burns API rate limits and clutters production repos with throwaway noise; THEREFORE amplifier-bundle-gitea spins up a disposable Gitea server, mirrors the real repo, lets agents work freely in isolation, promotes only the good branch back as a real PR, then destroys the whole thing.
+Payoff: The full loop — mirror → experiment → promote → destroy: an entire git server stood up, used hard, and thrown away, leaving real GitHub untouched except for one clean PR.
+Beats:
+  1. frame     — AI agents experiment by doing git work, and by default every throwaway branch/commit/PR lands on real GitHub, burning rate limits and cluttering production. advances: orients the audience on the AND (agents do constant git work) and the stakes behind the BUT (that work hits real infrastructure).
+  2. proof     — amplifier-bundle-gitea is a real, shipped answer: 988 lines of Python, 7 CLI commands, 38 tests, running in the microsoft org. advances: establishes credibility fast — a working tool, not a proposal — earning trust to make the ABT argument.
+  3. mechanism — one command stands up a disposable Gitea container: SQLite, offline mode, no external database, hardcoded admin. advances: shows the HOW of the THEREFORE — the isolated sandbox is cheap to create.
+  4. mechanism — mirror-from-github copies the real repo git-only by default (full history + all branches, typically a few seconds) with metadata gated behind 6 opt-in --include-* flags. advances: shows HOW the sandbox gets populated cheaply, making "work in isolation" practical.
+  5. tension   — working in isolation is only useful if good work can escape; an experiment trapped in a throwaway server is wasted. advances: sharpens the BUT into the open question the payoff must resolve.
+  6. turn      — promote-to-github pushes just the branch you chose back to GitHub and opens a single real pull request. advances: the pivot from AND to THEREFORE — only deliberate, finished work reaches production.
+  7. payoff    — then destroy throws the entire server away; the full loop leaves real GitHub untouched except for one clean PR. advances: lands the THEREFORE as the climax — fearless experimentation with zero production residue.
+  8. takeaway  — make the workspace disposable, not the repo: mirror, experiment, promote the good, throw the rest away. advances: generalizes the ABT into the pattern the audience keeps.
 -->
 
-    <!-- beat 1: proof -->
-    <div class="slide active">
-        <div class="section-label">amplifier-bundle-gitea &middot; Live agent run</div>
-        <h2 class="medium-headline">An agent ran the whole git lifecycle by conversation &mdash; zero GitHub noise</h2>
-        <p class="subhead" style="margin-bottom: var(--space-sm);">Just by talking to it, an AI agent created a server, mirrored the real <strong>amplifier-core</strong> repo, worked against the copy, and tore it all down &mdash; production GitHub never saw a thing.</p>
-        <div class="flow-steps">
-            <div class="flow-step">
-                <div class="flow-number">1</div>
-                <div class="flow-content">
-                    <h4>"Create a new Gitea instance"</h4>
-                    <p>Agent invokes <code>amplifier-gitea create</code> &mdash; container spins up in seconds</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">2</div>
-                <div class="flow-content">
-                    <h4>"Mirror amplifier-core into it"</h4>
-                    <p>Agent runs <code>mirror-from-github</code> &mdash; snapshots repo content, issues, PRs, labels</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">3</div>
-                <div class="flow-content">
-                    <h4>"Bump the version in there"</h4>
-                    <p>Agent works against isolated Gitea &mdash; commits, branches, all local. Zero GitHub noise.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">4</div>
-                <div class="flow-content">
-                    <h4>"Delete the Gitea instance"</h4>
-                    <p>Agent invokes <code>amplifier-gitea destroy</code> &mdash; container and all data gone. Clean.</p>
-                </div>
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>Fearless Git for Agents</h1>
+        <p class="subtitle">Disposable Gitea servers for AI experimentation</p>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Problem</div>
+            <h2>Every throwaway commit an agent makes lands on your real GitHub</h2>
+            <p class="body">AI agents experiment by doing constant git work — branches, commits, issues, PRs. By default all of it hits production infrastructure.</p>
+            <p class="handoff">That burns API rate limits and clutters real repos with noise nobody asked for. So what if the workspace were disposable instead?</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><span class="tag">branches</span> spun up per experiment</li>
+                <li><span class="tag">commits</span> stacked on real history</li>
+                <li><span class="tag">issues + PRs</span> opened against production</li>
+                <li><span class="tag">rate limits</span> burned on throwaway work</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">Proof · Shipped</div>
+            <h2>amplifier-bundle-gitea is a real, shipped answer — not a proposal</h2>
+            <p class="body">A working CLI living in the microsoft org: 988 lines of Python across 8 source files, backed by a real test suite.</p>
+            <p class="handoff">It ships as both a standalone CLI and an Amplifier bundle skill. Here is how it works.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="stat-num">988</div><div class="stat-label">lines of Python · 8 src files</div></div>
+                <div class="stat"><div class="stat-num">7</div><div class="stat-label">CLI commands</div></div>
+                <div class="stat"><div class="stat-num">38</div><div class="stat-label">tests across 5 files</div></div>
+                <div class="stat"><div class="stat-num">19</div><div class="stat-label">commits on upstream/main</div></div>
             </div>
         </div>
     </div>
 
-    <!-- beat 2: tension -->
-    <div class="slide">
-        <div class="section-label">Why that matters</div>
-        <h2 class="headline">Do that on real GitHub<br>and you pay for it</h2>
-        <p class="subhead" style="margin-bottom: var(--space-sm);">The same lifecycle, run against production repos, has three costs that compound with every agent.</p>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x26A0;&#xFE0F;</div>
-                <h3>Rate Limit Pressure</h3>
-                <p>Constant automated operations against GitHub burn through API rate limits, stalling real workflows.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F4E2;</div>
-                <h3>Repo Noise</h3>
-                <p>Experimental branches, throwaway commits, test issues, and draft PRs clutter real repositories.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F6A7;</div>
-                <h3>No Safe Sandbox</h3>
-                <p>Creating hundreds of test repos for experimentation is impractical. Cleanup is a manual burden.</p>
-            </div>
+    <div class="slide split">
+        <!-- beat 3: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Step 1 · Stand Up</div>
+            <h2>One command stands up a disposable, self-contained Gitea container</h2>
+            <p class="body">No external database: SQLite, offline mode, and a hardcoded admin account (admin/admin1234). Actions, packages, and the repo-indexer are disabled.</p>
+            <p class="handoff">Creation POSTs an admin API token, returned in plaintext exactly once. Now the empty sandbox needs the real repo.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><span class="tag">DB</span> SQLite — no external database</li>
+                <li><span class="tag">OFFLINE_MODE</span> true</li>
+                <li><span class="tag">INSTALL_LOCK</span> true</li>
+                <li><span class="tag">disabled</span> actions · packages · repo-indexer</li>
+                <li><span class="tag">token</span> shown in plaintext once at creation</li>
+            </ul>
         </div>
     </div>
 
-    <!-- beat 3: payoff -->
-    <div class="slide">
-        <div class="section-label">The whole point</div>
-        <h2 class="headline">Mirror, work, promote &mdash;<br>then throw it away</h2>
-        <p class="subhead">On-demand, ephemeral Gitea Docker instances. Mirror real repos, work freely in isolation, promote results back to GitHub when ready &mdash; then destroy.</p>
-        <div class="flow-steps">
-            <div class="flow-step">
-                <div class="flow-number">1</div>
-                <div class="flow-content">
-                    <h4>Create</h4>
-                    <p>Spin up a Gitea Docker container with one command. SQLite-backed, offline-mode, hardcoded admin &mdash; optimized for ephemeral use.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">2</div>
-                <div class="flow-content">
-                    <h4>Mirror</h4>
-                    <p>Snapshot a GitHub repo into Gitea &mdash; git content, issues, PRs, and labels. One-time copy, not continuous sync.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">3</div>
-                <div class="flow-content">
-                    <h4>Work</h4>
-                    <p>Freely create branches, commits, issues, and PRs against the Gitea instance. Zero impact on GitHub.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">4</div>
-                <div class="flow-content">
-                    <h4>Promote or Destroy</h4>
-                    <p>Push a branch back to GitHub as a PR via HTTP (no git binary needed), then tear down the container.</p>
-                </div>
-            </div>
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Step 2 · Mirror</div>
+            <h2>mirror-from-github copies git content only — and that part is fast</h2>
+            <p class="body">By default it copies full history and all branches, typically a few seconds. The expensive metadata stays off unless you ask for it.</p>
+            <p class="handoff">Six opt-in <code class="accent">--include-*</code> flags (all default False) add issues, PRs, labels, milestones, releases, or wiki — which can take several minutes.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><span class="tag">default</span> git-only: full history + all branches, ~seconds</li>
+                <li><span class="tag">--include-issues</span> opt-in (default False)</li>
+                <li><span class="tag">--include-prs</span> opt-in (default False)</li>
+                <li><span class="tag">--include-labels · --include-milestones</span></li>
+                <li><span class="tag">--include-releases · --include-wiki</span></li>
+                <li><span class="tag">metadata on</span> can take several minutes</li>
+            </ul>
         </div>
     </div>
 
-    <!-- beat 4: mechanism -->
-    <div class="slide">
-        <div class="section-label">How promote-back works</div>
-        <h2 class="medium-headline">Promotion is pure HTTP &mdash; no git binary on the host</h2>
-        <p class="subhead" style="margin-bottom: var(--space-sm);">The <code>promote-to-github</code> command never shells out to git. It fetches trees from Gitea and GitHub over their APIs, diffs them, then rebuilds the change through GitHub's Git Data API.</p>
-        <ul class="feature-list" style="margin-top: var(--space-md); max-width: min(680px,95vw);">
-            <li>Fetch the Gitea tree and the GitHub tree via API, then diff</li>
-            <li>Create blobs &rarr; trees &rarr; a commit &rarr; a ref, all over HTTP</li>
-            <li>Open the PR on GitHub &mdash; entirely from API calls</li>
-        </ul>
-        <div class="callout">
-            <p>No git binary required anywhere on the host &mdash; the promotion bridge is just HTTP, which is what makes it safe to run inside any container or agent.</p>
-        </div>
-    </div>
-
-    <!-- beat 5: mechanism -->
-    <div class="slide">
-        <div class="section-label">How it stays disposable</div>
-        <h2 class="medium-headline">Docker labels are the only source of truth</h2>
-        <p class="subhead" style="margin-bottom: var(--space-sm);">There are no local metadata files to drift or clean up. State is discovered by querying Docker labels directly &mdash; so "throw it away" really means gone.</p>
-        <div class="halves">
-            <div class="card card-accent">
-                <h3>Labels, not files</h3>
-                <p>All instance state lives on the container's Docker labels. Destroy the container and every trace is gone &mdash; nothing left behind to reconcile.</p>
-            </div>
-            <div class="card card-accent">
-                <h3>Opinionated ephemeral defaults</h3>
-                <p>SQLite, offline mode, hardcoded admin. Optimized for disposable use, not configurable complexity. Consumer still controls networking via <code>--network</code>, <code>--add-host</code>, <code>--hostname</code>.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">How the agent knew what to do</div>
-        <h2 class="medium-headline">One tool, two faces: a CLI and an Amplifier bundle</h2>
-        <p class="subhead" style="margin-bottom: var(--space-sm);">It's a standalone CLI (every command returns JSON to stdout) <em>and</em> an Amplifier bundle with skills, behaviors, and context &mdash; so agents drive it natively, the way the demo did.</p>
-        <div class="code-block"><span class="code-comment"># Install once</span>
-<span class="code-cmd">uv tool install</span> <span class="code-string">git+https://github.com/microsoft/amplifier-bundle-gitea@main</span>
-
-<span class="code-comment"># Create an ephemeral Gitea instance</span>
-<span class="code-cmd">amplifier-gitea create</span> <span class="code-flag">--port</span> <span class="code-var">10110</span>
-
-<span class="code-comment"># Mirror a GitHub repo into it</span>
-<span class="code-cmd">amplifier-gitea mirror-from-github</span> <span class="code-var">&lt;id&gt;</span> \
-  <span class="code-flag">--github-repo</span> <span class="code-string">https://github.com/org/repo</span>
-
-<span class="code-comment"># Work freely, then promote a branch back as a PR</span>
-<span class="code-cmd">amplifier-gitea promote-to-github</span> <span class="code-var">&lt;id&gt;</span> \
-  <span class="code-flag">--repo</span> <span class="code-string">admin/repo</span> \
-  <span class="code-flag">--branch</span> <span class="code-string">feature-xyz</span> \
-  <span class="code-flag">--github-repo</span> <span class="code-string">org/repo</span>
-
-<span class="code-comment"># Tear it all down</span>
-<span class="code-cmd">amplifier-gitea destroy</span> <span class="code-var">&lt;id&gt;</span></div>
-    </div>
-
-    <!-- beat 7: turn -->
-    <div class="slide">
-        <div class="section-label">Why you can trust the demo</div>
-        <h2 class="medium-headline">Proven against real infrastructure &mdash; no mocks</h2>
-        <p class="subhead" style="margin-bottom: var(--space-sm);">This isn't a happy-path illusion. The test suite exercises the real thing at a roughly 1:1 source-to-test ratio.</p>
-        <div class="velocity-grid" style="max-width: min(560px,95vw);">
-            <div class="velocity-stat">
-                <div class="velocity-number">~929</div>
-                <div class="velocity-label">lines of source</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">~944</div>
-                <div class="velocity-label">lines of tests</div>
-            </div>
-        </div>
-        <div class="halves">
-            <div class="card">
-                <h4 class="accent">No mocks</h4>
-                <p>Integration tests spin up actual Gitea containers and create real GitHub PRs, then clean up. Python 3.11+, Click, docker-py, httpx, pytest, Hatchling.</p>
-            </div>
-            <div class="card">
-                <h4 class="accent">Real subprocess calls</h4>
-                <p>Tests invoke <code>uv run amplifier-gitea</code> as a subprocess &mdash; exactly what an agent or operator runs in production.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 8: takeaway -->
     <div class="slide center">
-        <div class="section-label">What it's a piece of</div>
-        <h1 class="medium-headline">A building block for the Digital Twin Universe</h1>
-        <p class="subhead">amplifier-bundle-gitea supplies the git-server component inside Amplifier's <strong>Digital Twin Universe</strong> &mdash; complete, isolated environments stood up on demand where code runs as it would for a real user, with zero production impact.</p>
-        <div class="callout">
-            <p>"Woohoo! That's awesome and very timely!"</p>
-            <div class="attribution">&mdash; Brian Krabach, on the DTU demo (March 24)</div>
+        <!-- beat 5: tension -->
+        <div class="section-label">The Catch</div>
+        <h2>Isolation is only useful if the good work can escape</h2>
+        <p class="body" style="max-width: 40ch; margin-inline: auto; text-align: center;">An agent can now branch, commit, and open PRs freely inside the throwaway server. But an experiment trapped in a server you're about to delete is wasted work.</p>
+        <p class="handoff" style="max-width: 40ch; margin-inline: auto; text-align: center;">The open question the whole loop has to answer: how does value get out — without dragging the mess back with it?</p>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">Step 3 · Promote</div>
+            <h2>promote-to-github pushes just the branch you chose — and opens one real PR</h2>
+            <p class="body">Only the deliberate, finished branch leaves the sandbox. github_sync.promote() pushes it from Gitea to GitHub and creates a single pull request.</p>
+            <p class="handoff">Never the experimental noise — just the one result you meant to ship. One thing is left to clean up.</p>
         </div>
-        <div class="code-block" style="text-align: left; max-width: min(600px, 90vw);"><span class="code-cmd">uv tool install</span> <span class="code-string">git+https://github.com/microsoft/amplifier-bundle-gitea@main</span></div>
-        <div class="small-text" style="margin-top: var(--space-md);">
-            github.com/<strong>microsoft/amplifier-bundle-gitea</strong> &middot; MIT License &middot; Python 3.11+ &middot; Docker required
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># resolve the GitHub token, then push + open the PR</span>
+<span class="code-comment"># --github-token → GH_TOKEN → `gh auth token`</span>
+<span class="code-cmd">promote-to-github</span> --branch my-work
+
+<span class="code-comment"># Push a branch from Gitea to GitHub</span>
+<span class="code-comment"># and create a pull request.</span></div>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SOURCES & METHODOLOGY (audit-trail slide, not a beat)         -->
-    <!-- ============================================================ -->
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">Step 4 · Destroy</div>
+            <h2>Then destroy throws the entire server away — one clean PR remains</h2>
+            <p class="body">The full loop runs: mirror the repo, experiment hard in isolation, promote the good branch, then delete the whole disposable server.</p>
+            <p class="handoff">Real GitHub is left untouched — except for the single pull request you chose to open.</p>
+        </div>
+        <div class="col-aside">
+            <div class="loop">
+                <span class="node">mirror</span><span class="arrow">→</span>
+                <span class="node">experiment</span><span class="arrow">→</span>
+                <span class="node">promote</span><span class="arrow">→</span>
+                <span class="node destroy">destroy</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Pattern</div>
+        <h2>Make the workspace disposable, not the repo</h2>
+        <p class="body" style="max-width: 42ch; margin-inline: auto; text-align: center;">Mirror the real repo, experiment freely, promote only the good branch, and throw the rest away. The server is cheap; the production repo stays clean.</p>
+        <p class="handoff" style="max-width: 42ch; margin-inline: auto; text-align: center;">Fearless experimentation for agents — with zero production residue.</p>
+    </div>
+
+    <!-- Sources & Methodology (no beat comment) -->
     <div class="slide">
         <div class="section-label">Sources</div>
-        <h2 class="medium-headline">Research Methodology</h2>
-        <div class="sources-content">
-            <p><strong>Data as of:</strong> March 2026</p>
-            <p><strong>Feature status:</strong> Active &middot; MIT License</p>
-            <p><strong>Repository:</strong> <code>microsoft/amplifier-bundle-gitea</code></p>
-            <p style="margin-top: var(--space-sm);"><strong>Research performed:</strong></p>
+        <h2>Research Methodology</h2>
+        <div class="sources">
+            <p><span class="badge">Status: SHIPPED</span></p>
+            <p><strong>Repo:</strong> microsoft/amplifier-bundle-gitea &middot; checkout <code>/tmp/gitea-src</code> &middot; HEAD <code>732b18c</code> on upstream/main, dated 2026-06-03. Migrated into the microsoft org on 2026-03-23.</p>
+            <p><strong>Commands run:</strong></p>
             <ul>
-                <li>Repository README, DESIGN docs, and CLI command reference (<code>create</code>, <code>destroy</code>, <code>status</code>, <code>list</code>, <code>token</code>, <code>mirror-from-github</code>, <code>promote-to-github</code>)</li>
-                <li>Source/test line counts (~929 source, ~944 tests) read from the repository tree</li>
-                <li>Stack confirmed from <code>pyproject.toml</code>: Python 3.11+, Click, docker-py, httpx, pytest, Hatchling</li>
-                <li>DTU relationship and demo quote from the March 24 Digital Twin Universe demo notes</li>
+                <li><code>grep -c '@main.command' src/amplifier_bundle_gitea/cli.py</code> → 7 CLI commands</li>
+                <li><code>find src -name '*.py' | xargs wc -l | tail -1</code> → 988 lines across 8 files</li>
+                <li><code>grep -rn 'def test_' tests/ | wc -l</code> → 38 tests across 5 files</li>
+                <li><code>git rev-list --count upstream/main</code> → 19 commits</li>
+                <li><code>grep -o '"--include-[a-z]*"' cli.py | sort -u | wc -l</code> → 6 opt-in flags (all default False)</li>
+                <li><code>cat src/amplifier_bundle_gitea/constants.py</code> → SQLite, OFFLINE_MODE, INSTALL_LOCK, disabled actions/packages/indexer, admin/admin1234</li>
+                <li><code>git shortlog -sne upstream/main</code> → contributors</li>
             </ul>
-            <p style="margin-top: var(--space-sm);"><strong>Gaps:</strong> Line counts are approximate and may drift with development. The DTU demo quote is anecdotal, from a single demo session.</p>
-            <p><strong>Primary contributors:</strong> MADE:Explorations team, built with Amplifier.</p>
+            <p><strong>Primary contributors:</strong> David Koleczek (13 commits) &middot; Brian Krabach (4) &middot; Salil Das (2).</p>
+            <p><strong>Gaps:</strong> The README's transitive-foundation inclusion chain is quoted but was not independently traced across repos — treat as a documented claim, not a verified fact. 27 material claims checked; 0 unsupported.</p>
         </div>
     </div>
 
@@ -773,18 +362,48 @@ html.js .slide.active{display:flex;}
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
 
-    <!-- More stories link -->
+    <!-- More stories link - REQUIRED -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -793,41 +412,34 @@ html.js .slide.active{display:flex;}
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
-
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
-
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

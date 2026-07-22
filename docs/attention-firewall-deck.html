@@ -3,391 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Attention Firewall — Rule-Based Notification Filtering</title>
+    <title>Attention Firewall</title>
     <script>document.documentElement.classList.add('js')</script>
-
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            /* Fluid typography */
-            --font-headline: clamp(36px, 8vw, 72px);
-            --font-medium-headline: clamp(24px, 5vw, 48px);
-            --font-subhead: clamp(16px, 3vw, 28px);
-            --font-body: clamp(14px, 2.5vw, 16px);
-            --font-small: clamp(12px, 1.8vw, 14px);
-            --font-code: clamp(13px, 2vw, 15px);
-
-            /* Fluid spacing */
-            --padding-slide: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
-            --gap-grid: clamp(16px, 3vw, 40px);
-            --radius-card: clamp(12px, 2vw, 16px);
-
-            /* Accent: Red per color palette (Attention Firewall) */
-            --accent: #FF6B6B;
-            --accent-dim: rgba(255, 107, 107, 0.15);
-            --success: #30D158;
-            --warning: #FFD60A;
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
+            --bg: #0a0e14;
+            --bg2: #121821;
+            --fg: #f4f6fb;
+            --muted: #9aa7bd;
+            --accent: #4fd6a8;
+            --accent2: #5aa9ff;
+            --warn: #ff8a6b;
+            --line: rgba(255,255,255,0.10);
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: #fff;
-        }
+        html, body { background: var(--bg); color: var(--fg); }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
 
-        /* Slide framework */
         .slide {
             display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
-            padding: var(--padding-slide);
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
+            background: radial-gradient(1200px 700px at 78% 12%, rgba(90,169,255,0.10), transparent 60%),
+                        radial-gradient(1000px 600px at 12% 88%, rgba(79,214,168,0.08), transparent 60%),
+                        var(--bg);
         }
+
         .slide.active { display: flex; }
-        .center { text-align: center; align-items: center; justify-content: center; }
 
-        /* Typography */
-        .headline {
-            font-size: var(--font-headline);
-            font-weight: 700;
-            letter-spacing: clamp(-1px, -0.03em, -2px);
-            line-height: 1.1;
-            margin-bottom: clamp(16px, 3vw, 24px);
-        }
-        .medium-headline {
-            font-size: var(--font-medium-headline);
-            font-weight: 600;
-            letter-spacing: -1px;
-            line-height: 1.2;
-            margin-bottom: clamp(16px, 3vw, 24px);
-        }
-        .subhead {
-            font-size: var(--font-subhead);
-            font-weight: 400;
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-        .section-label {
-            font-size: var(--font-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: clamp(12px, 2vw, 16px);
-        }
-        .small-text {
-            font-size: var(--font-small);
-            color: var(--text-tertiary);
-            margin-top: clamp(12px, 2vw, 16px);
-        }
-
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            font-size: var(--font-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--success);
-            border: 1px solid var(--success);
-            border-radius: 20px;
-            padding: 4px 16px;
-            margin-top: clamp(16px, 3vw, 24px);
-        }
-
-        /* Grid layouts */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--gap-grid);
-            margin-top: clamp(24px, 4vw, 40px);
-        }
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--gap-grid);
-            margin-top: clamp(24px, 4vw, 40px);
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-card);
-            padding: clamp(20px, 4vw, 32px);
-        }
-        .card-icon { font-size: clamp(28px, 5vw, 48px); margin-bottom: clamp(8px, 1.5vw, 12px); }
-        .card h3, .card-title {
-            font-size: clamp(16px, 3vw, 20px);
-            font-weight: 600;
-            color: var(--accent);
-            margin-bottom: clamp(8px, 1.5vw, 12px);
-        }
-        .card p, .card-text {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(8px, 1.5vw, 12px);
-            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--font-code);
-            white-space: pre-wrap;
-            word-break: break-word;
-            line-height: 1.6;
-            color: #98D4A0;
-            margin: clamp(12px, 2vw, 20px) 0;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        .code-comment { color: var(--text-tertiary); }
-        .code-keyword { color: #FF7AC6; }
-
-        /* Flow diagram */
-        .flow-diagram {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: center;
-            gap: clamp(8px, 1.5vw, 16px);
-            margin: clamp(20px, 3vw, 32px) 0;
-        }
-        .flow-box {
-            background: var(--surface-1);
-            border: 1px solid rgba(255, 107, 107, 0.3);
-            border-radius: var(--radius-card);
-            padding: clamp(12px, 2vw, 20px) clamp(16px, 3vw, 24px);
-            text-align: center;
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-        }
-        .flow-box strong { color: var(--text-primary); }
-        .flow-arrow { font-size: clamp(20px, 3vw, 28px); color: var(--text-tertiary); }
-
-        /* Highlight box */
-        .highlight-box {
-            background: linear-gradient(135deg, var(--accent-dim), rgba(255, 107, 107, 0.08));
-            border: 1px solid rgba(255, 107, 107, 0.3);
-            border-radius: var(--radius-card);
-            padding: clamp(16px, 3vw, 24px) clamp(20px, 4vw, 32px);
-            margin: clamp(16px, 3vw, 24px) 0;
-            font-size: var(--font-body);
-            line-height: 1.5;
-            color: var(--text-secondary);
-        }
-        .highlight-box strong { color: var(--text-primary); }
-
-        /* Notification mockup */
-        .notification-stack {
-            display: flex;
-            flex-direction: column;
-            gap: clamp(8px, 1.5vw, 12px);
-            margin: clamp(24px, 4vw, 40px) auto;
-            max-width: 460px;
-            width: 100%;
-        }
-        .notification {
-            background: var(--surface-2);
-            border-radius: clamp(10px, 2vw, 14px);
-            padding: clamp(12px, 2vw, 16px) clamp(16px, 3vw, 20px);
-            display: flex;
-            align-items: center;
-            gap: clamp(12px, 2vw, 16px);
-        }
-        .notification.surfaced { border: 1px solid var(--success); }
-        .notification.suppressed {
-            text-decoration: line-through;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .notification.suppressed .notification-title,
-        .notification.suppressed .notification-body { color: var(--text-tertiary); }
-        .notification.batched {
-            border: 1px solid rgba(255, 214, 10, 0.3);
-        }
-        .notification.batched .notification-title,
-        .notification.batched .notification-body { color: var(--text-tertiary); }
-        .notification-icon {
-            width: clamp(32px, 6vw, 40px);
-            height: clamp(32px, 6vw, 40px);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: clamp(16px, 3vw, 20px);
-            flex-shrink: 0;
-        }
-        .icon-surface { background: var(--success); }
-        .icon-suppress { background: var(--accent); }
-        .icon-digest { background: rgba(255, 214, 10, 0.8); color: #000; }
-        .notification-content { flex: 1; min-width: 0; }
-        .notification-title { font-weight: 600; font-size: var(--font-body); }
-        .notification-body {
-            font-size: var(--font-small);
-            color: var(--text-secondary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Stat row */
-        .stat-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: clamp(24px, 5vw, 60px);
-            margin-top: clamp(24px, 4vw, 40px);
-            justify-content: center;
-        }
-        .stat { text-align: center; min-width: 120px; }
-        .stat-number {
-            font-size: clamp(36px, 8vw, 64px);
-            font-weight: 700;
-            color: var(--accent);
-        }
-        .stat-label {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            margin-top: clamp(4px, 1vw, 8px);
-        }
-
-        /* Feature list */
-        .feature-list { list-style: none; margin-top: clamp(16px, 3vw, 24px); }
-        .feature-list li {
-            font-size: clamp(16px, 3vw, 20px);
-            padding: clamp(10px, 1.5vw, 14px) 0;
-            border-bottom: 1px solid var(--border-subtle);
-            display: flex;
-            align-items: center;
-            gap: clamp(12px, 2vw, 16px);
-            color: var(--text-secondary);
-        }
-        .feature-list li:last-child { border-bottom: none; }
-        .check { color: var(--success); font-size: clamp(20px, 3vw, 24px); flex-shrink: 0; }
-
-        /* Velocity grid */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
-            gap: var(--gap-grid);
-            margin-top: clamp(24px, 4vw, 40px);
-        }
-        .velocity-stat { text-align: center; }
-        .velocity-number {
-            font-size: clamp(48px, 12vw, 80px);
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent), #FF9999);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .velocity-label {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            margin-top: clamp(4px, 1vw, 8px);
-        }
-
-        /* Sources slide */
-        .sources-content {
-            color: var(--text-secondary);
-            line-height: 1.7;
-            font-size: var(--font-body);
-        }
-        .sources-content strong { color: var(--text-primary); }
-        .sources-content code {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: var(--font-small);
-            background: var(--surface-1);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .sources-content ul { list-style: disc; padding-left: 24px; margin: 6px 0; }
-        .sources-content li { margin: 3px 0; }
-
-        /* Navigation */
-        .nav {
-            position: fixed;
-            bottom: clamp(20px, 4vw, 30px);
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: clamp(6px, 1vw, 8px);
-            z-index: 100;
-            padding: 8px;
-        }
-        .nav-dot {
-            width: clamp(10px, 2vw, 8px);
-            height: clamp(10px, 2vw, 8px);
-            min-width: 10px;
-            min-height: 10px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .nav-dot.active {
-            background: var(--accent);
-            width: clamp(20px, 3vw, 24px);
-            border-radius: 4px;
-        }
-        .slide-counter {
-            position: fixed;
-            bottom: clamp(20px, 4vw, 30px);
-            right: clamp(20px, 4vw, 40px);
-            font-size: var(--font-small);
-            color: var(--text-tertiary);
-        }
-        .more-stories {
-            position: fixed;
-            bottom: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: clamp(11px, 1.5vw, 12px);
-            color: rgba(255,255,255,0.3);
-            text-decoration: none;
-            z-index: 100;
-        }
-        .more-stories:hover { color: var(--text-tertiary); }
-
-        /* Responsive */
-        @media (max-width: 600px) {
-            .flow-arrow { display: none; }
-            .flow-diagram { flex-direction: column; }
-            .notification-body { white-space: normal; }
-        }
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
-            .slide.center { justify-content: flex-start; }
-        }
-        @media (hover: none) {
-            .nav-dot { min-width: 14px; min-height: 14px; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * { animation: none !important; transition: none !important; }
-        }
-    
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        /* No-JS fallback: all slides visible + scrollable */
         html:not(.js) .slide {
             display: flex !important;
             position: relative !important;
@@ -400,268 +52,396 @@
             min-height: 100dvh;
         }
 
-        /* Progressive enhancement: JS-only slide mode */
+        /* JS-only slide mode */
         html.js { overflow: hidden; }
         html.js body { overflow: hidden; overscroll-behavior: none; }
         html.js .slide { display: none; }
         html.js .slide.active { display: flex; }
+        /* Fit-safe: cap to viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide { transition: transform 0.5s ease, opacity 0.5s ease; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: clamp(14px, 2vw, 22px);
+        }
+        .body { color: var(--muted); margin-top: clamp(14px, 2vw, 22px); max-width: 44ch; }
+        .handoff { color: var(--accent2); margin-top: clamp(16px, 2.4vw, 26px); font-style: italic; max-width: 44ch; }
+        h1 + .body, h2 + .body { margin-top: clamp(14px, 2vw, 22px); }
+
+        /* Title cover */
+        .title-slide .badge {
+            display: inline-block;
+            margin-top: clamp(20px, 3vw, 30px);
+            padding: 6px 14px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
+            letter-spacing: 0.08em;
+        }
+        .title-slide .subtitle { margin-top: clamp(12px, 2vw, 20px); }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: clamp(14px, 2vw, 20px); width: 100%; }
+        .stat {
+            background: var(--bg2);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: clamp(18px, 2.4vw, 26px);
+        }
+        .stat .num { font-size: clamp(30px, 5vw, 52px); font-weight: 800; color: var(--accent); line-height: 1; letter-spacing: -0.02em; }
+        .stat .lbl { margin-top: 10px; color: var(--muted); font-size: clamp(12px, 1.6vw, 15px); }
+
+        /* Numbered steps / ladder */
+        .steps { display: flex; flex-direction: column; gap: clamp(10px, 1.4vw, 14px); width: 100%; }
+        .step {
+            display: flex; align-items: center; gap: 14px;
+            background: var(--bg2);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 20px);
+        }
+        .step .idx {
+            flex: 0 0 auto;
+            width: 34px; height: 34px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 15px;
+            background: rgba(90,169,255,0.15); color: var(--accent2);
+            border: 1px solid rgba(90,169,255,0.3);
+        }
+        .step .txt { font-size: clamp(13px, 1.7vw, 17px); }
+        .step .txt strong { color: var(--fg); }
+        .step .out { margin-left: auto; font-size: clamp(11px, 1.5vw, 13px); font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+        .step.surface .out { color: var(--accent); }
+        .step.surface .idx { background: rgba(79,214,168,0.15); color: var(--accent); border-color: rgba(79,214,168,0.35); }
+        .step.digest .out { color: var(--muted); }
+
+        /* Rules list */
+        .rules { display: flex; flex-direction: column; gap: clamp(8px, 1.2vw, 12px); width: 100%; }
+        .rule {
+            background: var(--bg2);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--warn);
+            border-radius: 10px;
+            padding: clamp(10px, 1.5vw, 14px) clamp(12px, 1.8vw, 18px);
+            font-size: clamp(13px, 1.7vw, 16px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            color: var(--fg);
+        }
+
+        /* Code block */
+        .code-block {
+            background: #05080d;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px, 2.2vw, 24px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.6vw, 15px);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            width: 100%;
+            color: #d5deec;
+        }
+        .code-comment { color: var(--muted); }
+        .code-key { color: var(--accent2); }
+
+        .small-text { font-size: clamp(13px, 1.7vw, 16px); color: var(--muted); }
+        .small-text ul { margin: 10px 0 10px 20px; }
+        .small-text li { margin-bottom: 6px; }
+        .small-text code { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; color: var(--accent2); font-size: 0.92em; }
+        .small-text strong { color: var(--fg); }
+        .sources-head { margin-bottom: clamp(14px, 2vw, 20px); }
+
+        /* Big emphasis for tension slide */
+        .bigline { font-weight: 800; letter-spacing: -0.02em; font-size: clamp(30px, 6vw, 60px); line-height: 1.05; }
+        .bigline .a { color: var(--warn); }
+        .bigline .b { color: var(--accent); }
+
+        /* Nav */
+        .nav { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); display: flex; gap: 9px; z-index: 100; }
+        .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.22); cursor: pointer; transition: background 0.2s, transform 0.2s; }
+        .nav-dot.active { background: var(--accent); transform: scale(1.35); }
+        .slide-counter { position: fixed; bottom: 24px; right: 26px; font-size: 12px; color: var(--muted); z-index: 100; }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
+        .more-stories {
+            position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px); color: rgba(255,255,255,0.3);
+            text-decoration: none; z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
     </style>
 </head>
 <body>
 <!--
-      NARRATIVE SPINE — Attention Firewall
+  SPINE
+  ABT: AND notifications are supposed to signal what actually needs your attention; BUT every app screams equally — a 👍 'liked your message' arrives with the same weight as a note from a VIP; THEREFORE Attention Firewall runs each Windows toast through a fixed, configurable rule pipeline so only what matters interrupts, and the rest is batched into scheduled digests.
+  Payoff: The intercept — every incoming notification falls through the same five-rung ladder (muted app → suppress pattern → VIP → keyword → else digest) so a VIP message surfaces with a rationale while the 👍 reaction never reaches you.
+  Beats:
+    1. frame     — Attention Firewall (bkrabach/amplifier-bundle-attention-firewall) intercepts Windows toasts so only what matters interrupts, and batches the rest.  advances: Orients the audience on what this is and the problem it solves — the stakes behind the AND.
+    2. tension   — Your OS treats every notification equally: a 👍 'liked your message' interrupts you exactly as hard as a note from someone who matters.  advances: Establishes the BUT — the flat-priority problem the whole deck answers.
+    3. proof     — A real, working v0.1.0 bundle: 4,836 lines of Python across 19 source files, sole-authored by Brian Krabach.  advances: Rewards attention early with verified evidence that the fix exists and is substantial — grounds the THEREFORE.
+    4. setup     — Notifications are captured at the source via the Windows UserNotificationListener API, with a mock mode off-Windows.  advances: Introduces the capture layer the argument leans on, so the pipeline that follows has something concrete to act on.
+    5. mechanism — Seven default suppress patterns explicitly filter the 'reacted with' / 'liked your message' / 'is typing' class before it ever interrupts.  advances: Shows one concrete way the fix works — makes the BUT's pain point resolvable, not aspirational.
+    6. payoff    — Every notification falls through one fixed ladder (muted app → suppress pattern → VIP → keyword → else digest) so VIPs surface with a rationale and everything else waits.  advances: The climax that lands the THEREFORE — the deterministic intercept that turns equal-weight chaos into ranked attention.
+    7. turn      — The rules are yours to shape — a YAML policy plus SQLite store, editable by CLI or by conversation through the triage-manager agent, with non-surfaced items delivered as scheduled morning/eod digests.  advances: Shifts from a fixed pipeline to a firewall you own — extends the THEREFORE from 'it filters' to 'it filters on your terms.'
+    8. takeaway  — Attention is a resource, and a firewall protects it — filter at the source with rules you control instead of triaging every buzz by hand.  advances: Generalizes the ABT into the durable idea the audience keeps.
+-->
 
-      ABT:
-        AND notifications are supposed to signal what needs your attention;
-        BUT every app screams equally — ~74 a day, where a "👍 reaction" ranks
-            the same as a message from your CEO;
-        THEREFORE Attention Firewall evaluates every notification against
-            configurable rules, so only what matters interrupts — and it's been
-            proven over 22 days of real usage.
-
-      PAYOFF (named up front):
-        The real-world outcome — across 22 days, 90.7% of notifications never
-        interrupted the user; only 151 of 1,628 were surfaced. Attention protected.
-
-      BEATS (proof-first; payoff lands at beat 3 of 8, before the midpoint):
-        1. proof     — 22 real days: 1,628 processed, 151 surfaced, 90.7% silenced.
-                       advances: grounds the AND — it works in real life.
-        2. tension   — notifications are broken: everything screams, no intelligence,
-                       death by volume.  advances: the BUT.
-        3. payoff    — a personal firewall for your attention: VIPs through, noise
-                       never.  advances: lands the THEREFORE.
-        4. mechanism — four rules decide every notification (one claim).  advances:
-                       HOW the filtering works.
-        5. mechanism — one YAML file controls all of it (one claim).  advances: HOW
-                       it stays configurable.
-        6. mechanism — real filtering decisions, shown not claimed (one claim).
-                       advances: HOW the rules land in practice.
-        7. turn      — more than a filter: a queryable attention system on Amplifier.
-                       advances: pivots from "a filter" to "an ecosystem."
-        8. takeaway  — take back your attention.  advances: what the audience keeps.
-
-        + Sources & Methodology (audit-trail slide, not a beat) at the end.
-        Slides = 8 beats + 1 = 9.
-    -->
-
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Showcase Project</div>
-        <h1 class="medium-headline">In 22 real days, 90.7% of notifications<br>never interrupted the user</h1>
-        <p class="subhead">Attention Firewall &mdash; rule-based Windows notification filtering — has been running live, deciding what actually deserves your attention.</p>
-        <div class="stat-row">
-            <div class="stat">
-                <div class="stat-number">1,628</div>
-                <div class="stat-label">Notifications processed</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">151</div>
-                <div class="stat-label">Surfaced as important</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">9.3%</div>
-                <div class="stat-label">Surface rate</div>
-            </div>
-        </div>
-        <div class="highlight-box">
-            Over 22 days (Jan 30 &ndash; Feb 20, 2026), only 151 of 1,628 notifications were important enough to surface immediately. The rest were batched into digests or suppressed as noise.
-        </div>
-        <div class="status-badge">&#10003; Active</div>
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>Attention Firewall</h1>
+        <p class="subtitle">A rule pipeline for your notifications</p>
+        <span class="badge">bkrabach/amplifier-bundle-attention-firewall · v0.1.0</span>
     </div>
 
-    <!-- beat 2: tension -->
-    <div class="slide">
+    <!-- ===== frame ===== -->
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Frame</div>
+            <h2>It intercepts your Windows toasts so only what matters interrupts</h2>
+            <p class="body">Attention Firewall is an AI-powered Windows notification controller: it filters notifications, surfaces what matters, and batches the rest into digests.</p>
+            <p class="handoff">The reason it needs to exist is the problem underneath every one of those toasts.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">Filter</div><div class="lbl">Surface what matters</div></div>
+                <div class="stat"><div class="num">Batch</div><div class="lbl">Digest the rest</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== tension ===== -->
+    <div class="slide center">
+        <!-- beat 2: tension -->
         <div class="section-label">The Problem</div>
-        <h2 class="headline">Notifications are broken</h2>
-        <div class="thirds">
-            <div class="card">
-                <div class="card-icon">&#x1F514;</div>
-                <div class="card-title">Everything Screams</div>
-                <div class="card-text">WhatsApp groups, Teams channels, system alerts &mdash; every app competes for your attention equally.</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">&#x1F937;</div>
-                <div class="card-title">No Intelligence</div>
-                <div class="card-text">"User reacted with &#x1F44D;" gets the same priority as a message from your CEO.</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">&#x26A1;</div>
-                <div class="card-title">Death by Volume</div>
-                <div class="card-text">~74 notifications per day on average. Most are noise. The important ones get buried.</div>
+        <h2>Your OS treats every notification exactly the same</h2>
+        <p class="bigline"><span class="a">👍 "liked your message"</span><br>interrupts you as hard as<br><span class="b">a note from someone who matters</span></p>
+        <p class="handoff">A working fix for that flat priority already exists — and it's substantial.</p>
+    </div>
+
+    <!-- ===== proof ===== -->
+    <div class="slide split">
+        <!-- beat 3: proof -->
+        <div class="col-main">
+            <div class="section-label">Proof It's Real</div>
+            <h2>A real, working v0.1.0 bundle — not a sketch</h2>
+            <p class="body">The primary repo ships substantial working Python and a single, focused author behind it.</p>
+            <p class="handoff">So how does it get its hands on a notification in the first place?</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">4,836</div><div class="lbl">Lines of Python</div></div>
+                <div class="stat"><div class="num">19</div><div class="lbl">Source files in src/</div></div>
+                <div class="stat"><div class="num">0.1.0</div><div class="lbl">Bundle version</div></div>
+                <div class="stat"><div class="num">1</div><div class="lbl">Author — Brian Krabach</div></div>
             </div>
         </div>
     </div>
 
-    <!-- beat 3: payoff -->
+    <!-- ===== setup ===== -->
+    <div class="slide split">
+        <!-- beat 4: setup -->
+        <div class="col-main">
+            <div class="section-label">The Capture Layer</div>
+            <h2>It reads notifications at the source, right off Windows</h2>
+            <p class="body">A 613-line listener captures toasts via the Windows UserNotificationListener API. Off Windows, the listener runs in mock mode.</p>
+            <p class="handoff">With a stream of real notifications in hand, the filtering can begin.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">613</div><div class="lbl">Lines in listener.py</div></div>
+                <div class="stat"><div class="num">winrt</div><div class="lbl">UserNotificationListener API</div></div>
+                <div class="stat"><div class="num">mock</div><div class="lbl">Mode off-Windows</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== mechanism ===== -->
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Noise, By Rule</div>
+            <h2>"Noise" isn't a guess — it's seven explicit suppress patterns</h2>
+            <p class="body">Seven default suppress patterns filter the reaction / status class of toast before it ever interrupts you.</p>
+            <p class="handoff">Suppression is just one rung of a fixed ladder every toast must fall through.</p>
+        </div>
+        <div class="col-aside">
+            <div class="rules">
+                <div class="rule">"liked your message"</div>
+                <div class="rule">"reacted with"</div>
+                <div class="rule">"is typing"</div>
+                <div class="rule">"has joined the meeting"</div>
+                <div class="rule">"has left the meeting"</div>
+                <div class="rule">"weekly digest" · "daily summary"</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== payoff ===== -->
+    <div class="slide split">
+        <!-- beat 6: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Intercept</div>
+            <h2>Every toast falls through one fixed five-rung ladder</h2>
+            <p class="body">The decision pipeline in daemon.py evaluates each notification in a fixed order, defaulting to digest. VIPs surface with a rationale; everything else waits.</p>
+            <p class="handoff">And that ladder isn't fixed for you — it's yours to shape.</p>
+        </div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step digest"><span class="idx">1</span><span class="txt"><strong>Muted app?</strong> → suppress</span><span class="out">SUPPRESSED</span></div>
+                <div class="step digest"><span class="idx">2</span><span class="txt"><strong>Suppress pattern?</strong> → suppress</span><span class="out">SUPPRESSED</span></div>
+                <div class="step surface"><span class="idx">3</span><span class="txt"><strong>VIP sender?</strong> → surface</span><span class="out">SURFACED</span></div>
+                <div class="step surface"><span class="idx">4</span><span class="txt"><strong>Priority keyword?</strong> → surface</span><span class="out">SURFACED</span></div>
+                <div class="step digest"><span class="idx">5</span><span class="txt"><strong>Else</strong> → digest queue</span><span class="out">DIGEST</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== turn ===== -->
+    <div class="slide split">
+        <!-- beat 7: turn -->
+        <div class="col-main">
+            <div class="section-label">A Firewall You Own</div>
+            <h2>The rules are yours — edit them by CLI or by conversation</h2>
+            <p class="body">VIPs, keywords, suppress patterns and per-app actions live in a YAML policy and a SQLite store, editable via CLI or the triage-manager agent. Non-surfaced items land as scheduled morning / eod digests.</p>
+            <p class="handoff">Which points at the durable idea worth keeping.</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># edit rules from the CLI</span>
+attention-firewall <span class="code-key">add-vip</span>
+attention-firewall <span class="code-key">policies</span>
+attention-firewall <span class="code-key">summary</span>
+
+<span class="code-comment"># or by conversation via triage-manager</span>
+<span class="code-comment"># digest_schedule:</span>
+<span class="code-key">morning</span>: 09:00
+<span class="code-key">eod</span>:     17:00</div>
+        </div>
+    </div>
+
+    <!-- ===== takeaway ===== -->
     <div class="slide center">
-        <div class="section-label">The Solution</div>
-        <h2 class="headline">A personal firewall<br>for your attention</h2>
-        <p class="subhead">Every notification is evaluated against configurable rules.<br>VIPs always get through. Noise never does.</p>
-        <div class="highlight-box" style="max-width: 640px;">
-            That is the whole promise, and the numbers already proved it: <strong>90.7% never interrupted</strong>, while the messages that mattered still came straight through.
-        </div>
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Takeaway</div>
+        <h2>Attention is a resource — a firewall protects it</h2>
+        <p class="body">Filter at the source with rules you control, instead of triaging every buzz by hand. Muted app, suppress pattern, VIP, keyword — else digest.</p>
+        <p class="handoff">Only what matters interrupts. The rest waits for the digest.</p>
     </div>
 
-    <!-- beat 4: mechanism -->
-    <div class="slide">
-        <div class="section-label">How It Works</div>
-        <h2 class="medium-headline">Four rules decide every notification</h2>
-
-        <div class="flow-diagram">
-            <div class="flow-box"><strong>Notification</strong><br>arrives</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-box"><strong>Suppress?</strong><br>noise patterns</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-box"><strong>VIP?</strong><br>always surface</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-box"><strong>Keyword?</strong><br>surface match</div>
-            <div class="flow-arrow">&#x2192;</div>
-            <div class="flow-box"><strong>Default</strong><br>per-app rule</div>
-        </div>
-
-        <div class="highlight-box">
-            <strong>Config-driven:</strong> 9 VIP senders, 20 priority keywords, 11 suppress patterns. Teams messages surface immediately; WhatsApp batches to periodic digests. All defined in a single YAML file.
-        </div>
-    </div>
-
-    <!-- beat 5: mechanism -->
-    <div class="slide">
-        <div class="section-label">Configuration</div>
-        <h2 class="medium-headline">One YAML file controls everything</h2>
-        <div class="code-block"><span class="code-comment"># App-specific behavior</span>
-<span class="code-keyword">apps:</span>
-  Microsoft Teams:
-    default_action: <span class="code-keyword">surface</span>      <span class="code-comment"># Always show</span>
-  WhatsApp:
-    default_action: <span class="code-keyword">summarize</span>    <span class="code-comment"># Batch for digest</span>
-
-<span class="code-comment"># VIP senders — always get through</span>
-<span class="code-keyword">vip_senders:</span>
-  - "Kevin Scott"
-  - "James Cham"
-  - "Jesse Vincent"
-
-<span class="code-comment"># Noise patterns — always suppressed</span>
-<span class="code-keyword">suppress_patterns:</span>
-  - "liked your message"
-  - "reacted with"
-  - "is typing"</div>
-    </div>
-
-    <!-- beat 6: mechanism -->
-    <div class="slide center">
-        <div class="section-label">In Action</div>
-        <h2 class="medium-headline">Real filtering decisions, not guesses</h2>
-
-        <div class="notification-stack">
-            <div class="notification surfaced">
-                <div class="notification-icon icon-surface">&#x2713;</div>
-                <div class="notification-content">
-                    <div class="notification-title">WhatsApp</div>
-                    <div class="notification-body">VIP sender mentions "amplifier" &#x2192; surface</div>
-                </div>
-            </div>
-            <div class="notification suppressed">
-                <div class="notification-icon icon-suppress">&#x2715;</div>
-                <div class="notification-content">
-                    <div class="notification-title">WhatsApp</div>
-                    <div class="notification-body">"User reacted with &#x1F44D;" &#x2192; suppress</div>
-                </div>
-            </div>
-            <div class="notification batched">
-                <div class="notification-icon icon-digest">&#x23F3;</div>
-                <div class="notification-content">
-                    <div class="notification-title">WhatsApp</div>
-                    <div class="notification-body">Group chat discussion &#x2192; batch for digest</div>
-                </div>
-            </div>
-            <div class="notification surfaced">
-                <div class="notification-icon icon-surface">&#x2713;</div>
-                <div class="notification-content">
-                    <div class="notification-title">Windows Security</div>
-                    <div class="notification-body">Security alert &#x2192; always surface</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="small-text">Based on actual filtering decisions from the notification database</div>
-    </div>
-
-    <!-- beat 7: turn -->
-    <div class="slide">
-        <div class="section-label">Ecosystem</div>
-        <h2 class="medium-headline">More than a filter —<br>a queryable attention system</h2>
-        <div class="halves">
-            <div class="card">
-                <div class="card-icon">&#x1F527;</div>
-                <div class="card-title">Amplifier Tool Module</div>
-                <div class="card-text">Query the notification database conversationally &mdash; "What did I miss in the last 2 hours?" &mdash; as a first-class Amplifier tool.</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">&#x1F4CA;</div>
-                <div class="card-title">HTML Digests</div>
-                <div class="card-text">Four daily digests (9am, noon, 3pm, 6pm) render batched WhatsApp messages as browsable HTML summaries. 5 generated to date.</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">&#x1F9F5;</div>
-                <div class="card-title">Topic Tracker</div>
-                <div class="card-text">122 conversation threads extracted from group chats, with 140 updates logged and watch-list support.</div>
-            </div>
-        </div>
-        <div class="small-text">
-            Built and running &middot; ~657 verified lines of Python across the tool module (452) and topic tracker (205) &middot; 22 days live &middot; Primary contributor: Sam Schillace (100% of commits found).
-        </div>
-    </div>
-
-    <!-- beat 8: takeaway -->
-    <div class="slide center">
-        <h2 class="headline">Take back your attention.</h2>
-        <p class="subhead">1,628 notifications. 151 that mattered.<br>The rest never interrupted.</p>
-        <div class="small-text" style="margin-top: clamp(40px, 8vw, 60px);">
-            Built with Amplifier
-        </div>
-    </div>
-
-    <!-- Sources & Methodology -->
+    <!-- Sources & Methodology (no beat comment) -->
     <div class="slide">
         <div class="section-label">Sources</div>
-        <h2 class="medium-headline">Research Methodology</h2>
-        <div class="sources-content">
-            <p><strong>Data as of:</strong> February 20, 2026</p>
-            <p><strong>Feature status:</strong> Active (last DB entry: 2026-02-20T18:50 UTC)</p>
-            <p><strong>Research performed:</strong></p>
+        <h2 class="sources-head">Research Methodology</h2>
+        <div class="small-text" style="opacity: 0.85; line-height: 1.6;">
+            <p><strong>Primary source:</strong> bkrabach/amplifier-bundle-attention-firewall (git@github.com:bkrabach/amplifier-bundle-attention-firewall.git)</p>
+            <p><strong>Feature status:</strong> Built &amp; functional, v0.1.0 — deep AI-scored filtering labeled "Future" in the README.</p>
+            <p><strong>Research performed (re-derived in a fresh session):</strong></p>
             <ul>
-                <li>Notification DB: <code>SELECT COUNT(*) FROM notifications</code> &#x2192; 1,628 rows</li>
-                <li>Decision breakdown: <code>SELECT decision, COUNT(*) GROUP BY decision</code></li>
-                <li>Date range: <code>SELECT MIN(timestamp), MAX(timestamp)</code> &#x2192; Jan 30 – Feb 20</li>
-                <li>App breakdown: <code>SELECT app_id, COUNT(*) GROUP BY app_id</code> &#x2192; 98.3% WhatsApp</li>
-                <li>Config review: <code>cat ~/.attention-firewall/config.yaml</code></li>
-                <li>Code line counts: <code>find ... -name "*.py" -exec wc -l</code> &#x2192; 657 total</li>
-                <li>Git history: <code>git log --all -- tools/attention-firewall/</code> &#x2192; 3 commits</li>
-                <li>Topics DB: <code>SELECT COUNT(*) FROM threads</code> &#x2192; 122 threads, 140 updates</li>
+                <li>Remote / author: <code>git remote -v</code>; <code>git shortlog -sne --all</code> (1 contributor: Brian Krabach)</li>
+                <li>Line counts: <code>find src -name '*.py' -not -path '*__pycache__*' | xargs wc -l</code> (4,836 lines, 19 files; listener.py 613)</li>
+                <li>Decision pipeline: <code>sed -n '193,236p' src/attention_firewall/daemon.py</code> (muted → suppress → VIP → keyword → else digest)</li>
+                <li>Suppress patterns: <code>grep -A8 'suppress_patterns:' config/default-policy.yaml</code> (7 defaults)</li>
+                <li>State store: <code>grep -nE 'CREATE TABLE' src/attention_firewall/state.py</code> (SQLite: vips, keywords, suppress_patterns, muted_apps; 429 lines)</li>
+                <li>Deps / capture: <code>grep -n 'winrt' pyproject.toml</code>; README line 185 (UserNotificationListener), line 381 (mock mode)</li>
             </ul>
-            <p><strong>Gaps:</strong> The notification daemon/interceptor source was not located in accessible repos. Verified line count (~657) covers Amplifier tool modules (452 lines) and topic tracker (205 lines). The daemon and dashboard generator may add additional code.</p>
-            <p><strong>Primary contributor:</strong> Sam Schillace (100% of git commits found)</p>
+            <p><strong>Gaps:</strong> No usage database was present on this machine (<code>find -iname notifications.db</code> returned nothing), so run-time statistics (daily counts, surfaced totals, live-usage duration) could NOT be verified and are excluded.</p>
+            <p><strong>Primary contributor:</strong> Brian Krabach &lt;brkrabac@microsoft.com&gt; — sole author of the primary repo (100% of commits).</p>
         </div>
     </div>
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
+
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
-        let touchStartX = 0;
-        let touchEndX = 0;
-        const SWIPE_THRESHOLD = 50;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -670,35 +450,36 @@
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
-            if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('.more-stories')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
+
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('.more-stories')) return;
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

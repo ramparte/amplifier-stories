@@ -1,746 +1,658 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Amplifier Forge - Two Tracks of Exploration</title>
-    <script>document.documentElement.classList.add('js')</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Forge — One terminal skill, every harness</title>
+  <script>document.documentElement.classList.add('js')</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <style>
-        :root {
-            --accent: #FF6B6B;
-            --accent-light: #FF8E8E;
-            --accent-glow: rgba(255, 107, 107, 0.3);
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --border-subtle: rgba(255,255,255,0.12);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-            --font-headline: clamp(36px, 8vw, 72px);
-            --font-medium-headline: clamp(24px, 5vw, 48px);
-            --font-subhead: clamp(16px, 3vw, 32px);
-            --padding-slide: clamp(20px, 5vw, 80px);
-            --gap-grid: clamp(16px, 3vw, 40px);
-            --warning: #FF9F0A;
-            --blue: #0078D4;
-            --success: #30D158;
-        }
+    :root {
+      --bg: #000;
+      --surface-1: rgba(255,255,255,0.05);
+      --surface-2: rgba(255,255,255,0.09);
+      --accent: #FF2D78;
+      --accent-dim: rgba(255,45,120,0.12);
+      --accent-border: rgba(255,45,120,0.35);
+      --text: #fff;
+      --text-secondary: rgba(255,255,255,0.74);
+      --text-tertiary: rgba(255,255,255,0.5);
+      --green: #30D158;
+      --green-dim: rgba(48,209,88,0.12);
+      --green-border: rgba(48,209,88,0.32);
+      --yellow: #FFD60A;
+      --yellow-dim: rgba(255,214,10,0.12);
+      --yellow-border: rgba(255,214,10,0.32);
+      --blue: #0A84FF;
+      --blue-dim: rgba(10,132,255,0.12);
+      --blue-border: rgba(10,132,255,0.32);
+      --code-bg: #0b0f18;
+      --code-green: #7ee787;
+      --code-comment: rgba(255,255,255,0.34);
+      --border: rgba(255,255,255,0.1);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0a;
-            color: var(--text-primary);
-        }
+    /* Core slide CSS */
+    .slide {
+      display: flex;                 /* Default: visible (no-JS scrollable fallback) */
+      width: 100vw;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+    }
 
-        .deck { }
+    .slide.active { display: flex; }
 
-        .slide {
-            display: flex;
-            min-height: 100vh;
-            min-height: 100dvh;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: var(--padding-slide);
-        }
+    /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+    html:not(.js) .slide {
+      display: flex !important;
+      position: relative !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      visibility: visible !important;
+      transform: none !important;
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
 
-        .slide.active {
-            display: flex;
-            flex-direction: column;
-        }
+    /* Progressive enhancement: JS-only slide mode */
+    html.js { overflow: hidden; }
+    html.js body { overflow: hidden; overscroll-behavior: none; }
+    html.js .slide { display: none; }
+    html.js .slide.active { display: flex; }
 
-        .center {
-            text-align: center;
-            align-items: center;
-            justify-content: center;
-        }
+    /* Fit-safe: cap each slide to the viewport and scroll inside it */
+    html.js .slide { max-height: 100dvh; overflow-y: auto; }
 
-        /* Typography */
-        .section-label {
-            font-size: clamp(11px, 1.5vw, 14px);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: var(--accent);
-            margin-bottom: clamp(12px, 2vw, 20px);
-        }
+    /* Centering is OPT-IN for title/short slides only */
+    .center {
+      text-align: center;
+      align-items: center;
+      justify-content: center;
+    }
 
-        .headline {
-            font-size: var(--font-headline);
-            font-weight: 700;
-            letter-spacing: -2px;
-            line-height: 1.1;
-            color: var(--text-primary);
-            margin-bottom: clamp(16px, 3vw, 28px);
-        }
+    /* Conservative type scale — decks are 16:9 and MUST fit one viewport. */
+    h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.025em; font-weight: 800; }
+    h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.02em; font-weight: 700; }
+    p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+    .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+    .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--text-secondary); margin-top: 18px; }
 
-        .medium-headline {
-            font-size: var(--font-medium-headline);
-            font-weight: 700;
-            letter-spacing: -1px;
-            line-height: 1.15;
-            color: var(--text-primary);
-            margin-bottom: clamp(12px, 2vw, 24px);
-        }
+    .section-label {
+      font-size: clamp(11px, 1.5vw, 13px);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .section-label.g { color: var(--green); }
+    .section-label.y { color: var(--yellow); }
+    .section-label.b { color: var(--blue); }
 
-        .subhead {
-            font-size: var(--font-subhead);
-            font-weight: 400;
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: 720px;
-        }
+    .body { color: var(--text-secondary); margin-top: 18px; max-width: 40ch; }
+    .handoff {
+      color: var(--text-tertiary);
+      margin-top: 20px;
+      font-size: clamp(13px, 1.7vw, 16px);
+      max-width: 42ch;
+    }
+    .accent { color: var(--accent); }
+    .green  { color: var(--green); }
+    .yellow { color: var(--yellow); }
+    .blue   { color: var(--blue); }
 
-        .body-text {
-            font-size: clamp(14px, 2vw, 18px);
-            line-height: 1.6;
-            color: var(--text-secondary);
-        }
+    /* Horizontal split — narrative left, supporting visual right. */
+    .slide.split { flex-direction: column; }
+    @media (min-width: 880px) and (min-height: 480px) {
+      .slide.split {
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(32px, 5vw, 84px);
+      }
+      html.js .slide.split.active { display: flex; }
+      .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+      .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+      .slide.split .col-aside > * { margin-top: 0; }
+    }
+    .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-        .caption {
-            font-size: clamp(12px, 1.5vw, 14px);
-            color: var(--text-tertiary);
-            line-height: 1.5;
-        }
+    /* Supporting blocks */
+    .stack { display: flex; flex-direction: column; gap: 14px; width: 100%; }
 
-        /* Badge */
-        .badge {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
-            color: var(--text-primary);
-            font-size: clamp(11px, 1.5vw, 14px);
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            padding: clamp(8px, 1.5vw, 12px) clamp(20px, 3vw, 32px);
-            border-radius: 100px;
-            margin-bottom: clamp(20px, 3vw, 32px);
-            box-shadow: 0 8px 32px var(--accent-glow);
-        }
+    .tile {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+    }
+    .tile-accent { background: var(--accent-dim); border-color: var(--accent-border); }
+    .tile-green  { background: var(--green-dim);  border-color: var(--green-border); }
+    .tile-yellow { background: var(--yellow-dim); border-color: var(--yellow-border); }
+    .tile-blue   { background: var(--blue-dim);   border-color: var(--blue-border); }
 
-        .date-label {
-            font-size: clamp(12px, 1.5vw, 14px);
-            color: var(--text-tertiary);
-            margin-top: clamp(20px, 3vw, 32px);
-            font-weight: 500;
-        }
+    .figure {
+      font-size: clamp(30px, 6vw, 60px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .figure-lbl {
+      font-size: clamp(12px, 1.6vw, 14px);
+      color: var(--text-secondary);
+      line-height: 1.4;
+      margin-top: 6px;
+    }
 
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(16px, 4vw, 28px);
-        }
+    .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; }
 
-        .card-title {
-            font-size: clamp(16px, 2.5vw, 22px);
-            font-weight: 600;
-            margin-bottom: clamp(10px, 2vw, 16px);
-            color: var(--accent);
-        }
+    .harness-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    .harness {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: clamp(14px, 1.9vw, 18px);
+    }
+    .harness .h-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--accent); flex-shrink: 0;
+    }
+    .harness .h-note { margin-left: auto; color: var(--text-tertiary); font-size: clamp(11px,1.5vw,13px); font-weight: 500; }
 
-        /* Grids */
-        .grid-2 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--gap-grid);
-        }
+    .code {
+      background: var(--code-bg);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      font-size: clamp(11px, 1.5vw, 13.5px);
+      line-height: 1.7;
+      color: var(--code-green);
+      white-space: pre-wrap;
+      overflow-x: auto;
+      width: 100%;
+    }
+    .code .cmt { color: var(--code-comment); }
+    .code .red { color: #ff7b72; }
 
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-            gap: var(--gap-grid);
-        }
+    .steps { list-style: none; width: 100%; display: flex; flex-direction: column; gap: 10px; }
+    .steps li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 11px 14px;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    .stepnum {
+      width: 24px; height: 24px; min-width: 24px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(11px,1.4vw,13px); font-weight: 700; color: var(--accent);
+    }
 
-        /* Track cards */
-        .track-card {
-            background: var(--surface-1);
-            border: 2px solid var(--border-subtle);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(20px, 4vw, 36px);
-            position: relative;
-            overflow: hidden;
-        }
+    .rules { list-style: none; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+    .rules li {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: clamp(13px, 1.7vw, 16px);
+      line-height: 1.4;
+    }
+    .rules li:last-child { border-bottom: none; }
+    .check { color: var(--green); font-weight: 800; flex-shrink: 0; }
 
-        .track-card.restore { border-color: var(--accent); }
-        .track-card.evolve { border-color: var(--warning); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 13px;
+      border-radius: 100px;
+      font-size: clamp(10px,1.4vw,12px);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid var(--green-border);
+      margin-bottom: 18px;
+    }
+    .badge::before {
+      content: '';
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+    }
 
-        .track-number {
-            position: absolute;
-            top: -20px;
-            right: 16px;
-            font-size: clamp(72px, 14vw, 110px);
-            font-weight: 800;
-            opacity: 0.08;
-            line-height: 1;
-            pointer-events: none;
-        }
+    .repo {
+      display: inline-block;
+      margin-top: 22px;
+      padding: 10px 16px;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: 'SF Mono', monospace;
+      font-size: clamp(11px, 1.5vw, 14px);
+      color: var(--text-secondary);
+    }
 
-        .track-card.restore .track-number { color: var(--accent); }
-        .track-card.evolve .track-number { color: var(--warning); }
+    /* Navigation */
+    .nav {
+      position: fixed;
+      bottom: 26px;
+      left: 50%; transform: translateX(-50%);
+      display: flex; gap: 6px;
+      z-index: 100;
+    }
+    .nav-dot {
+      width: 6px; height: 6px; border-radius: 3px;
+      background: rgba(255,255,255,0.22);
+      cursor: pointer; transition: all 0.25s ease;
+    }
+    .nav-dot.active { width: 22px; background: var(--accent); }
+    .slide-counter {
+      position: fixed;
+      bottom: 22px; right: 30px;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.05em;
+      z-index: 100;
+    }
+    html:not(.js) .nav, html:not(.js) .slide-counter { display: none; }
 
-        .track-label {
-            font-size: clamp(11px, 1.5vw, 13px);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: clamp(6px, 1vw, 10px);
-        }
+    .slide { transition: opacity 0.4s ease, transform 0.4s ease; }
 
-        .track-card.restore .track-label { color: var(--accent); }
-        .track-card.evolve .track-label { color: var(--warning); }
+    /* Landscape mobile */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+      .slide.center { justify-content: flex-start; }
+    }
 
-        .track-title {
-            font-size: clamp(22px, 4vw, 34px);
-            font-weight: 700;
-            margin-bottom: clamp(10px, 2vw, 16px);
-            color: var(--text-primary);
-        }
+    @media (prefers-reduced-motion: reduce) {
+      .slide, .slide * { animation: none !important; transition: none !important; }
+    }
 
-        .machine-badge {
-            display: inline-block;
-            background: var(--surface-2);
-            border: 1px solid var(--border-subtle);
-            border-radius: 100px;
-            padding: clamp(4px, 1vw, 6px) clamp(12px, 2vw, 18px);
-            font-size: clamp(11px, 1.5vw, 13px);
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
+    .more-stories {
+      position: fixed;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(11px, 1.5vw, 12px);
+      color: rgba(255,255,255,0.3);
+      text-decoration: none;
+      z-index: 100;
+    }
+    .more-stories:hover { color: rgba(255,255,255,0.5); }
 
-        /* Lists */
-        .bullet-list { list-style: none; padding-left: 0; }
-
-        .bullet-list li {
-            position: relative;
-            padding-left: clamp(20px, 3vw, 28px);
-            margin-bottom: clamp(8px, 1.5vw, 14px);
-            font-size: clamp(14px, 2vw, 18px);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .bullet-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: clamp(7px, 1vw, 10px);
-            width: clamp(6px, 1vw, 8px);
-            height: clamp(6px, 1vw, 8px);
-            background: var(--accent);
-            border-radius: 50%;
-        }
-
-        .bullet-list li strong { color: var(--text-primary); }
-
-        /* Quote block */
-        .quote-block {
-            background: linear-gradient(135deg, rgba(255, 107, 107, 0.08) 0%, transparent 100%);
-            border-left: 4px solid var(--accent);
-            border-radius: 0 clamp(12px, 2vw, 16px) clamp(12px, 2vw, 16px) 0;
-            padding: clamp(16px, 4vw, 28px);
-        }
-
-        .quote-text {
-            font-size: clamp(16px, 2.5vw, 24px);
-            font-style: italic;
-            line-height: 1.4;
-            color: var(--text-primary);
-        }
-
-        /* Highlight box */
-        .highlight-box {
-            background: linear-gradient(135deg, rgba(255, 107, 107, 0.12) 0%, rgba(255, 142, 142, 0.04) 100%);
-            border: 1px solid var(--accent);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(16px, 4vw, 28px);
-        }
-
-        /* Icon size */
-        .icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: clamp(10px, 2vw, 16px);
-        }
-
-        /* Sources slide */
-        .sources-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--gap-grid);
-        }
-
-        .source-item {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(14px, 3vw, 22px);
-        }
-
-        .source-label {
-            font-size: clamp(11px, 1.5vw, 13px);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: var(--accent);
-            margin-bottom: clamp(6px, 1vw, 10px);
-        }
-
-        .source-value {
-            font-size: clamp(14px, 2vw, 17px);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .gap-notice {
-            background: rgba(255, 159, 10, 0.08);
-            border: 1px solid rgba(255, 159, 10, 0.3);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(14px, 3vw, 22px);
-        }
-
-        .gap-notice .source-label { color: var(--warning); }
-        .gap-notice .source-value { color: var(--text-secondary); }
-
-        /* Code blocks */
-        code {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-        }
-
-        /* Spacers */
-        .spacer-sm { height: clamp(12px, 2vw, 20px); }
-        .spacer-md { height: clamp(20px, 3vw, 32px); }
-        .spacer-lg { height: clamp(28px, 4vw, 48px); }
-
-        /* Navigation */
-        .nav {
-            position: fixed;
-            bottom: clamp(16px, 3vw, 24px);
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: clamp(6px, 1vw, 8px);
-            z-index: 100;
-            padding: 8px 16px;
-            background: rgba(0,0,0,0.5);
-            border-radius: 100px;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
-
-        .nav-dot {
-            width: clamp(6px, 1vw, 8px);
-            height: clamp(6px, 1vw, 8px);
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .nav-dot.active {
-            background: var(--accent);
-            box-shadow: 0 0 12px var(--accent-glow);
-        }
-
-        .slide-counter {
-            position: fixed;
-            bottom: clamp(16px, 3vw, 24px);
-            right: clamp(20px, 4vw, 32px);
-            font-size: clamp(12px, 1.5vw, 14px);
-            color: var(--text-tertiary);
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            z-index: 100;
-        }
-
-        /* More Amplifier Stories link */
-        .stories-link {
-            position: fixed;
-            bottom: clamp(46px, 6vw, 56px);
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: clamp(12px, 1.5vw, 14px);
-            color: var(--text-tertiary);
-            text-decoration: none;
-            z-index: 100;
-            transition: color 0.3s ease;
-            white-space: nowrap;
-        }
-
-        .stories-link:hover { color: var(--accent); }
-
-        /* Landscape mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide { padding: clamp(12px, 3vw, 24px) clamp(20px, 5vw, 60px); }
-            .headline { font-size: clamp(24px, 5vw, 40px); margin-bottom: 12px; }
-            .medium-headline { font-size: clamp(20px, 4vw, 32px); }
-            .subhead { font-size: clamp(14px, 2vw, 20px); }
-            .spacer-md, .spacer-lg { height: 12px; }
-            .nav { bottom: 8px; }
-            .stories-link { bottom: 36px; }
-            .slide-counter { bottom: 8px; }
-        }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            .nav-dot { transition: none; }
-            .stories-link { transition: none; }
-        }
-    
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
-        html:not(.js) .slide {
-            display: flex !important;
-            position: relative !important;
-            opacity: 1 !important;
-            pointer-events: auto !important;
-            visibility: visible !important;
-            transform: none !important;
-            width: 100%;
-            min-height: 100vh;
-            min-height: 100dvh;
-        }
-
-        /* Progressive enhancement: JS-only slide mode */
-        html.js { overflow: hidden; }
-        html.js body { overflow: hidden; overscroll-behavior: none; }
-        html.js .deck { height: 100vh; height: 100dvh; overflow: hidden; }
-        html.js .slide { display: none; }
-        html.js .slide.active { display: flex; }
-    </style>
+    .title-glow::before {
+      content: '';
+      position: absolute;
+      top: -220px; right: -160px;
+      width: 640px; height: 640px;
+      background: radial-gradient(circle, rgba(255,45,120,0.15) 0%, transparent 68%);
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-    <!--
-      ═══════════════════════════════════════════════════════════════════════════
-      NARRATIVE SPINE  (built from the deck's existing content; no fresh research)
-      ═══════════════════════════════════════════════════════════════════════════
+<!--
+================================================================================
+NARRATIVE SPINE — Forge: One terminal skill, every harness
+================================================================================
+ABT: AND Forge is a portable, stdlib-only Agent Skill that lets five harnesses
+     share persistent terminal sessions and coordinate each other through
+     fail-closed relays; BUT its own foundation was brittle — after a
+     `bun install -g`, node-pty's spawn-helper lost its exec bit and every
+     terminal spawn died with `posix_spawnp failed`; THEREFORE the repair is
+     codified in the tool itself — `forge.py doctor` heals the broken form
+     factor and 29 tests prove it works, so the skill can be trusted to drive
+     real work.
 
-      ABT:
-        AND the CLI is a powerful but single lens on AI-augmented development;
-        BUT you can't see what you're missing until you try a fundamentally
-            different form factor — and Forge had fallen into a broken state;
-        THEREFORE Forge runs two parallel tracks — Restoration (get the current
-            form factor working again on Mac) and Evolution (build context for what
-            supersedes it, on PiDrive) — so the ecosystem learns from what exists
-            AND what's possible.
+Payoff: The doctor heals itself — `forge.py doctor` re-arms the spawn-helper,
+        restarts the daemon, and the whole suite goes green: restoration is
+        codified, not manual.
 
-      PAYOFF (named up front):
-        The two-track strategy itself — "Restoration lets us learn from what exists;
-        Evolution lets us imagine what's possible." One hand keeps a working form
-        factor alive to compare against the CLI; the other prototypes the next
-        paradigm; both feed insights back into Amplifier.
+Beats (frame-first, proof-early; each advances the ABT):
+  1. frame     — The CLI is one lens; Forge is a different form factor: a portable Agent Skill giving five harnesses a shared terminal.
+                 advances: orients the audience on what Forge IS and why it matters — the stable situation behind the AND.
+  2. proof     — One shared skill drives Claude Code, Codex, OpenCode, Gemini, and Amplifier in persistent PTY sessions — zero pip dependencies, ever.
+                 advances: establishes the AND with hard evidence: 5 named harnesses, stdlib-only, one skill root.
+  3. setup     — Forge is two files: forge.py (387 lines, 20 commands) and relay.py (858 lines, 5-role relay) — built in 6 commits on a single day.
+                 advances: introduces the concrete artifacts the argument will lean on before it needs them.
+  4. tension   — The foundation was brittle: after `bun install -g`, node-pty's darwin spawn-helper loses its exec bit and every spawn dies with `posix_spawnp failed`.
+                 advances: establishes the BUT — the complication that threatens the whole form factor.
+  5. mechanism — relay.py's gates are fail-closed: they advance only when every condition holds, and never treat a timeout as permission to advance.
+                 advances: shows HOW Forge earns trust under failure — the discipline that makes the THEREFORE credible.
+  6. turn      — The fix lives inside the tool: `forge.py doctor` chmods the spawn-helpers back to executable and restarts the daemon — the skill repairs itself.
+                 advances: the pivot from broken (BUT) toward working (THEREFORE) — repair is codified, not tribal knowledge.
+  7. payoff    — Restoration proven: the healed form factor passes all 29 unit + contract tests, backed by a Python 3.9/3.13 CI matrix.
+                 advances: lands the THEREFORE as the climax — the skill can be trusted to drive real work.
+  8. takeaway  — A form factor you can trust is one that heals itself and proves it — that's what makes Forge more than a clever terminal wrapper.
+                 advances: generalizes the point the audience keeps — the throughline of the whole ABT.
 
-      proof_deferred_reason: Forge is an experimental personal exploration with NO
-        verifiable git metrics (see Sources); the opening "proof" is the concrete
-        qualitative outcome — Forge was pulled from a broken state to operational —
-        rather than a number, because no trustworthy numbers exist.
+  + Sources & Methodology slide (audit trail; the one allowed non-beat, at the end).
+================================================================================
+-->
 
-      BEATS (proof-first; payoff lands at beat 3 of 7, before the midpoint):
-        1. proof     — Forge was pulled out of a broken state and is operational
-                       again on Mac, using community patterns.  advances: grounds the
-                       AND in a real, usable artifact.
-        2. tension   — the CLI is just one lens; you can't tell what you're missing
-                       until you try a different form factor.  advances: the BUT.
-        3. payoff    — so Forge runs two parallel tracks: Restoration + Evolution.
-                       advances: lands the THEREFORE — the strategy.
-        4. mechanism — Restoration (Mac): keep the existing form factor operational
-                       to compare hands-on with the CLI. (one claim)  advances: HOW
-                       track one creates value.
-        5. mechanism — Evolution (PiDrive): build the conceptual foundation for new
-                       interaction paradigms. (one claim)  advances: HOW track two
-                       creates value.
-        6. turn      — both tracks are a learning laboratory feeding Amplifier's
-                       roadmap; the central question.  advances: pivots from "a Forge
-                       project" to "ecosystem direction."
-        7. takeaway  — next steps for both tracks; learn from what exists, imagine
-                       what's possible.  advances: what the audience keeps.
+  <!-- TITLE COVER (before beat 1; the only slide with .active; no beat comment) -->
+  <div class="slide title-slide active center title-glow">
+    <h1>Forge</h1>
+    <p class="subtitle">One terminal skill, every harness</p>
+  </div>
 
-        + Sources & Methodology (audit-trail slide, not a beat) at the end.
-        Slides = 7 beats + 1 = 8.
-    -->
-
-    <div class="deck">
-
-        <!-- beat 1: proof -->
-        <div class="slide active">
-            <div class="badge">Experimental</div>
-            <div class="section-label" style="color: var(--accent);">Amplifier Forge &middot; Track 1 &middot; Mac</div>
-            <h2 class="medium-headline">Forge was broken. Now it runs again.</h2>
-            <div class="spacer-sm"></div>
-            <div class="grid-2">
-                <div>
-                    <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 24px);">
-                        The existing Forge had fallen into a broken state. Restoration work made it operational again &mdash; incorporating patterns and learnings from the community working with similar tools. A different form factor for AI-augmented development is, once more, something you can actually pick up and use.
-                    </p>
-                    <div class="quote-block">
-                        <p class="quote-text">"You don't know what you're missing until you try a fundamentally different approach."</p>
-                    </div>
-                </div>
-                <div class="card" style="border-color: var(--accent);">
-                    <div class="card-title">What Was Done</div>
-                    <ul class="bullet-list">
-                        <li>Restored Forge to a working state</li>
-                        <li>Incorporated community patterns</li>
-                        <li>Applied learnings from parallel projects</li>
-                        <li>Continued exploring the existing form factor</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- beat 2: tension -->
-        <div class="slide">
-            <div class="section-label">Why bother reviving it</div>
-            <h2 class="headline">The CLI is powerful &mdash;<br>but it's only one lens</h2>
-            <div class="spacer-sm"></div>
-            <div class="grid-2">
-                <div>
-                    <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 24px);">
-                        The CLI is one way to work with AI &mdash; terminal-first, text-driven. Different hardware, interaction models, and environments reveal possibilities a single form factor simply can't. A working alternative is the only way to feel the difference instead of guessing at it.
-                    </p>
-                    <div class="quote-block">
-                        <p class="quote-text">"You don't know what you're missing until you try a fundamentally different approach."</p>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-title">What Forge Lets Us Probe</div>
-                    <ul class="bullet-list">
-                        <li><strong>Form factor diversity</strong> &mdash; beyond terminal-first workflows</li>
-                        <li><strong>Hardware variety</strong> &mdash; Mac and PiDrive as test beds</li>
-                        <li><strong>Interaction paradigms</strong> &mdash; how humans and AI collaborate</li>
-                        <li><strong>Ecosystem learning</strong> &mdash; insights that feed back into Amplifier</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- beat 3: payoff -->
-        <div class="slide">
-            <div class="section-label">The strategy</div>
-            <h2 class="headline">So Forge runs two tracks at once</h2>
-            <div class="spacer-sm"></div>
-            <div class="grid-2">
-                <div class="track-card restore">
-                    <div class="track-number">1</div>
-                    <div class="track-label">Track One</div>
-                    <div class="track-title">Restoration</div>
-                    <p class="body-text" style="margin-bottom: clamp(12px, 2vw, 18px);">
-                        Learn from what exists: keep the current form factor working, using community patterns, so it can be explored and compared hands-on.
-                    </p>
-                    <div><span class="machine-badge">Mac</span></div>
-                </div>
-                <div class="track-card evolve">
-                    <div class="track-number">2</div>
-                    <div class="track-label">Track Two</div>
-                    <div class="track-title">Evolution</div>
-                    <p class="body-text" style="margin-bottom: clamp(12px, 2vw, 18px);">
-                        Imagine what's possible: build context for what will supersede Forge &mdash; new interaction paradigms and architectures.
-                    </p>
-                    <div><span class="machine-badge">PiDrive</span></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- beat 4: mechanism -->
-        <div class="slide">
-            <div class="section-label" style="color: var(--accent);">Track 1 &middot; Mac</div>
-            <h2 class="medium-headline">Restoration turns a live tool into a comparison</h2>
-            <div class="spacer-sm"></div>
-            <div class="grid-2">
-                <div>
-                    <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 24px);">
-                        The value of Track 1 isn't nostalgia &mdash; it's that a <em>running</em> Forge is the only honest way to compare a non-CLI form factor against Amplifier's CLI. You can't A/B a paradigm you can't run.
-                    </p>
-                </div>
-                <div class="card">
-                    <div class="card-title" style="color: var(--text-primary);">Why an operational Forge matters</div>
-                    <ul class="bullet-list">
-                        <li>Explore its form factor hands-on</li>
-                        <li>Compare directly with Amplifier's CLI approach</li>
-                        <li>Identify what works and what creates friction</li>
-                        <li>Generate concrete insights for the evolution track</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- beat 5: mechanism -->
-        <div class="slide">
-            <div class="section-label" style="color: var(--warning);">Track 2 &middot; PiDrive</div>
-            <h2 class="medium-headline">Evolution builds the foundation for what's next</h2>
-            <div class="spacer-sm"></div>
-            <div class="grid-2">
-                <div>
-                    <div class="quote-block" style="border-color: var(--warning); background: linear-gradient(135deg, rgba(255, 159, 10, 0.08) 0%, transparent 100%);">
-                        <p class="quote-text">"Building context for what will supersede Forge&mdash;not replacing it, but evolving beyond it."</p>
-                    </div>
-                    <div class="spacer-md"></div>
-                    <p class="body-text">
-                        PiDrive exploration sessions build the conceptual foundation for new interaction paradigms. Not about replacing Forge tomorrow &mdash; about understanding where AI-augmented development tools should go.
-                    </p>
-                </div>
-                <div class="card" style="border-color: var(--warning);">
-                    <div class="card-title" style="color: var(--warning);">Exploration Areas</div>
-                    <ul class="bullet-list">
-                        <li><strong>New interaction models</strong> &mdash; beyond chat and code editing</li>
-                        <li><strong>Context architecture</strong> &mdash; how knowledge flows between agents and humans</li>
-                        <li><strong>Multi-modal integration</strong> &mdash; voice, vision, and text working together</li>
-                        <li><strong>Amplifier alignment</strong> &mdash; connecting insights back to the ecosystem</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- beat 6: turn -->
-        <div class="slide">
-            <div class="section-label">The bigger point</div>
-            <h2 class="headline">Forge is really a learning laboratory</h2>
-            <div class="spacer-sm"></div>
-            <div class="grid-3">
-                <div class="card">
-                    <div class="icon">&#x1F50D;</div>
-                    <div class="card-title" style="color: var(--blue);">Different Form Factor</div>
-                    <p class="body-text">
-                        A fundamentally different approach to AI-augmented work than the CLI &mdash; understanding both maps the full design space.
-                    </p>
-                </div>
-                <div class="card">
-                    <div class="icon">&#x1F9EA;</div>
-                    <div class="card-title" style="color: var(--success);">Learning Laboratory</div>
-                    <p class="body-text">
-                        Each interaction paradigm teaches something new. Forge's approach directly informs Amplifier's evolution and roadmap.
-                    </p>
-                </div>
-                <div class="card">
-                    <div class="icon">&#x1F680;</div>
-                    <div class="card-title" style="color: var(--warning);">Future Direction</div>
-                    <p class="body-text">
-                        The evolution track isn't just about Forge &mdash; it's about where AI-augmented development tools are heading overall.
-                    </p>
-                </div>
-            </div>
-            <div class="spacer-md"></div>
-            <div class="highlight-box">
-                <div class="card-title" style="color: var(--text-primary);">The Central Question</div>
-                <p class="body-text" style="color: var(--text-primary); font-size: clamp(16px, 2.5vw, 22px);">
-                    "What does the next generation of AI-augmented development look like&mdash;and how does Amplifier get there?"
-                </p>
-            </div>
-        </div>
-
-        <!-- beat 7: takeaway -->
-        <div class="slide center">
-            <div class="section-label">Looking Ahead</div>
-            <h2 class="headline">Learn from what exists. Imagine what's possible.</h2>
-            <div class="spacer-md"></div>
-            <div class="grid-2" style="max-width: 900px; width: 100%;">
-                <div class="card" style="border-color: var(--accent); text-align: left;">
-                    <div class="card-title">Track 1: Restoration</div>
-                    <ul class="bullet-list">
-                        <li>Continue stabilization and testing</li>
-                        <li>Document what works and what doesn't</li>
-                        <li>Identify friction points vs. the CLI</li>
-                        <li>Compare interaction patterns with Amplifier</li>
-                    </ul>
-                </div>
-                <div class="card" style="border-color: var(--warning); text-align: left;">
-                    <div class="card-title" style="color: var(--warning);">Track 2: Evolution</div>
-                    <ul class="bullet-list">
-                        <li>Deepen exploration of new paradigms</li>
-                        <li>Prototype new interaction models</li>
-                        <li>Connect insights to Amplifier roadmap</li>
-                        <li>Share findings with the broader team</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="spacer-lg"></div>
-            <div class="quote-block" style="max-width: 720px; width: 100%;">
-                <p class="quote-text">"Restoration lets us learn from what exists. Evolution lets us imagine what's possible."</p>
-            </div>
-        </div>
-
-        <!-- Sources & Methodology (audit-trail slide, not a beat) -->
-        <div class="slide">
-            <div class="section-label">Transparency</div>
-            <h2 class="medium-headline">Sources &amp; Methodology</h2>
-            <div class="spacer-sm"></div>
-            <div class="sources-grid">
-                <div class="source-item">
-                    <div class="source-label">Data As Of</div>
-                    <div class="source-value">February 20, 2026</div>
-                </div>
-                <div class="source-item">
-                    <div class="source-label">Feature Status</div>
-                    <div class="source-value">Experimental &mdash; personal exploration project, no production repository</div>
-                </div>
-                <div class="source-item">
-                    <div class="source-label">Research Method</div>
-                    <div class="source-value">File system searches across ~/dev/ANext and ramparte GitHub organization. No dedicated Forge repository found.</div>
-                </div>
-                <div class="source-item">
-                    <div class="source-label">Contributor</div>
-                    <div class="source-value">Sam Schillace (personal exploration)</div>
-                </div>
-            </div>
-            <div class="spacer-md"></div>
-            <div class="gap-notice">
-                <div class="source-label">Known Data Gaps</div>
-                <div class="source-value">
-                    No verifiable git metrics exist for this project. Earlier narratives referenced session and conversation counts that cannot be confirmed from repository evidence. The only artifact is this presentation deck. All claims in this deck use qualitative language rather than unverified numbers.
-                </div>
-            </div>
-        </div>
-
+  <div class="slide center">
+    <!-- beat 1: frame -->
+    <div style="width:100%;max-width:940px;position:relative;z-index:1;">
+      <div class="section-label">The form factor</div>
+      <h1>The CLI is one lens. <span class="accent">Forge is a different form factor.</span></h1>
+      <p class="body" style="max-width:66ch;">
+        Forge is a portable, stdlib-only Agent Skill: its repo root <em>is</em> the
+        skill root, and it gives multiple harnesses a shared way to launch, drive,
+        and test terminal applications in persistent Forge PTY sessions — visible in
+        a local dashboard at <span class="accent">http://127.0.0.1:3141/</span> even
+        when the calling harness never exposes Forge as an MCP server.
+      </p>
+      <p class="handoff" style="max-width:70ch;">Next: the proof — one skill, five harnesses, zero pip dependencies.</p>
+      <div class="repo">git@github.com:michaeljabbour/amplifier-skill-forge.git</div>
     </div>
+  </div>
 
-    <!-- Navigation -->
-    <a href="index.html" class="stories-link">More Amplifier Stories</a>
-    <div class="nav" id="nav"></div>
-    <div class="slide-counter" id="counter">1 / 8</div>
+  <div class="slide split">
+    <!-- beat 2: proof -->
+    <div class="col-main">
+      <div class="section-label g">The proof</div>
+      <h2>One shared skill drives <span class="green">five harnesses</span> — zero pip dependencies, ever</h2>
+      <p class="body">
+        Forge gives Claude Code, OpenAI Codex, OpenCode, Gemini, and Microsoft
+        Amplifier a shared way to launch, drive, coordinate, and test terminal
+        apps in persistent PTY sessions.
+      </p>
+      <p class="handoff">And <code>tools/forge.py</code> stays python3 stdlib-only — no venv, no pip, executed by arbitrary harnesses. Next: the two files behind it.</p>
+    </div>
+    <div class="col-aside">
+      <div class="harness-list">
+        <div class="harness"><span class="h-dot"></span>Claude Code</div>
+        <div class="harness"><span class="h-dot"></span>OpenAI Codex</div>
+        <div class="harness"><span class="h-dot"></span>OpenCode</div>
+        <div class="harness"><span class="h-dot"></span>Gemini</div>
+        <div class="harness"><span class="h-dot"></span>Microsoft Amplifier</div>
+      </div>
+    </div>
+  </div>
 
-    <script>
-        const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
-            updateNav();
-        }
-        function updateNav() {
-            const nav = document.getElementById('nav');
-            const counter = document.getElementById('counter');
-            nav.innerHTML = '';
-            slides.forEach((_, i) => {
-                const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = () => showSlide(i);
-                nav.appendChild(dot);
-            });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
-        }
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
-            if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
-        });
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
-        });
-        let touchStartX = 0;
-        let touchEndX = 0;
-        const SWIPE_THRESHOLD = 50;
-        document.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-        document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
-            if (Math.abs(diff) > SWIPE_THRESHOLD) { if (diff > 0) showSlide(currentSlide + 1); else showSlide(currentSlide - 1); }
-        }, { passive: true });
+  <div class="slide split">
+    <!-- beat 3: setup -->
+    <div class="col-main">
+      <div class="section-label b">The artifacts</div>
+      <h2>Forge is two files, built in <span class="blue">six commits on one day</span></h2>
+      <p class="body">
+        <code>forge.py</code> is the stdlib JSON-RPC terminal &amp; agent client;
+        <code>relay.py</code> is a resumable multi-agent relay controller. Total
+        tracked source is ~5,166 lines, dominated by references and relay.py.
+      </p>
+      <p class="handoff">These are the artifacts the rest of the argument leans on. Next: where it broke.</p>
+    </div>
+    <div class="col-aside">
+      <div class="stack">
+        <div class="tile tile-blue">
+          <div class="figure blue">387<span style="font-size:0.4em;font-weight:600;"> lines</span></div>
+          <div class="figure-lbl"><code>forge.py</code> — 20 terminal + agent-launcher commands</div>
+        </div>
+        <div class="tile tile-accent">
+          <div class="figure accent">858<span style="font-size:0.4em;font-weight:600;"> lines</span></div>
+          <div class="figure-lbl"><code>relay.py</code> — fail-closed planner→implementer→reviewer→resolver→acceptor, 12 subcommands</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide split">
+    <!-- beat 4: tension -->
+    <div class="col-main">
+      <div class="section-label y">The complication</div>
+      <h2>The foundation was brittle: <span class="yellow">every spawn died</span></h2>
+      <p class="body">
+        After <code>bun install -g</code> updates, node-pty's darwin spawn-helper
+        loses its exec bit — so every PTY spawn fails with <code>posix_spawnp
+        failed</code>. The whole form factor stops working.
+      </p>
+      <p class="handoff">A broken foundation threatens everything above it. Next: the discipline that keeps Forge trustworthy under failure.</p>
+    </div>
+    <div class="col-aside">
+      <div class="code"><span class="cmt"># after: bun install -g</span>
+<span class="cmt"># node-pty spawn-helper loses its exec bit</span>
+
+forge new
+  <span class="red">Error: posix_spawnp failed</span>
+
+<span class="cmt"># every terminal create fails</span></div>
+    </div>
+  </div>
+
+  <div class="slide split">
+    <!-- beat 5: mechanism -->
+    <div class="col-main">
+      <div class="section-label">The discipline</div>
+      <h2>relay.py's gates are <span class="accent">fail-closed</span></h2>
+      <p class="body">
+        A gate advances only when every applicable condition holds. It never treats
+        a timeout or chat response as permission to advance — “a timeout is an
+        observation point, not permission to advance.”
+      </p>
+      <p class="handoff">This is how Forge earns trust under failure. Next: how it heals the broken foundation.</p>
+    </div>
+    <div class="col-aside">
+      <ul class="rules">
+        <li><span class="check">✓</span>Predecessors passed</li>
+        <li><span class="check">✓</span>Artifacts non-empty</li>
+        <li><span class="check">✓</span>Unique completion marker emitted</li>
+        <li><span class="check">✓</span>Frozen SPEC.md hash matches</li>
+        <li><span class="check">✓</span>Verification command exits 0</li>
+        <li><span class="check">✓</span>Verdict unambiguous</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="slide split">
+    <!-- beat 6: turn -->
+    <div class="col-main">
+      <div class="section-label g">The turn</div>
+      <h2>The fix lives inside the tool: <span class="green">the skill repairs itself</span></h2>
+      <p class="body">
+        <code>forge.py doctor</code> detects the <code>posix_spawnp</code> failure,
+        chmods the darwin spawn-helper binaries back to executable (0o755), and
+        restarts the daemon. Repair is codified, not tribal knowledge.
+      </p>
+      <p class="handoff">Restoration is now a command, not a memory. Next: the proof that it holds.</p>
+    </div>
+    <div class="col-aside">
+      <ol class="steps">
+        <li><span class="stepnum">1</span>Detect <code>posix_spawnp</code> in the spawn error</li>
+        <li><span class="stepnum">2</span><code>chmod 0o755</code> the darwin spawn-helpers</li>
+        <li><span class="stepnum">3</span><code>forge stop</code> → <code>forge start -d</code></li>
+        <li><span class="stepnum">4</span>Report: healthy — fixed exec bit, restarted daemon</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="slide split">
+    <!-- beat 7: payoff -->
+    <div class="col-main">
+      <div class="badge">Restoration proven</div>
+      <h2>The healed form factor <span class="green">goes fully green</span></h2>
+      <p class="body">
+        After the doctor re-arms the spawn-helper and restarts the daemon, the full
+        suite passes — 29 unit + contract tests across test_forge.py, test_relay.py,
+        and test_skill_contract.py, backed by CI.
+      </p>
+      <p class="handoff">Restoration is codified, not manual — the whole suite proves it. Next: what makes that matter.</p>
+    </div>
+    <div class="col-aside">
+      <div class="stack">
+        <div class="tile tile-green">
+          <div class="figure green">29</div>
+          <div class="figure-lbl">unit + contract tests — “Ran 29 tests … OK”</div>
+        </div>
+        <div class="tile tile-green">
+          <div class="figure green" style="font-size:clamp(24px,4.5vw,44px);">3.9 &amp; 3.13</div>
+          <div class="figure-lbl">Python CI matrix on ubuntu-latest via GitHub Actions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide center">
+    <!-- beat 8: takeaway -->
+    <div style="width:100%;max-width:900px;">
+      <div class="section-label">The takeaway</div>
+      <h1>A form factor you can trust <span class="accent">heals itself and proves it.</span></h1>
+      <p class="body" style="max-width:64ch;">
+        Forge is more than a clever terminal wrapper. It gives five harnesses a
+        shared, persistent terminal; it coordinates them through fail-closed relays;
+        and when its own foundation breaks, <code>forge.py doctor</code> repairs it
+        and 29 tests confirm it. That's the difference between a trick and a tool.
+      </p>
+      <div class="repo">git@github.com:michaeljabbour/amplifier-skill-forge.git</div>
+    </div>
+  </div>
+
+  <!-- SOURCES & METHODOLOGY (audit trail — the one allowed non-beat, at the end) -->
+  <div class="slide">
+    <div style="width:100%;max-width:920px;">
+      <div class="section-label">Sources</div>
+      <h2 style="margin-bottom:14px;">Research Methodology</h2>
+      <div style="color:var(--text-secondary);line-height:1.6;font-size:clamp(13px,1.7vw,15px);">
+        <p style="margin-bottom:8px;"><strong>Primary repo:</strong> michaeljabbour/amplifier-skill-forge — a portable Agent Skill &amp; zero-dependency Python toolkit (repo root = skill root).</p>
+        <p style="margin-bottom:8px;"><strong>Feature status:</strong> Cross-harness orchestration and doctor-based restoration <span class="green">VERIFIED</span> (29 tests re-run and passing).</p>
+        <p style="margin-bottom:6px;"><strong>Commands run:</strong></p>
+        <ul style="list-style:none;padding-left:0;margin-bottom:12px;">
+          <li style="padding:5px 0;border-bottom:1px solid var(--border);"><code>git remote -v</code> — origin git@github.com:michaeljabbour/amplifier-skill-forge.git</li>
+          <li style="padding:5px 0;border-bottom:1px solid var(--border);"><code>git log --format='%H %an &lt;%ae&gt; %ad' --date=iso</code> — 6 commits, Michael J. Jabbour, all 2026-07-16</li>
+          <li style="padding:5px 0;border-bottom:1px solid var(--border);"><code>wc -l tools/*.py</code> — forge.py 387, relay.py 858; ~5,166 total tracked lines</li>
+          <li style="padding:5px 0;border-bottom:1px solid var(--border);"><code>grep -n 'spawn-helper|posix_spawnp' AGENTS.md references/orchestration-playbook.md</code> — the failure &amp; fix</li>
+          <li style="padding:5px 0;border-bottom:1px solid var(--border);"><code>sed -n '175,215p' tools/forge.py</code> — doctor: chmod 0o755 spawn-helpers + forge stop/start -d</li>
+          <li style="padding:5px 0;border-bottom:1px solid var(--border);"><code>python3 -m unittest discover -s tests -v</code> — “Ran 29 tests … OK”</li>
+          <li style="padding:5px 0;"><code>cat .github/workflows/ci.yml</code> — python 3.9 &amp; 3.13 matrix on ubuntu-latest</li>
+        </ul>
+        <p style="margin-bottom:8px;"><strong>Primary contributor:</strong> Michael J. Jabbour — sole author of all 6 commits (michael.jabbour@gmail.com).</p>
+        <p style="color:var(--text-tertiary);"><strong>Gaps &amp; caveats:</strong> The “Restoration / Evolution / two-track / PiDrive / Mac mini” framing is editorial and is NOT a literal artifact in the source repos; the only in-repo Mac grounding is the darwin spawn-helpers targeted by <code>doctor</code>. Nothing here is rounded up or inflated.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav" id="nav"></div>
+  <div class="slide-counter" id="counter"></div>
+
+  <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const total = slides.length;
+    let current = 0;
+    let transitioning = false;
+
+    function goTo(n) {
+        n = ((n % total) + total) % total;
+        if (transitioning || n === current) return;
+        transitioning = true;
+        var direction = n > current ? 1 : -1;
+        var prev = slides[current];
+        var next = slides[n];
+
+        prev.classList.remove('active');
+        prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+        prev.style.opacity = '0';
+
+        next.style.transition = 'none';
+        next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+        next.style.opacity = '0';
+
+        void next.offsetWidth;
+
+        next.style.transition = '';
+        next.style.transform = 'translateX(0)';
+        next.style.opacity = '1';
+        next.classList.add('active');
+
+        current = n;
         updateNav();
-    </script>
+
+        setTimeout(function() {
+            prev.style.transform = '';
+            prev.style.opacity = '';
+            next.style.transform = '';
+            next.style.opacity = '';
+            transitioning = false;
+        }, 500);
+    }
+
+    function updateNav() {
+        const nav = document.getElementById('nav');
+        const counter = document.getElementById('counter');
+        nav.innerHTML = '';
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === current ? ' active' : '');
+            dot.onclick = () => goTo(i);
+            nav.appendChild(dot);
+        });
+        counter.textContent = `${current + 1} / ${total}`;
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+        if (e.key === 'ArrowLeft') goTo(current - 1);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.nav')) return;
+        if (e.target.closest('a')) return;
+        if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+        else goTo(current - 1);
+    });
+
+    let touchStartX = 0;
+    const SWIPE_THRESHOLD = 50;
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+        const diff = touchStartX - e.changedTouches[0].screenX;
+        if (Math.abs(diff) > SWIPE_THRESHOLD) {
+            if (diff > 0) goTo(current + 1);
+            else goTo(current - 1);
+        }
+    }, { passive: true });
+
+    updateNav();
+  </script>
 </body>
 </html>

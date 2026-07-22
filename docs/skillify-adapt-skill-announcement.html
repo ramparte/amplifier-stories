@@ -1,722 +1,459 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>New in amplifier-bundle-skills: /skillify and /adapt-skill</title>
-<script>document.documentElement.classList.add('js')</script>
-<style>
-:root {
-    --accent: #FF375F;
-    --accent-dim: rgba(255, 55, 95, 0.15);
-    --accent-glow: rgba(255, 55, 95, 0.3);
-    --surface-1: rgba(255,255,255,0.06);
-    --surface-2: rgba(255,255,255,0.10);
-    --surface-3: rgba(255,255,255,0.15);
-    --border-subtle: rgba(255,255,255,0.12);
-    --border-visible: rgba(255,255,255,0.20);
-    --text-primary: #ffffff;
-    --text-secondary: rgba(255,255,255,0.7);
-    --text-tertiary: rgba(255,255,255,0.5);
-    --font-headline: clamp(36px, 8vw, 72px);
-    --font-medium-headline: clamp(24px, 5vw, 48px);
-    --font-subhead: clamp(16px, 3vw, 28px);
-    --font-body: clamp(14px, 2vw, 18px);
-    --font-small: clamp(12px, 1.5vw, 14px);
-    --font-code: clamp(13px, 1.8vw, 16px);
-    --padding-slide: clamp(24px, 5vw, 80px);
-    --gap-grid: clamp(16px, 3vw, 32px);
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Skills That Outlive the Session</title>
+    <script>document.documentElement.classList.add('js')</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #a1a1aa;
+            --accent: #6ea8fe;
+            --accent2: #b794f6;
+            --card: #16161d;
+            --border: rgba(255,255,255,0.08);
+        }
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-    background: #000;
-    color: var(--text-primary);
-    overflow: hidden;
-    overscroll-behavior: none;
-}
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
 
-.deck { position: relative; width: 100vw; height: 100vh; height: 100dvh; }
+        .slide {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
 
-.slide {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: var(--padding-slide);
-    padding-bottom: calc(var(--padding-slide) + 40px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.5s ease;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
+        .slide.active { display: flex; }
 
-.slide.active { opacity: 1; pointer-events: auto; }
+        /* No-JS fallback: all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
 
-.section-label {
-    font-size: var(--font-small);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--accent);
-    margin-bottom: clamp(12px, 2vw, 20px);
-}
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
 
-.headline {
-    font-size: var(--font-headline);
-    font-weight: 700;
-    letter-spacing: -1.5px;
-    line-height: 1.08;
-    margin-bottom: clamp(12px, 2vw, 24px);
-}
+        /* Fit-safe: cap slides to the viewport and let them scroll */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
 
-.medium-headline {
-    font-size: var(--font-medium-headline);
-    font-weight: 700;
-    letter-spacing: -1px;
-    line-height: 1.15;
-    margin-bottom: clamp(12px, 2vw, 24px);
-}
+        .slide { transition: opacity 0.5s ease, transform 0.5s ease; }
 
-.subtitle {
-    font-size: var(--font-subhead);
-    color: var(--text-secondary);
-    line-height: 1.4;
-    max-width: 800px;
-}
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
 
-.body-text {
-    font-size: var(--font-body);
-    color: var(--text-secondary);
-    line-height: 1.6;
-    max-width: 780px;
-}
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); background: linear-gradient(120deg, #fff 0%, var(--accent) 60%, var(--accent2) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); font-weight: 400; }
 
-.badge {
-    display: inline-block;
-    background: var(--accent-dim);
-    color: var(--accent);
-    border: 1px solid var(--accent-glow);
-    border-radius: 20px;
-    padding: 4px 16px;
-    font-size: var(--font-small);
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: clamp(16px, 3vw, 28px);
-}
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: clamp(14px, 2.5vw, 22px);
+        }
 
-.card {
-    background: var(--surface-1);
-    border: 1px solid var(--border-subtle);
-    border-radius: clamp(12px, 2vw, 16px);
-    padding: clamp(16px, 3vw, 28px);
-}
+        .body { color: var(--muted); margin-top: clamp(14px, 2.4vw, 22px); max-width: 40ch; }
+        .handoff { color: var(--fg); opacity: 0.85; margin-top: clamp(18px, 3vw, 26px); font-size: clamp(13px, 1.7vw, 17px); border-left: 2px solid var(--accent); padding-left: 14px; max-width: 42ch; }
 
-.card h3 { color: var(--text-primary); font-size: clamp(16px, 2.5vw, 22px); font-weight: 600; margin-bottom: 8px; }
-.card p, .card li { color: var(--text-secondary); font-size: var(--font-body); line-height: 1.5; }
+        /* Horizontal split */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-.grid-2 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-    gap: var(--gap-grid);
-    width: 100%;
-}
+        /* Stat grid */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: clamp(14px, 2vw, 22px); }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(18px, 2.5vw, 28px);
+        }
+        .stat .num { font-size: clamp(32px, 6vw, 58px); font-weight: 700; line-height: 1; color: var(--accent); letter-spacing: -0.02em; }
+        .stat .num.alt { color: var(--accent2); }
+        .stat .lbl { margin-top: 10px; color: var(--muted); font-size: clamp(12px, 1.5vw, 15px); }
 
-.grid-3 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-    gap: var(--gap-grid);
-    width: 100%;
-}
+        /* Steps */
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 20px);
+            display: flex;
+            gap: 14px;
+            align-items: baseline;
+        }
+        .steps li .n { color: var(--accent); font-weight: 700; font-size: clamp(14px, 1.8vw, 18px); min-width: 1.4em; }
+        .steps li .t { color: var(--fg); }
 
-.grid-4 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-    gap: var(--gap-grid);
-    width: 100%;
-}
+        /* Rules / cards list */
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(12px, 2vw, 18px); }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent2);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 20px);
+        }
+        .rules li strong { color: var(--fg); display: block; margin-bottom: 6px; }
+        .rules li span { color: var(--muted); font-size: clamp(13px, 1.6vw, 16px); }
 
-.code-block {
-    background: var(--surface-1);
-    border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    padding: clamp(14px, 3vw, 24px);
-    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-    font-size: var(--font-code);
-    line-height: 1.7;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-x: auto;
-    color: #30D158;
-    max-width: 720px;
-}
+        /* Big payoff numbers */
+        .big-figure { display: flex; flex-direction: column; gap: clamp(16px, 3vw, 28px); }
+        .big-figure .fig { display: flex; align-items: baseline; gap: 16px; }
+        .big-figure .fig .v { font-size: clamp(40px, 8vw, 82px); font-weight: 700; line-height: 1; color: var(--accent); letter-spacing: -0.03em; }
+        .big-figure .fig .v.alt { color: var(--accent2); }
+        .big-figure .fig .k { color: var(--muted); font-size: clamp(13px, 1.7vw, 17px); max-width: 20ch; }
 
-.code-block .comment { color: var(--text-tertiary); }
-.code-block .cmd { color: #FF375F; }
+        .status-badge {
+            display: inline-block;
+            background: rgba(110,168,254,0.15);
+            border: 1px solid rgba(110,168,254,0.4);
+            color: var(--accent);
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: clamp(11px, 1.4vw, 13px);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            margin-top: clamp(16px, 3vw, 24px);
+        }
 
-.icon-card { font-size: clamp(28px, 5vw, 44px); margin-bottom: 12px; display: block; }
+        code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 5px; font-size: 0.9em; color: var(--accent); }
 
-.flow-steps {
-    display: flex;
-    flex-wrap: wrap;
-    gap: clamp(8px, 1.5vw, 14px);
-    align-items: center;
-    margin: clamp(12px, 2vw, 20px) 0;
-}
+        .sources-body { color: var(--muted); line-height: 1.6; max-width: 60ch; }
+        .sources-body p { color: var(--muted); margin-top: 10px; }
+        .sources-body ul { margin: 12px 0 0 20px; }
+        .sources-body li { color: var(--muted); font-size: clamp(12px, 1.6vw, 15px); margin-bottom: 8px; }
+        .sources-body code { font-size: 0.85em; }
 
-.flow-step {
-    background: var(--surface-2);
-    border: 1px solid var(--border-subtle);
-    border-radius: 10px;
-    padding: clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 18px);
-    font-size: clamp(12px, 1.8vw, 15px);
-    color: var(--text-primary);
-    font-weight: 500;
-    white-space: nowrap;
-}
+        /* Navigation */
+        .nav { position: fixed; bottom: 26px; right: 28px; display: flex; gap: 9px; z-index: 100; }
+        .nav-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.22); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter { position: fixed; bottom: 26px; left: 28px; font-size: clamp(11px, 1.5vw, 13px); color: var(--muted); z-index: 100; font-variant-numeric: tabular-nums; }
 
-.flow-step .step-num {
-    color: var(--accent);
-    font-weight: 700;
-    margin-right: 6px;
-}
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
 
-.flow-arrow {
-    color: var(--text-tertiary);
-    font-size: clamp(14px, 2vw, 20px);
-}
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
 
-.highlight-box {
-    background: var(--accent-dim);
-    border: 1px solid var(--accent-glow);
-    border-radius: 12px;
-    padding: clamp(14px, 3vw, 24px);
-    margin-top: clamp(12px, 2vw, 20px);
-    max-width: 680px;
-}
-
-.highlight-box p {
-    color: var(--text-secondary);
-    font-size: var(--font-body);
-    line-height: 1.5;
-}
-
-.highlight-box code {
-    color: var(--accent);
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: 0.9em;
-}
-
-/* --- Story slide special --- */
-.story-timeline {
-    position: relative;
-    padding-left: clamp(24px, 4vw, 40px);
-    margin-top: clamp(16px, 3vw, 28px);
-    max-width: 700px;
-}
-
-.story-timeline::before {
-    content: '';
-    position: absolute;
-    left: 8px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: linear-gradient(to bottom, var(--accent), var(--accent-glow), transparent);
-}
-
-.story-beat {
-    position: relative;
-    margin-bottom: clamp(16px, 3vw, 28px);
-    padding-left: clamp(12px, 2vw, 20px);
-}
-
-.story-beat::before {
-    content: '';
-    position: absolute;
-    left: calc(-1 * clamp(24px, 4vw, 40px) + 4px);
-    top: 8px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent-glow);
-}
-
-.story-beat h4 {
-    font-size: clamp(15px, 2.2vw, 20px);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-}
-
-.story-beat p {
-    font-size: var(--font-body);
-    color: var(--text-secondary);
-    line-height: 1.5;
-}
-
-.story-beat.punchline h4 {
-    color: var(--accent);
-    font-size: clamp(17px, 2.5vw, 24px);
-}
-
-/* --- Navigation --- */
-.nav-dots {
-    position: fixed;
-    bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    z-index: 100;
-}
-
-.nav-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.25);
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    padding: 0;
-}
-
-.nav-dot.active {
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent-glow);
-    transform: scale(1.3);
-}
-
-.slide-counter {
-    position: fixed;
-    bottom: 16px;
-    right: 24px;
-    font-size: 13px;
-    color: var(--text-tertiary);
-    font-variant-numeric: tabular-nums;
-    z-index: 100;
-}
-
-/* Click zones */
-.click-left, .click-right {
-    position: fixed;
-    top: 0; bottom: 60px;
-    width: 30%;
-    z-index: 50;
-    cursor: pointer;
-}
-.click-left { left: 0; }
-.click-right { right: 0; }
-
-/* Bullet lists */
-.bullet-list {
-    list-style: none;
-    padding: 0;
-    margin: clamp(8px, 1.5vw, 16px) 0;
-}
-
-.bullet-list li {
-    position: relative;
-    padding-left: clamp(20px, 3vw, 28px);
-    margin-bottom: clamp(8px, 1.5vw, 14px);
-    font-size: var(--font-body);
-    color: var(--text-secondary);
-    line-height: 1.5;
-}
-
-.bullet-list li::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 9px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-}
-
-.bullet-list li strong { color: var(--text-primary); }
-.bullet-list li code {
-    color: #30D158;
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: 0.9em;
-    background: var(--surface-1);
-    padding: 1px 6px;
-    border-radius: 4px;
-}
-
-/* Inline code */
-code {
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: 0.9em;
-}
-
-.tag {
-    display: inline-block;
-    background: var(--surface-2);
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    padding: 2px 10px;
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: clamp(12px, 1.5vw, 14px);
-    color: var(--accent);
-    margin: 3px 2px;
-}
-
-.spacer { height: clamp(8px, 2vw, 16px); }
-
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+    </style>
 </head>
 <body>
-
 <!--
-  ============================================================
-  NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
-  ============================================================
-
-  ABT:
-    AND you can perfect a genuinely useful multi-step workflow inside a single
-        Amplifier session;
-    BUT that knowledge dies when the session ends, and hard-won skills from other
-        platforms don't speak Amplifier's conventions;
-    THEREFORE /skillify and /adapt-skill capture live sessions as tested skills and
-        translate foreign skills in - proven the day /adapt-skill was itself born
-        from running /skillify.
-
-  PAYOFF (named up front):
-    "Skills all the way down" - /adapt-skill was the first skill ever created by
-    running /skillify on a live skill-adaptation session. The capture loop closed
-    on itself.
-
-  BEATS (proof-first; payoff lands at beat 4 of 8, before the midpoint of 4):
-    1. proof     - the tool that writes skills wrote one of its own.
-                   advances: grounds the THEREFORE with living proof the loop works.
-    2. setup     - amplifier-bundle-skills: 8 skills, two new authoring commands.
-                   advances: introduces the named bundle/commands before leaning on them.
-    3. tension   - a perfected workflow dies with the session; foreign skills don't map.
-                   advances: establishes the BUT.
-    4. payoff    - "skills all the way down": the self-referential creation story.
-                   advances: lands the THEREFORE pre-midpoint.
-    5. mechanism - /skillify: six steps turn a finished session into a tested SKILL.md.
-                   advances: HOW a session becomes a skill (one claim).
-    6. mechanism - /adapt-skill: rewrites a foreign skill into Amplifier's dialect.
-                   advances: HOW skills cross platforms (one claim).
-    7. mechanism - both skills defer to one living reference instead of hardcoding.
-                   advances: HOW they stay correct as the spec evolves (one claim).
-    8. takeaway  - try it after your next repeatable workflow.
-                   advances: what the audience does next.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end.
-    Slides = 8 beats + 1 = 9.
+SPINE
+ABT: AND you can perfect a genuinely useful multi-step workflow inside a single Amplifier session while skilled people already hold hard-won skills written for other assistants like Claude Code and Cursor; BUT that live knowledge dies when the session ends and foreign skills don't speak Amplifier's conventions; THEREFORE two new user-invocable skills capture the live session and translate the foreign one into tested, reusable Amplifier-native SKILL.md files.
+Payoff: The sibling shipment — on one morning /skillify was polished and /adapt-skill landed 4m36s later WITH its own 178-line test suite; the workflow-capturing tooling had matured enough to ship a new tested skill almost as fast as it could be conceived.
+Beats:
+  1. frame     — a workflow you perfect in one session dies when it ends, and foreign skills don't speak Amplifier; two new slash commands fix both.  advances: orients the audience on the twin problem behind the AND/BUT — lost session knowledge and untranslated foreign skills.
+  2. proof     — both skills already shipped into microsoft/amplifier-bundle-skills as user-invocable /skillify and /adapt-skill, backed by 27 passing tests.  advances: establishes the THEREFORE is real, not aspirational — merged, invocable, and tested.
+  3. tension   — the useful process you just worked out lives only in this conversation; close the tab and it's gone.  advances: sharpens the BUT — live session knowledge is fragile and unrepeatable.
+  4. mechanism — /skillify reads the current session, interviews you to confirm structure, then writes a complete SKILL.md.  advances: shows HOW the first half of the THEREFORE works — capturing the live session.
+  5. mechanism — /adapt-skill translates a Claude Code or Cursor skill by mapping foreign tool names, paths, and frontmatter into Amplifier-native form.  advances: shows HOW the second half of the THEREFORE works — translating a foreign skill.
+  6. mechanism — both defer to skills-assist as the source of truth and bake in a real test step, so a captured or ported skill is verified before it's saved.  advances: shows the shared quality mechanism that makes the output trustworthy, not just generated.
+  7. payoff    — on one morning /skillify was polished and /adapt-skill landed 4m36s later WITH its own 178-line test suite by the same author.  advances: lands the climax — the tooling matured enough to ship a new tested skill almost as fast as it could be conceived.
+  8. takeaway  — skills should be captured and ported, not rebuilt; /skillify and /adapt-skill make hard-won process durable and portable.  advances: what the audience keeps — the durable, portable principle behind the whole ABT.
 -->
 
-<div class="deck" id="deck">
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>Skills That Outlive the Session</h1>
+        <p class="subtitle">/skillify and /adapt-skill for Amplifier</p>
+    </div>
 
-<!-- beat 1: proof -->
-<div class="slide active" data-slide="0">
-    <div class="section-label">Proof</div>
-    <h2 class="medium-headline" style="max-width: 880px;">
-        The tool that writes skills<br>wrote one of its <span style="color: var(--accent);">own</span>.
-    </h2>
-    <p class="body-text" style="margin-bottom: clamp(12px, 2vw, 20px);">
-        <code>/skillify</code> captures a live Amplifier session as a reusable <code>SKILL.md</code>. <code>/adapt-skill</code> ports a skill from another platform into Amplifier. And the very first skill <code>/skillify</code> ever produced <em>was</em> <code>/adapt-skill</code>.
-    </p>
-    <div class="highlight-box" style="max-width: 820px;">
-        <p><strong style="color: var(--text-primary);">/adapt-skill</strong> — the first skill ever created by running the skillify skill on a real session. The capture loop closed on itself.</p>
-    </div>
-</div>
-
-<!-- beat 2: setup -->
-<div class="slide" data-slide="1">
-    <div class="badge">amplifier-bundle-skills</div>
-    <h2 class="medium-headline" style="max-width: 820px;">
-        Eight skills now ship in the bundle —<br>two of them <span style="color: var(--accent);">build skills</span>.
-    </h2>
-    <p class="body-text" style="margin-bottom: clamp(12px, 2vw, 20px);">
-        Meet the two new authoring commands this deck is about, before they carry the argument.
-    </p>
-    <div class="grid-2" style="max-width: 860px;">
-        <div class="card">
-            <h3><code>/skillify</code></h3>
-            <p>Turns a finished session into a tested, reusable skill — no hand-authoring the spec.</p>
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Problem</div>
+            <h2>A workflow you perfect in one session dies when it ends — and foreign skills don't speak Amplifier</h2>
+            <p class="body">Two new user-invocable slash commands in the Amplifier skills bundle fix both halves of that problem.</p>
+            <p class="handoff">And they're not a proposal — they've already shipped.</p>
         </div>
-        <div class="card">
-            <h3><code>/adapt-skill</code></h3>
-            <p>Translates a skill from Claude Code, Cursor, or any assistant into Amplifier-native format.</p>
-        </div>
-    </div>
-    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: clamp(16px, 3vw, 24px);">
-        <span class="tag">8 skills in the bundle</span>
-        <span style="color: var(--text-tertiary); font-size: var(--font-small);">April 2026</span>
-    </div>
-</div>
-
-<!-- beat 3: tension -->
-<div class="slide" data-slide="2">
-    <div class="section-label">The Problem</div>
-    <h2 class="medium-headline" style="max-width: 780px;">
-        A perfected workflow<br>dies when the session ends.
-    </h2>
-    <div class="spacer"></div>
-    <div class="grid-2" style="max-width: 860px;">
-        <div class="card">
-            <span class="icon-card">🔁</span>
-            <h3>The knowledge evaporates</h3>
-            <p>You spend 45 minutes perfecting a complex multi-step process. Next week you need it again — but it lived only in that session.</p>
-        </div>
-        <div class="card">
-            <span class="icon-card">📦</span>
-            <h3>Foreign skills don't fit</h3>
-            <p>Battle-tested skills from Claude Code or Cursor use different tool names, paths, and frontmatter than Amplifier expects.</p>
-        </div>
-    </div>
-    <div class="highlight-box" style="margin-top: clamp(16px, 3vw, 28px); max-width: 860px;">
-        <p>Until now, the only fix was to <strong style="color: var(--text-primary);">hand-author SKILL.md files from scratch</strong> — knowing the full Agent Skills spec, Amplifier's extensions, and conventions scattered across many docs.</p>
-    </div>
-</div>
-
-<!-- beat 4: payoff -->
-<div class="slide" data-slide="3">
-    <div class="section-label">The Payoff</div>
-    <h2 class="medium-headline" style="max-width: 720px;">
-        It's skills all the way down.
-    </h2>
-    <div class="story-timeline">
-        <div class="story-beat">
-            <h4>Step 1 — Build /skillify</h4>
-            <p>We brainstormed the design section by section, iterating until the skill worked end to end.</p>
-        </div>
-        <div class="story-beat">
-            <h4>Step 2 — Adapt a foreign skill by hand</h4>
-            <p>We walked through porting a Claude Code skill to Amplifier, working out the mapping rules live.</p>
-        </div>
-        <div class="story-beat">
-            <h4>Step 3 — Run /skillify on that very process</h4>
-            <p>We literally used <code>/skillify</code> to capture the adaptation workflow we'd just performed.</p>
-        </div>
-        <div class="story-beat punchline">
-            <h4>Step 4 — /adapt-skill was born</h4>
-            <p>That capture <em>became</em> <code>/adapt-skill</code> — proof the capture loop turns a one-off workflow into a durable skill.</p>
-        </div>
-    </div>
-    <p style="font-size: var(--font-body); color: var(--text-tertiary); margin-top: clamp(8px, 1.5vw, 16px); font-style: italic;">
-        Now let's see how each command does it. 🐢
-    </p>
-</div>
-
-<!-- beat 5: mechanism -->
-<div class="slide" data-slide="4">
-    <div class="section-label">/skillify</div>
-    <h2 class="medium-headline">Six steps turn a finished session into a tested skill.</h2>
-    <div class="flow-steps">
-        <div class="flow-step"><span class="step-num">1</span>Consult Skills-Assist</div>
-        <span class="flow-arrow">→</span>
-        <div class="flow-step"><span class="step-num">2</span>Analyze Session</div>
-        <span class="flow-arrow">→</span>
-        <div class="flow-step"><span class="step-num">3</span>Interview User</div>
-        <span class="flow-arrow">→</span>
-        <div class="flow-step"><span class="step-num">4</span>Write SKILL.md</div>
-        <span class="flow-arrow">→</span>
-        <div class="flow-step"><span class="step-num">5</span>Test</div>
-        <span class="flow-arrow">→</span>
-        <div class="flow-step"><span class="step-num">6</span>Review &amp; Save</div>
-    </div>
-    <ul class="bullet-list" style="max-width: 780px;">
-        <li><strong>Adaptive interview</strong> — calibrates depth to complexity. A 2-step process gets 1–2 rounds; a complex workflow gets the full treatment.</li>
-        <li><strong>Tests locally before saving</strong> — verifies the skill via <code>load_skill()</code> to catch issues before you commit.</li>
-        <li><strong>Captures intent, not just actions</strong> — the interview surfaces the "why" behind each step so the skill generalizes.</li>
-    </ul>
-    <div class="highlight-box">
-        <p>Invoke with <code>/skillify</code> — or just say <strong style="color: var(--text-primary);">"save this as a skill."</strong></p>
-    </div>
-</div>
-
-<!-- beat 6: mechanism -->
-<div class="slide" data-slide="5">
-    <div class="section-label">/adapt-skill</div>
-    <h2 class="medium-headline">It rewrites a foreign skill into Amplifier's dialect.</h2>
-    <p class="body-text" style="margin-bottom: clamp(12px, 2vw, 20px);">
-        An <strong style="color: var(--text-primary);">8-step workflow</strong> — platform research, convention mapping, writing, and a full self-test — translates skills from Claude Code, Cursor, or any AI assistant.
-    </p>
-    <div class="grid-3" style="max-width: 860px;">
-        <div class="card">
-            <span class="icon-card">🔀</span>
-            <h3>Auto-maps conventions</h3>
-            <p>Tool names (<code>Read</code> → <code>read_file</code>), paths (<code>.claude/</code> → <code>.amplifier/</code>), frontmatter — all handled.</p>
-        </div>
-        <div class="card">
-            <span class="icon-card">🔍</span>
-            <h3>Researches unknowns</h3>
-            <p>Hits an unfamiliar convention? It reads the source platform's docs before guessing.</p>
-        </div>
-        <div class="card">
-            <span class="icon-card">🧪</span>
-            <h3>Self-tests via delegate</h3>
-            <p>Spawns a delegate self-session to exercise the adapted skill — verifying it works in Amplifier.</p>
-        </div>
-    </div>
-    <div class="highlight-box">
-        <p>Invoke with <code>/adapt-skill path/to/source.md</code> — or <strong style="color: var(--text-primary);">"port this skill to Amplifier."</strong></p>
-    </div>
-</div>
-
-<!-- beat 7: mechanism -->
-<div class="slide" data-slide="6">
-    <div class="section-label">The Pattern That Keeps Them Honest</div>
-    <h2 class="medium-headline" style="max-width: 820px;">
-        Both skills defer to one living reference<br>instead of hardcoding conventions.
-    </h2>
-    <div class="grid-2" style="max-width: 860px; margin-bottom: clamp(12px, 2vw, 20px);">
-        <div>
-            <ul class="bullet-list">
-                <li>Both start with <strong>Step 1:</strong> <code>load_skill("skills-assist")</code></li>
-                <li>Rather than baking in Amplifier conventions, they <strong>read the living spec</strong></li>
-                <li>When the spec evolves, the skills <strong>pick up the latest</strong> automatically</li>
-                <li>The recommended pattern for any skill that generates or validates other skills</li>
-            </ul>
-        </div>
-        <div class="card" style="display: flex; flex-direction: column; justify-content: center;">
-            <div class="code-block" style="margin: 0; font-size: clamp(12px, 1.6vw, 15px);">
-<span class="comment"># Step 1 of every skill-authoring skill</span>
-load_skill("skills-assist")
-
-<span class="comment"># Now you have:</span>
-<span class="comment"># - Agent Skills spec</span>
-<span class="comment"># - Amplifier extensions</span>
-<span class="comment"># - Testing guide</span>
-<span class="comment"># - 5 companion files total</span></div>
-        </div>
-    </div>
-    <div class="highlight-box" style="max-width: 860px;">
-        <p><code>skills-assist</code> now ships <strong style="color: var(--text-primary);">5 companion files</strong> — including a new <code>testing-guide.md</code> for verifying skills before deployment.</p>
-    </div>
-</div>
-
-<!-- beat 8: takeaway -->
-<div class="slide" data-slide="7">
-    <div class="section-label">Get Started</div>
-    <h2 class="headline" style="max-width: 760px;">Capture your next<br>repeatable workflow.</h2>
-    <div class="spacer"></div>
-    <div class="code-block" style="max-width: 660px; margin-bottom: clamp(16px, 3vw, 24px);">
-<span class="cmd">/skillify</span>              <span class="comment"># after any repeatable workflow</span>
-<span class="cmd">/adapt-skill</span>           <span class="comment"># with a source skill from another platform</span>
-<span class="cmd">/skills-assist</span>         <span class="comment"># for the full authoring reference</span></div>
-    <ul class="bullet-list" style="max-width: 780px;">
-        <li><strong>Group your questions</strong> — the interview clusters related decisions instead of asking one at a time.</li>
-        <li><strong>Trigger phrases go in <code>description</code></strong> — that's what routing sees; the body loads too late to help.</li>
-        <li><strong>Interactive skills stay inline</strong> — forked skills run one-shot and can't hold a conversation.</li>
-    </ul>
-    <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 20px);">
-        Available now in the latest <strong style="color: var(--text-primary);">amplifier-bundle-skills</strong>. Feedback and PRs welcome.
-    </p>
-    <a href="index.html" style="color: var(--accent); text-decoration: none; font-weight: 600; font-size: var(--font-body);">← More Amplifier Stories</a>
-</div>
-
-<!-- SOURCES & METHODOLOGY (audit-trail slide, not a beat) -->
-<div class="slide" data-slide="8">
-    <div class="section-label">Sources &amp; Methodology</div>
-    <h2 class="medium-headline">Where these claims come from.</h2>
-    <p class="body-text" style="max-width: 760px;">Every statement in this deck traces back to the skill definitions in the bundle and the sessions in which they were built — no external benchmarks are claimed.</p>
-    <div class="grid-2" style="max-width: 900px; margin-top: clamp(16px, 3vw, 24px);">
-        <div class="card">
-            <h3>Source</h3>
-            <ul class="bullet-list" style="margin: 0;">
-                <li>Bundle: <code>amplifier-bundle-skills</code> (8 skills)</li>
-                <li>Commands: <code>/skillify</code>, <code>/adapt-skill</code>, <code>/skills-assist</code></li>
-                <li><code>skills-assist</code>: 5 companion files, incl. <code>testing-guide.md</code></li>
-                <li>Built and tested in Amplifier sessions</li>
-            </ul>
-        </div>
-        <div class="card">
-            <h3>Methodology</h3>
-            <ul class="bullet-list" style="margin: 0;">
-                <li>Step counts (6 for /skillify, 8 for /adapt-skill) read from the skill workflows</li>
-                <li>"Ate its own tail" story recorded from the live authoring session</li>
-                <li>Design lessons captured during build; no round-number inflation</li>
-                <li>Verification steps use <code>load_skill()</code> and <code>delegate(agent="self")</code></li>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><strong>/skillify</strong><span>Captures a repeatable process from the current session into a reusable SKILL.md.</span></li>
+                <li><strong>/adapt-skill</strong><span>Translates a skill written for another AI coding assistant into an Amplifier-native SKILL.md.</span></li>
             </ul>
         </div>
     </div>
-    <p style="font-size: var(--font-small); color: var(--text-tertiary); margin-top: clamp(16px, 3vw, 24px);">Data as of: April 2026</p>
-</div>
 
-</div><!-- /deck -->
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">Proof</div>
+            <h2>Both already shipped into microsoft/amplifier-bundle-skills, backed by 27 passing tests</h2>
+            <p class="body">/skillify and /adapt-skill are user-invocable slash commands on the tracked branch of microsoft/amplifier-bundle-skills — merged, invocable, and tested.</p>
+            <span class="status-badge">Shipped &amp; merged · bundle v1.1.0</span>
+            <p class="handoff">This is real. So why did it matter enough to build?</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">27</div><div class="lbl">tests passing (14 skillify + 13 adapt-skill)</div></div>
+                <div class="stat"><div class="num alt">27</div><div class="lbl">skill directories in the bundle</div></div>
+            </div>
+        </div>
+    </div>
 
-<!-- Navigation -->
-<div class="nav-dots" id="navDots"></div>
-<div class="slide-counter" id="slideCounter"></div>
-<div class="click-left" id="clickLeft"></div>
-<div class="click-right" id="clickRight"></div>
+    <div class="slide center">
+        <!-- beat 3: tension -->
+        <div class="section-label">The Tension</div>
+        <h2>The genuinely useful process you just worked out lives only in this conversation</h2>
+        <p class="body">Close the tab and it's gone. Live session knowledge is fragile and unrepeatable — you'd have to reconstruct it from scratch next time.</p>
+        <p class="handoff">/skillify is the fix: it captures that live session before it vanishes.</p>
+    </div>
 
-<script>
-(function() {
-    const slides = document.querySelectorAll('.slide');
-    const total = slides.length;
-    let current = 0;
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism · /skillify</div>
+            <h2>/skillify reads the session, interviews you, then writes a complete SKILL.md</h2>
+            <p class="body">It analyzes the conversation and interviews you to confirm structure — turning a one-off into a reusable skill saved to disk.</p>
+            <p class="handoff">That covers capturing what you built. But what about skills you already own?</p>
+        </div>
+        <div class="col-aside">
+            <ol class="steps">
+                <li><span class="n">1</span><span class="t">Consult skills-assist</span></li>
+                <li><span class="n">2</span><span class="t">Analyze the session</span></li>
+                <li><span class="n">3</span><span class="t">Interview the user</span></li>
+                <li><span class="n">4</span><span class="t">Write the SKILL.md</span></li>
+                <li><span class="n">5</span><span class="t">Test the skill</span></li>
+                <li><span class="n">6</span><span class="t">Review and save</span></li>
+            </ol>
+        </div>
+    </div>
 
-    // Build nav dots
-    const dotsContainer = document.getElementById('navDots');
-    for (let i = 0; i < total; i++) {
-        const dot = document.createElement('button');
-        dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
-        dot.setAttribute('aria-label', 'Slide ' + (i + 1));
-        dot.addEventListener('click', () => goTo(i));
-        dotsContainer.appendChild(dot);
-    }
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism · /adapt-skill</div>
+            <h2>/adapt-skill translates a Claude Code or Cursor skill into Amplifier-native form</h2>
+            <p class="body">It maps foreign tool names, paths, and frontmatter — turning a skill built for another assistant into one that speaks Amplifier's conventions.</p>
+            <p class="handoff">Both mechanisms share one thing that keeps the output honest.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><strong>Tool names</strong><span>Read vs read_file · Bash(mkdir:*) vs bash</span></li>
+                <li><strong>Paths</strong><span>.claude/skills/ vs .amplifier/skills/</span></li>
+                <li><strong>Frontmatter</strong><span>Restructured into a proper Amplifier SKILL.md</span></li>
+            </ul>
+        </div>
+    </div>
 
-    function updateCounter() {
-        document.getElementById('slideCounter').textContent = (current + 1) + ' / ' + total;
-    }
+    <div class="slide split">
+        <!-- beat 6: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Shared Quality</div>
+            <h2>Both defer to skills-assist and bake in a real test step before saving</h2>
+            <p class="body">Step 1 of each loads skills-assist as the source of truth for Amplifier skill conventions. A dedicated test step verifies the skill before it's saved — trustworthy, not just generated.</p>
+            <p class="handoff">That test discipline shows up in how fast they could ship.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><strong>Source of truth</strong><span>Both Step 1: consult skills-assist for Amplifier conventions.</span></li>
+                <li><strong>Verified before saved</strong><span>skillify Step 5 and adapt-skill Step 7 both run a test step via delegate(agent='self').</span></li>
+            </ul>
+        </div>
+    </div>
 
-    function goTo(n) {
-        if (n < 0 || n >= total) return;
-        slides[current].classList.remove('active');
-        dotsContainer.children[current].classList.remove('active');
-        current = n;
-        slides[current].classList.add('active');
-        dotsContainer.children[current].classList.add('active');
-        updateCounter();
-    }
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>One morning: /skillify polished, then /adapt-skill landed 4m36s later — with its own tests</h2>
+            <p class="body">On 2026-04-08, Brian Krabach polished skillify at 09:06, then committed adapt-skill at 09:10 — shipped together with a 178-line test suite. The tooling had matured enough to ship a new tested skill almost as fast as it could be conceived.</p>
+            <p class="handoff">Two siblings from one continuous work session.</p>
+        </div>
+        <div class="col-aside">
+            <div class="big-figure">
+                <div class="fig"><span class="v">4m36s</span><span class="k">between the skillify polish and adapt-skill landing</span></div>
+                <div class="fig"><span class="v alt">178</span><span class="k">lines of test suite shipped with adapt-skill</span></div>
+            </div>
+        </div>
+    </div>
 
-    function next() { goTo(current + 1); }
-    function prev() { goTo(current - 1); }
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Takeaway</div>
+        <h2>Skills should be captured and ported — not rebuilt from scratch</h2>
+        <p class="body">/skillify captures the live session; /adapt-skill translates the foreign one. Together they make hard-won process durable and portable, as tested, reusable Amplifier-native SKILL.md files.</p>
+        <p class="handoff">Perfect the workflow once. Keep it forever.</p>
+    </div>
 
-    // Keyboard
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); next(); }
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
-        if (e.key === 'Home') { e.preventDefault(); goTo(0); }
-        if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
-    });
+    <!-- Sources & Methodology (no beat comment) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="sources-body">
+            <p><strong>Data as of:</strong> 2026-04-08 (latest verified commit); research re-derived from a local checkout of microsoft/amplifier-bundle-skills.</p>
+            <p><strong>Feature status:</strong> Shipped and merged into microsoft/amplifier-bundle-skills; both skills user-invocable and covered by 27 passing tests. Bundle version 1.1.0.</p>
+            <p><strong>Repository:</strong> origin ramparte/amplifier-bundle-skills, upstream microsoft/amplifier-bundle-skills (NOT michaeljabbour/amplifier-skill, whose git tree contains no skillify/adapt-skill paths).</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>git remote -v</code> — confirmed origin/upstream repos</li>
+                <li><code>git log --follow --format='%h|%ai|%an|%s' -- skills/skillify/SKILL.md</code> — skillify 2bdec3b, 2026-04-07, Brian Krabach</li>
+                <li><code>git log --format='%h|%ai|%an|%s' --since='2026-04-07' --until='2026-04-09'</code> — adapt-skill 3656c46 (09:10:56) lands 4m36s after skillify enhancement 016316a (09:06:20)</li>
+                <li><code>git show 3656c46 --stat</code> — SKILL.md (189 lines) + tests/test_adapt_skill.py (178 lines), 367 insertions</li>
+                <li><code>grep -c '^def test_' tests/test_adapt_skill.py</code> (13) · <code>grep -c 'def test_' skills/skillify/test_skill_content.py</code> (14)</li>
+                <li><code>python3 -m pytest tests/test_adapt_skill.py skills/skillify/test_skill_content.py -q</code> — 27 passed</li>
+                <li><code>grep -H 'user-invocable' skills/skillify/SKILL.md skills/adapt-skill/SKILL.md</code> — both true</li>
+                <li><code>ls -d skills/*/ | wc -l</code> — 27 skill directories</li>
+                <li><code>git branch -r --contains 3656c46</code> — includes upstream/main</li>
+            </ul>
+            <p><strong>Gaps:</strong> No merged PR number could be tied to skillify (2bdec3b) or adapt-skill (3656c46) — <code>gh pr list --search &lt;sha&gt; --state all</code> returned empty. The framing "adapt-skill was born from running /skillify" could NOT be verified from any commit, PR, or doc and is deliberately omitted.</p>
+            <p><strong>Primary contributor:</strong> Brian Krabach — author of skillify (2bdec3b), the skillify enhancement (016316a), and adapt-skill (3656c46).</p>
+        </div>
+    </div>
 
-    // Click zones
-    document.getElementById('clickLeft').addEventListener('click', prev);
-    document.getElementById('clickRight').addEventListener('click', next);
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
 
-    // Touch swipe
-    let touchStartX = 0;
-    document.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-    document.addEventListener('touchend', (e) => {
-        const dx = e.changedTouches[0].screenX - touchStartX;
-        if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
-    }, { passive: true });
+    <!-- More stories link - REQUIRED -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
-    updateCounter();
-})();
-</script>
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
+            updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
+        });
+
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
 </body>
 </html>

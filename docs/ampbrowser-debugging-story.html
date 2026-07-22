@@ -3,23 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>The Ghost in the Network — An AMP Browser Debugging Story</title>
+    <title>The Ghost in the Network</title>
     <script>document.documentElement.classList.add('js')</script>
-<style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
+    <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #0a0a0f;
-            color: #e8e8f0;
-            overflow: hidden;
+        :root {
+            --bg: #0a0e14;
+            --bg2: #111823;
+            --fg: #f2f5f8;
+            --muted: #9aa7b4;
+            --accent: #5ec8f2;
+            --accent2: #7ef2b8;
+            --danger: #f2795e;
+            --card: #18212e;
+            --border: rgba(255,255,255,0.08);
         }
 
-        /* ── Slide System ── */
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
@@ -27,9 +36,39 @@
             flex-direction: column;
             overflow-y: auto;
             overflow-x: hidden;
+            background:
+                radial-gradient(1200px 600px at 80% -10%, rgba(94,200,242,0.08), transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, rgba(126,242,184,0.06), transparent 60%),
+                var(--bg);
         }
 
         .slide.active { display: flex; }
+
+        /* Progressive enhancement: no-JS fallback */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+
+        /* Fit-safe: cap slides to viewport and allow scroll */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide {
+            transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s;
+        }
 
         .center {
             text-align: center;
@@ -37,342 +76,172 @@
             justify-content: center;
         }
 
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
-            .slide.center { justify-content: flex-start; }
-        }
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(14px,2vw,22px); font-weight: 400; }
 
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * { animation: none !important; transition: none !important; }
-        }
-
-        /* ── Typography ── */
         .section-label {
-            font-size: clamp(11px, 1.5vw, 13px);
             text-transform: uppercase;
-            letter-spacing: 0.2em;
-            color: rgba(120, 180, 255, 0.7);
-            margin-bottom: clamp(12px, 2vw, 24px);
-            font-weight: 600;
-        }
-
-        .headline {
-            font-size: clamp(28px, 5vw, 64px);
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
             font-weight: 700;
-            line-height: 1.1;
-            margin-bottom: clamp(16px, 3vw, 32px);
-            letter-spacing: -0.02em;
+            margin-bottom: clamp(12px, 2vw, 20px);
         }
 
-        .medium-headline {
-            font-size: clamp(22px, 3.5vw, 42px);
-            font-weight: 600;
-            line-height: 1.2;
-            margin-bottom: clamp(16px, 3vw, 32px);
-            letter-spacing: -0.01em;
+        h2 + .body, h1 + .body { margin-top: clamp(14px, 2vw, 22px); }
+        .body { color: var(--muted); max-width: 46ch; }
+        .body + .body { margin-top: 0.7em; }
+        .handoff {
+            margin-top: clamp(18px, 3vw, 28px);
+            color: var(--accent2);
+            font-size: clamp(13px, 1.7vw, 17px);
+            max-width: 46ch;
+            border-left: 2px solid rgba(126,242,184,0.4);
+            padding-left: 14px;
         }
 
-        .subhead {
-            font-size: clamp(16px, 2.2vw, 24px);
-            font-weight: 300;
-            line-height: 1.5;
-            color: rgba(232, 232, 240, 0.7);
-            max-width: 680px;
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
         }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-        .body-text {
-            font-size: clamp(15px, 1.8vw, 19px);
-            line-height: 1.7;
-            color: rgba(232, 232, 240, 0.8);
-            max-width: 720px;
-        }
-
-        .small-text {
-            font-size: clamp(12px, 1.4vw, 14px);
-            color: rgba(232, 232, 240, 0.5);
-        }
-
-        /* ── Gradient Accents ── */
-        .gradient-text {
-            background: linear-gradient(135deg, #78b4ff, #a78bfa, #f472b6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .gradient-blue {
-            background: linear-gradient(135deg, #60a5fa, #38bdf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .gradient-amber {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .gradient-green {
-            background: linear-gradient(135deg, #34d399, #10b981);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .gradient-red {
-            background: linear-gradient(135deg, #f87171, #ef4444);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* ── Cards ── */
-        .card {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: clamp(20px, 3vw, 32px);
-            margin-bottom: clamp(12px, 2vw, 16px);
-        }
-
-        .card-highlight {
-            background: rgba(120, 180, 255, 0.06);
-            border: 1px solid rgba(120, 180, 255, 0.15);
-        }
-
-        .card-warn {
-            background: rgba(251, 191, 36, 0.06);
-            border: 1px solid rgba(251, 191, 36, 0.15);
-        }
-
-        .card-success {
-            background: rgba(52, 211, 153, 0.06);
-            border: 1px solid rgba(52, 211, 153, 0.15);
-        }
-
-        .card-danger {
-            background: rgba(248, 113, 113, 0.06);
-            border: 1px solid rgba(248, 113, 113, 0.15);
-        }
-
-        .card-icon {
-            font-size: clamp(28px, 4vw, 40px);
-            margin-bottom: clamp(8px, 1.5vw, 16px);
-        }
-
-        .card-title {
-            font-size: clamp(16px, 2vw, 20px);
-            font-weight: 600;
-            margin-bottom: clamp(6px, 1vw, 10px);
-        }
-
-        .card-body {
-            font-size: clamp(13px, 1.6vw, 16px);
-            line-height: 1.6;
-            color: rgba(232, 232, 240, 0.7);
-        }
-
-        /* ── Grid Layouts ── */
-        .grid-2 {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: clamp(12px, 2vw, 20px);
-            width: 100%;
-            max-width: 900px;
-        }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: clamp(12px, 2vw, 20px);
-            width: 100%;
-            max-width: 1000px;
-        }
-
-        @media (max-width: 700px) {
-            .grid-2, .grid-3 { grid-template-columns: 1fr; }
-        }
-
-        /* ── Code Blocks ── */
-        .code-block {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: clamp(16px, 2.5vw, 24px);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: clamp(12px, 1.4vw, 15px);
-            line-height: 1.7;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-            max-width: 800px;
-            width: 100%;
-            margin: clamp(8px, 1.5vw, 16px) 0;
-        }
-
-        .code-comment { color: rgba(120, 180, 255, 0.5); }
-        .code-keyword { color: #c084fc; }
-        .code-string { color: #34d399; }
-        .code-error { color: #f87171; }
-        .code-success { color: #34d399; }
-        .code-dim { color: rgba(232, 232, 240, 0.35); }
-        .code-highlight { color: #fbbf24; }
-
-        /* ── Timeline ── */
-        .timeline {
-            position: relative;
-            padding-left: clamp(24px, 4vw, 40px);
-            max-width: 720px;
-            width: 100%;
-        }
-
-        .timeline::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: linear-gradient(to bottom, rgba(120, 180, 255, 0.4), rgba(167, 139, 250, 0.4), rgba(52, 211, 153, 0.4));
-        }
-
-        .timeline-item {
-            position: relative;
-            margin-bottom: clamp(20px, 3vw, 32px);
-        }
-
-        .timeline-item::before {
-            content: '';
-            position: absolute;
-            left: calc(-1 * clamp(24px, 4vw, 40px) - 4px);
-            top: 6px;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #78b4ff;
-            border: 2px solid #0a0a0f;
-        }
-
-        .timeline-time {
-            font-size: clamp(11px, 1.3vw, 13px);
-            color: rgba(120, 180, 255, 0.6);
-            font-weight: 500;
-            margin-bottom: 4px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .timeline-title {
-            font-size: clamp(15px, 1.8vw, 18px);
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .timeline-desc {
-            font-size: clamp(13px, 1.5vw, 15px);
-            color: rgba(232, 232, 240, 0.6);
-            line-height: 1.5;
-        }
-
-        /* ── Stat Grid ── */
+        /* Stat grid */
         .stat-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: clamp(12px, 2vw, 20px);
-            width: 100%;
-            max-width: 800px;
+            gap: clamp(12px, 1.6vw, 18px);
         }
-
-        .stat-number {
-            font-size: clamp(32px, 5vw, 56px);
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.2vw, 24px);
+        }
+        .stat .num {
+            font-size: clamp(26px, 4.5vw, 46px);
             font-weight: 700;
             line-height: 1;
-            margin-bottom: 6px;
+            color: var(--accent);
+            letter-spacing: -0.02em;
+        }
+        .stat .num.warn { color: var(--danger); }
+        .stat .num.ok { color: var(--accent2); }
+        .stat .lbl {
+            margin-top: 8px;
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: var(--muted);
+            line-height: 1.3;
         }
 
-        .stat-label {
-            font-size: clamp(12px, 1.4vw, 14px);
-            color: rgba(232, 232, 240, 0.5);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
+        /* Steps */
+        .steps { display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
+        .step {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(12px, 1.8vw, 18px);
+        }
+        .step .n {
+            flex: 0 0 auto;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: rgba(94,200,242,0.15);
+            color: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .step .txt { font-size: clamp(13px, 1.7vw, 17px); color: var(--fg); }
+        .step .txt code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: 0.9em;
+            color: var(--accent2);
+            background: rgba(126,242,184,0.08);
+            padding: 1px 5px;
+            border-radius: 5px;
         }
 
-        /* ── Quote ── */
-        .quote {
-            font-size: clamp(18px, 2.5vw, 28px);
-            font-weight: 300;
-            font-style: italic;
-            line-height: 1.5;
-            color: rgba(232, 232, 240, 0.85);
-            max-width: 700px;
-            position: relative;
-            padding-left: clamp(16px, 3vw, 32px);
-            border-left: 3px solid rgba(120, 180, 255, 0.3);
+        /* Rules list */
+        .rules { display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
+        .rule {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(12px, 1.8vw, 18px);
         }
+        .rule strong { color: var(--fg); display: block; margin-bottom: 4px; font-size: clamp(14px,1.8vw,18px); }
+        .rule span { color: var(--muted); font-size: clamp(12px,1.6vw,15px); }
+        .rule.danger { border-left-color: var(--danger); }
+        .rule.ok { border-left-color: var(--accent2); }
 
-        /* ── Comparison ── */
-        .comparison {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            gap: clamp(12px, 2vw, 24px);
-            align-items: start;
-            width: 100%;
-            max-width: 900px;
+        /* Code block */
+        .code-block {
+            background: #0d141d;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 22px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(11px, 1.5vw, 15px);
+            line-height: 1.7;
+            color: #cfe4f2;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-x: auto;
         }
+        .code-block .c { color: #6b7d8f; }
+        .code-block .g { color: var(--accent2); }
+        .code-block .r { color: var(--danger); }
 
-        .comparison-arrow {
-            font-size: clamp(24px, 3vw, 36px);
-            color: rgba(232, 232, 240, 0.3);
-            align-self: center;
-            padding-top: 40px;
-        }
-
-        @media (max-width: 700px) {
-            .comparison { grid-template-columns: 1fr; }
-            .comparison-arrow { display: none; }
-        }
-
-        /* ── Emphasis ── */
-        .em { color: #78b4ff; }
-        .em-amber { color: #fbbf24; }
-        .em-green { color: #34d399; }
-        .em-red { color: #f87171; }
-        .em-purple { color: #a78bfa; }
-
-        /* ── Navigation ── */
+        /* Navigation dots */
         .nav {
             position: fixed;
-            bottom: clamp(20px, 4vw, 30px);
+            bottom: 28px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 8px;
+            gap: 9px;
             z-index: 100;
         }
-
         .nav-dot {
-            width: 8px;
-            height: 8px;
+            width: 8px; height: 8px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255,255,255,0.22);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background 0.2s, transform 0.2s;
         }
-
-        .nav-dot.active {
-            background: rgba(120, 180, 255, 0.8);
-            transform: scale(1.3);
-        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.35); }
 
         .slide-counter {
             position: fixed;
-            top: clamp(12px, 2vw, 20px);
-            right: clamp(12px, 2vw, 20px);
-            font-size: clamp(11px, 1.3vw, 13px);
-            color: rgba(255, 255, 255, 0.25);
-            font-family: 'JetBrains Mono', monospace;
+            bottom: 26px;
+            right: 26px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
             z-index: 100;
+            font-variant-numeric: tabular-nums;
         }
 
         .more-stories {
@@ -386,240 +255,304 @@
             z-index: 100;
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
-    
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+
+        .badge {
+            display: inline-block;
+            font-size: clamp(11px,1.4vw,13px);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            padding: 4px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(126,242,184,0.35);
+            color: var(--accent2);
+            background: rgba(126,242,184,0.06);
+            margin-top: clamp(16px,2.5vw,26px);
+        }
+
+        .sources { max-width: 70ch; }
+        .sources p { color: var(--muted); margin-bottom: 8px; }
+        .sources ul { margin: 10px 0 10px 22px; }
+        .sources li { color: var(--muted); margin-bottom: 7px; line-height: 1.5; }
+        .sources code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: 0.88em;
+            color: var(--accent);
+            background: rgba(94,200,242,0.08);
+            padding: 1px 5px;
+            border-radius: 5px;
+            word-break: break-word;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+    </style>
 </head>
 <body>
+<!--
+SPINE
+ABT: AND a self-hosted PWA dashboard served fine over HTTPS on the developer's Mac on the Tailscale tailnet; BUT the iPhone insisted the same site "couldn't be reached" and the freshly-added TLS/cert code was the tempting suspect; THEREFORE an Amplifier multi-agent investigation cleared the server and pinned the failure on the phone being off the tailnet -- a MagicDNS name-resolution ghost, never an HTTPS bug.
+Payoff: The smoking gun in the tailnet peer table -- iphone171 "offline, last seen 16h ago" while the Mac (macstudio) was online -- the phone was off the tailnet, so MagicDNS never resolved spark-1 to negotiate HTTPS with.
+Beats:
+  1. frame     -- A phone browser said a working HTTPS dashboard "couldn't be reached" and the obvious fix was wrong.  advances: Opens with the AND/BUT tension as a hook: same site, HTTPS on the Mac vs. failure on the phone, orienting why this mystery matters.
+  2. setup     -- The "AMP Browser" is muxplex, a PWA-capable web tmux dashboard reached in a phone browser over HTTPS on the tailnet.  advances: Grounds the AND by explaining the named subject before the argument leans on it (PWA-capable, served on spark-1 at 0.0.0.0:8088).
+  3. proof     -- The server was actually serving: HTTPS live, ports bound, spark-1.tail79ce67.ts.net mapped to local services "tailnet only".  advances: Lands hard evidence early that the AND is real -- the server was innocent, so the fault lay elsewhere.
+  4. tension   -- HTTPS was the tempting scapegoat because muxplex's own clipboard feature had just forced the move to a secure context.  advances: Sharpens the BUT: shows why the freshly-added TLS/cert code was the plausible-but-wrong suspect.
+  5. mechanism -- One Amplifier butler session coordinated read-only recon subagents running live tailscale status, ss -tlnp, and serve/funnel probes.  advances: Shows HOW the investigation cleared the server without changing anything -- the method moving from BUT toward THEREFORE.
+  6. turn      -- The peer table flipped the case: iphone171 read "offline, last seen 16h ago" while the Mac (macstudio) was online.  advances: The pivot from AND to THEREFORE -- evidence points away from HTTPS and toward the phone's tailnet membership.
+  7. payoff    -- With the phone off the tailnet, MagicDNS couldn't resolve spark-1; spark-1 even logged "Tailscale can't reach the configured DNS servers."  advances: Lands the THEREFORE as the climax: a name-resolution ghost stacked on a tailnet-membership failure, not an HTTPS bug.
+  8. takeaway  -- Clear the server before you blame the code; the same "device not on the tailnet" failure class hits the off-tailnet Windows host too.  advances: Generalizes the THEREFORE into a reusable debugging discipline the audience keeps.
+-->
 
-    <!--
-    NARRATIVE SPINE
-    ABT: AND a self-hosted PWA (AMP Browser) worked perfectly over HTTPS on the
-         developer's Mac; BUT the iPhone insisted the site "couldn't be reached,"
-         and the developer couldn't even remember which prior session had touched
-         the HTTPS code; THEREFORE Amplifier recovered three lost sessions and ran
-         a coordinated multi-agent investigation that cleared the server entirely
-         and pinned the ghost on a disconnected VPN -- a DNS failure, never an
-         HTTPS bug.
-    Payoff: the smoking gun -- a single "-" beside "iphone" in `tailscale status`.
-            The phone's VPN was off, so MagicDNS couldn't resolve the host. The
-            hunt diagnosed the real cause instead of "fixing" HTTPS again.
-    Beats:
-      1. proof     -- spoiler: the "broken HTTPS" bug was a disconnected VPN.  advances: makes the AND concrete -- the method found the true root cause
-      2. setup     -- what AMP Browser is (PWA + Tailscale + Mac/Pi).         advances: names the project before leaning on it
-      3. tension   -- works on the Mac, iPhone can't find the server at all.  advances: establishes the BUT (plus forgotten context)
-      4. payoff    -- one dash in `tailscale status` explained everything.    advances: lands the THEREFORE before the midpoint
-      5. mechanism -- three agents proved the server was innocent.            advances: HOW the ghost was cornered
-      6. mechanism -- session archaeology recovered three lost sessions.      advances: HOW the hunt even started
-      7. turn      -- one symptom was really three stacked bugs.              advances: reframes "a bug" as a layer cake
-      8. takeaway  -- what the hunt teaches about debugging.                  advances: the lessons the audience keeps
-    -->
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>The Ghost in the Network</h1>
+        <p class="subtitle">Chasing an HTTPS bug that wasn't one</p>
+    </div>
 
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Amplifier Case Study &bull; AMP Browser</div>
-        <h1 class="headline">Spoiler: the &ldquo;broken HTTPS&rdquo; bug was a <span class="gradient-text">disconnected VPN</span></h1>
-        <p class="subhead">A phantom "server can't be reached" error on one iPhone. Amplifier recovered three lost sessions, ran a multi-agent investigation, cleared the server completely &mdash; and traced the ghost to DNS, not HTTPS.</p>
-        <div class="stat-grid" style="margin-top: clamp(24px, 4vw, 40px);">
-            <div>
-                <div class="stat-number gradient-blue">3</div>
-                <div class="stat-label">Prior Sessions<br>Recovered</div>
-            </div>
-            <div>
-                <div class="stat-number gradient-text">4</div>
-                <div class="stat-label">Agents<br>Coordinated</div>
-            </div>
-            <div>
-                <div class="stat-number gradient-green">1</div>
-                <div class="stat-label">Correct Root<br>Cause Found</div>
+    <div class="slide center">
+        <!-- beat 1: frame -->
+        <div class="section-label">The mystery</div>
+        <h1>A working HTTPS dashboard, and one phone that couldn't reach it</h1>
+        <p class="body">The same self-hosted PWA loaded fine over HTTPS on the developer's Mac, on the Tailscale tailnet &mdash; but the iPhone browser insisted the site &ldquo;couldn't be reached.&rdquo; The obvious fix, blaming the fresh TLS code, was the wrong one.</p>
+        <p class="handoff">First question: what exactly <em>is</em> the site the phone can't reach?</p>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 2: setup -->
+        <div class="col-main">
+            <div class="section-label">The subject</div>
+            <h2>The &ldquo;AMP Browser&rdquo; is muxplex &mdash; a web tmux dashboard you install on your home screen</h2>
+            <p class="body">muxplex is a mobile-friendly, PWA-capable web dashboard for tmux, reached in a phone browser over HTTPS on the tailnet.</p>
+            <p class="handoff">So the question becomes: was this dashboard actually serving?</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="num ok">PWA</div>
+                    <div class="lbl">Responsive, PWA-capable for home-screen install (README.md:19)</div>
+                </div>
+                <div class="stat">
+                    <div class="num">:8088</div>
+                    <div class="lbl">Served on spark-1 at 0.0.0.0:8088 (live socket in session 830459e9)</div>
+                </div>
+                <div class="stat">
+                    <div class="num">408</div>
+                    <div class="lbl">Commits by Brian Krabach; iOS/iPadOS touch-scroll fix via PR #4 (@samueljklee)</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 2: setup -->
-    <div class="slide">
-        <div class="section-label">The Project</div>
-        <h2 class="medium-headline">AMP Browser: a self-hosted PWA reachable anywhere over Tailscale</h2>
-        <p class="body-text" style="margin-bottom: clamp(20px, 3vw, 32px);">A self-hosted file browser built as a Progressive Web App. It runs on a Mac&nbsp;Mini and a Raspberry&nbsp;Pi, accessible anywhere over <span class="em">Tailscale</span> &mdash; a mesh VPN that gives every device a private, encrypted connection with its own MagicDNS hostname.</p>
-        <div class="grid-3">
-            <div class="card">
-                <div class="card-icon">&#x1F4F1;</div>
-                <div class="card-title">PWA</div>
-                <div class="card-body">iOS-native feel. Installed to the home screen -- offline caching, full-screen, touch-first.</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">&#x1F512;</div>
-                <div class="card-title">Tailscale + HTTPS</div>
-                <div class="card-body">Mesh VPN with MagicDNS and Let's Encrypt certificates. Encrypted access from anywhere, no port forwarding.</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">&#x1F5A5;&#xFE0F;</div>
-                <div class="card-title">Multi-Device</div>
-                <div class="card-body">Mac Mini as primary server, Raspberry Pi as secondary. One Python server, one HTML file, zero frameworks.</div>
+    <div class="slide split">
+        <!-- beat 3: proof -->
+        <div class="col-main">
+            <div class="section-label">The evidence &mdash; early</div>
+            <h2>The server was innocent: HTTPS was live and the ports were bound</h2>
+            <p class="body">Live probes showed muxplex listening on :8088 and Tailscale serve mapping the MagicDNS host to local services &mdash; reachability gated &ldquo;tailnet only.&rdquo;</p>
+            <p class="handoff">If the server was serving, why was HTTPS still the first suspect?</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="c"># tailscale serve status</span>
+https://spark-1.tail79ce67.ts.net <span class="g">(tailnet only)</span>
+|-- /     proxy http://127.0.0.1:8400
+|-- /dash proxy http://127.0.0.1:7777
+:8443 <span class="g">(tailnet only)</span> -> :7777
+:8444 <span class="g">(tailnet only)</span> -> :8080
+
+<span class="c"># ss -tlnp</span>
+LISTEN 0 2048 <span class="g">0.0.0.0:8088</span> users:(("muxplex"))</div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 4: tension -->
+        <div class="col-main">
+            <div class="section-label">The tempting wrong suspect</div>
+            <h2>HTTPS looked guilty because a new feature had just forced it into existence</h2>
+            <p class="body">muxplex had just added native clipboard support &mdash; and the browser Clipboard API requires a secure context. That's why <code>muxplex setup-tls</code> and all the fresh cert code existed at all.</p>
+            <p class="handoff">Freshly-changed code is always the tempting scapegoat. So how do you clear it fairly?</p>
+        </div>
+        <div class="col-aside">
+            <div class="rules">
+                <div class="rule danger">
+                    <strong>Clipboard API needs a secure context</strong>
+                    <span>&ldquo;navigator.clipboard requires a secure context &mdash; either localhost or HTTPS&rdquo; (tls-setup-design.md:9)</span>
+                </div>
+                <div class="rule">
+                    <strong>So TLS was added: setup-tls</strong>
+                    <span>Auto-detection chain Tailscale &rarr; mkcert &rarr; self-signed (26 TLS commits, 2026-04-01..04-06)</span>
+                </div>
+                <div class="rule">
+                    <strong>Tailscale gets a real cert</strong>
+                    <span><code>tailscale cert</code>, hostname read from <code>tailscale status --self --json</code></span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 3: tension -->
-    <div class="slide">
-        <div class="section-label">Act I &bull; The Symptom</div>
-        <h2 class="headline">It worked on the Mac, but the iPhone <span class="gradient-amber">couldn't find the server</span></h2>
-        <p class="body-text" style="margin-bottom: clamp(16px, 2vw, 24px);">The developer returned to a stubborn problem &mdash; and couldn't remember what they'd already changed, or in which session:</p>
-        <div class="quote" style="margin-bottom: clamp(20px, 3vw, 32px);">
-            "HTTPS works on my MacBook browser and as a PWA. But I can't access via any mobile browser. It just returns 'the site can't be reached &mdash; server's IP address could not be found.'"
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The method</div>
+            <h2>One Amplifier butler session ran the recon &mdash; read-only, and it changed nothing</h2>
+            <p class="body">The flagship session coordinated many subagents; foundation:explorer agents ran live network probes to clear the server before anyone touched the code.</p>
+            <p class="handoff">Those read-only probes captured one line that flipped the whole case.</p>
         </div>
-        <p class="body-text">HTTPS looked fine. The server looked fine. Something <em>else</em> was broken &mdash; and it only affected the iPhone.</p>
-    </div>
-
-    <!-- beat 4: payoff -->
-    <div class="slide">
-        <div class="section-label">Act III &bull; The Smoking Gun</div>
-        <h2 class="headline">One dash in <span class="gradient-red">tailscale status</span> explained everything</h2>
-        <p class="body-text" style="margin-bottom: clamp(16px, 2vw, 24px);">The critical clue was a single character &mdash; the iPhone's connection state:</p>
-        <div class="code-block"><span class="code-dim">$ tailscale status</span>
-
-100.x.x.x   home-server  user@  macOS   <span class="code-success">active</span>
-100.x.x.x   ampworker    user@  linux   <span class="code-success">active</span>
-100.x.x.x   iphone       user@  iOS     <span class="code-error">-</span></div>
-        <p class="body-text" style="margin-top: clamp(16px, 2vw, 24px);">That <span class="em-red"><code>-</code></span> beside the iPhone: Tailscale wasn't connected. Without it, MagicDNS can't resolve <code>*.ts.net</code> hostnames and the phone can't route to <code>100.x.x.x</code>. Not a server bug. Not an HTTPS bug. A <em>DNS resolution failure</em> &mdash; the phone literally couldn't find the server.</p>
-    </div>
-
-    <!-- beat 5: mechanism -->
-    <div class="slide">
-        <div class="section-label">The Investigation</div>
-        <h2 class="medium-headline">Three agents proved the server was innocent</h2>
-        <p class="body-text" style="margin-bottom: clamp(16px, 2vw, 24px);">Amplifier dispatched a coordinated investigation &mdash; each agent probing a different layer at once. Every diagnostic came back green: HTTPS active (PID 43784, port 8080), Let's Encrypt certs valid through May 2026, port open on the Tailscale interface. The server was fine, which is exactly what pointed the hunt elsewhere.</p>
-        <div class="grid-3">
-            <div class="card card-highlight">
-                <div class="card-icon">&#x1F50D;</div>
-                <div class="card-title">Explorer Agent</div>
-                <div class="card-body">Surveyed the whole <code>server.py</code> networking stack: bind address, SSL config, CORS, PWA manifest, service worker, shell scripts.</div>
-            </div>
-            <div class="card card-warn">
-                <div class="card-icon">&#x26A1;</div>
-                <div class="card-title">Live Diagnostics</div>
-                <div class="card-body">Real-time bash probes: HTTPS on localhost and the Tailscale IP, firewall rules, cert validity, open ports.</div>
-            </div>
-            <div class="card card-highlight">
-                <div class="card-icon">&#x1F4CB;</div>
-                <div class="card-title">Session Analyst</div>
-                <div class="card-body">Traced the full chain of hostname-related fixes across prior session transcripts and commits.</div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step"><div class="n">1</div><div class="txt">Run <code>tailscale status</code> to read the tailnet peer table</div></div>
+                <div class="step"><div class="n">2</div><div class="txt">Run <code>ss -tlnp</code> to confirm bound ports</div></div>
+                <div class="step"><div class="n">3</div><div class="txt">Run <code>tailscale serve/funnel status</code> and <code>docker ps</code></div></div>
+                <div class="step"><div class="n">4</div><div class="txt">Report: &ldquo;All read-only; no changes made&rdquo; &mdash; 31 subagent spawns on disk (21 per audit)</div></div>
             </div>
         </div>
     </div>
 
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">Session Archaeology</div>
-        <h2 class="medium-headline">Session archaeology recovered three forgotten sessions</h2>
-        <p class="body-text" style="margin-bottom: clamp(16px, 2vw, 24px);">Before any of that could happen, the <span class="em">session-analyst</span> agent rebuilt the context the developer had lost &mdash; every commit, fix, and test from three prior sessions, in seconds:</p>
-        <div class="timeline">
-            <div class="timeline-item">
-                <div class="timeline-time">02:25 AM &mdash; Implementer</div>
-                <div class="timeline-title">The Big Migration</div>
-                <div class="timeline-desc">An 8-task plan renamed the project from "PiBrowser" to "ampbrowser" -- README, systemd service, shell scripts, and the directory itself.</div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-time">03:01 AM &mdash; Implementer</div>
-                <div class="timeline-title">The HTTPS Fix</div>
-                <div class="timeline-desc"><code style="color:#f87171">socket.gethostname()</code> returned "mac.lan" instead of the Tailscale hostname, so HTTPS was silently degrading to HTTP. Fixed.</div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-time">03:18 AM &mdash; Git Ops</div>
-                <div class="timeline-title">The Commit</div>
-                <div class="timeline-desc">Committed the hostname fix: <code style="color:#34d399">c8c98ab</code>. Clean history, clear message -- and the reason HTTPS already worked when the developer returned.</div>
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">The turn</div>
+            <h2>The peer table flipped the case: the phone was offline, the Mac was online</h2>
+            <p class="body">In the captured <code>tailscale status</code>, iphone171 read &ldquo;offline, last seen 16h ago&rdquo; while macstudio was online. The evidence pointed away from HTTPS and toward the phone's tailnet membership.</p>
+            <p class="handoff">Off the tailnet &mdash; so what actually broke first?</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="c"># tailscale status (session 7084bb34)</span>
+100.94.69.99  iphone171  ramparte@  iOS
+   <span class="r">offline, last seen 16h ago</span>
+
+100.79.85.60  macstudio  ramparte@  macOS
+   <span class="g">-</span>   <span class="c"># bare "-" = online</span></div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The real cause</div>
+            <h2>Off the tailnet, MagicDNS never resolved spark-1 &mdash; so there was no HTTPS to fail</h2>
+            <p class="body">With the phone off the tailnet, MagicDNS couldn't resolve the spark-1 host at all. The browser never reached a server to negotiate HTTPS with. spark-1 even logged a DNS-layer health warning in the same window.</p>
+            <p class="handoff">A name-resolution ghost stacked on a tailnet-membership failure &mdash; never an HTTPS bug.</p>
+        </div>
+        <div class="col-aside">
+            <div class="rules">
+                <div class="rule danger">
+                    <strong>Phone off the tailnet</strong>
+                    <span>iphone171 &ldquo;offline, last seen 16h ago&rdquo; while macstudio online (session 7084bb34)</span>
+                </div>
+                <div class="rule danger">
+                    <strong>MagicDNS can't resolve spark-1</strong>
+                    <span>spark-1 health check: &ldquo;Tailscale can't reach the configured DNS servers&rdquo;</span>
+                </div>
+                <div class="rule ok">
+                    <strong>HTTPS was never reached</strong>
+                    <span>No name resolution &rarr; no server &rarr; no TLS handshake to blame</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 7: turn -->
-    <div class="slide">
-        <div class="section-label">Diagnosis</div>
-        <h2 class="medium-headline">One symptom was really three stacked bugs</h2>
-        <p class="body-text" style="margin-bottom: clamp(16px, 2vw, 24px);">"HTTPS isn't working on my iPhone" was never one problem. It was a layer cake uncovered across multiple sessions:</p>
-        <div class="grid-3">
-            <div class="card card-warn">
-                <div class="card-title" style="color: rgba(251, 191, 36, 0.9);">Layer 1 &mdash; Hostname</div>
-                <div class="card-body"><code>socket.gethostname()</code> returned "mac.lan" instead of "home-server". Certs not found. <span class="em-green">Fixed.</span></div>
-            </div>
-            <div class="card card-warn">
-                <div class="card-title" style="color: rgba(251, 191, 36, 0.9);">Layer 2 &mdash; Paths</div>
-                <div class="card-body">Cert directory was <code>/etc/pibrowser/certs</code> and the service file still had <code>/home/pi/</code> paths -- the old project name. <span class="em-green">Fixed.</span></div>
-            </div>
-            <div class="card card-success">
-                <div class="card-title" style="color: rgba(52, 211, 153, 0.9);">Layer 3 &mdash; DNS/VPN</div>
-                <div class="card-body">The iPhone's Tailscale was disconnected, so MagicDNS never resolved. <span class="em-amber">The real ghost.</span></div>
+    <div class="slide split">
+        <!-- beat 8: takeaway -->
+        <div class="col-main">
+            <div class="section-label">The discipline</div>
+            <h2>Clear the server before you blame the code</h2>
+            <p class="body">Read-only recon that exonerates the server first saves you from patching innocent TLS code. The same &ldquo;device not on the tailnet&rdquo; failure class hits the Windows host too &mdash; it's off-tailnet and must be bridged over an SSH tunnel through WSL.</p>
+            <p class="handoff">The ghost was never in the HTTPS. It was in who was &mdash; and wasn't &mdash; on the tailnet.</p>
+        </div>
+        <div class="col-aside">
+            <div class="rules">
+                <div class="rule ok">
+                    <strong>Prove innocence with read-only probes</strong>
+                    <span>tailscale status, ss -tlnp, serve/funnel, docker ps &mdash; change nothing first</span>
+                </div>
+                <div class="rule">
+                    <strong>Check tailnet membership before certs</strong>
+                    <span>&ldquo;Couldn't be reached&rdquo; can mean the peer never resolved at all</span>
+                </div>
+                <div class="rule danger">
+                    <strong>Same class: the Windows host</strong>
+                    <span>Windows side is NOT on the tailnet &mdash; only WSL is; bridged via SSH tunnel over WSL</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 8: takeaway -->
-    <div class="slide">
-        <div class="section-label">Lessons</div>
-        <h2 class="medium-headline">What this debugging hunt teaches</h2>
-        <div class="grid-3" style="margin-top: clamp(8px, 1.5vw, 16px);">
-            <div class="card">
-                <div class="card-title"><span class="em-amber">1.</span> The reported problem is rarely the real one</div>
-                <div class="card-body">"HTTPS doesn't work on my phone" was actually "my VPN client isn't connected." Start from the symptom, not the assumed cause.</div>
-            </div>
-            <div class="card">
-                <div class="card-title"><span class="em-red">2.</span> Silent failures are the worst failures</div>
-                <div class="card-body">The server silently fell back to HTTP with no error, no log, no warning. Design systems to fail loudly.</div>
-            </div>
-            <div class="card">
-                <div class="card-title"><span class="em-purple">3.</span> Session memory turns debugging into archaeology</div>
-                <div class="card-body">Recovering full context from prior sessions -- and running code review, live diagnostics, and history analysis in parallel -- found the answer faster than any single linear thread.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SLIDE: SOURCES -->
+    <!-- Sources & Methodology (no beat comment) -->
     <div class="slide">
         <div class="section-label">Sources</div>
-        <h2 class="medium-headline">Research Methodology</h2>
-        <div class="small-text" style="line-height: 1.8; max-width: 700px;">
-            <p><strong>Data as of:</strong> February 26, 2026</p>
-            <p><strong>Project:</strong> AMP Browser (ampbrowser) &mdash; private repository</p>
-            <p><strong>Session data source:</strong> Amplifier events.jsonl files for three recovered sessions:</p>
-            <ul style="margin: 8px 0 8px 20px; list-style-type: disc;">
-                <li><code>0000000000000000-90db688103f74ee6</code> (superpowers-implementer, 02:25)</li>
-                <li><code>0000000000000000-68b10d4ed2a642a6</code> (superpowers-implementer, 03:01)</li>
-                <li><code>0000000000000000-e4438c74437f48e2</code> (foundation-git-ops, 03:18)</li>
+        <h2>Research Methodology</h2>
+        <div class="sources">
+            <p><strong>Data as of:</strong> 2026-07-15 (latest session referenced).</p>
+            <p><strong>Feature status:</strong> muxplex HTTPS/TLS &mdash; SHIPPED (muxplex/tls.py, CHANGELOG.md:53, 2026-04-03..04-06). Amplifier multi-agent debugging &amp; session recovery &mdash; OBSERVED IN PRACTICE.</p>
+            <p><strong>Research performed:</strong></p>
+            <ul>
+                <li>Repo scope check: <code>cd ~/dev/ANext/amplifier-bundle-browser &amp;&amp; git log --oneline</code> (12 commits) + <code>grep -rli 'tailscale|magicdns|iphone' .</code> &rarr; only iPhone 14 device-emulation in context/patterns.md</li>
+                <li>muxplex PWA + port: <code>grep -in 'PWA' README.md CHANGELOG.md</code> (README.md:19, :310); live socket <code>ss -tlnp</code> in session 830459e9</li>
+                <li>TLS history: <code>git log --all --pretty='%ad | %an | %h | %s' | grep -iE 'tls|https|tailscale|cert|clipboard'</code> (26 commits)</li>
+                <li>Tailscale cert path: <code>sed -n '138,200p' muxplex/tls.py</code> (reads DNSName from Self; runs <code>tailscale cert</code>)</li>
+                <li>Smoking gun: <code>grep 'iphone171' ~/.amplifier/projects/*/sessions/*/transcript.jsonl</code> (session 7084bb34) &mdash; iphone171 &ldquo;offline, last seen 16h ago&rdquo; vs macstudio online</li>
+                <li>DNS health warning: <code>grep "Tailscale can't reach the configured DNS servers"</code> (session 7084bb34)</li>
+                <li>Windows off-tailnet: session ef24faa2 (foundation:explorer) + <code>~/dev/ANext/TUNNEL-ARCHITECTURE.md</code></li>
+                <li>Multi-agent count: delegation audit (session 9fbbc547) reports 21 subagents; on-disk <code>events.jsonl delegate:agent_spawned</code> count = 31</li>
+                <li>Authors: <code>git log --all --format='%an' | sort | uniq -c | sort -rn</code> (408 Brian Krabach; PR #4 @samueljklee)</li>
             </ul>
-            <p><strong>Diagnostic methods:</strong></p>
-            <ul style="margin: 8px 0 8px 20px; list-style-type: disc;">
-                <li>Live HTTPS probe: <code>curl -k https://localhost:8080/api/info</code></li>
-                <li>Tailscale status: <code>tailscale status</code></li>
-                <li>Certificate verification: <code>openssl x509 -in cert.crt -text</code></li>
-                <li>Port scan: connection test on Tailscale IP <code>100.x.x.x:8080</code></li>
-                <li>Code survey: explorer agent on server.py (1,300+ lines)</li>
-            </ul>
-            <p><strong>Git commits referenced:</strong> <code>c8c98ab</code>, <code>939fa92</code>, <code>dfcc4ba</code>, <code>8f78fa4</code></p>
-            <p><strong>Key finding:</strong> iPhone Tailscale status showed <code>-</code> (disconnected), confirmed as root cause of DNS resolution failure.</p>
-            <p><strong>Gaps:</strong> iPhone-side Tailscale logs not available for review. Diagnosis based on status indicator only.</p>
+            <p><strong>Gaps / notes:</strong> &ldquo;AMP Browser&rdquo; is a narrative nickname mapped to muxplex, not a shipped product name. In <code>tailscale status</code>, a bare &ldquo;-&rdquo; means ONLINE; a disconnected peer renders &ldquo;offline, last seen ...&rdquo;. Subagent totals differ by source (21 audited vs 31 on-disk spawn events); both confirm a large multi-agent investigation.</p>
+            <p><strong>Primary contributors:</strong> Brian Krabach (408 muxplex commits); Samuel Lee / @samueljklee (iOS touch-scroll, PR #4); Sam Schillace / ramparte (operator on spark-1, ran the Amplifier sessions).</p>
         </div>
     </div>
 
-    <!-- ══ Navigation ══ -->
+    <!-- Navigation -->
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
+
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
-            slides[currentSlide].scrollTop = 0;
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -628,26 +561,25 @@ html.js .slide.active{display:flex;}
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = () => showSlide(i);
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
@@ -655,11 +587,10 @@ html.js .slide.active{display:flex;}
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

@@ -1,1039 +1,573 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Context at Every Level — Amplifier A2A & Multi-Directory Architecture</title>
-<script>document.documentElement.classList.add('js')</script>
-<style>
-  /* ── Reset & Base ── */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Context at Every Level</title>
+    <script>document.documentElement.classList.add('js')</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  :root {
-    --bg:          #080E1C;
-    --bg-card:     #0F172A;
-    --bg-card-2:   #162035;
-    --bg-terminal: #060D1A;
-    --accent:      #00C8FF;
-    --accent-dim:  rgba(0, 200, 255, 0.15);
-    --accent-glow: rgba(0, 200, 255, 0.35);
-    --indigo:      #818CF8;
-    --green:       #34D399;
-    --amber:       #FBBF24;
-    --red:         #F87171;
-    --text-1:      #F0F6FF;
-    --text-2:      rgba(240,246,255,0.65);
-    --text-3:      rgba(240,246,255,0.40);
-    --border:      rgba(0, 200, 255, 0.14);
-    --border-2:    rgba(255,255,255,0.07);
-    --mono:        'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-    --sans:        -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
-    --radius:      12px;
-    --radius-lg:   20px;
-  }
+        :root {
+            --bg: #0a0e14;
+            --bg2: #10151f;
+            --fg: #f5f7fa;
+            --muted: #aeb7c4;
+            --accent: #5eb0ff;
+            --accent2: #7ee7c7;
+            --line: rgba(255,255,255,0.10);
+        }
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--text-1);
-    font-family: var(--sans);
-    overflow: hidden;
-    user-select: none;
-  }
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
 
-  /* ── Presentation Shell ── */
-  .deck {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-  }
+        .slide {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: radial-gradient(circle at 20% 15%, rgba(94,176,255,0.10), transparent 55%), var(--bg);
+        }
 
-  /* ── Slides ── */
-  .slide {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: clamp(32px, 5vw, 80px) clamp(40px, 8vw, 120px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
-                transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translateX(40px);
-  }
-  .slide.active {
-    opacity: 1;
-    pointer-events: all;
-    transform: translateX(0);
-  }
-  .slide.prev {
-    opacity: 0;
-    transform: translateX(-40px);
-  }
+        .slide.active { display: flex; }
 
-  /* Ambient background blobs */
-  .slide::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 60% 50% at 15% 20%, rgba(0, 200, 255, 0.04) 0%, transparent 70%),
-      radial-gradient(ellipse 50% 60% at 85% 80%, rgba(129, 140, 248, 0.04) 0%, transparent 70%);
-    pointer-events: none;
-  }
+        /* No-JS fallback: all slides visible & scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
 
-  /* ── Navigation ── */
-  .nav-arrow {
-    position: fixed;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 52px; height: 52px;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid var(--border);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    z-index: 100;
-    transition: background 0.2s, border-color 0.2s, opacity 0.2s;
-    backdrop-filter: blur(8px);
-  }
-  .nav-arrow:hover { background: rgba(0,200,255,0.12); border-color: var(--accent); }
-  .nav-arrow.hidden { opacity: 0; pointer-events: none; }
-  .nav-prev { left: 20px; }
-  .nav-next { right: 20px; }
-  .nav-arrow svg { stroke: var(--text-2); transition: stroke 0.2s; }
-  .nav-arrow:hover svg { stroke: var(--accent); }
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
 
-  /* ── Dots ── */
-  .nav-dots {
-    position: fixed;
-    bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex; gap: 8px; align-items: center;
-    z-index: 100;
-  }
-  .dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--text-3);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .dot.active { background: var(--accent); width: 22px; border-radius: 3px; box-shadow: 0 0 8px var(--accent-glow); }
+        /* Fit-safe: cap slides to viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
 
-  /* ── Slide Counter ── */
-  .counter {
-    position: fixed;
-    bottom: 28px; right: 36px;
-    font-size: 12px; font-family: var(--mono);
-    color: var(--text-3);
-    z-index: 100;
-  }
+        .slide { transition: transform 0.5s ease, opacity 0.5s ease; }
 
-  /* ── Typography ── */
-  .slide-label {
-    font-size: clamp(10px, 1.2vw, 13px);
-    font-family: var(--mono);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 16px;
-    opacity: 0.9;
-  }
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
 
-  h1 {
-    font-size: clamp(36px, 5.5vw, 72px);
-    font-weight: 800;
-    line-height: 1.08;
-    letter-spacing: -0.025em;
-    color: var(--text-1);
-  }
-  h1 .accent { color: var(--accent); }
-  h1 .dim    { color: var(--indigo); }
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: 18px; max-width: 30ch; }
 
-  h2 {
-    font-size: clamp(24px, 3.5vw, 46px);
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-  }
-  h2 .accent { color: var(--accent); }
-  h2 .dim    { color: var(--indigo); }
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 18px;
+        }
 
-  .subtitle {
-    font-size: clamp(14px, 1.8vw, 22px);
-    color: var(--text-2);
-    font-weight: 400;
-    line-height: 1.55;
-    max-width: 680px;
-  }
-  .subtitle strong { color: var(--text-1); font-weight: 600; }
+        .body { color: var(--muted); margin-top: 22px; max-width: 42ch; }
+        .handoff { color: var(--fg); opacity: 0.85; margin-top: 24px; max-width: 42ch; font-style: italic; }
 
-  .eyebrow {
-    font-size: clamp(13px, 1.5vw, 18px);
-    color: var(--accent);
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    margin-bottom: 10px;
-  }
+        h2 + .body { margin-top: 20px; }
 
-  /* ── Cards ── */
-  .card-grid {
-    display: grid;
-    gap: 16px;
-    width: 100%;
-    max-width: 1100px;
-  }
-  .card-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-  .card-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-  .card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-2);
-    border-radius: var(--radius);
-    padding: clamp(16px, 2vw, 24px);
-    position: relative;
-    overflow: hidden;
-  }
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, var(--accent), transparent);
-  }
-  .card.green::before  { background: linear-gradient(90deg, var(--green),  transparent); }
-  .card.indigo::before { background: linear-gradient(90deg, var(--indigo), transparent); }
-  .card.amber::before  { background: linear-gradient(90deg, var(--amber),  transparent); }
-  .card.red::before    { background: linear-gradient(90deg, var(--red),    transparent); }
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(14px, 2vw, 22px);
+        }
+        .stat {
+            background: var(--bg2);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(18px, 2.4vw, 26px);
+        }
+        .stat-value {
+            font-size: clamp(30px, 5vw, 52px);
+            font-weight: 700;
+            line-height: 1;
+            color: var(--accent2);
+            letter-spacing: -0.02em;
+        }
+        .stat-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: var(--muted);
+            margin-top: 10px;
+            line-height: 1.35;
+        }
 
-  .card-icon {
-    font-size: 28px;
-    margin-bottom: 12px;
-    display: block;
-  }
-  .card-title {
-    font-size: clamp(13px, 1.5vw, 17px);
-    font-weight: 700;
-    color: var(--text-1);
-    margin-bottom: 6px;
-  }
-  .card-body {
-    font-size: clamp(11px, 1.2vw, 14px);
-    color: var(--text-2);
-    line-height: 1.6;
-  }
-  .card-body strong { color: var(--text-1); }
+        /* Steps / rules */
+        .steps { display: flex; flex-direction: column; gap: clamp(12px, 1.8vw, 18px); }
+        .step {
+            background: var(--bg2);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 20px) clamp(16px, 2.2vw, 24px);
+        }
+        .step-num {
+            font-size: clamp(12px, 1.4vw, 13px);
+            color: var(--accent);
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        .step-text { color: var(--fg); margin-top: 6px; }
+        .step-text code {
+            background: rgba(94,176,255,0.14);
+            color: var(--accent2);
+            padding: 1px 6px;
+            border-radius: 5px;
+            font-size: 0.92em;
+        }
 
-  /* ── Code / Terminal ── */
-  .terminal {
-    background: var(--bg-terminal);
-    border: 1px solid rgba(0,200,255,0.18);
-    border-radius: var(--radius);
-    font-family: var(--mono);
-    font-size: clamp(10px, 1.2vw, 14px);
-    line-height: 1.7;
-    padding: clamp(16px, 2vw, 24px) clamp(20px, 2.5vw, 32px);
-    color: #A8EDCA;
-    position: relative;
-    white-space: pre;
-    overflow-x: auto;
-    width: 100%;
-  }
-  .terminal::before {
-    content: '● ● ●';
-    position: absolute;
-    top: 10px; left: 16px;
-    font-size: 10px;
-    color: rgba(255,255,255,0.2);
-    letter-spacing: 4px;
-  }
-  .terminal .t-comment { color: rgba(168, 237, 202, 0.40); }
-  .terminal .t-cyan    { color: var(--accent); }
-  .terminal .t-white   { color: var(--text-1); }
-  .terminal .t-amber   { color: var(--amber); }
-  .terminal .t-indigo  { color: var(--indigo); }
-  .terminal .t-green   { color: var(--green); }
-  .terminal .t-dim     { color: var(--text-3); }
-  .terminal .t-red     { color: var(--red); }
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(12px, 1.8vw, 18px); }
+        .rules li {
+            background: var(--bg2);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 20px) clamp(16px, 2.2vw, 24px);
+            color: var(--muted);
+        }
+        .rules li strong { color: var(--fg); }
+        .rules code, .body code, .handoff code {
+            background: rgba(126,231,199,0.14);
+            color: var(--accent2);
+            padding: 1px 6px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
 
-  /* ── Table ── */
-  .trust-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: clamp(12px, 1.4vw, 16px);
-  }
-  .trust-table th {
-    background: rgba(0,200,255,0.10);
-    color: var(--accent);
-    font-family: var(--mono);
-    font-size: clamp(11px, 1.2vw, 14px);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 12px 20px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-  }
-  .trust-table td {
-    padding: 14px 20px;
-    color: var(--text-2);
-    border-bottom: 1px solid var(--border-2);
-    line-height: 1.55;
-  }
-  .trust-table tr:last-child td { border-bottom: none; }
-  .trust-table td:first-child {
-    font-family: var(--mono);
-    font-size: clamp(11px, 1.2vw, 14px);
-    font-weight: 700;
-  }
-  .trust-table .tier-known   { color: var(--amber); }
-  .trust-table .tier-trusted { color: var(--green); }
-  .trust-table tr:hover td { background: rgba(255,255,255,0.02); }
+        /* Code block */
+        .code-block {
+            background: #060910;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(16px, 2.4vw, 26px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.5vw, 15px);
+            line-height: 1.6;
+            color: #d7e2f0;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            max-height: 70vh;
+        }
+        .code-comment { color: #6b7688; }
+        .code-key { color: var(--accent); }
+        .code-val { color: var(--accent2); }
 
-  /* ── Check list ── */
-  .checklist { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-  .checklist li {
-    display: flex; align-items: flex-start; gap: 10px;
-    font-size: clamp(13px, 1.5vw, 17px);
-    color: var(--text-2);
-    line-height: 1.5;
-  }
-  .checklist li .chk {
-    color: var(--green);
-    font-size: 16px;
-    margin-top: 1px;
-    flex-shrink: 0;
-  }
-  .checklist li strong { color: var(--text-1); }
+        .status-badge {
+            display: inline-block;
+            font-size: clamp(11px, 1.4vw, 13px);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--accent2);
+            border: 1px solid rgba(126,231,199,0.4);
+            border-radius: 999px;
+            padding: 5px 14px;
+            margin-top: 26px;
+        }
 
-  /* ── Pill badges ── */
-  .badge {
-    display: inline-flex; align-items: center;
-    padding: 4px 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-family: var(--mono);
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    border: 1px solid;
-  }
-  .badge.active   { color: var(--green);  border-color: var(--green);  background: rgba(52,211,153,0.1); }
-  .badge.feature  { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+        /* Sources */
+        .sources-body { color: var(--muted); line-height: 1.7; max-width: 60ch; }
+        .sources-body p { margin-top: 12px; }
+        .sources-body ul { margin: 12px 0 0 18px; }
+        .sources-body li { margin-top: 8px; }
+        .sources-body code {
+            background: var(--bg2);
+            color: var(--accent2);
+            padding: 1px 6px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            word-break: break-word;
+        }
 
-  /* ── Two-col layout ── */
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    width: 100%;
-    max-width: 1100px;
-    align-items: start;
-  }
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 26px;
+            right: 30px;
+            display: flex;
+            gap: 9px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.22);
+            cursor: pointer;
+            transition: background 0.25s, transform 0.25s;
+        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.35); }
+        .slide-counter {
+            position: fixed;
+            bottom: 24px;
+            left: 30px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
+            z-index: 100;
+            font-variant-numeric: tabular-nums;
+        }
 
-  /* ── Flow diagram ── */
-  .flow-row {
-    display: flex; align-items: center; gap: 12px;
-    margin-bottom: 8px;
-  }
-  .flow-node {
-    background: var(--bg-card-2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 18px;
-    font-family: var(--mono);
-    font-size: clamp(10px, 1.2vw, 13px);
-    color: var(--accent);
-    white-space: nowrap;
-  }
-  .flow-arrow {
-    color: var(--text-3);
-    font-size: 18px;
-    flex-shrink: 0;
-  }
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
 
-  /* ── Slide 1 specifics ── */
-  #s1 { text-align: center; }
-  #s1 .hero-tree {
-    font-family: var(--mono);
-    font-size: clamp(12px, 1.5vw, 16px);
-    line-height: 2;
-    color: var(--text-2);
-    margin: 28px 0 32px;
-    position: relative;
-  }
-  #s1 .hero-tree .node {
-    display: inline-block;
-    padding: 3px 14px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--accent-dim);
-    color: var(--accent);
-    box-shadow: 0 0 14px var(--accent-glow);
-    animation: pulse 2.8s ease-in-out infinite;
-  }
-  #s1 .hero-tree .node-2 { animation-delay: 0.6s; border-color: rgba(129,140,248,0.3); background: rgba(129,140,248,0.12); color: var(--indigo); box-shadow: 0 0 14px rgba(129,140,248,0.25); }
-  #s1 .hero-tree .node-3 { animation-delay: 1.2s; border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.1); color: var(--green); box-shadow: 0 0 14px rgba(52,211,153,0.2); }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
-  #s1 .meta { color: var(--text-3); font-size: 13px; font-family: var(--mono); margin-top: 8px; }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
 
-  /* ── Slide 2 specifics ── */
-  .big-quote {
-    font-size: clamp(20px, 2.8vw, 36px);
-    font-weight: 700;
-    color: var(--text-1);
-    border-left: 3px solid var(--accent);
-    padding-left: 20px;
-    margin-bottom: 28px;
-    line-height: 1.3;
-  }
-
-  /* ── Slide 5 diagram ── */
-  .a2a-diagram {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 0;
-    align-items: center;
-    width: 100%;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-  .agent-box {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: clamp(14px,2vw,22px);
-    text-align: center;
-    position: relative;
-  }
-  .agent-box .port {
-    font-family: var(--mono);
-    font-size: clamp(11px,1.2vw,14px);
-    color: var(--accent);
-    margin-bottom: 6px;
-    display: block;
-  }
-  .agent-box .name {
-    font-size: clamp(13px,1.6vw,18px);
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-  .agent-box .path {
-    font-family: var(--mono);
-    font-size: clamp(9px,1vw,12px);
-    color: var(--text-3);
-  }
-  .a2a-bridge {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 0 16px;
-  }
-  .a2a-bridge .protocol {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--accent);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .a2a-bridge .arrow-line {
-    width: 80px;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--indigo));
-    position: relative;
-    box-shadow: 0 0 8px var(--accent-glow);
-  }
-  .a2a-bridge .arrow-line::after {
-    content: '⟺';
-    position: absolute;
-    top: -10px; left: 50%;
-    transform: translateX(-50%);
-    color: var(--accent);
-    font-size: 14px;
-  }
-  .agent-box .bundle-tag {
-    margin-top: 8px;
-    font-family: var(--mono);
-    font-size: clamp(9px,1vw,11px);
-    color: var(--text-3);
-    background: rgba(255,255,255,0.04);
-    padding: 3px 8px;
-    border-radius: 4px;
-    display: inline-block;
-  }
-
-  /* ── Slide 7 trust tier ── */
-  .tier-demo {
-    display: flex;
-    gap: 16px;
-    width: 100%;
-    max-width: 1000px;
-    margin-top: 8px;
-  }
-  .tier-col {
-    flex: 1;
-    background: var(--bg-card);
-    border: 1px solid var(--border-2);
-    border-radius: var(--radius);
-    padding: 20px 24px;
-  }
-  .tier-col.known  { border-top: 2px solid var(--amber); }
-  .tier-col.trusted { border-top: 2px solid var(--green); }
-  .tier-col .tier-label {
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 700;
-    margin-bottom: 12px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .tier-col.known  .tier-label { color: var(--amber); }
-  .tier-col.trusted .tier-label { color: var(--green); }
-  .tier-col .tier-icon { font-size: 18px; }
-  .tier-col p {
-    font-size: clamp(12px,1.4vw,15px);
-    color: var(--text-2);
-    line-height: 1.6;
-    margin-bottom: 10px;
-  }
-  .tier-col p strong { color: var(--text-1); }
-  .tier-col .flow-step {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-top: 12px;
-  }
-  .tier-col .step {
-    font-family: var(--mono);
-    font-size: clamp(9px,1.1vw,12px);
-    padding: 5px 10px;
-    border-radius: 6px;
-    background: rgba(255,255,255,0.04);
-    color: var(--text-2);
-  }
-  .tier-col.known  .step.highlight { background: rgba(251,191,36,0.10); color: var(--amber); }
-  .tier-col.trusted .step.highlight { background: rgba(52,211,153,0.10); color: var(--green); }
-
-  /* ── Divider ── */
-  .divider {
-    width: 48px; height: 3px;
-    background: linear-gradient(90deg, var(--accent), var(--indigo));
-    border-radius: 2px;
-    margin: 16px 0;
-  }
-
-  /* ── Horizontal rule ── */
-  hr { border: none; border-top: 1px solid var(--border-2); margin: 20px 0; }
-
-  /* ── Slide 9 summary box ── */
-  .takeaway-box {
-    background: linear-gradient(135deg, rgba(0,200,255,0.08), rgba(129,140,248,0.08));
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-lg);
-    padding: clamp(16px,2vw,28px) clamp(20px,3vw,40px);
-    max-width: 900px;
-    width: 100%;
-    box-shadow: 0 0 40px rgba(0,200,255,0.08);
-  }
-  .takeaway-box p {
-    font-size: clamp(13px,1.6vw,18px);
-    line-height: 1.65;
-    color: var(--text-2);
-  }
-  .takeaway-box p strong { color: var(--accent); }
-
-  /* ── Slide 8 issue cards ── */
-  .issue-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-  .issue-item {
-    display: flex; align-items: flex-start; gap: 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-2);
-    border-radius: var(--radius);
-    padding: 12px 16px;
-  }
-  .issue-item .issue-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-  .issue-item .issue-text { font-size: clamp(11px,1.3vw,14px); color: var(--text-2); line-height: 1.55; }
-  .issue-item .issue-text strong { color: var(--text-1); }
-
-  /* ── Scroll for overflowing slides ── */
-  .slide-scroll {
-    overflow-y: auto;
-    max-height: 90vh;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    padding-bottom: 24px;
-  }
-
-  /* ── Scrollbar ── */
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-  /* ── Inline monospace ── */
-  code {
-    font-family: var(--mono);
-    font-size: 0.9em;
-    background: rgba(0,200,255,0.10);
-    color: var(--accent);
-    padding: 2px 7px;
-    border-radius: 4px;
-  }
-
-  /* More Amplifier Stories link */
-  .more-stories {
-    position: fixed;
-    top: 16px;
-    right: 24px;
-    font-size: clamp(10px, 1.3vw, 12px);
-    color: rgba(240,246,255,0.3);
-    text-decoration: none;
-    z-index: 300;
-    transition: color 0.2s;
-  }
-  .more-stories:hover { color: rgba(240,246,255,0.55); }
-
-  /* Progressive enhancement: no-JS fallback — all slides visible, stacked */
-  html:not(.js), html:not(.js) body { overflow: auto; height: auto; }
-  html:not(.js) .deck { height: auto; }
-  html:not(.js) .slide {
-    position: relative;
-    inset: auto;
-    opacity: 1 !important;
-    pointer-events: all !important;
-    transform: none !important;
-    min-height: 100vh;
-  }
-</style>
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+    </style>
 </head>
 <body>
-<a href="index.html" class="more-stories">More Amplifier Stories</a>
-<div class="deck" id="deck">
-
 <!--
-  NARRATIVE SPINE (built from this deck's existing content; no fresh research)
-
-  ABT:
-    AND a complex Amplifier workspace runs many agents that each need the right context;
-    BUT one shared "do everything" context window pollutes every agent and bloats every call;
-    THEREFORE Amplifier scopes context per directory AND wires those specialists together
-        over A2A — so in the real self-improvement workspace two agents on ports 8222/8223
-        query each other autonomously.
-
-  Payoff (named up front): "Directory-aware context + A2A = a focused team of specialists
-    that still coordinate," proven live in the self-improvement workspace.
-
-  Beats (proof-first; payoff lands at beat 3 of 9, before the midpoint):
-    1. proof     — two agents (:8222/:8223), different dirs, exchange an autonomous A2A message.  advances: the AND+solution is real.
-    2. tension   — one monolithic context pollutes every agent; calls get slow and inaccurate.  advances: establishes the BUT.
-    3. payoff    — scope context per directory, then connect specialists over A2A.  advances: lands the THEREFORE.
-    4. setup     — introduce the workspace layers: each directory is an agent "zone".  advances: names the structure before leaning on it.
-    5. mechanism — directory-scoped context keeps each agent focused and cheap (one claim).  advances: HOW scoping helps.
-    6. mechanism — subdir != isolation: context still flows via A2A, two patterns (one claim).  advances: HOW they stay connected.
-    7. mechanism — trust tiers gate autonomy: known waits for a human, trusted runs alone (one claim).  advances: HOW autonomy is controlled.
-    8. turn      — what we learned: trust can't yet be declared up front; fixes + ideal future.  advances: honest pivot / roadmap.
-    9. takeaway  — scope your context, connect your agents: a focused team of specialists.  advances: what the audience keeps.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end.
-    Slides = 9 beats + 1 = 10.
+SPINE
+ABT: AND an Amplifier workspace runs many specialist agents that each need their own right-sized context; BUT forcing them all through one shared "do everything" context window pollutes every agent and bloats every call; THEREFORE the amplifier-bundle-a2a scopes context at every level — global install, per-directory identity, per-request child session — while wiring specialists together over the A2A protocol.
+Payoff: The per-request child scope — when a trusted peer asks, the server spawns a child AmplifierSession with tools filtered by trust tier and deliberately NO a2a hooks, so context stays scoped and the child can't start a recursive server or collide on the port.
+Beats:
+  1. frame     — a busy workspace runs many agents; one shared context pollutes them all; amplifier-bundle-a2a scopes context at every level.  advances: orients the audience on the problem behind the AND/BUT — what this bundle is and why shared context is the pain it solves.
+  2. proof     — real shipped Microsoft code: 2,328 module LOC, 308 tests (307 pass, 1 skip), HEAD 14e5cc6.  advances: rewards the frame with fast evidence the solution actually exists and is green.
+  3. setup     — the bundle is exactly two modules: tool-a2a CLIENT (14 operations), hooks-a2a-server SERVER (aiohttp, default port 8222).  advances: introduces the two named parts the rest of the argument leans on.
+  4. tension   — installed globally the server would run everywhere, but it stays inert until a directory opts in ("if not enabled: skip").  advances: sharpens the BUT into a concrete risk the mechanism must answer.
+  5. mechanism — each directory opts in via its own .amplifier/settings.yaml, so each gets its own a2a identity, port, and contacts plus only scoped context.  advances: shows the per-directory HOW turning the AND/BUT toward the THEREFORE.
+  6. turn      — with directories scoped, specialists query each other over real localhost HTTP + mDNS, raising what a remote agent may touch.  advances: pivots from static scoping to live agent-to-agent querying, teeing up the payoff.
+  7. payoff    — a trusted peer's request spawns a CHILD session, tools filtered by trust tier, deliberately NO a2a hooks: scoped context, no recursion, no port collision.  advances: lands the THEREFORE as the climax — context right down to a per-request child scope with a bounded blast radius.
+  8. takeaway  — context at every level — global install, per-directory identity, per-request child — is the pattern for scaling many agents.  advances: generalizes the THEREFORE into the reusable idea the audience keeps.
 -->
 
-  <!-- beat 1: proof -->
-  <div class="slide active" id="s1">
-    <div style="width:100%; max-width:1050px;">
-      <div class="slide-label">See It Working</div>
-      <h2 style="margin-bottom:6px;">Two agents, two ports, one machine &mdash; <span class="accent">and they talk autonomously</span></h2>
-      <p class="subtitle" style="margin-bottom:20px;">
-        In the real <code>self-improvement</code> workspace &mdash; one project, several agents living in subdirectories &mdash; cross-directory A2A is wired and live:
-      </p>
-      <div class="terminal" style="font-size:clamp(10px,1.15vw,13px);">
-<span class="t-white">self-improvement-agent</span>          <span class="t-indigo">github-local-agent</span>
-<span class="t-cyan">(port 8222)</span>                     <span class="t-indigo">(port 8223)</span>
-<span class="t-dim">/repos/self-improvement/</span>        <span class="t-dim">/repos/self-improvement/github-local/</span>
-<span class="t-dim">.amplifier/bundle.md</span>            <span class="t-dim">.amplifier/bundle.md</span>
-        <span class="t-dim">|</span>                               <span class="t-dim">|</span>
-        <span class="t-dim">|</span>  <span class="t-cyan">← A2A message ───────────────</span> <span class="t-dim">|</span>
-        <span class="t-dim">|</span>  <span class="t-white">"What repos do you have?"</span>   <span class="t-dim">|</span>
-        <span class="t-dim">|</span>  <span class="t-green">← autonomous response ───── </span><span class="t-dim">|</span>
-        <span class="t-dim">└──────────────────────────────┘</span>
+<!-- TITLE COVER (no beat comment) -->
+<div class="slide title-slide active center">
+    <h1>Context at Every Level</h1>
+    <p class="subtitle">How Amplifier's A2A bundle keeps agents scoped</p>
 </div>
-      <p style="margin-top:16px; font-size:clamp(12px,1.4vw,15px); color:var(--text-2); line-height:1.6;">
-        The root agent queried the github-local agent with <strong style="color:var(--green);">zero human intervention</strong>. Here is the architecture that makes that both focused and connected.
-      </p>
+
+<!-- BEAT 1 -->
+<div class="slide split">
+    <!-- beat 1: frame -->
+    <div class="col-main">
+        <div class="section-label">The Problem</div>
+        <h2>One shared context window drowns a workspace full of agents</h2>
+        <p class="body">A busy Amplifier workspace runs many specialist agents that each need their own right-sized context. Force them all through one "do everything" window and it pollutes every agent and bloats every call.</p>
+        <p class="handoff">amplifier-bundle-a2a answers this by scoping context at every level — and wiring the specialists together.</p>
     </div>
-  </div>
-
-  <!-- beat 2: tension -->
-  <div class="slide" id="s2">
-    <div style="width:100%; max-width:1000px;">
-      <div class="slide-label">The Problem</div>
-      <h2 style="margin-bottom:6px;">One monolithic &ldquo;do everything&rdquo; context <span class="accent">pollutes every agent</span></h2>
-      <p class="subtitle" style="margin-bottom:24px;">
-        In a complex AI workspace, context pollution is real &mdash; every agent drags around knowledge it will never use:
-      </p>
-      <div class="card red" style="max-width:760px;">
-        <div class="card-title">Without scoping</div>
-        <div class="card-body" style="margin-top:8px;">
-          <div style="margin-bottom:6px;">⚠️ Root-level context knows about the whole pipeline</div>
-          <div style="margin-bottom:6px;">⚠️ The <code>github-local</code> agent shouldn&rsquo;t need CXDB internals</div>
-          <div>⚠️ <code>amplifier-resolve</code> needs Docker + GitHub, not storage abstractions</div>
-        </div>
-      </div>
-      <p class="subtitle" style="margin-top:20px;">
-        Bigger windows mean <strong>slower, pricier, less accurate</strong> calls &mdash; and every agent paying for context that belongs to someone else.
-      </p>
+    <div class="col-aside">
+        <ul class="rules">
+            <li><strong>Global install</strong> — installed once, everywhere</li>
+            <li><strong>Per-directory identity</strong> — each directory gets its own scope</li>
+            <li><strong>Per-request child</strong> — every remote request gets a bounded session</li>
+        </ul>
     </div>
-  </div>
-
-  <!-- beat 3: payoff -->
-  <div class="slide" id="s3">
-    <div style="width:100%; max-width:1000px;">
-      <div class="slide-label">The Pattern</div>
-      <h2 style="margin-bottom:6px;">Scope context per directory &mdash; then <span class="accent">connect the specialists</span> over A2A</h2>
-      <p class="subtitle" style="margin-bottom:24px;">
-        One project. Many agents. Each with exactly the right context &mdash; and a way to talk to each other. Not a compromise; a <em>feature</em>.
-      </p>
-      <div class="card-grid cols-3">
-        <div class="card">
-          <span class="card-icon">🌲</span>
-          <div class="card-title">Run from <code>/project</code></div>
-          <div class="card-body">Loads <strong>project-wide</strong> skills, AGENTS.md, and bundle &mdash; the orchestrator with full workspace awareness.</div>
-        </div>
-        <div class="card indigo">
-          <span class="card-icon">📁</span>
-          <div class="card-title">Run from <code>/github-local</code></div>
-          <div class="card-body">Loads <strong>github-local-specific</strong> skills, bundle, and AGENTS.md &mdash; a specialist that knows only what it needs.</div>
-        </div>
-        <div class="card green">
-          <span class="card-icon">⚡</span>
-          <div class="card-title">Wired together</div>
-          <div class="card-body"><strong>Different</strong> personalities and capabilities in the same workspace &mdash; connected via the A2A protocol.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- beat 4: setup -->
-  <div class="slide" id="s4">
-    <div style="width:100%; max-width:1050px;">
-      <div class="slide-label">The Workspace Has Layers</div>
-      <h2 style="margin-bottom:6px;">Every directory is an independent agent <span class="accent">&ldquo;zone&rdquo;</span></h2>
-      <p class="subtitle" style="margin-bottom:20px;">The <code>self-improvement</code> workspace, annotated:</p>
-      <div class="terminal">
-<span class="t-comment">
-# Each directory is an independent agent "zone"</span>
-
-<span class="t-white">~/repos/self-improvement/</span>          <span class="t-cyan">← root agent: self-improvement-agent</span>
-  <span class="t-amber">.amplifier/bundle.md</span>             <span class="t-comment">← project-wide bundle, tools, persona</span>
-  <span class="t-amber">AGENTS.md</span>                        <span class="t-comment">← project context for ALL agents</span>
-  <span class="t-amber">.amplifier/settings.yaml</span>         <span class="t-comment">← A2A port 8222, known_agents</span>
-
-  <span class="t-white">github-local/</span>                    <span class="t-indigo">← subdir agent: github-local-agent</span>
-    <span class="t-amber">.amplifier/bundle.md</span>           <span class="t-comment">← github-local specific bundle</span>
-    <span class="t-amber">AGENTS.md</span>                      <span class="t-comment">← github-local specific context</span>
-    <span class="t-amber">.amplifier/settings.yaml</span>       <span class="t-comment">← A2A port 8223</span>
-
-  <span class="t-white">amplifier-resolve/</span>               <span class="t-green">← can have its own .amplifier/ too</span>
-  <span class="t-white">issues-to-brief/</span>
 </div>
-      <p style="margin-top:16px; font-size:clamp(12px,1.4vw,15px); color:var(--text-2); line-height:1.6;">
-        Each directory pushes down only what&rsquo;s relevant: service-specific skills, the right <code>AGENTS.md</code>, and modules tuned for that workload.
-      </p>
-    </div>
-  </div>
 
-  <!-- beat 5: mechanism -->
-  <div class="slide" id="s5">
-    <div style="width:100%; max-width:1000px;">
-      <div class="slide-label">Why It&rsquo;s Powerful</div>
-      <h2 style="margin-bottom:6px;">Directory-scoped context keeps every agent <span class="accent">focused and cheap</span></h2>
-      <p class="subtitle" style="margin-bottom:24px;">
-        Scope it, and each specialist stops paying for knowledge it never uses:
-      </p>
-      <div class="card green" style="max-width:760px;">
-        <div class="card-title">The solution: directory-scoped context</div>
-        <div style="margin-top:12px;">
-          <ul class="checklist">
-            <li><span class="chk">✓</span> <span>Each agent stays <strong>focused on its domain</strong></span></li>
-            <li><span class="chk">✓</span> <span><strong>Smaller, cheaper, more accurate</strong> LLM calls</span></li>
-            <li><span class="chk">✓</span> <span><code>AGENTS.md</code> evolves <strong>independently</strong> per service</span></li>
-            <li><span class="chk">✓</span> <span>Skills pushed down <strong>only where needed</strong></span></li>
-            <li><span class="chk">✓</span> <span>No monolithic &ldquo;do everything&rdquo; context window</span></li>
-          </ul>
-        </div>
-      </div>
+<!-- BEAT 2 -->
+<div class="slide split">
+    <!-- beat 2: proof -->
+    <div class="col-main">
+        <div class="section-label">Proof</div>
+        <h2>This is real, shipped Microsoft code — and it's green</h2>
+        <p class="body">amplifier-bundle-a2a is a Microsoft-org bundle: 2,328 non-test lines across two modules, with a passing suite at HEAD <code>14e5cc6</code> (2026-06-15).</p>
+        <p class="handoff">So what are those two modules? That's the shape of the whole argument.</p>
+        <span class="status-badge">Status: Shipped · HEAD 14e5cc6</span>
     </div>
-  </div>
-
-  <!-- beat 6: mechanism -->
-  <div class="slide" id="s6">
-    <div style="width:100%; max-width:1050px;">
-      <div class="slide-label">Context Can Still Flow</div>
-      <h2 style="margin-bottom:6px;">Subdirectory <span class="accent">&ne; isolation</span>: context still flows over A2A</h2>
-      <p class="subtitle" style="margin-bottom:22px;">Two connection patterns keep the specialists coordinated:</p>
-      <div class="two-col" style="gap:20px;">
-        <div class="card">
-          <div class="card-title" style="color:var(--accent); margin-bottom:12px;">📥 Parent → Child</div>
-          <div class="flow-row">
-            <div class="flow-node">Root Agent</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-node" style="color:var(--indigo); border-color:rgba(129,140,248,0.3);">Child Agent</div>
-          </div>
-          <p style="font-size:clamp(12px,1.3vw,14px); color:var(--text-2); margin-top:10px; line-height:1.6;">
-            Root holds the high-level plan; child is delegated a <strong>scoped task</strong> with just the relevant context in the delegation message.
-          </p>
-        </div>
-        <div class="card indigo">
-          <div class="card-title" style="color:var(--indigo); margin-bottom:12px;">↔ Parallel A2A</div>
-          <div class="flow-row">
-            <div class="flow-node" style="color:var(--accent); font-size:11px; padding:8px 12px;">self-improvement-agent<br><span style="color:var(--text-3);">:8222</span></div>
-            <div class="flow-arrow" style="color:var(--indigo);">⟺</div>
-            <div class="flow-node" style="color:var(--indigo); border-color:rgba(129,140,248,0.3); font-size:11px; padding:8px 12px;">github-local-agent<br><span style="color:var(--text-3);">:8223</span></div>
-          </div>
-          <p style="font-size:clamp(12px,1.3vw,14px); color:var(--text-2); margin-top:10px; line-height:1.6;">
-            Agents in <strong>different directories</strong> keep their own identity and context &mdash; but can <strong>query each other</strong> on demand.
-          </p>
-        </div>
-      </div>
-      <div class="takeaway-box" style="margin-top:20px; padding:16px 24px;">
-        <p><strong>Result:</strong> deep domain focus AND cross-agent awareness &mdash; without compromising either.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- beat 7: mechanism -->
-  <div class="slide" id="s7">
-    <div style="width:100%; max-width:1000px;">
-      <div class="slide-label">The Trust Tier Breakthrough</div>
-      <h2 style="margin-bottom:6px;">Trust tiers decide it: <span class="accent">known</span> waits for a human, <span class="dim">trusted</span> runs autonomously</h2>
-      <p class="subtitle" style="margin-bottom:20px;">
-        A2A&rsquo;s trust system controls whether an incoming message needs human approval or responds on its own:
-      </p>
-      <div class="tier-demo">
-        <div class="tier-col known">
-          <div class="tier-label"><span class="tier-icon">🔒</span> known tier</div>
-          <p>Message is <strong>queued</strong> → session enters <code>INPUT_REQUIRED</code> → a human must review and respond before the pipeline continues.</p>
-          <p style="color:var(--amber);">Pre-registered agents in <code>known_agents</code> start here by default.</p>
-          <div class="flow-step">
-            <div class="step">→ A2A message received</div>
-            <div class="step highlight">⏸  INPUT_REQUIRED (blocked)</div>
-            <div class="step">👤 Human reviews &amp; responds</div>
-            <div class="step">→ Pipeline resumes</div>
-          </div>
-        </div>
-        <div class="tier-col trusted">
-          <div class="tier-label"><span class="tier-icon">✅</span> trusted tier</div>
-          <p>An <strong>autonomous child session</strong> is spawned immediately → the agent responds with no human in the loop.</p>
-          <p style="color:var(--green);">Upgrade via <code>a2a trust</code> or a direct <code>contacts.json</code> edit.</p>
-          <div class="flow-step">
-            <div class="step">→ A2A message received</div>
-            <div class="step highlight">⚡ Child session spawned</div>
-            <div class="step">🤖 Responds autonomously</div>
-            <div class="step">→ Pipeline continues</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- beat 8: turn -->
-  <div class="slide" id="s8">
-    <div class="slide-scroll">
-      <div style="width:100%; max-width:1050px;">
-        <div class="slide-label">What We Learned</div>
-        <h2 style="margin-bottom:8px;">The one rough edge: <span class="accent">trust can&rsquo;t yet be declared up front</span></h2>
-        <div class="issue-list" style="margin-bottom:18px;">
-          <div class="issue-item">
-            <span class="issue-icon">⚠️</span>
-            <div class="issue-text">
-              <strong><code>known_agents</code> in bundle.md only accepts <code>{name, url}</code></strong> &mdash; no <code>tier</code> parameter. Pre-registered agents always land at <code>"known"</code>, needing a separate step to elevate before autonomous comms work.
+    <div class="col-aside">
+        <div class="stat-grid">
+            <div class="stat">
+                <div class="stat-value">2,328</div>
+                <div class="stat-label">non-test module LOC (two modules)</div>
             </div>
-          </div>
-          <div class="issue-item">
-            <span class="issue-icon">🔁</span>
-            <div class="issue-text">
-              <strong>First autonomous run required a manual trust upgrade.</strong> One-time setup, but not yet declarative.
+            <div class="stat">
+                <div class="stat-value">308</div>
+                <div class="stat-label">tests collected — 307 passed, 1 skipped</div>
             </div>
-          </div>
-          <div class="issue-item">
-            <span class="issue-icon">⏱</span>
-            <div class="issue-text">
-              <strong>A2A timeout sensitivity</strong> &mdash; slow LLM responses in subdirectory agents can cause parent-side timeouts during pipeline runs.
+            <div class="stat">
+                <div class="stat-value">2</div>
+                <div class="stat-label">inline modules: CLIENT + SERVER</div>
             </div>
-          </div>
         </div>
-        <div class="two-col" style="gap:16px;">
-          <div class="card green">
-            <div class="card-title">Fix #1 — Direct contacts.json edit</div>
-            <p style="font-size:12px; color:var(--text-2); margin:8px 0 10px;">One-time, persistent across sessions. Best for stable trusted peers.</p>
-            <div class="terminal" style="font-size:11px; padding:12px 16px;">
-<span class="t-comment"># ~/.amplifier/a2a/contacts.json</span>
-{ <span class="t-green">"tier"</span>: <span class="t-amber">"trusted"</span> }  <span class="t-comment">// was: "known"</span></div>
-          </div>
-          <div class="card indigo">
-            <div class="card-title">Fix #2 — Runtime a2a trust</div>
-            <p style="font-size:12px; color:var(--text-2); margin:8px 0 10px;">Programmatic, cross-machine, scriptable. Best for CI or dynamic environments.</p>
-            <div class="terminal" style="font-size:11px; padding:12px 16px;">
-<span class="t-comment"># At session startup:</span>
-<span class="t-cyan">a2a</span>(<span class="t-green">operation</span>=<span class="t-amber">"trust"</span>,
-    <span class="t-green">agent</span>=<span class="t-amber">"self-improvement-agent"</span>,
-    <span class="t-green">tier</span>=<span class="t-amber">"trusted"</span>)</div>
-          </div>
-        </div>
-        <div class="takeaway-box" style="margin-top:16px; padding:14px 22px;">
-          <p><strong>The ideal future:</strong> <code>known_agents</code> should support a <code>tier</code> field &mdash; trust declared once, versioned with your bundle, applied automatically at startup.</p>
-        </div>
-      </div>
     </div>
-  </div>
+</div>
 
-  <!-- beat 9: takeaway -->
-  <div class="slide" id="s9">
-    <div style="width:100%; max-width:1050px;">
-      <div class="slide-label">The Takeaway</div>
-      <h2 style="margin-bottom:16px;">Directory-aware context, <span class="accent">pipeline-connected</span> agents</h2>
-      <div class="two-col" style="gap:20px; align-items:start;">
-        <div class="terminal" style="font-size:clamp(10px,1.1vw,13px);">
-<span class="t-white">Project Root</span>
-├── <span class="t-amber">.amplifier/</span>     <span class="t-comment">← whole-project context</span>
-│
-├── <span class="t-cyan">service-a/</span>
-│   └── <span class="t-amber">.amplifier/</span> <span class="t-comment">← only what service-a needs</span>
-│
-└── <span class="t-indigo">service-b/</span>
-    └── <span class="t-amber">.amplifier/</span> <span class="t-comment">← only what service-b needs</span>
-         │
-         └── <span class="t-green">A2A ──→</span> Can still talk to root
-                   or service-a agents
-        </div>
-        <div style="display:flex; flex-direction:column; gap:14px;">
-          <div class="card">
-            <div class="card-title">🎯 Domain Expertise</div>
-            <div class="card-body">Every agent is a <strong>specialist</strong>, not a generalist &mdash; context is exactly what it needs, nothing more.</div>
-          </div>
-          <div class="card indigo">
-            <div class="card-title">🔗 Still Connected</div>
-            <div class="card-body">A2A lets specialists <strong>query each other</strong> without duplicating context or a human relay.</div>
-          </div>
-          <div class="card green">
-            <div class="card-title">📐 Architecture Primitive</div>
-            <div class="card-body">Directory resolution isn&rsquo;t a quirk &mdash; it&rsquo;s a <strong>first-class design</strong> for focused agent teams that coordinate.</div>
-          </div>
-        </div>
-      </div>
-      <div class="takeaway-box" style="margin-top:20px;">
-        <p>
-          <strong>The takeaway:</strong> directory resolution is the difference between one overloaded agent and a <strong>focused team of specialists</strong> that still coordinate. Scope your context. Connect your agents. Ship faster.
-        </p>
-      </div>
+<!-- BEAT 3 -->
+<div class="slide split">
+    <!-- beat 3: setup -->
+    <div class="col-main">
+        <div class="section-label">The Two Modules</div>
+        <h2>A CLIENT that sends and a SERVER that receives</h2>
+        <p class="body">The bundle ships exactly two inline modules. <code>tool-a2a</code> is the CLIENT — 14 operations for sending messages to remote agents. <code>hooks-a2a-server</code> is the SERVER — aiohttp on default port 8222, receiving messages from remote agents.</p>
+        <p class="handoff">Installed globally, though, that server would try to run everywhere.</p>
     </div>
-  </div>
-
-  <!-- Sources & Methodology -->
-  <div class="slide" id="s10">
-    <div style="width:100%; max-width:1050px;">
-      <div class="slide-label">Sources &amp; Methodology</div>
-      <h2 style="margin-bottom:16px;">Sources &amp; Methodology</h2>
-      <div class="two-col" style="gap:20px; align-items:start;">
-        <div class="card">
-          <div class="card-title">What&rsquo;s from the workspace</div>
-          <div class="card-body" style="margin-top:10px; line-height:1.8;">
-            Real config from the <code>self-improvement</code> workspace: <strong>self-improvement-agent</strong> on port <strong>8222</strong>, <strong>github-local-agent</strong> on port <strong>8223</strong>, in separate subdirectories.<br>
-            Trust model: <code>known</code> (queues to <code>INPUT_REQUIRED</code>) vs <code>trusted</code> (spawns an autonomous child session).
-          </div>
+    <div class="col-aside">
+        <div class="stat-grid">
+            <div class="stat">
+                <div class="stat-value">14</div>
+                <div class="stat-label">tool-a2a CLIENT operations (agents, card, send, status, discover…)</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">8222</div>
+                <div class="stat-label">hooks-a2a-server SERVER default port</div>
+            </div>
         </div>
-        <div class="card indigo">
-          <div class="card-title">Method &amp; scope</div>
-          <div class="card-body" style="margin-top:10px; line-height:1.8;">
-            Known limitation captured live: <code>known_agents</code> accepts only <code>{name, url}</code> (no <code>tier</code>), so first autonomous comms needed a manual upgrade &mdash; via <code>contacts.json</code> or runtime <code>a2a trust</code>. Timeout sensitivity noted on slow subdir responses.<br>
-            No fresh research: content reused verbatim from the original A2A context deck (February 2026).
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
+</div>
 
-</div><!-- /deck -->
+<!-- BEAT 4 -->
+<div class="slide split">
+    <!-- beat 4: tension -->
+    <div class="col-main">
+        <div class="section-label">The Risk</div>
+        <h2>Installed globally, the server stays inert until you opt in</h2>
+        <p class="body">A global install could mean a server running in every directory. Instead the hook checks <code>if not config.get("enabled", False): skip</code> — <code>enabled</code> defaults to false, so no HTTP and no mDNS start until a directory sets it true.</p>
+        <p class="handoff">That opt-in switch is written per directory — which is where context gets scoped.</p>
+    </div>
+    <div class="col-aside">
+        <div class="code-block"><span class="code-comment"># hooks-a2a-server __init__.py:35</span>
+<span class="code-key">if not</span> config.get(<span class="code-val">"enabled"</span>, <span class="code-key">False</span>):
+    <span class="code-comment"># "A2A server not enabled — skipping."</span>
+    <span class="code-key">return</span>
+
+<span class="code-comment"># Master switch defaults to false.</span>
+<span class="code-comment"># Install globally, opt in per directory.</span></div>
+    </div>
+</div>
+
+<!-- BEAT 5 -->
+<div class="slide split">
+    <!-- beat 5: mechanism -->
+    <div class="col-main">
+        <div class="section-label">Per-Directory Scope</div>
+        <h2>Each directory gets its own a2a identity, port, and contacts</h2>
+        <p class="body">A directory opts in by writing an override into its own <code>.amplifier/settings.yaml</code>. Per the README, "each directory gets its own a2a identity, port, and contacts" — and the behavior injects only its scoped context via <code>context.include</code>, not a monolith.</p>
+        <p class="handoff">With directories scoped, the specialists inside them can start talking to each other.</p>
+    </div>
+    <div class="col-aside">
+        <ul class="rules">
+            <li>Override lives in <code>.amplifier/settings.yaml</code> per directory</li>
+            <li>Own <strong>identity</strong>, <strong>port</strong>, and <strong>contacts</strong> per directory</li>
+            <li>Context injected via <code>context.include: a2a:context/a2a-instructions.md</code></li>
+        </ul>
+    </div>
+</div>
+
+<!-- BEAT 6 -->
+<div class="slide split">
+    <!-- beat 6: turn -->
+    <div class="col-main">
+        <div class="section-label">Agents Talk</div>
+        <h2>Scoped specialists query each other over real localhost HTTP</h2>
+        <p class="body">Integration tests start the A2AServer on <code>127.0.0.1</code> with an OS-assigned port and do real aiohttp round-trips against <code>/.well-known/agent.json</code> and <code>/a2a/v1/tasks</code>. The communication is real HTTP, over localhost.</p>
+        <p class="handoff">Which raises the sharp question: what is a remote agent actually allowed to touch?</p>
+    </div>
+    <div class="col-aside">
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">Discover</div>
+                <div class="step-text">Server default port <code>8222</code>; peers found over mDNS</div>
+            </div>
+            <div class="step">
+                <div class="step-num">Round-trip</div>
+                <div class="step-text">Real aiohttp GET <code>/.well-known/agent.json</code></div>
+            </div>
+            <div class="step">
+                <div class="step-num">Task</div>
+                <div class="step-text">Real POST to <code>/a2a/v1/tasks</code> on <code>127.0.0.1</code></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BEAT 7 -->
+<div class="slide split">
+    <!-- beat 7: payoff -->
+    <div class="col-main">
+        <div class="section-label">The Payoff</div>
+        <h2>A remote request spawns a child session with a bounded blast radius</h2>
+        <p class="body">When a trusted peer asks, the server spawns a CHILD AmplifierSession with tools filtered by trust tier — and deliberately NO a2a hooks ("child doesn't need a2a server"). Context stays scoped, and no recursive server or port collision can happen.</p>
+        <p class="handoff">Trust tiers bound exactly what that child may touch.</p>
+    </div>
+    <div class="col-aside">
+        <ul class="rules">
+            <li><strong>Child session</strong> — parent providers + tier-filtered tools, no a2a hooks</li>
+            <li><strong>trusted</strong> tier → <code>"*"</code> (all parent tools)</li>
+            <li><strong>known</strong> tier → <code>[tool-filesystem, tool-search]</code> (read-only)</li>
+            <li><strong>spawn.exclude_hooks</strong> keeps the server out of delegated sub-agents</li>
+        </ul>
+    </div>
+</div>
+
+<!-- BEAT 8 -->
+<div class="slide center">
+    <!-- beat 8: takeaway -->
+    <div class="section-label">The Pattern</div>
+    <h2>Context at every level is how you scale many agents</h2>
+    <p class="body" style="margin-left:auto;margin-right:auto;text-align:center;">Global install, per-directory identity, per-request child session — three nested scopes so no single context window drowns a workspace full of specialists, all covered by 308 tests.</p>
+</div>
+
+<!-- SOURCES (no beat comment) -->
+<div class="slide">
+    <div class="section-label">Sources</div>
+    <h2>Research Methodology</h2>
+    <div class="sources-body">
+        <p><strong>Repository:</strong> microsoft/amplifier-bundle-a2a — <code>git@github.com:microsoft/amplifier-bundle-a2a.git</code></p>
+        <p><strong>Data as of:</strong> HEAD <code>14e5cc6ad9821ccd78548c10d70874e8176ead33</code> (2026-06-15). Clone at <code>/tmp/a2a-src</code>.</p>
+        <p><strong>Feature status:</strong> Shipped as a Microsoft-org bundle; full suite green (307 passed / 1 skipped).</p>
+        <p><strong>Commands run:</strong></p>
+        <ul>
+            <li>Modules: <code>ls modules</code>; README Architecture section <code>sed -n '230,257p' README.md</code></li>
+            <li>Line counts: <code>find modules -name '*.py' -not -path '*/tests/*' | xargs wc -l | tail -1</code> (2328 non-test LOC)</li>
+            <li>Test suite: <code>uv run pytest --collect-only -q</code>; <code>uv run pytest -q</code> (308 collected; 307 passed, 1 skipped)</li>
+            <li>Operations: <code>grep -cn 'operation ==' modules/tool-a2a/.../__init__.py</code> (14)</li>
+            <li>Opt-in gate: <code>sed -n '29,40p' modules/hooks-a2a-server/.../__init__.py</code> (enabled defaults false)</li>
+            <li>Behavior compose: <code>cat behaviors/a2a.yaml</code> (tool + server hook port 8222 + context.include)</li>
+            <li>Child session: <code>sed -n '237,254p' .../server.py</code>; trust tiers <code>sed -n '216,235p' .../server.py</code></li>
+            <li>Integration: <code>grep -n 'port|127.0.0.1|A2AServer' tests/test_integration.py</code> (localhost round-trip)</li>
+            <li>Timeline: <code>git log --reverse --format='%ci %s'</code>; contributors <code>git log --format='%an' | sort | uniq -c | sort -rn</code></li>
+        </ul>
+        <p><strong>Gaps:</strong> The 8222/8223 pairing is documentation example, not a running pair — 8222 is the server default, 8223 appears only as an example peer URL. Integration tests use an OS-assigned port on 127.0.0.1. No <code>gh</code> API calls were made.</p>
+        <p><strong>Primary contributors:</strong> Brian Krabach (25 commits), Salil Das (3 commits).</p>
+    </div>
+</div>
 
 <!-- Navigation -->
-<button class="nav-arrow nav-prev hidden" id="nav-prev" aria-label="Previous slide">
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="15 18 9 12 15 6"></polyline>
-  </svg>
-</button>
-<button class="nav-arrow nav-next" id="nav-next" aria-label="Next slide">
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="9 18 15 12 9 6"></polyline>
-  </svg>
-</button>
+<div class="nav" id="nav"></div>
+<div class="slide-counter" id="counter"></div>
 
-<div class="nav-dots" id="nav-dots"></div>
-<div class="counter" id="counter">1 / 10</div>
+<a href="index.html" class="more-stories">More Amplifier Stories</a>
 
 <script>
-  const TOTAL = 10;
-  let current = 0;
+    const slides = document.querySelectorAll('.slide');
+    const total = slides.length;
+    let current = 0;
+    let transitioning = false;
 
-  const slides    = Array.from(document.querySelectorAll('.slide'));
-  const dotsEl    = document.getElementById('nav-dots');
-  const counterEl = document.getElementById('counter');
-  const prevBtn   = document.getElementById('nav-prev');
-  const nextBtn   = document.getElementById('nav-next');
+    function goTo(n) {
+        n = ((n % total) + total) % total;
+        if (transitioning || n === current) return;
+        transitioning = true;
+        var direction = n > current ? 1 : -1;
+        var prev = slides[current];
+        var next = slides[n];
 
-  // Build dots
-  slides.forEach((_, i) => {
-    const d = document.createElement('div');
-    d.className = 'dot' + (i === 0 ? ' active' : '');
-    d.addEventListener('click', () => goTo(i));
-    dotsEl.appendChild(d);
-  });
+        prev.classList.remove('active');
+        prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+        prev.style.opacity = '0';
 
-  function goTo(n) {
-    if (n < 0 || n >= TOTAL) return;
-    const dots = dotsEl.querySelectorAll('.dot');
+        next.style.transition = 'none';
+        next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+        next.style.opacity = '0';
 
-    slides[current].classList.remove('active');
-    slides[current].classList.add('prev');
-    dots[current].classList.remove('active');
+        void next.offsetWidth;
 
-    // Reset scroll on slide-scroll containers when leaving
-    const oldScroll = slides[current].querySelector('.slide-scroll');
-    if (oldScroll) oldScroll.scrollTop = 0;
+        next.style.transition = '';
+        next.style.transform = 'translateX(0)';
+        next.style.opacity = '1';
+        next.classList.add('active');
 
-    setTimeout(() => {
-      slides[current].classList.remove('prev');
-      current = n;
-      slides[current].classList.add('active');
-      dots[current].classList.add('active');
-      counterEl.textContent = `${current + 1} / ${TOTAL}`;
-      prevBtn.classList.toggle('hidden', current === 0);
-      nextBtn.classList.toggle('hidden', current === TOTAL - 1);
-    }, 80);
-  }
+        current = n;
+        updateNav();
 
-  prevBtn.addEventListener('click', () => goTo(current - 1));
-  nextBtn.addEventListener('click', () => goTo(current + 1));
+        setTimeout(function() {
+            prev.style.transform = '';
+            prev.style.opacity = '';
+            next.style.transform = '';
+            next.style.opacity = '';
+            transitioning = false;
+        }, 500);
+    }
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
-      e.preventDefault(); goTo(current + 1);
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault(); goTo(current - 1);
-    } else if (e.key === 'Home') { goTo(0); }
-    else if (e.key === 'End')  { goTo(TOTAL - 1); }
-  });
+    function updateNav() {
+        const nav = document.getElementById('nav');
+        const counter = document.getElementById('counter');
+        nav.innerHTML = '';
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === current ? ' active' : '');
+            dot.onclick = () => goTo(i);
+            nav.appendChild(dot);
+        });
+        counter.textContent = `${current + 1} / ${total}`;
+    }
 
-  // Touch/swipe
-  let touchStartX = 0;
-  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
-  document.addEventListener('touchend',   e => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(dx) > 50) { dx < 0 ? goTo(current + 1) : goTo(current - 1); }
-  });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+        if (e.key === 'ArrowLeft') goTo(current - 1);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.nav')) return;
+        if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+        else goTo(current - 1);
+    });
+
+    let touchStartX = 0;
+    const SWIPE_THRESHOLD = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        const diff = touchStartX - e.changedTouches[0].screenX;
+        if (Math.abs(diff) > SWIPE_THRESHOLD) {
+            if (diff > 0) goTo(current + 1);
+            else goTo(current - 1);
+        }
+    }, { passive: true });
+
+    updateNav();
 </script>
 </body>
 </html>

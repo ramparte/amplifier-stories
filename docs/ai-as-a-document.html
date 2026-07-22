@@ -3,748 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>AI as a Document — Amplifier Browser Runtime</title>
+    <title>AI as a Document</title>
     <script>document.documentElement.classList.add('js')</script>
-
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            /* Light theme — warm parchment */
-            --bg: #FDFCFA;
-            --bg-subtle: #F7F3EF;
-            --text: #1C1917;
-            --text-secondary: #44403C;
-            --text-tertiary: #78716C;
-            --accent: #B87333;
-            --accent-dark: #96592A;
-            --accent-light: rgba(184, 115, 51, 0.08);
-            --accent-medium: rgba(184, 115, 51, 0.15);
-            --teal: #2A9D8F;
-            --teal-dark: #1F7A6F;
-            --teal-light: rgba(42, 157, 143, 0.06);
-            --surface: #FFFFFF;
-            --surface-code: #F7F3EF;
-            --border: rgba(28, 25, 23, 0.08);
-            --border-medium: rgba(28, 25, 23, 0.12);
-            --shadow-sm: 0 1px 3px rgba(28, 25, 23, 0.04);
-            --shadow-md: 0 4px 20px rgba(28, 25, 23, 0.06);
-            --shadow-lg: 0 20px 60px rgba(28, 25, 23, 0.08);
-
-            /* Fluid typography */
-            --font-headline: clamp(36px, 7vw, 68px);
-            --font-medium: clamp(24px, 5vw, 44px);
-            --font-subhead: clamp(18px, 3vw, 28px);
-            --font-body: clamp(15px, 2.2vw, 18px);
-            --font-small: clamp(12px, 1.8vw, 14px);
-            --font-code: clamp(13px, 2vw, 15px);
-            --font-icon-card: clamp(28px, 5vw, 44px);
-            --font-icon-hero: clamp(48px, 10vw, 80px);
-
-            /* Fluid spacing */
-            --padding-slide-y: clamp(40px, 8vw, 100px);
-            --padding-slide-x: clamp(24px, 6vw, 100px);
-            --padding-slide-bottom: clamp(80px, 12vw, 100px);
-            --gap: clamp(16px, 3vw, 32px);
-            --card-padding: clamp(20px, 4vw, 32px);
-            --card-radius: clamp(12px, 2vw, 16px);
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #9a9aa6;
+            --accent: #6ea8fe;
+            --accent2: #7ee7c7;
+            --card: #16161f;
+            --line: rgba(255,255,255,0.08);
         }
 
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { background: var(--bg); color: var(--fg); }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
 
-        html, body {
-            height: 100%;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* ---- Slide framework ---- */
+        /* Core slide CSS */
         .slide {
             display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
-            padding: var(--padding-slide-y) var(--padding-slide-x) var(--padding-slide-bottom);
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
         }
 
-        .slide.active {
-            display: flex;
-            animation: fadeIn 0.45s ease;
-        }
+        .slide.active { display: flex; }
 
-        .center {
-            text-align: center;
-            align-items: center;
-            justify-content: center;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ---- Typography ---- */
-        .section-label {
-            font-size: var(--font-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2.5px;
-            color: var(--accent);
-            margin-bottom: clamp(12px, 2vw, 20px);
-        }
-
-        .headline {
-            font-size: var(--font-headline);
-            font-weight: 700;
-            letter-spacing: clamp(-1px, -0.03em, -2px);
-            line-height: 1.08;
-            color: var(--text);
-            margin-bottom: clamp(16px, 3vw, 32px);
-        }
-
-        .medium-headline {
-            font-size: var(--font-medium);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            color: var(--text);
-            margin-bottom: clamp(12px, 2.5vw, 28px);
-        }
-
-        .subhead {
-            font-size: var(--font-subhead);
-            font-weight: 400;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            max-width: 720px;
-        }
-
-        .body-text {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.65;
-        }
-
-        .small-text {
-            font-size: var(--font-small);
-            color: var(--text-tertiary);
-        }
-
-        /* ---- Layout ---- */
-        .content-area {
-            max-width: 1200px;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        .grid-5 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-            gap: var(--gap);
-        }
-
-        .grid-4 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-            gap: var(--gap);
-        }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--gap);
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--gap);
-        }
-
-        /* ---- Cards ---- */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--card-radius);
-            padding: var(--card-padding);
-            box-shadow: var(--shadow-sm);
-            transition: box-shadow 0.2s ease, transform 0.2s ease;
-        }
-
-        .card-icon {
-            font-size: var(--font-icon-card);
-            margin-bottom: clamp(8px, 1.5vw, 16px);
-            display: block;
-        }
-
-        .card h3 {
-            font-size: clamp(16px, 2.5vw, 20px);
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: clamp(6px, 1vw, 10px);
-        }
-
-        .card p {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.55;
-        }
-
-        .card-amber {
-            border-color: var(--accent-medium);
-            background: linear-gradient(135deg, var(--surface), var(--accent-light));
-        }
-
-        .card-teal {
-            border-color: rgba(42, 157, 143, 0.15);
-            background: linear-gradient(135deg, var(--surface), var(--teal-light));
-        }
-
-        /* ---- Code blocks ---- */
-        .code-block {
-            background: var(--surface-code);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: clamp(16px, 3vw, 24px) clamp(20px, 4vw, 28px);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-            font-size: var(--font-code);
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            color: var(--text);
-        }
-
-        .code-keyword { color: var(--accent-dark); font-weight: 600; }
-        .code-string  { color: var(--teal-dark); }
-        .code-comment { color: var(--text-tertiary); font-style: italic; }
-        .code-fn      { color: #6F42C1; }
-
-        /* ---- Browser mockup ---- */
-        .browser-mockup {
-            background: var(--surface);
-            border-radius: clamp(10px, 2vw, 16px);
-            border: 1px solid var(--border-medium);
-            overflow: hidden;
-            box-shadow: var(--shadow-lg);
-            max-width: 700px;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        .browser-bar {
-            background: #F5F5F3;
-            padding: clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 18px);
-            display: flex;
-            align-items: center;
-            gap: clamp(6px, 1vw, 8px);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .browser-dots {
-            display: flex;
-            gap: 6px;
-            flex-shrink: 0;
-        }
-
-        .browser-dot {
-            width: clamp(10px, 1.5vw, 12px);
-            height: clamp(10px, 1.5vw, 12px);
-            border-radius: 50%;
-        }
-        .browser-dot.red    { background: #FF5F56; }
-        .browser-dot.yellow { background: #FFBD2E; }
-        .browser-dot.green  { background: #27C93F; }
-
-        .browser-url {
-            background: var(--surface);
-            border-radius: 6px;
-            padding: clamp(4px, 0.8vw, 6px) clamp(10px, 2vw, 14px);
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: clamp(11px, 1.5vw, 13px);
-            color: var(--text-tertiary);
-            flex: 1;
-            margin-left: clamp(4px, 1vw, 8px);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .browser-content {
-            padding: clamp(20px, 4vw, 40px);
-            background: var(--bg);
-        }
-
-        .chat-bubble {
-            border-radius: 16px;
-            padding: clamp(10px, 2vw, 14px) clamp(14px, 3vw, 20px);
-            font-size: var(--font-body);
-            line-height: 1.5;
-            max-width: 85%;
-            margin-bottom: clamp(8px, 1.5vw, 12px);
-        }
-
-        .chat-user {
-            background: var(--accent);
-            color: #fff;
-            margin-left: auto;
-            border-bottom-right-radius: 4px;
-        }
-
-        .chat-ai {
-            background: var(--surface);
-            color: var(--text-secondary);
-            border: 1px solid var(--border);
-            border-bottom-left-radius: 4px;
-        }
-
-        /* ---- Architecture flow ---- */
-        .arch-flow {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0;
-            flex-wrap: wrap;
-            margin: clamp(16px, 3vw, 32px) auto;
-            max-width: 100%;
-        }
-
-        .arch-node {
-            background: var(--surface);
-            border: 2px solid var(--accent);
-            border-radius: 10px;
-            padding: clamp(10px, 2vw, 16px) clamp(14px, 2.5vw, 22px);
-            font-size: clamp(12px, 1.8vw, 15px);
-            font-weight: 600;
-            color: var(--text);
-            text-align: center;
-            white-space: nowrap;
-        }
-
-        .arch-node.teal-border { border-color: var(--teal); }
-
-        .arch-arrow {
-            color: var(--accent);
-            font-size: clamp(18px, 3vw, 28px);
-            padding: 0 clamp(4px, 1vw, 12px);
-            flex-shrink: 0;
-        }
-
-        /* ---- Testing flow ---- */
-        .flow-steps {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0;
-            flex-wrap: wrap;
-            margin: clamp(16px, 3vw, 32px) auto;
-        }
-
-        .flow-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .flow-step-icon {
-            width: clamp(48px, 8vw, 72px);
-            height: clamp(48px, 8vw, 72px);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: clamp(20px, 4vw, 32px);
-            font-weight: 700;
-        }
-
-        .flow-step-label {
-            font-size: clamp(11px, 1.5vw, 14px);
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .flow-step-amber .flow-step-icon {
-            background: var(--accent-light);
-            border: 2px solid var(--accent);
-            color: var(--accent-dark);
-        }
-
-        .flow-step-teal .flow-step-icon {
-            background: var(--teal-light);
-            border: 2px solid var(--teal);
-            color: var(--teal-dark);
-        }
-
-        .flow-connector {
-            width: clamp(24px, 4vw, 48px);
-            height: 2px;
-            background: var(--border-medium);
-            position: relative;
-            flex-shrink: 0;
-        }
-
-        .flow-connector::after {
-            content: '';
-            position: absolute;
-            right: -4px;
-            top: -3px;
-            width: 8px;
-            height: 8px;
-            border-right: 2px solid var(--text-tertiary);
-            border-top: 2px solid var(--text-tertiary);
-            transform: rotate(45deg);
-        }
-
-        /* ---- Document hero icon ---- */
-        .doc-hero-wrap {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: clamp(16px, 3vw, 32px);
-        }
-
-        .doc-glow {
-            position: absolute;
-            width: clamp(200px, 35vw, 320px);
-            height: clamp(200px, 35vw, 320px);
-            background: radial-gradient(circle, rgba(184, 115, 51, 0.1) 0%, transparent 70%);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-
-        .doc-hero-svg {
-            position: relative;
-            width: clamp(80px, 14vw, 140px);
-            height: auto;
-        }
-
-        /* ---- Status badge ---- */
-        .status-badge {
-            display: inline-block;
-            font-size: clamp(10px, 1.3vw, 12px);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            padding: 4px 14px;
-            border-radius: 20px;
-            background: rgba(42, 157, 143, 0.1);
-            color: var(--teal-dark);
-            border: 1px solid rgba(42, 157, 143, 0.25);
-        }
-
-        /* ---- Highlight box ---- */
-        .highlight-box {
-            background: var(--accent-light);
-            border-left: 3px solid var(--accent);
-            border-radius: 0 var(--card-radius) var(--card-radius) 0;
-            padding: clamp(16px, 3vw, 24px) clamp(20px, 4vw, 28px);
-            margin-top: clamp(16px, 3vw, 24px);
-        }
-
-        .highlight-box p {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.55;
-        }
-
-        /* ---- Model card specifics ---- */
-        .model-tag {
-            display: inline-block;
-            font-size: clamp(10px, 1.3vw, 12px);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 3px 10px;
-            border-radius: 6px;
-            margin-bottom: clamp(8px, 1.5vw, 12px);
-        }
-
-        .model-tag.general   { background: var(--accent-light); color: var(--accent-dark); }
-        .model-tag.fast      { background: var(--teal-light); color: var(--teal-dark); }
-        .model-tag.quality   { background: rgba(111, 66, 193, 0.08); color: #5B3BA2; }
-
-        .model-spec {
-            font-size: var(--font-small);
-            color: var(--text-tertiary);
-            margin-top: clamp(8px, 1.5vw, 12px);
-        }
-
-        /* ---- Stat row ---- */
-        .stat-row {
-            display: flex;
-            justify-content: center;
-            gap: clamp(24px, 5vw, 64px);
-            flex-wrap: wrap;
-            margin: clamp(20px, 4vw, 40px) 0;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: clamp(32px, 7vw, 56px);
-            font-weight: 700;
-            color: var(--accent);
-            line-height: 1;
-        }
-
-        .stat-label {
-            font-size: var(--font-small);
-            color: var(--text-tertiary);
-            margin-top: 6px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* ---- Runtime badge ---- */
-        .runtime-icon {
-            font-size: var(--font-icon-card);
-            margin-bottom: clamp(6px, 1vw, 12px);
-            display: block;
-        }
-
-        .kernel-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: var(--font-small);
-            font-weight: 600;
-            color: var(--accent);
-            background: var(--accent-light);
-            padding: 4px 12px;
-            border-radius: 6px;
-            margin-top: clamp(8px, 1.5vw, 12px);
-        }
-
-        /* ---- The question ---- */
-        .the-question {
-            font-size: var(--font-medium);
-            font-weight: 600;
-            color: var(--accent);
-            margin-top: clamp(24px, 5vw, 48px);
-            line-height: 1.3;
-        }
-
-        /* ---- Closing quote ---- */
-        .closing-quote {
-            font-size: clamp(22px, 4.5vw, 40px);
-            font-weight: 600;
-            color: var(--text);
-            line-height: 1.4;
-            max-width: 800px;
-        }
-
-        .closing-quote .accent {
-            color: var(--accent);
-        }
-
-        .closing-liberation {
-            font-size: clamp(20px, 4vw, 36px);
-            font-weight: 400;
-            color: var(--text-secondary);
-            margin-top: clamp(16px, 3vw, 24px);
-            font-style: italic;
-        }
-
-        .cta-link {
-            display: inline-block;
-            margin-top: clamp(24px, 5vw, 40px);
-            font-size: var(--font-body);
-            color: var(--accent);
-            text-decoration: none;
-            border-bottom: 1px solid var(--accent-medium);
-            padding-bottom: 2px;
-        }
-
-        /* ---- Sources ---- */
-        .sources-content {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .sources-content p {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.7;
-            margin-bottom: clamp(8px, 1.5vw, 12px);
-        }
-
-        .sources-content strong {
-            color: var(--text);
-        }
-
-        .sources-content ul {
-            margin: clamp(6px, 1vw, 10px) 0 clamp(12px, 2vw, 18px) clamp(16px, 3vw, 24px);
-        }
-
-        .sources-content li {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.65;
-            margin-bottom: 4px;
-        }
-
-        .sources-content code {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: clamp(12px, 1.5vw, 13px);
-            background: var(--surface-code);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-
-        /* ---- Component labels ---- */
-        .component-labels {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: clamp(8px, 1.5vw, 16px);
-            margin-top: clamp(16px, 3vw, 24px);
-        }
-
-        .component-label {
-            display: flex;
-            align-items: center;
-            gap: clamp(8px, 1.5vw, 12px);
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            padding: clamp(10px, 2vw, 14px) clamp(14px, 2.5vw, 20px);
-            background: var(--surface);
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .component-label .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .dot-amber { background: var(--accent); }
-        .dot-teal  { background: var(--teal); }
-        .dot-purple { background: #6F42C1; }
-
-        /* ---- Navigation ---- */
-        .nav {
-            position: fixed;
-            bottom: clamp(16px, 3vw, 28px);
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: clamp(6px, 1vw, 10px);
-            z-index: 100;
-        }
-
-        .nav-dot {
-            width: clamp(7px, 1vw, 9px);
-            height: clamp(7px, 1vw, 9px);
-            border-radius: 50%;
-            background: rgba(28, 25, 23, 0.15);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .nav-dot:hover { background: rgba(28, 25, 23, 0.3); }
-        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
-
-        .slide-counter {
-            position: fixed;
-            bottom: clamp(16px, 3vw, 28px);
-            right: clamp(16px, 3vw, 28px);
-            font-size: clamp(11px, 1.3vw, 13px);
-            color: var(--text-tertiary);
-            z-index: 100;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .more-stories {
-            position: fixed;
-            bottom: clamp(4px, 0.8vw, 10px);
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: clamp(9px, 1.2vw, 11px);
-            color: rgba(28, 25, 23, 0.2);
-            text-decoration: none;
-            z-index: 100;
-        }
-        .more-stories:hover { color: rgba(28, 25, 23, 0.4); }
-
-        /* ---- Responsive ---- */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 20px var(--padding-slide-x) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-                padding-top: 32px;
-            }
-        }
-
-        @media (max-width: 600px) {
-            .arch-flow { gap: 4px; }
-            .arch-arrow { font-size: 16px; padding: 0 4px; }
-            .arch-node { padding: 8px 12px; font-size: 12px; }
-            .flow-connector { width: 16px; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* ---- Privacy pill (slide 5) ---- */
-        .privacy-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(42, 157, 143, 0.08);
-            border: 1px solid rgba(42, 157, 143, 0.2);
-            border-radius: 24px;
-            padding: clamp(8px, 1.5vw, 12px) clamp(16px, 3vw, 24px);
-            font-size: var(--font-body);
-            color: var(--teal-dark);
-            font-weight: 600;
-            margin-top: clamp(16px, 3vw, 28px);
-        }
-
-        /* ---- Distribution icons grid ---- */
-        .distro-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--gap);
-        }
-
-        .distro-card {
-            text-align: center;
-            padding: clamp(24px, 5vw, 40px) var(--card-padding);
-        }
-
-        .distro-card .card-icon {
-            font-size: clamp(36px, 7vw, 56px);
-        }
-
-        /* ---- Tagline ---- */
-        .tagline {
-            font-size: var(--font-body);
-            font-weight: 600;
-            color: var(--accent);
-            margin-top: clamp(16px, 3vw, 24px);
-        }
-    
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        /* Progressive enhancement: no-JS fallback */
         html:not(.js) .slide {
             display: flex !important;
             position: relative !important;
@@ -762,349 +54,455 @@
         html.js body { overflow: hidden; overscroll-behavior: none; }
         html.js .slide { display: none; }
         html.js .slide.active { display: flex; }
+        /* Fit-safe: cap to viewport and allow scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide { transition: transform 0.5s ease, opacity 0.5s ease; }
+
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: 0.6em; font-weight: 400; }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 1.1em;
+        }
+
+        .body { color: var(--muted); margin-top: 0.9em; max-width: 40ch; }
+        .handoff { color: var(--accent2); margin-top: 1.4em; font-size: clamp(13px, 1.7vw, 17px); max-width: 40ch; }
+        h2 + .body { margin-top: 1.1em; }
+
+        /* Title slide */
+        .title-slide h1 {
+            background: linear-gradient(120deg, #f5f5f7 0%, #6ea8fe 60%, #7ee7c7 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .title-slide .kicker {
+            text-transform: uppercase;
+            letter-spacing: 0.24em;
+            font-size: clamp(11px, 1.6vw, 14px);
+            color: var(--muted);
+            margin-bottom: 1.6em;
+        }
+
+        /* Horizontal split */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: clamp(12px, 1.6vw, 20px); }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px, 2.2vw, 26px);
+        }
+        .stat .num { font-size: clamp(28px, 5vw, 52px); font-weight: 700; line-height: 1; letter-spacing: -0.02em; color: var(--accent2); }
+        .stat .lbl { color: var(--muted); font-size: clamp(12px, 1.5vw, 15px); margin-top: 0.6em; line-height: 1.35; }
+
+        /* Numbered steps */
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.4vw, 16px); }
+        .steps li {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(12px, 1.6vw, 18px) clamp(14px, 1.8vw, 20px);
+        }
+        .steps .step-n {
+            flex: 0 0 auto;
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: rgba(110,168,254,0.15);
+            color: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 15px;
+        }
+        .steps .step-t { color: var(--fg); font-weight: 500; }
+        .steps .step-t small { display: block; color: var(--muted); font-weight: 400; margin-top: 2px; }
+
+        /* Rules / callout list */
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.4vw, 16px); }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(12px, 1.6vw, 18px);
+            color: var(--fg);
+        }
+        .rules li strong { color: var(--accent2); }
+
+        /* Code block */
+        .code-block {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(14px, 1.8vw, 22px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(11px, 1.5vw, 15px);
+            line-height: 1.55;
+            white-space: pre-wrap;
+            color: #cfd8e3;
+            overflow-x: auto;
+        }
+        .code-block .c { color: var(--muted); }
+        .code-block .k { color: var(--accent2); }
+
+        .big-line { font-size: clamp(24px, 4.5vw, 46px); line-height: 1.16; font-weight: 650; letter-spacing: -0.01em; max-width: 22ch; }
+        .big-line em { font-style: normal; color: var(--accent2); }
+
+        /* Navigation */
+        .nav { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); display: flex; gap: 9px; z-index: 90; }
+        .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.22); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+        .nav-dot.active { background: var(--accent); transform: scale(1.35); }
+        .slide-counter { position: fixed; bottom: 24px; right: 26px; font-size: 12px; color: var(--muted); z-index: 90; }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        .sources-body { color: var(--muted); line-height: 1.6; max-width: 68ch; }
+        .sources-body p { margin-bottom: 0.7em; }
+        .sources-body ul { margin: 0.4em 0 0.9em 1.2em; }
+        .sources-body li { margin-bottom: 0.5em; }
+        .sources-body code { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 0.85em; color: #cfd8e3; background: var(--card); padding: 1px 6px; border-radius: 5px; }
+        .sources-body strong { color: var(--fg); }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
     </style>
 </head>
 <body>
+    <!--
+    SPINE
+    ABT: AND today's AI products sit behind accounts, API keys, subscriptions, and a round-trip to someone else's server; BUT all of that is infrastructure standing between a person and a model, not the intelligence itself; THEREFORE Amplifier collapses it into a single browser-runnable HTML artifact whose agent and LLM run locally on your own GPU, so AI becomes a document you can open.
+    Payoff: The single-file proof — a 4.5MB HTML file boots five runtimes and four languages in order and answers on your own GPU, with no API key anywhere in the client, and the real amplifier-core kernel proven to run in-browser.
+    Beats:
+      1. frame     — Every AI product makes you rent someone else's server; what if the agent were just a file you open?  advances: opens on the AND (AI as rented infrastructure) and names the stakes — the gap between a person and a model is all plumbing.
+      2. proof     — It already exists: one 4.5MB HTML file bundles an agent with tools in four languages running in the browser.  advances: lands hard evidence early that the THEREFORE is real, not aspirational — a committed, measured artifact.
+      3. tension   — A self-contained file is worthless if the intelligence still phones home; one API key and the promise collapses.  advances: sharpens the BUT — self-containment only matters if inference is local too.
+      4. setup     — Meet WebAmp: a sibling proof-of-concept that installs the real amplifier-core 1.0.0 wheel into Pyodide.  advances: introduces the named example before the argument leans on it — the genuine kernel, not a browser toy, runs.
+      5. mechanism — The LLM runs locally on your GPU via WebLLM on WebGPU; no API key, bearer token, or server call in the client.  advances: resolves the BUT with one concrete claim — inference is client-side.
+      6. mechanism — The Go document_builder, the first polyglot Amplifier module, is compiled to WASM and embedded so all four languages ship in one HTML.  advances: shows HOW four languages become one file.
+      7. payoff    — Open the file and five runtimes boot in order, backed by 168 tests and a 49-test E2E gate on the assembled HTML.  advances: the climax — a verified single-file agent boots and answers on your GPU.
+      8. takeaway  — The honest edge: first run still needs a local http server and a CDN model download.  advances: keeps the audience with an honest boundary — 'AI as a document' as a proven trajectory, not an overclaim.
+    -->
 
-<!--
-NARRATIVE SPINE
-ABT: AND every AI product today demands an account, an API key, internet, a
-     subscription, and your trust; BUT all of that is infrastructure standing
-     between a person and a model; THEREFORE Amplifier's browser runtime folds
-     the whole agent framework plus a local LLM into a single HTML file that runs
-     on your own GPU -- so AI becomes a document you can email, and the
-     infrastructure disappears.
-Payoff: "AI as a document" -- email it, drop it on a USB stick, or host it for
-        $0; the recipient opens one file and has a working, fully-offline AI. The
-        file IS the application.
-Beats:
-  1. proof     -- one HTML file, a working AI, no server/key/internet.   advances: makes the AND concrete -- it actually runs
-  2. setup     -- what's inside: amplifier-core in Pyodide + WebLLM on WebGPU. advances: names the parts before the argument leans on them
-  3. tension   -- every other AI product charges an infrastructure tax.  advances: establishes the BUT
-  4. payoff    -- AI as a document: email it, USB it, host it for $0.    advances: lands the THEREFORE before the midpoint
-  5. mechanism -- five layers boot from one file in ~6 lines.            advances: HOW the file becomes an app
-  6. mechanism -- it runs on YOUR GPU; data never leaves the device.     advances: HOW local + private works
-  7. mechanism -- the same 2,600-line kernel; wasm was a day-one target. advances: HOW it's designed-in, not a hack
-  8. turn      -- an agent builds AND tests each app before you open it.  advances: turns "toy demo" doubt into shipped quality
-  9. takeaway  -- infrastructure vs a browser: that's liberation.        advances: the line the audience keeps
--->
-
-<!-- beat 1: proof -->
-<div class="slide active center">
-    <div class="section-label">Amplifier Browser Runtime</div>
-    <h1 class="headline">This AI is one HTML file &mdash; no server, no key, no internet</h1>
-    <div class="browser-mockup">
-        <div class="browser-bar">
-            <div class="browser-dots">
-                <div class="browser-dot red"></div>
-                <div class="browser-dot yellow"></div>
-                <div class="browser-dot green"></div>
-            </div>
-            <div class="browser-url">file:///ai-tutor.html</div>
-        </div>
-        <div class="browser-content">
-            <div class="chat-bubble chat-user">Explain how photosynthesis works</div>
-            <div class="chat-bubble chat-ai">Photosynthesis is the process by which plants convert sunlight, water, and CO&#8322; into glucose and oxygen. It occurs in two stages: the light-dependent reactions in the thylakoid membranes...</div>
-        </div>
+    <!-- Title cover (before beat 1) -->
+    <div class="slide title-slide active center">
+        <p class="kicker">Amplifier Stories</p>
+        <h1>AI as a Document</h1>
+        <p class="subtitle">A whole agent in one HTML file</p>
     </div>
-    <p class="tagline">Open it in Chrome. After the one-time model download, it works with the network switched off.</p>
-</div>
 
-<!-- beat 2: setup -->
-<div class="slide">
-    <div class="content-area">
-        <div class="section-label">What's Inside the File</div>
-        <h2 class="medium-headline">The whole agent framework and a model live inside that single document</h2>
-        <p class="subhead">Four pieces ship together in the HTML &mdash; the same kernel that powers terminal sessions, now running in a browser tab.</p>
-        <div class="component-labels">
-            <div class="component-label"><div class="dot dot-amber"></div> <strong style="color:var(--text)">amplifier-core</strong>&ensp;kernel, via Pyodide / WebAssembly</div>
-            <div class="component-label"><div class="dot dot-teal"></div> <strong style="color:var(--text)">WebLLM</strong>&ensp;local model, via WebGPU</div>
-            <div class="component-label"><div class="dot dot-purple"></div> A specialized <strong style="color:var(--text)">bundle</strong>&ensp;with domain knowledge</div>
-            <div class="component-label"><div class="dot dot-amber"></div> A complete <strong style="color:var(--text)">chat interface</strong></div>
-        </div>
-        <div class="highlight-box">
-            <p><strong>Pyodide</strong> runs Python in WebAssembly, so <strong>amplifier-core</strong> boots unchanged. <strong>WebLLM</strong> loads a quantized model straight onto your GPU. No intermediary between prompt and silicon.</p>
-        </div>
+    <!-- ==== slide for beat 1 ==== -->
+    <div class="slide center">
+        <!-- beat 1: frame -->
+        <div class="section-label">The gap</div>
+        <h2>Every AI product makes you rent someone else's server &mdash; what if the agent were just a file you open?</h2>
+        <p class="body">Accounts, API keys, subscriptions, and a round-trip to someone else's machine. All of that is infrastructure standing between a person and a model &mdash; not the intelligence itself.</p>
+        <p class="handoff">So Amplifier asked: what if the whole thing were a document?</p>
     </div>
-</div>
 
-<!-- beat 3: tension -->
-<div class="slide">
-    <div class="content-area">
-        <div class="section-label">Why This Matters</div>
-        <h2 class="headline">Every other AI product charges an infrastructure tax</h2>
-        <p class="subhead">Before you type a single prompt, the standard AI product asks for all of this:</p>
-        <div class="component-labels">
-            <div class="component-label"><div class="dot dot-amber"></div> &#x1F511;&ensp;An <strong style="color:var(--text)">account</strong> &mdash; sign up, verify, profile</div>
-            <div class="component-label"><div class="dot dot-amber"></div> &#x1F5DD;&ensp;An <strong style="color:var(--text)">API key</strong> &mdash; generate, store, rotate</div>
-            <div class="component-label"><div class="dot dot-teal"></div> &#x1F310;&ensp;<strong style="color:var(--text)">Internet</strong> &mdash; always-on link to a remote server</div>
-            <div class="component-label"><div class="dot dot-purple"></div> &#x1F4B3;&ensp;A <strong style="color:var(--text)">subscription</strong> &mdash; fees, limits, billing</div>
-            <div class="component-label"><div class="dot dot-teal"></div> &#x1F91E;&ensp;<strong style="color:var(--text)">Trust</strong> &mdash; that your data stays private elsewhere</div>
+    <!-- ==== slide for beat 2 ==== -->
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">The proof, up front</div>
+            <h2>It already exists: one HTML file that runs an agent in four languages.</h2>
+            <p class="body">The polyglot demo is a single self-contained HTML file bundling an AI agent with tools in Rust, TypeScript, Python, and Go &mdash; running entirely in the browser.</p>
+            <p class="handoff">A committed, measured artifact &mdash; not a mockup.</p>
         </div>
-        <p class="the-question">What if none of that was necessary?</p>
-    </div>
-</div>
-
-<!-- beat 4: payoff -->
-<div class="slide">
-    <div class="content-area">
-        <div class="section-label">The Payoff</div>
-        <h2 class="headline">When AI is a document, you distribute it like one</h2>
-        <div class="grid-3">
-            <div class="card distro-card">
-                <span class="card-icon">&#x1F4E7;</span>
-                <h3>Email it</h3>
-                <p>Attach an AI assistant to a message. The recipient opens the file and has a working AI.</p>
-            </div>
-            <div class="card distro-card">
-                <span class="card-icon">&#x1F4BE;</span>
-                <h3>USB drive</h3>
-                <p>Carry an AI in your pocket. It works anywhere with a modern browser and a GPU.</p>
-            </div>
-            <div class="card distro-card">
-                <span class="card-icon">&#x1F310;</span>
-                <h3>Static website</h3>
-                <p>Host AI on a $0/month static site. No backend, no database, no ops team.</p>
-            </div>
-        </div>
-        <div class="highlight-box" style="max-width: 640px; margin-left: auto; margin-right: auto;">
-            <p style="font-weight: 600; color: var(--text);">No accounts. No infrastructure. No ongoing costs.<br>The file IS the application.</p>
-        </div>
-    </div>
-</div>
-
-<!-- beat 5: mechanism -->
-<div class="slide">
-    <div class="content-area">
-        <div class="section-label">How It Boots</div>
-        <h2 class="medium-headline">Five layers wake up from one file in about six lines</h2>
-        <div class="arch-flow">
-            <div class="arch-node">Your Browser</div>
-            <div class="arch-arrow">&#8594;</div>
-            <div class="arch-node">Pyodide (WASM)</div>
-            <div class="arch-arrow">&#8594;</div>
-            <div class="arch-node">amplifier-core</div>
-            <div class="arch-arrow">&#8594;</div>
-            <div class="arch-node teal-border">WebLLM Provider</div>
-            <div class="arch-arrow">&#8594;</div>
-            <div class="arch-node teal-border">WebGPU &middot; Your GPU</div>
-        </div>
-        <div class="code-block" style="max-width:700px;margin:clamp(16px,3vw,24px) auto 0;"><span class="code-keyword">const</span> amp = <span class="code-keyword">new</span> <span class="code-fn">AmplifierBrowser</span>();
-
-<span class="code-keyword">await</span> amp.<span class="code-fn">init</span>({
-  model: <span class="code-string">"Phi-3.5-mini-instruct-q4f16_1-MLC"</span>
-});
-
-<span class="code-keyword">const</span> reply = <span class="code-keyword">await</span> amp.<span class="code-fn">chat</span>(<span class="code-string">"Explain quantum entanglement"</span>);
-</div>
-    </div>
-</div>
-
-<!-- beat 6: mechanism -->
-<div class="slide">
-    <div class="content-area">
-        <div class="section-label">Where It Runs</div>
-        <h2 class="headline">The model runs on your GPU &mdash; your data never leaves the device</h2>
-        <div class="grid-3">
-            <div class="card card-amber">
-                <span class="model-tag general">General Purpose</span>
-                <h3>Phi-3.5-mini</h3>
-                <p>Microsoft's compact powerhouse. Strong reasoning for its size &mdash; general Q&amp;A, tutoring, code help.</p>
-                <div class="model-spec">~4 GB VRAM &middot; 3.8B parameters</div>
-            </div>
-            <div class="card card-teal">
-                <span class="model-tag fast">Fast Responses</span>
-                <h3>Llama-3.2-3B</h3>
-                <p>Meta's speed-optimized model. Quick conversational replies, summaries, lightweight tasks.</p>
-                <div class="model-spec">~4 GB VRAM &middot; 3B parameters</div>
-            </div>
-            <div class="card" style="border-color: rgba(111, 66, 193, 0.15); background: linear-gradient(135deg, var(--surface), rgba(111, 66, 193, 0.04));">
-                <span class="model-tag quality">Multilingual &middot; Quality</span>
-                <h3>Qwen2.5-7B</h3>
-                <p>Alibaba's multilingual model. Higher-quality output across many languages; needs more VRAM.</p>
-                <div class="model-spec">~8 GB VRAM &middot; 7B parameters</div>
-            </div>
-        </div>
-        <div class="privacy-pill">
-            &#x1F512;&ensp;Fully offline after the first model download &mdash; no server logs, no API calls to intercept.
-        </div>
-    </div>
-</div>
-
-<!-- beat 7: mechanism -->
-<div class="slide">
-    <div class="content-area">
-        <div class="section-label">Not a Hack</div>
-        <h2 class="medium-headline">It's the same 2,600-line kernel &mdash; the browser was a target from day one</h2>
-        <div class="component-labels" style="margin-top:clamp(12px,2vw,20px);">
-            <div class="component-label"><div class="dot dot-amber"></div> &#x2B1B;&ensp;<strong style="color:var(--text)">Terminal</strong> &mdash; macOS, Linux, Windows</div>
-            <div class="component-label"><div class="dot dot-amber"></div> &#x1F4E6;&ensp;<strong style="color:var(--text)">Docker</strong> &mdash; isolated containers</div>
-            <div class="component-label"><div class="dot dot-teal"></div> &#x1F517;&ensp;<strong style="color:var(--text)">SSH</strong> &mdash; remote & build servers</div>
-            <div class="component-label"><div class="dot dot-teal"></div> &#x1F310;&ensp;<strong style="color:var(--text)">Browser</strong> &mdash; WebAssembly, the new frontier</div>
-        </div>
-        <div class="stat-row">
-            <div class="stat-item">
-                <div class="stat-number">~2,600</div>
-                <div class="stat-label">Lines of Kernel</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">5</div>
-                <div class="stat-label">Protocol Contracts</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">4</div>
-                <div class="stat-label">Runtimes</div>
-            </div>
-        </div>
-        <div class="highlight-box" style="max-width: 700px; margin-left: auto; margin-right: auto;">
-            <p>Same protocols, same composition model, same bundle format. The kernel's <code style="font-size: inherit; background: rgba(184,115,51,0.08); padding: 1px 5px; border-radius: 3px;">platform()</code> function returns <code style="font-size: inherit; background: rgba(184,115,51,0.08); padding: 1px 5px; border-radius: 3px;">'wasm'</code> as a first-class value &mdash; designed in, not bolted on.</p>
-        </div>
-    </div>
-</div>
-
-<!-- beat 8: turn -->
-<div class="slide">
-    <div class="content-area">
-        <div class="section-label">Why You Can Trust It</div>
-        <h2 class="medium-headline">An agent builds and tests each app before you ever open it</h2>
-        <p class="body-text" style="max-width: 680px; margin-bottom: clamp(20px, 4vw, 36px);">The <strong>webruntime-developer</strong> agent doesn't just generate browser AI apps &mdash; it drives Playwright with WebGPU flags to test them autonomously, so no untested code reaches the user.</p>
-        <div class="flow-steps">
-            <div class="flow-step flow-step-amber">
-                <div class="flow-step-icon">&#x1F528;</div>
-                <div class="flow-step-label">Build HTML</div>
-            </div>
-            <div class="flow-connector"></div>
-            <div class="flow-step flow-step-teal">
-                <div class="flow-step-icon">&#x1F9EA;</div>
-                <div class="flow-step-label">Test</div>
-            </div>
-            <div class="flow-connector"></div>
-            <div class="flow-step flow-step-amber">
-                <div class="flow-step-icon">&#x1F527;</div>
-                <div class="flow-step-label">Fix</div>
-            </div>
-            <div class="flow-connector"></div>
-            <div class="flow-step flow-step-teal">
-                <div class="flow-step-icon">&#x2713;</div>
-                <div class="flow-step-label">Re-test</div>
-            </div>
-            <div class="flow-connector"></div>
-            <div class="flow-step flow-step-amber">
-                <div class="flow-step-icon">&#x1F4E6;</div>
-                <div class="flow-step-label">Deliver</div>
-            </div>
-        </div>
-        <div class="grid-2" style="margin-top: clamp(20px, 4vw, 32px);">
-            <div class="card">
-                <h3>Headless WebGPU testing</h3>
-                <p>Playwright launches Chromium with WebGPU flags enabled. The agent generates tests, runs them headless, and reads console output on failure.</p>
-            </div>
-            <div class="card">
-                <h3>Agent-driven iteration</h3>
-                <p>On failure, the agent diagnoses from the logs, fixes the code, and re-runs &mdash; looping until the app works. No human debugging required.</p>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="num">1</div>
+                    <div class="lbl">HTML file</div>
+                </div>
+                <div class="stat">
+                    <div class="num">4</div>
+                    <div class="lbl">languages: Rust, TypeScript, Python, Go</div>
+                </div>
+                <div class="stat">
+                    <div class="num">4.5&thinsp;MB</div>
+                    <div class="lbl">measured on-disk artifact (4,680,357 bytes)</div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- beat 9: takeaway -->
-<div class="slide center">
-    <div>
-        <p class="closing-quote">
-            Every other AI product requires <span class="accent">infrastructure</span>.<br>
-            Amplifier's browser runtime requires a <span class="accent">browser</span>.
-        </p>
-        <p class="closing-liberation">That's not a limitation &mdash; it's liberation.</p>
-        <a class="cta-link" href="https://github.com/microsoft/amplifier" target="_blank">Explore Amplifier on GitHub &#8594;</a>
+    <!-- ==== slide for beat 3 ==== -->
+    <div class="slide center">
+        <!-- beat 3: tension -->
+        <div class="section-label">The catch</div>
+        <p class="big-line">A self-contained file is worthless if the intelligence still <em>phones home</em>.</p>
+        <p class="body">One API key, one server round-trip, and the promise collapses &mdash; you're back to renting someone else's machine. Self-containment only matters if inference is local too.</p>
+        <p class="handoff">Which raises the question: where does the model actually run?</p>
     </div>
-</div>
 
-<!-- ======== SOURCES ======== -->
-<div class="slide">
-    <div class="content-area">
-        <div class="section-label">Sources</div>
-        <h2 class="medium-headline">Research Methodology</h2>
-        <div class="sources-content">
-            <p><strong>Data as of:</strong> February 26, 2026</p>
-            <p><strong>Feature status:</strong> Active &mdash; code present in production repositories with active development</p>
-            <p><strong>Research performed:</strong></p>
-            <ul>
-                <li>Source code analysis of <code>amplifier_webruntime.py</code> &mdash; confirmed imports from <code>amplifier_core.interfaces</code> (Provider, ContextManager, Tool, Orchestrator)</li>
-                <li>Protocol analysis of <code>amplifier_env_common/protocol.py</code> &mdash; confirmed <code>'wasm'</code> as first-class <code>platform()</code> return value</li>
-                <li>WebLLM bundle analysis &mdash; confirmed WebGPU integration, model catalog, and provider implementation</li>
-                <li>Agent definition review &mdash; <code>webruntime-developer</code> in amplifier-foundation confirmed with Playwright + WebGPU testing workflow</li>
-                <li>Kernel line count: ~2,600 lines with 5 protocol contracts across 4 runtimes</li>
+    <!-- ==== slide for beat 4 ==== -->
+    <div class="slide split">
+        <!-- beat 4: setup -->
+        <div class="col-main">
+            <div class="section-label">Meet WebAmp</div>
+            <h2>WebAmp installs the <em>real</em> amplifier-core kernel &mdash; it doesn't reimplement it.</h2>
+            <p class="body">A sibling proof-of-concept that runs Amplifier entirely in the browser via WebGPU and Pyodide, installing the genuine amplifier-core 1.0.0 wheel with micropip.</p>
+            <p class="handoff">So what runs in-browser is the actual kernel &mdash; setting up how inference stays local.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="num">1.0.0</div>
+                    <div class="lbl">real amplifier-core wheel, installed via micropip in Pyodide</div>
+                </div>
+                <div class="stat">
+                    <div class="num">80&thinsp;KB</div>
+                    <div class="lbl">amplifier_core wheel (80,172 bytes)</div>
+                </div>
+            </div>
+            <ul class="rules" style="margin-top: 16px;">
+                <li>The browser shim imports the same interfaces: <strong>Provider, ContextManager, HookRegistry, events</strong> from <strong>amplifier_core</strong>.</li>
             </ul>
-            <p><strong>Repositories:</strong> amplifier-core (kernel), amplifier-foundation (webruntime-developer agent), webllm bundle (browser LLM provider)</p>
-            <p><strong>Model VRAM requirements:</strong> From WebLLM model catalog documentation. Actual VRAM usage may vary by quantization and browser.</p>
-            <p><strong>Primary contributors:</strong> Not determined &mdash; research did not extract individual contributor attribution from git history for this deck. The browser runtime spans multiple repos and contributors.</p>
-            <p><strong>Gaps:</strong> No independent VRAM benchmarks were run. Model parameter counts are from published model cards. Exact initialization line count (~6 lines) is from the AmplifierBrowser facade API surface, not a formal LOC metric. Individual contributor commit shares were not analyzed.</p>
         </div>
     </div>
-</div>
 
-<!-- Navigation -->
-<div class="nav" id="nav"></div>
-<div class="slide-counter" id="counter"></div>
-<a href="index.html" class="more-stories">More Amplifier Stories</a>
+    <!-- ==== slide for beat 5 ==== -->
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Where inference runs</div>
+            <h2>The LLM runs on <em>your</em> GPU &mdash; no API key anywhere in the client.</h2>
+            <p class="body">Inference happens locally via WebLLM on WebGPU. A grep for api-key, authorization, bearer, openai, and anthropic across the client code returned no matches.</p>
+            <p class="handoff">The file owes nothing to a remote service. Now: how do four languages fit in one file?</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="c"># client-side model, on your GPU</span>
+import <span class="k">'https://esm.run/@mlc-ai/web-llm'</span>
+CreateMLCEngine(<span class="k">'Qwen3-4B-q4f16_1-MLC'</span>, ...)
 
-<script>
-    const slides = document.querySelectorAll('.slide');
-    let currentSlide = 0;
+<span class="c"># grep api-key|authorization|bearer</span>
+<span class="c"># |openai|anthropic  ->  no matches</span></div>
+        </div>
+    </div>
 
-    function showSlide(n) {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (n + slides.length) % slides.length;
-        slides[currentSlide].classList.add('active');
-        slides[currentSlide].scrollTop = 0;
-        updateNav();
-    }
+    <!-- ==== slide for beat 6 ==== -->
+    <div class="slide split">
+        <!-- beat 6: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Four languages, one file</div>
+            <h2>The Go document_builder is compiled to WASM and embedded in the HTML.</h2>
+            <p class="body">document_builder is the first non-Python, non-Rust module in the Amplifier ecosystem. Its WASM build is embedded so all four languages ship inside the one file.</p>
+            <p class="handoff">Now open it &mdash; and watch everything boot.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="num">1st</div>
+                    <div class="lbl">polyglot (Go) Amplifier module</div>
+                </div>
+                <div class="stat">
+                    <div class="num">3.2&thinsp;MB</div>
+                    <div class="lbl">Go WASM binary embedded (3,225,021 bytes)</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    function updateNav() {
-        const nav = document.getElementById('nav');
-        const counter = document.getElementById('counter');
-        nav.innerHTML = '';
-        slides.forEach((_, i) => {
-            const dot = document.createElement('div');
-            dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-            dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
-            nav.appendChild(dot);
-        });
-        counter.textContent = `${currentSlide + 1} / ${slides.length}`;
-    }
+    <!-- ==== slide for beat 7 ==== -->
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The payoff</div>
+            <h2>Open the file and five runtimes boot in order &mdash; verified.</h2>
+            <p class="body">A single 4.5MB HTML file boots its runtimes and answers on your GPU, backed by 168 test functions and a 49-test end-to-end gate on the assembled HTML.</p>
+            <p class="handoff">That turns "toy demo" doubt into proven quality &mdash; with one honest caveat.</p>
+        </div>
+        <div class="col-aside">
+            <ol class="steps">
+                <li><span class="step-n">1</span><span class="step-t">Rust WASM<small>agent kernel</small></span></li>
+                <li><span class="step-n">2</span><span class="step-t">Go WASM<small>document_builder</small></span></li>
+                <li><span class="step-n">3</span><span class="step-t">TypeScript<small>tools</small></span></li>
+                <li><span class="step-n">4</span><span class="step-t">Pyodide<small>Python analyzer</small></span></li>
+                <li><span class="step-n">5</span><span class="step-t">WebLLM<small>local model</small></span></li>
+            </ol>
+        </div>
+    </div>
 
-    // Keyboard
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-        if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
-    });
+    <!-- ==== slide for beat 8 ==== -->
+    <div class="slide split">
+        <!-- beat 8: takeaway -->
+        <div class="col-main">
+            <div class="section-label">The honest edge</div>
+            <h2>First run still needs a local http server and a CDN model download.</h2>
+            <p class="body">"Email one file, double-click, fully offline" is the direction this code is driving toward &mdash; the proven trajectory of "AI as a document," not yet a literal file:// double-click.</p>
+            <p class="handoff">Every commit here was authored and tested with the Amplifier agent itself.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><strong>Today:</strong> served over http:// (localhost); first load downloads the model from a CDN.</li>
+                <li><strong>Aspiration:</strong> a file you open, fully offline &mdash; the direction the code moves toward.</li>
+                <li><strong>Built by the agent:</strong> all 22 polyglot + all 3 WebAmp commits carry Amplifier trailers.</li>
+            </ul>
+        </div>
+    </div>
 
-    // Click
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-        if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-        else showSlide(currentSlide - 1);
-    });
+    <!-- Sources & Methodology (audit trail, not a beat) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Sources &amp; Research Methodology</h2>
+        <div class="sources-body">
+            <p><strong>Data as of:</strong> February 19&ndash;20, 2026 &nbsp;&middot;&nbsp; <strong>Feature status:</strong> Working demos / proofs of concept (not shipped products)</p>
+            <p><strong>Repos:</strong> bkrabach/amplifier-polyglot-demo, bkrabach/amplifier-app-webamp, bkrabach/amplifier-module-tool-document-builder-go; kernel: amplifier-core</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>gh repo view bkrabach/amplifier-polyglot-demo --json description</code> &mdash; "Four-language AI agent in a single HTML file"</li>
+                <li><code>ls -la html/amplifier-polyglot-agent.html</code> &mdash; 4,680,357 bytes (4.5MB)</li>
+                <li><code>grep -in 'webllm|Qwen3' bridge.js</code> and <code>grep -in 'api.key|authorization|bearer|openai|anthropic'</code> &mdash; no key matches; model Qwen3-4B-q4f16_1-MLC</li>
+                <li><code>ls -la public/wheels/</code> + <code>grep 'micropip' src/main.js</code> &mdash; amplifier_core-1.0.0-py3-none-any.whl (80,172 bytes)</li>
+                <li><code>ls -la html/go_wasm/document_builder.wasm</code> &mdash; 3,225,021 bytes (~3.2MB)</li>
+                <li><code>grep -rn 'def test_' html/tests/ | wc -l</code> &mdash; 168; commit c8cc5dc &mdash; 49 E2E / 134 total tests pass</li>
+                <li><code>git log --format='%b' | grep -c 'Amplifier'</code> &mdash; all 22 polyglot + all 3 WebAmp commits carry Amplifier trailers</li>
+            </ul>
+            <p><strong>Gaps / honesty:</strong> Both repos currently require serving over http:// (localhost), not file://; "fully offline" only works after a first-run CDN model download (~multi-GB). amplifier-core's "~2,600-line kernel" is the README's documented figure, not a re-measured count. Requires Chrome/Edge 113+ (WebGPU).</p>
+            <p><strong>Primary contributors:</strong> Brian Krabach (brkrabac@microsoft.com) &mdash; sole human author of all three repos; every commit co-authored/generated by the Amplifier agent.</p>
+        </div>
+    </div>
 
-    // Touch/swipe
-    let touchStartX = 0;
-    let touchEndX = 0;
-    const SWIPE_THRESHOLD = 50;
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
 
-    document.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
+    <!-- More stories link - REQUIRED -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
-    document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > SWIPE_THRESHOLD) {
-            if (diff > 0) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
+
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
+            updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
-    }, { passive: true });
 
-    updateNav();
-</script>
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
+        });
+
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
 </body>
 </html>

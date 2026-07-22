@@ -1,792 +1,509 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>amplifier-recipe-dashboard — See what your recipes are doing</title>
-<script>document.documentElement.classList.add('js')</script>
-<style>
-:root {
-    --accent: #00D4AA;
-    --accent-dim: rgba(0, 212, 170, 0.15);
-    --accent-glow: rgba(0, 212, 170, 0.3);
-    --surface-1: rgba(255,255,255,0.06);
-    --surface-2: rgba(255,255,255,0.10);
-    --surface-3: rgba(255,255,255,0.15);
-    --border-subtle: rgba(255,255,255,0.12);
-    --border-visible: rgba(255,255,255,0.20);
-    --text-primary: #ffffff;
-    --text-secondary: rgba(255,255,255,0.7);
-    --text-tertiary: rgba(255,255,255,0.5);
-    --font-headline: clamp(36px, 8vw, 72px);
-    --font-medium-headline: clamp(24px, 5vw, 48px);
-    --font-subhead: clamp(16px, 3vw, 28px);
-    --font-big-number: clamp(60px, 20vw, 180px);
-    --padding-slide: clamp(20px, 5vw, 80px);
-    --gap-grid: clamp(16px, 3vw, 40px);
-    --fs-body: clamp(14px, 2vw, 18px);
-    --fs-small: clamp(12px, 1.5vw, 14px);
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>It's Waiting For You</title>
+    <script>document.documentElement.classList.add('js')</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0e14;
+            --bg2: #111823;
+            --fg: #f2f5f9;
+            --muted: #9aa7b8;
+            --accent: #f5a623;
+            --accent2: #4aa8ff;
+            --line: rgba(255,255,255,0.10);
+            --card: rgba(255,255,255,0.05);
+        }
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+        .slide {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: transform 0.5s ease, opacity 0.5s ease;
+            background: radial-gradient(120% 90% at 15% 10%, var(--bg2) 0%, var(--bg) 60%);
+        }
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-    background: #000;
-    color: #fff;
-    overflow: hidden;
-    overscroll-behavior: none;
-}
+        .slide.active { display: flex; }
 
-.deck { position: relative; width: 100%; height: 100vh; height: 100dvh; }
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
 
-.slide {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    height: 100vh;
-    height: 100dvh;
-    padding: var(--padding-slide);
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.5s ease;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; max-height: 100dvh; overflow-y: auto; }
+        html.js .slide.active { display: flex; }
 
-.slide > * { flex-shrink: 0; }
-@supports (overflow: overlay) {
-    .slide { overflow-y: overlay; }
-}
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
 
-.slide.active {
-    opacity: 1;
-    pointer-events: auto;
-}
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); max-width: 26ch; }
 
-/* Hero glow fix — prevent glow divs from taking layout space */
-.slide > *:not(.hero-glow) { position: relative; z-index: 1; }
-.slide > .hero-glow { position: absolute; z-index: 0; }
+        .section-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: clamp(14px, 2.5vw, 22px);
+        }
+        .body { color: var(--muted); margin-top: clamp(16px, 2.6vw, 24px); max-width: 40ch; }
+        .handoff { color: var(--accent2); margin-top: clamp(18px, 3vw, 26px); max-width: 42ch; font-weight: 500; }
+        h1 + .body, h2 + .body { margin-top: clamp(16px, 2.6vw, 24px); }
 
-.section-label {
-    font-size: clamp(12px, 1.5vw, 14px);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--accent);
-    margin-bottom: clamp(8px, 2vw, 16px);
-}
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-.headline {
-    font-size: var(--font-headline);
-    font-weight: 700;
-    letter-spacing: clamp(-1px, -0.03em, -2px);
-    line-height: 1.1;
-    color: var(--text-primary);
-}
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: clamp(14px, 2vw, 22px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px, 2.4vw, 26px);
+        }
+        .stat-value {
+            font-size: clamp(30px, 5vw, 52px);
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+        .stat-label {
+            font-size: clamp(12px, 1.5vw, 15px);
+            color: var(--muted);
+            margin-top: 8px;
+        }
 
-.subhead {
-    font-size: var(--font-subhead);
-    color: var(--text-secondary);
-    line-height: 1.4;
-    margin-top: clamp(12px, 2vw, 24px);
-    max-width: 42em;
-}
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(12px, 2vw, 18px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 20px) clamp(16px, 2.4vw, 24px);
+            color: var(--fg);
+        }
+        .steps li strong { color: var(--accent); display: block; margin-bottom: 4px; font-size: clamp(13px, 1.6vw, 15px); text-transform: uppercase; letter-spacing: 0.08em; }
 
-.medium-headline {
-    font-size: var(--font-medium-headline);
-    font-weight: 600;
-    letter-spacing: -0.5px;
-    line-height: 1.2;
-    color: var(--text-primary);
-    margin-bottom: clamp(16px, 3vw, 32px);
-}
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(16px, 2.2vw, 22px);
+            position: relative;
+            padding-left: clamp(38px, 5vw, 48px);
+        }
+        .rules li::before {
+            content: "\2713";
+            position: absolute;
+            left: clamp(14px, 2vw, 18px);
+            color: var(--accent2);
+            font-weight: 800;
+        }
 
-.card {
-    background: var(--surface-1);
-    border: 1px solid var(--border-subtle);
-    border-radius: clamp(12px, 2vw, 16px);
-    padding: clamp(16px, 3vw, 28px);
-}
+        .states {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+            gap: clamp(8px, 1.4vw, 12px);
+        }
+        .state-chip {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: clamp(8px, 1.4vw, 12px) clamp(10px, 1.6vw, 14px);
+            text-align: center;
+            font-size: clamp(12px, 1.6vw, 16px);
+            font-weight: 600;
+        }
+        .state-chip.hot { border-color: var(--accent); color: var(--accent); }
 
-.card h3 { color: var(--text-primary); font-size: clamp(16px, 2.5vw, 22px); font-weight: 600; }
-.card p { color: var(--text-secondary); font-size: var(--fs-body); line-height: 1.5; margin-top: 8px; }
+        .code-block {
+            background: #05080d;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(16px, 2.4vw, 24px);
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.6vw, 16px);
+            line-height: 1.6;
+            color: #c7f5d0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-x: auto;
+        }
+        .code-comment { color: #6c7a8c; }
 
-.card-accent {
-    border-left: 3px solid var(--accent);
-}
+        .banner {
+            background: linear-gradient(90deg, rgba(245,166,35,0.18), rgba(245,166,35,0.04));
+            border: 1px solid var(--accent);
+            border-radius: 14px;
+            padding: clamp(18px, 2.6vw, 28px);
+            font-size: clamp(16px, 2.2vw, 22px);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .banner span { display: block; color: var(--muted); font-weight: 400; font-size: clamp(13px, 1.6vw, 15px); margin-top: 8px; }
 
-.grid-2 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-    gap: var(--gap-grid);
-}
+        .sources-body { color: var(--muted); line-height: 1.6; max-width: 60ch; }
+        .sources-body p { margin-top: 10px; }
+        .sources-body ul { margin: 10px 0 0 20px; }
+        .sources-body li { margin-top: 6px; }
+        .sources-body code { background: #05080d; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; color: #c7f5d0; }
+        .badge {
+            display: inline-block;
+            background: rgba(74,168,255,0.14);
+            border: 1px solid var(--accent2);
+            color: var(--accent2);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: clamp(11px, 1.4vw, 13px);
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
 
-.grid-3 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-    gap: var(--gap-grid);
-}
+        .nav { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100; }
+        .nav-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.22); cursor: pointer; transition: background 0.2s, transform 0.2s; }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter { position: fixed; bottom: 22px; right: 24px; font-size: clamp(11px, 1.5vw, 13px); color: var(--muted); z-index: 100; }
 
-.grid-4 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-    gap: clamp(12px, 2vw, 24px);
-}
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
 
-.code-block {
-    background: var(--surface-1);
-    border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
-    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-    font-size: clamp(13px, 2vw, 16px);
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-x: auto;
-}
-
-.code-green { color: #30D158; }
-.code-gray { color: rgba(255,255,255,0.4); }
-.code-blue { color: #64D2FF; }
-.code-yellow { color: #FFD60A; }
-.code-accent { color: var(--accent); }
-.code-purple { color: #BF5AF2; }
-
-.badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: clamp(11px, 1.5vw, 13px);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.badge-active {
-    background: rgba(0, 212, 170, 0.15);
-    color: var(--accent);
-    border: 1px solid rgba(0, 212, 170, 0.3);
-}
-
-.status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: clamp(11px, 1.5vw, 13px);
-    font-weight: 500;
-}
-
-.status-pill .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-}
-
-.pill-running { background: rgba(48, 209, 88, 0.12); color: #30D158; }
-.pill-running .dot { background: #30D158; animation: pulse-dot 2s ease-in-out infinite; }
-.pill-waiting { background: rgba(255, 214, 10, 0.12); color: #FFD60A; }
-.pill-waiting .dot { background: #FFD60A; }
-.pill-stalled { background: rgba(255, 159, 10, 0.12); color: #FF9F0A; }
-.pill-stalled .dot { background: #FF9F0A; }
-.pill-done { background: rgba(255, 255, 255, 0.08); color: var(--text-tertiary); }
-.pill-done .dot { background: var(--text-tertiary); }
-
-@keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.8); }
-}
-
-/* Feature list */
-.feature-list {
-    display: flex;
-    flex-direction: column;
-    gap: clamp(10px, 2vw, 16px);
-    max-width: 800px;
-}
-
-.feature-item {
-    display: flex;
-    align-items: flex-start;
-    gap: clamp(12px, 2vw, 16px);
-}
-
-.feature-icon {
-    font-size: clamp(20px, 4vw, 32px);
-    flex-shrink: 0;
-    line-height: 1;
-    margin-top: 2px;
-}
-
-.feature-text h3 {
-    font-size: clamp(16px, 2.5vw, 22px);
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.feature-text p {
-    font-size: var(--fs-body);
-    color: var(--text-secondary);
-    line-height: 1.5;
-    margin-top: 4px;
-}
-
-/* Mockup browser chrome */
-.browser-chrome {
-    background: var(--surface-1);
-    border: 1px solid var(--border-subtle);
-    border-radius: clamp(10px, 2vw, 14px);
-    overflow: hidden;
-    max-width: 900px;
-}
-
-.browser-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.browser-dots {
-    display: flex;
-    gap: 6px;
-}
-
-.browser-dots span {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-}
-
-.browser-url {
-    flex: 1;
-    background: rgba(0,0,0,0.3);
-    border-radius: 6px;
-    padding: 5px 12px;
-    font-size: clamp(11px, 1.4vw, 13px);
-    font-family: 'SF Mono', monospace;
-    color: var(--text-tertiary);
-}
-
-.browser-body {
-    padding: clamp(16px, 3vw, 28px);
-}
-
-/* Approval banner mockup */
-.approval-banner {
-    background: rgba(255, 214, 10, 0.08);
-    border: 1px solid rgba(255, 214, 10, 0.25);
-    border-radius: 10px;
-    padding: clamp(12px, 2vw, 18px) clamp(16px, 3vw, 24px);
-    display: flex;
-    align-items: center;
-    gap: clamp(10px, 2vw, 16px);
-}
-
-.approval-banner .icon {
-    font-size: clamp(24px, 4vw, 36px);
-    flex-shrink: 0;
-}
-
-.approval-banner .text {
-    flex: 1;
-}
-
-.approval-banner .text strong {
-    color: #FFD60A;
-    font-size: clamp(14px, 2vw, 18px);
-    display: block;
-}
-
-.approval-banner .text span {
-    color: var(--text-secondary);
-    font-size: var(--fs-body);
-}
-
-/* Navigation */
-.nav-dots {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    z-index: 100;
-}
-
-.nav-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.25);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: none;
-    padding: 0;
-}
-
-.nav-dot.active {
-    background: var(--accent);
-    transform: scale(1.3);
-}
-
-.slide-counter {
-    position: fixed;
-    bottom: 20px;
-    right: 30px;
-    font-size: 13px;
-    color: var(--text-tertiary);
-    font-family: 'SF Mono', monospace;
-    z-index: 100;
-}
-
-.click-left, .click-right {
-    position: fixed;
-    top: 0;
-    bottom: 60px;
-    z-index: 50;
-    cursor: pointer;
-}
-.click-left { left: 0; width: 30%; }
-.click-right { right: 0; width: 70%; }
-
-.hero-glow {
-    width: clamp(300px, 60vw, 600px);
-    height: clamp(300px, 60vw, 600px);
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(0, 212, 170, 0.08) 0%, transparent 70%);
-    pointer-events: none;
-}
-
-/* More Amplifier Stories link */
-.more-stories {
-    position: fixed;
-    top: 16px;
-    right: 24px;
-    font-size: clamp(10px, 1.3vw, 12px);
-    color: rgba(255,255,255,0.28);
-    text-decoration: none;
-    z-index: 300;
-    transition: color 0.2s;
-}
-.more-stories:hover { color: rgba(255,255,255,0.5); }
-
-/* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
-html:not(.js) body { overflow: auto; }
-html:not(.js) .deck { height: auto; }
-html:not(.js) .slide {
-    position: relative;
-    height: auto;
-    min-height: 100vh;
-    min-height: 100dvh;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-}
-html.js body { overflow: hidden; }
-</style>
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+    </style>
 </head>
 <body>
 <!--
-  NARRATIVE SPINE (built from this deck's existing content; no fresh research)
-
-  ABT:
-    AND Amplifier recipes run long, multi-step jobs to do real work;
-    BUT once you launch one you are blind — is it running, which step, did it
-        stall, is it waiting for you? — so you fall back to the terminal and
-        scroll logs;
-    THEREFORE a local, read-only dashboard opens in one command and shows every
-        recipe session at a glance, making "it's waiting for you" unmissable —
-        with no keys, no LLM calls, and nothing leaving your machine.
-
-  Payoff (named up front): "One command opens a browser that shows every recipe —
-    running, waiting, stalled, done — reading only your local session files."
-
-  Beats (proof-first; payoff lands at beat 3 of 8, before the midpoint):
-    1. proof     — the discovery view: 24 sessions across projects, live statuses.  advances: shows the AND+solution is real.
-    2. tension   — recipes run for hours and you are blind; back to the terminal.  advances: establishes the BUT.
-    3. payoff    — one command, no keys/LLM, reads local session files.  advances: lands the THEREFORE.
-    4. mechanism — click into a running recipe: live step progress, 10s refresh (one claim).  advances: HOW you see "now".
-    5. mechanism — raw DOT output becomes an interactive in-browser diagram (one claim).  advances: HOW output is legible.
-    6. mechanism — finished recipes stay readable via outcome tabs + task reports (one claim).  advances: HOW past runs are understood.
-    7. turn      — staged recipes pause for approval; the dashboard makes it unmissable.  advances: the human-in-the-loop payoff.
-    8. takeaway  — try it: one command, nothing leaves your machine.  advances: what to keep + CTA.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end.
-    Slides = 8 beats + 1 = 9.
+SPINE
+ABT: AND Amplifier recipes are long, multi-step jobs that checkpoint every run to state.json; BUT once you launch one you go blind (running, stalled, or stuck on an approval) with nothing but scrolling terminal logs to tell you; THEREFORE the recipe dashboard reads those same files read-only and turns "it's waiting for you" into an unmissable, first-class status -- no keys, no LLM, nothing leaving your machine.
+Payoff: "Waiting for you" becomes a first-class status and filter tab with an approval banner -- a stuck recipe is now impossible to miss, surfaced entirely from local files.
+Beats:
+  1. frame     -- Launch a recipe and you go blind; the dashboard is the one command to see every session at a glance.  advances: orients the audience -- names the topic and the pain (blindness after launch) that sets up the whole AND/BUT.
+  2. proof     -- It's real and running: samueljklee/amplifier-recipe-dashboard, ~6,689 lines, 35 passing tests, one author.  advances: establishes credibility fast so the rest is trusted -- evidence within the first three beats.
+  3. setup     -- Every recipe run already checkpoints itself to state.json with completed_steps and pending_approval_stage.  advances: introduces the state.json artifact the mechanism leans on -- lands the AND (the data exists).
+  4. tension   -- But that state is buried on disk; you scroll terminal logs to guess running/stalled/waiting.  advances: lands the BUT -- the data exists yet the operator can't see it.
+  5. mechanism -- The dashboard reads those same state.json files read-only -- no keys, no LLM -- never writing your session dirs.  advances: shows HOW the fix works and why it's safe/local -- bridge from BUT to THEREFORE.
+  6. mechanism -- It classifies every session into 7 states, with multi-signal freshness so a busy run never looks idle.  advances: second half of HOW -- raw files become trustworthy status -- setting up the unmissable "waiting".
+  7. payoff    -- "Waiting for you" becomes a first-class status and filter tab with an approval banner.  advances: lands the THEREFORE as climax -- the blindness of the BUT resolved into an unmissable signal.
+  8. takeaway  -- One command opens the browser on 127.0.0.1 -- read-only visibility, nothing leaving your machine.  advances: what the audience keeps -- the local, one-command payoff generalized.
 -->
 
-<div class="deck" id="deck">
+    <!-- Title cover (no beat comment; only slide with active) -->
+    <div class="slide title-slide active center">
+        <h1>It's Waiting For You</h1>
+        <p class="subtitle">A local, read-only dashboard for every Amplifier recipe</p>
+    </div>
 
-<!-- beat 1: proof -->
-<div class="slide active" id="slide-0">
-    <div class="hero-glow" style="top: -20%; left: -10%;"></div>
-    <div class="section-label">See It Working</div>
-    <h2 class="medium-headline">One command surfaces every recipe session across every project</h2>
-    <div class="browser-chrome">
-        <div class="browser-toolbar">
-            <div class="browser-dots">
-                <span style="background: #FF5F57;"></span>
-                <span style="background: #FEBC2E;"></span>
-                <span style="background: #28C840;"></span>
-            </div>
-            <div class="browser-url">localhost:8181</div>
+    <div class="slide center">
+        <!-- beat 1: frame -->
+        <div class="section-label">The Amplifier Recipe Dashboard</div>
+        <h1>Launch an Amplifier recipe, and you go blind</h1>
+        <p class="body">Recipes are long, multi-step jobs. Once one is running, you can't easily tell if it's progressing, stuck, or quietly waiting on you. The recipe dashboard is the one command that shows every session at a glance.</p>
+        <p class="handoff">First, is it real? &rarr;</p>
+    </div>
+
+    <!-- beat 2: proof -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">Proof</div>
+            <h2>It's real, and it's running</h2>
+            <p class="body">A working web dashboard for monitoring Amplifier recipe executions &mdash; built by a single author between 2026-04-03 and 2026-05-05.</p>
+            <p class="handoff">So where does its data come from? &rarr;</p>
         </div>
-        <div class="browser-body">
-            <div style="display: flex; gap: 4px; margin-bottom: clamp(12px, 2vw, 20px); flex-wrap: wrap;">
-                <span style="padding: 5px 14px; border-radius: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 600; background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-glow);">All <span style="opacity: 0.7; margin-left: 4px;">24</span></span>
-                <span style="padding: 5px 14px; border-radius: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 500; background: rgba(48, 209, 88, 0.08); color: #30D158;">Active <span style="opacity: 0.7; margin-left: 4px;">3</span></span>
-                <span style="padding: 5px 14px; border-radius: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 500; background: rgba(255, 214, 10, 0.08); color: #FFD60A;">Waiting <span style="opacity: 0.7; margin-left: 4px;">1</span></span>
-                <span style="padding: 5px 14px; border-radius: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 500; background: rgba(255, 159, 10, 0.08); color: #FF9F0A;">Stalled <span style="opacity: 0.7; margin-left: 4px;">2</span></span>
-                <span style="padding: 5px 14px; border-radius: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 500; background: rgba(255, 255, 255, 0.05); color: var(--text-tertiary);">Done <span style="opacity: 0.7; margin-left: 4px;">18</span></span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(48, 209, 88, 0.05); border-radius: 8px; border: 1px solid rgba(48, 209, 88, 0.15);">
-                    <span class="status-pill pill-running" style="font-size: 14px;"><span class="dot"></span> running</span>
-                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-primary); font-weight: 500; flex: 1;">code-review &mdash; teamkb-workspace</span>
-                    <span style="font-size: clamp(11px, 1.4vw, 13px); color: var(--text-tertiary);">Step 4/7 &middot; 12m ago</span>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-value">~6,689</div>
+                    <div class="stat-label">lines across package, frontend, templates &amp; tests</div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255, 214, 10, 0.04); border-radius: 8px; border: 1px solid rgba(255, 214, 10, 0.12);">
-                    <span class="status-pill pill-waiting" style="font-size: 14px;"><span class="dot"></span> waiting</span>
-                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-primary); font-weight: 500; flex: 1;">refactor-phase-2 &mdash; amplifier-core</span>
-                    <span style="font-size: clamp(11px, 1.4vw, 13px); color: #FFD60A;">Needs approval</span>
+                <div class="stat">
+                    <div class="stat-value">35</div>
+                    <div class="stat-label">passing tests (pytest)</div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px solid var(--border-subtle);">
-                    <span class="status-pill pill-done" style="font-size: 14px;"><span class="dot"></span> done</span>
-                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-secondary); font-weight: 500; flex: 1;">generate-arch-diagram &mdash; made-support</span>
-                    <span style="font-size: clamp(11px, 1.4vw, 13px); color: var(--text-tertiary);">Completed 2h ago</span>
+                <div class="stat">
+                    <div class="stat-value">7</div>
+                    <div class="stat-label">commits on main, sole author Samuel Lee</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">1</div>
+                    <div class="stat-label">command to open it (uvx one-shot)</div>
                 </div>
             </div>
         </div>
     </div>
-    <p style="color: var(--text-secondary); font-size: var(--fs-body); margin-top: clamp(12px, 2vw, 20px);"><strong>amplifier-recipe-dashboard</strong> &mdash; filter by status, search by name, sort by time. This is the view you never had. Here&rsquo;s why it matters.</p>
-</div>
 
-<!-- beat 2: tension -->
-<div class="slide" id="slide-1">
-    <div class="section-label">The Problem</div>
-    <h2 class="headline" style="font-size: var(--font-medium-headline); max-width: 18em;">Recipes run for minutes to hours &mdash; and you have no idea what&rsquo;s happening</h2>
-    <p class="subhead" style="margin-bottom: clamp(24px, 4vw, 40px);">So you switch back to the terminal, scroll through logs, or just keep asking &ldquo;where is it at?&rdquo; Four questions you can never answer at a glance:</p>
-    <div style="display: flex; flex-direction: column; gap: 14px; max-width: 720px;">
-        <div style="display: flex; align-items: center; gap: 16px; font-size: clamp(16px, 2.4vw, 22px); color: var(--text-primary);"><span style="font-size: clamp(24px, 4vw, 34px);">🤷</span> Is it still running?</div>
-        <div style="display: flex; align-items: center; gap: 16px; font-size: clamp(16px, 2.4vw, 22px); color: var(--text-primary);"><span style="font-size: clamp(24px, 4vw, 34px);">📍</span> Which step is it on?</div>
-        <div style="display: flex; align-items: center; gap: 16px; font-size: clamp(16px, 2.4vw, 22px); color: var(--text-primary);"><span style="font-size: clamp(24px, 4vw, 34px);">🛑</span> Did it stall?</div>
-        <div style="display: flex; align-items: center; gap: 16px; font-size: clamp(16px, 2.4vw, 22px); color: var(--text-primary);"><span style="font-size: clamp(24px, 4vw, 34px);">✋</span> Is it waiting for me?</div>
-    </div>
-</div>
-
-<!-- beat 3: payoff -->
-<div class="slide" id="slide-2">
-    <div class="hero-glow" style="top: 10%; right: -20%;"></div>
-    <div class="section-label">The Payoff</div>
-    <h2 class="headline">One command. Opens a browser. That&rsquo;s the whole install.</h2>
-    <div class="code-block" style="max-width: 850px; margin-top: clamp(20px, 3vw, 32px); font-size: clamp(14px, 2.2vw, 18px);">
-<span class="code-accent">uvx</span> --from git+https://github.com/samueljklee/amplifier-recipe-dashboard \
-    <span class="code-green">amplifier-recipe-dashboard</span></div>
-    <div style="margin-top: clamp(20px, 3vw, 32px); display: flex; gap: clamp(16px, 3vw, 32px); flex-wrap: wrap;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="color: var(--accent); font-size: clamp(16px, 2vw, 20px);">✓</span>
-            <span style="color: var(--text-secondary); font-size: var(--fs-body);">No API keys</span>
+    <!-- beat 3: setup -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The Data Already Exists</div>
+            <h2>Every recipe run already checkpoints itself</h2>
+            <p class="body">The recipe engine (amplifier-bundle-recipes session.py) writes a <code>state.json</code> on each step &mdash; recording completed steps and any pending approval stage &mdash; at the exact path the dashboard reads.</p>
+            <p class="handoff">But that file is buried on disk. &rarr;</p>
         </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="color: var(--accent); font-size: clamp(16px, 2vw, 20px);">✓</span>
-            <span style="color: var(--text-secondary); font-size: var(--fs-body);">No LLM calls</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="color: var(--accent); font-size: clamp(16px, 2vw, 20px);">✓</span>
-            <span style="color: var(--text-secondary); font-size: var(--fs-body);">Just reads your local <code style="font-size: 0.9em; color: var(--text-primary);">~/.amplifier/</code> session files</span>
+        <div class="col-aside">
+            <ul class="steps">
+                <li><strong>Writes</strong>state.json under &lt;slug&gt;/recipe-sessions/&hellip;</li>
+                <li><strong>Records</strong>completed_steps for each finished step</li>
+                <li><strong>Flags</strong>pending_approval_stage when it needs you</li>
+            </ul>
         </div>
     </div>
-    <p class="subhead" style="max-width: 40em;">Nothing leaves your machine. The rest of this deck shows what that browser tab gives you.</p>
-</div>
 
-<!-- beat 4: mechanism -->
-<div class="slide" id="slide-3">
-    <div class="section-label">Live Progress</div>
-    <h2 class="medium-headline">Click into a running recipe and watch it work, step by step</h2>
-    <p class="subhead" style="margin-bottom: clamp(20px, 3vw, 32px);">Every step, what it produced, and what variables resolved to &mdash; auto-refreshed every 10 seconds without losing your scroll position.</p>
-    <div class="browser-chrome" style="max-width: 800px;">
-        <div class="browser-toolbar">
-            <div class="browser-dots">
-                <span style="background: #FF5F57;"></span>
-                <span style="background: #FEBC2E;"></span>
-                <span style="background: #28C840;"></span>
-            </div>
-            <div class="browser-url">localhost:8181/#/session/a79d93a5</div>
+    <!-- beat 4: tension -->
+    <div class="slide center">
+        <div class="section-label">The Blindness</div>
+        <h1>The state exists &mdash; but it's buried on disk</h1>
+        <p class="body">A launched recipe leaves you scrolling terminal logs to guess whether a run is still running, has stalled, or is stuck on an approval. The checkpoint data is right there, and you still can't see it.</p>
+        <p class="handoff">So the dashboard reads those same files. &rarr;</p>
+    </div>
+
+    <!-- beat 5: mechanism -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">How It Works &middot; Read-Only</div>
+            <h2>It reads those same files, and never writes yours</h2>
+            <p class="body">The dashboard reads state.json read-only (read_text / json.loads / yaml.safe_load). No LLM, no API keys, no provider &mdash; the only outbound call is an optional version/upgrade check.</p>
+            <p class="handoff">From those files, it builds status. &rarr;</p>
         </div>
-        <div class="browser-body" style="padding: clamp(12px, 2vw, 20px);">
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(48, 209, 88, 0.06); border: 1px solid rgba(48, 209, 88, 0.12);">
-                    <span style="color: #30D158; font-size: clamp(14px, 2vw, 18px);">✓</span>
-                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-secondary);">1. planning</span>
-                    <span style="margin-left: auto; font-size: clamp(11px, 1.2vw, 12px); color: var(--text-tertiary);">3m 22s</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(48, 209, 88, 0.06); border: 1px solid rgba(48, 209, 88, 0.12);">
-                    <span style="color: #30D158; font-size: clamp(14px, 2vw, 18px);">✓</span>
-                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-secondary);">2. implementation</span>
-                    <span style="margin-left: auto; font-size: clamp(11px, 1.2vw, 12px); color: var(--text-tertiary);">18m 47s</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(0, 212, 170, 0.08); border: 1px solid var(--accent-glow);">
-                    <span class="status-pill pill-running" style="font-size: 14px; padding: 2px 6px;"><span class="dot"></span></span>
-                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--accent); font-weight: 600;">3. code-review</span>
-                    <span style="margin-left: auto; font-size: clamp(11px, 1.2vw, 12px); color: var(--accent);">running &middot; 4m 12s</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; opacity: 0.5;">
-                    <span style="color: var(--text-tertiary); font-size: clamp(14px, 2vw, 18px);">○</span>
-                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-tertiary);">4. verification</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; opacity: 0.5;">
-                    <span style="color: var(--text-tertiary); font-size: clamp(14px, 2vw, 18px);">○</span>
-                    <span style="font-size: clamp(12px, 1.6vw, 14px); color: var(--text-tertiary);">5. completion</span>
-                </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>Reads only &mdash; never writes into your session dirs</li>
+                <li>No LLM, no API key, no provider needed</li>
+                <li>Binds to localhost (127.0.0.1) by default</li>
+                <li>Only network call: optional self-upgrade check</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- beat 6: mechanism -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">How It Works &middot; Classification</div>
+            <h2>Raw files become 7 trustworthy states</h2>
+            <p class="body">It classifies every session into running, waiting, idle, done, stalled, cancelled, or failed. Multi-signal freshness &mdash; max(state mtime, agent activity) &mdash; keeps a busy run from looking idle (added in PR&nbsp;#5).</p>
+            <p class="handoff">And one of those states is for you. &rarr;</p>
+        </div>
+        <div class="col-aside">
+            <div class="states">
+                <div class="state-chip">running</div>
+                <div class="state-chip hot">waiting</div>
+                <div class="state-chip">idle</div>
+                <div class="state-chip">done</div>
+                <div class="state-chip">stalled</div>
+                <div class="state-chip">cancelled</div>
+                <div class="state-chip">failed</div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- beat 5: mechanism -->
-<div class="slide" id="slide-4">
-    <div class="section-label">Graph Visualization</div>
-    <h2 class="medium-headline">Raw DOT output becomes an interactive diagram &mdash; in your browser, no install</h2>
-    <div class="grid-2" style="max-width: 1000px;">
-        <div>
-            <div style="color: var(--text-tertiary); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">What the recipe outputs</div>
-            <div class="code-block" style="font-size: clamp(11px, 1.4vw, 13px); height: 220px; overflow: hidden;">
-<span class="code-gray">// raw DOT in step output</span>
-digraph architecture {
-  graph [ rankdir = TB ];
-  node [ shape = box ];
-  <span class="code-accent">"src/main.py"</span> -> <span class="code-blue">"src/router.py"</span>;
-  <span class="code-blue">"src/router.py"</span> -> <span class="code-yellow">"src/handlers/"</span>;
-  <span class="code-yellow">"src/handlers/"</span> -> <span class="code-green">"src/models/"</span>;
-  <span class="code-gray">... 200+ lines ...</span></div>
+    <!-- beat 7: payoff -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>"Waiting for you" is now impossible to miss</h2>
+            <p class="body">A pending approval maps to a first-class <code>waiting</code> status. It's a filter tab in the discovery view and an approval banner in the detail view &mdash; the stuck recipe surfaces itself.</p>
+            <p class="handoff">And all of it comes from local files. &rarr;</p>
         </div>
-        <div>
-            <div style="color: var(--accent); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">What you see in the dashboard</div>
-            <div style="background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: 12px; height: 220px; display: flex; flex-direction: column;">
-                <div style="display: flex; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); align-items: center;">
-                    <span style="background: var(--accent-dim); color: var(--accent); padding: 2px 8px; border-radius: 4px; font-size: 14px; font-weight: 600;">DOT</span>
-                    <span style="color: var(--text-tertiary); font-size: 14px; cursor: pointer;">Fit</span>
-                    <span style="color: var(--text-tertiary); font-size: 14px; cursor: pointer;">+</span>
-                    <span style="color: var(--text-tertiary); font-size: 14px; cursor: pointer;">&ndash;</span>
-                    <span style="color: var(--accent); font-size: 14px; margin-left: auto; cursor: pointer;">View Source</span>
-                </div>
-                <svg viewBox="0 0 300 160" style="flex: 1; padding: 8px;" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <marker id="arr" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
-                            <polygon points="0 0, 6 2, 0 4" fill="rgba(255,255,255,0.3)" />
-                        </marker>
-                    </defs>
-                    <rect x="110" y="5" width="80" height="22" rx="5" fill="rgba(0,212,170,0.2)" stroke="rgba(0,212,170,0.5)" stroke-width="1"/>
-                    <text x="150" y="20" text-anchor="middle" fill="var(--accent)" font-size="9" font-family="monospace">main.py</text>
-                    <rect x="110" y="45" width="80" height="22" rx="5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                    <text x="150" y="60" text-anchor="middle" fill="var(--text-secondary)" font-size="9" font-family="monospace">router.py</text>
-                    <rect x="30" y="90" width="70" height="22" rx="5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                    <text x="65" y="105" text-anchor="middle" fill="var(--text-secondary)" font-size="8" font-family="monospace">handlers/</text>
-                    <rect x="115" y="90" width="70" height="22" rx="5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                    <text x="150" y="105" text-anchor="middle" fill="var(--text-secondary)" font-size="8" font-family="monospace">models/</text>
-                    <rect x="200" y="90" width="70" height="22" rx="5" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                    <text x="235" y="105" text-anchor="middle" fill="var(--text-secondary)" font-size="8" font-family="monospace">utils/</text>
-                    <line x1="150" y1="27" x2="150" y2="45" stroke="rgba(255,255,255,0.2)" stroke-width="1" marker-end="url(#arr)"/>
-                    <line x1="130" y1="67" x2="75" y2="90" stroke="rgba(255,255,255,0.2)" stroke-width="1" marker-end="url(#arr)"/>
-                    <line x1="150" y1="67" x2="150" y2="90" stroke="rgba(255,255,255,0.2)" stroke-width="1" marker-end="url(#arr)"/>
-                    <line x1="170" y1="67" x2="225" y2="90" stroke="rgba(255,255,255,0.2)" stroke-width="1" marker-end="url(#arr)"/>
-                    <text x="150" y="140" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="8" font-family="sans-serif">scroll to zoom · drag to pan</text>
-                </svg>
+        <div class="col-aside">
+            <div class="banner">
+                Waiting for you
+                <span>A pending_approval_stage becomes status "waiting" &mdash; a discovery filter tab plus a detail-view approval banner.</span>
             </div>
         </div>
     </div>
-    <p style="color: var(--text-tertiary); font-size: var(--fs-small); margin-top: clamp(12px, 2vw, 20px);">Powered by Viz.js (Graphviz compiled to WASM). Runs entirely in your browser &mdash; no install, no server processing.</p>
-</div>
 
-<!-- beat 6: mechanism -->
-<div class="slide" id="slide-5">
-    <div class="section-label">Completed Recipes</div>
-    <h2 class="medium-headline">Finished recipes stay readable &mdash; not just a wall of terminal scroll-back</h2>
-    <p class="subhead" style="margin-bottom: clamp(20px, 3vw, 32px);">Read exactly what a recipe did: what was planned, implemented, and verified &mdash; organized, not dumped.</p>
-    <div class="grid-2" style="max-width: 900px;">
-        <div class="card card-accent">
-            <h3>Outcome Tabs</h3>
-            <div style="display: flex; gap: 4px; margin-top: 12px; margin-bottom: 12px; flex-wrap: wrap;">
-                <span style="padding: 4px 10px; border-radius: 6px; font-size: 14px; background: var(--accent-dim); color: var(--accent); font-weight: 600;">Summary</span>
-                <span style="padding: 4px 10px; border-radius: 6px; font-size: 14px; background: var(--surface-2); color: var(--text-secondary);">Review</span>
-                <span style="padding: 4px 10px; border-radius: 6px; font-size: 14px; background: var(--surface-2); color: var(--text-secondary);">Verification</span>
-                <span style="padding: 4px 10px; border-radius: 6px; font-size: 14px; background: var(--surface-2); color: var(--text-secondary);">Approval</span>
-            </div>
-            <p>Full rendered markdown for each report section. Only tabs with data appear.</p>
+    <!-- beat 8: takeaway -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The Takeaway</div>
+            <h2>One command. Local. Nothing leaves your machine.</h2>
+            <p class="body">One command opens the dashboard and auto-opens your browser on 127.0.0.1:8181 &mdash; read-only visibility into every recipe, with nothing about your recipes leaving the machine.</p>
+            <p class="handoff">See what your recipes are doing.</p>
         </div>
-        <div class="card card-accent">
-            <h3>Task Reports</h3>
-            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 12px; margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; gap: 8px; font-size: clamp(12px, 1.6vw, 14px);">
-                    <span style="color: #30D158;">✓</span>
-                    <span style="color: var(--text-secondary);">Task 1: Extract shared constants</span>
-                    <span style="color: var(--text-tertiary); font-size: 14px; margin-left: auto;">▸</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px; font-size: clamp(12px, 1.6vw, 14px);">
-                    <span style="color: #30D158;">✓</span>
-                    <span style="color: var(--text-secondary);">Task 2: Migrate CLI to Click</span>
-                    <span style="color: var(--text-tertiary); font-size: 14px; margin-left: auto;">▸</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px; font-size: clamp(12px, 1.6vw, 14px);">
-                    <span style="color: #30D158;">✓</span>
-                    <span style="color: var(--text-secondary);">Task 3: Add integration tests</span>
-                    <span style="color: var(--text-tertiary); font-size: 14px; margin-left: auto;">▸</span>
-                </div>
-            </div>
-            <p>Expand any task to see what it did, which files changed, and which tests were written.</p>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># one-shot, auto-opens the browser on 127.0.0.1:8181</span>
+uvx --from git+https://github.com/samueljklee/amplifier-recipe-dashboard \
+  amplifier-recipe-dashboard</div>
         </div>
     </div>
-</div>
 
-<!-- beat 7: turn -->
-<div class="slide" id="slide-6">
-    <div class="section-label">Approvals</div>
-    <h2 class="medium-headline">The real win: you know the instant a recipe is waiting on you</h2>
-    <p class="subhead" style="margin-bottom: clamp(24px, 4vw, 40px);">Staged recipes pause for human approval. The dashboard makes that unmissable &mdash; no more jobs silently stalled for 45 minutes.</p>
-    <div style="max-width: 700px;">
-        <div class="approval-banner" style="margin-bottom: clamp(16px, 3vw, 28px);">
-            <div class="icon">⏸️</div>
-            <div class="text">
-                <strong>Waiting for your approval</strong>
-                <span>Stage <code style="color: #FFD60A; font-size: 0.9em;">implementation</code> completed. Review the plan before continuing.</span>
-            </div>
-        </div>
-        <div class="card">
-            <h3>Approval Timeline</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
-                <div style="display: flex; align-items: center; gap: 10px; font-size: clamp(13px, 1.8vw, 15px);">
-                    <span style="color: #30D158; font-size: 14px;">●</span>
-                    <span style="color: var(--text-secondary);">planning</span>
-                    <span style="color: var(--text-tertiary); font-size: clamp(11px, 1.4vw, 13px); margin-left: auto;">approved &middot; 3:14 PM</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px; font-size: clamp(13px, 1.8vw, 15px);">
-                    <span style="color: #FFD60A; font-size: 14px;">●</span>
-                    <span style="color: #FFD60A; font-weight: 500;">implementation</span>
-                    <span style="color: #FFD60A; font-size: clamp(11px, 1.4vw, 13px); margin-left: auto;">waiting &middot; since 3:42 PM</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px; font-size: clamp(13px, 1.8vw, 15px); opacity: 0.5;">
-                    <span style="color: var(--text-tertiary); font-size: 14px;">○</span>
-                    <span style="color: var(--text-tertiary);">verification</span>
-                </div>
-            </div>
+    <!-- Sources & Methodology (no beat comment) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="sources-body">
+            <p><span class="badge">Feature status: Active</span></p>
+            <p><strong>Repository:</strong> samueljklee/amplifier-recipe-dashboard (verified via a fresh clone of the default branch; producer contract checked against local amplifier-bundle-recipes).</p>
+            <p><strong>Data as of:</strong> latest commit d61c0d5, 2026-05-05.</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>gh repo view samueljklee/amplifier-recipe-dashboard</code></li>
+                <li><code>gh pr list --repo samueljklee/amplifier-recipe-dashboard --state all --json number,title,mergedAt</code></li>
+                <li><code>git log --reverse --format='%h %ai %s'</code> &mdash; first commit c714bb1 (2026-04-03); latest d61c0d5 (2026-05-05)</li>
+                <li><code>git shortlog -sne --all ; git log --oneline | wc -l</code> &mdash; 7 commits on main, sole author</li>
+                <li><code>wc -l amplifier_recipe_dashboard/*.py static/* templates/* tests/*.py</code> &mdash; 6,689 total lines</li>
+                <li><code>grep -rn 'read_text|json.load|yaml.safe_load|.write|json.dump'</code> &mdash; reads only; no writes into session dirs</li>
+                <li><code>grep -rn 'urllib|openai|anthropic|api_key|litellm'</code> &mdash; no LLM/keys; only optional upgrade check (cli.py urllib)</li>
+                <li><code>uv run ... pytest -q</code> &mdash; 35 passed, 1 warning</li>
+            </ul>
+            <p><strong>Gaps:</strong> README "Tech Stack" prose (Flask/Waitress/Click) is stale after the FastAPI migration (PR&nbsp;#4); current stack is FastAPI + uvicorn + argparse. PyPI availability of the upgrade package and live session paths were inspected in code, not exercised against live data.</p>
+            <p><strong>Primary contributor:</strong> Samuel Lee &mdash; sole author, 7 commits on main (all PRs #2&ndash;#7).</p>
         </div>
     </div>
-</div>
 
-<!-- beat 8: takeaway -->
-<div class="slide" id="slide-7">
-    <div class="hero-glow" style="top: -10%; left: 20%;"></div>
-    <div class="section-label">Try It</div>
-    <h2 class="headline">Stop flying blind. Run one command.</h2>
-    <div class="code-block" style="max-width: 850px; margin-top: clamp(20px, 3vw, 32px); margin-bottom: clamp(12px, 2vw, 20px); font-size: clamp(13px, 2vw, 17px);">
-<span class="code-gray"># Run it once (no install)</span>
-<span class="code-accent">uvx</span> --from git+https://github.com/samueljklee/amplifier-recipe-dashboard <span class="code-green">amplifier-recipe-dashboard</span>
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
 
-<span class="code-gray"># Or install it so it's always available</span>
-<span class="code-accent">uv tool install</span> git+https://github.com/samueljklee/amplifier-recipe-dashboard
-<span class="code-green">amplifier-recipe-dashboard</span></div>
-    <p class="subhead" style="max-width: 600px; margin-top: 0;">Opens at <code style="color: var(--accent); font-size: 0.9em;">localhost:8181</code>. Auto-refreshes every 10 seconds. Reads your local session files &mdash; nothing leaves your machine.</p>
-    <div style="margin-top: clamp(20px, 3vw, 32px); display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
-        <a href="https://github.com/samueljklee/amplifier-recipe-dashboard" target="_blank" style="color: var(--accent); font-size: var(--fs-body); text-decoration: none; border-bottom: 1px solid var(--accent);">GitHub &rarr;</a>
-        <span style="color: var(--text-tertiary); font-size: var(--fs-small);">Feedback welcome 🙏</span>
-    </div>
-</div>
+    <!-- More stories link - REQUIRED -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
-<!-- Sources & Methodology -->
-<div class="slide" id="slide-8">
-    <div class="section-label">Sources &amp; Methodology</div>
-    <h2 class="medium-headline">Sources &amp; Methodology</h2>
-    <div class="grid-2" style="max-width: 1000px;">
-        <div class="card">
-            <h3>What&rsquo;s verified</h3>
-            <div style="margin-top: 10px;">
-                <p>Tool: <code style="color: var(--accent); font-size: 0.9em;">github.com/samueljklee/amplifier-recipe-dashboard</code></p>
-                <p>Runs locally, opens at <code style="color: var(--accent); font-size: 0.9em;">localhost:8181</code>, auto-refreshes every 10 seconds.</p>
-                <p>Read-only: no API keys, no LLM calls &mdash; it only reads your local <code style="color: var(--accent); font-size: 0.9em;">~/.amplifier/</code> session files.</p>
-                <p>Graph rendering by Viz.js (Graphviz compiled to WASM), entirely in-browser.</p>
-            </div>
-        </div>
-        <div class="card">
-            <h3>Method &amp; scope</h3>
-            <div style="margin-top: 10px;">
-                <p>Screens shown are representative mockups of the shipping UI; session names, counts (24 / 3 / 1 / 2 / 18) and timings are illustrative samples, not measured benchmarks.</p>
-                <p>Capabilities (discovery view, live progress, DOT rendering, outcome tabs, staged approvals) reflect the tool&rsquo;s documented feature set.</p>
-                <p>No fresh research: content reused verbatim from the original deck for this tool.</p>
-            </div>
-        </div>
-    </div>
-</div>
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-</div><!-- end .deck -->
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
 
-<a href="index.html" class="more-stories">More Amplifier Stories</a>
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
 
-<!-- Navigation -->
-<div class="nav-dots" id="nav-dots"></div>
-<div class="slide-counter" id="slide-counter"></div>
-<div class="click-left" id="click-left"></div>
-<div class="click-right" id="click-right"></div>
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
 
-<script>
-(function() {
-    const slides = document.querySelectorAll('.slide');
-    const totalSlides = slides.length;
-    let currentSlide = 0;
+            void next.offsetWidth;
 
-    // Build nav dots
-    const dotsContainer = document.getElementById('nav-dots');
-    for (let i = 0; i < totalSlides; i++) {
-        const dot = document.createElement('button');
-        dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
-        dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
-        dot.addEventListener('click', () => goTo(i));
-        dotsContainer.appendChild(dot);
-    }
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
 
-    function goTo(n) {
-        if (n < 0 || n >= totalSlides) return;
-        slides[currentSlide].classList.remove('active');
-        dotsContainer.children[currentSlide].classList.remove('active');
-        currentSlide = n;
-        slides[currentSlide].classList.add('active');
-        dotsContainer.children[currentSlide].classList.add('active');
-        document.getElementById('slide-counter').textContent = (currentSlide + 1) + ' / ' + totalSlides;
-    }
+            current = n;
+            updateNav();
 
-    function next() { goTo(currentSlide + 1); }
-    function prev() { goTo(currentSlide - 1); }
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
+        }
 
-    // Keyboard navigation
-    document.addEventListener('keydown', e => {
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); next(); }
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
-        if (e.key === 'Home') { e.preventDefault(); goTo(0); }
-        if (e.key === 'End') { e.preventDefault(); goTo(totalSlides - 1); }
-    });
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
 
-    // Click navigation
-    document.getElementById('click-left').addEventListener('click', prev);
-    document.getElementById('click-right').addEventListener('click', next);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
+        });
 
-    // Touch navigation
-    let touchStartX = 0;
-    document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-    document.addEventListener('touchend', e => {
-        const diff = touchStartX - e.changedTouches[0].screenX;
-        if (Math.abs(diff) > 50) { diff > 0 ? next() : prev(); }
-    }, { passive: true });
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
+        });
 
-    // Initialize counter
-    document.getElementById('slide-counter').textContent = '1 / ' + totalSlides;
-})();
-</script>
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
 </body>
 </html>

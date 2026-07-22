@@ -3,433 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>amplifier-bundle-context-managed — Intelligent Context Management for Amplifier</title>
+    <title>Context That Never Forgets</title>
     <script>document.documentElement.classList.add('js')</script>
     <style>
-        :root {
-            /* Accent: Electric Cyan — intelligence, clarity */
-            --accent: #00D4FF;
-            --accent-dim: rgba(0, 212, 255, 0.15);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 32px);
-            --fs-subhead: clamp(16px, 3vw, 28px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 2vw, 15px);
-
-            /* Spacing */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
-
-            /* Threshold colors */
-            --green: #30D158;
-            --yellow: #FFD60A;
-            --orange: #FF9F0A;
-            --red: #FF453A;
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #a1a1aa;
+            --accent: #5e8bff;
+            --accent2: #7ee0c0;
+            --card: #16161f;
+            --border: #2a2a38;
         }
 
-        /* Slide system */
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
             padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: flex-start;
             overflow-y: auto;
             overflow-x: hidden;
+            transition: transform 0.5s ease, opacity 0.5s ease;
         }
+
         .slide.active { display: flex; }
-        .slide.center {
+
+        /* No-JS fallback */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+        /* Fit-safe: cap slides to viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .center {
             text-align: center;
             align-items: center;
             justify-content: center;
         }
 
-        /* Landscape mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
-            .slide.center { justify-content: flex-start; }
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); background: linear-gradient(120deg, #fff 30%, var(--accent) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); font-weight: 400; }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: clamp(12px, 2vw, 20px);
         }
 
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
+        .body { color: var(--muted); margin-top: clamp(14px, 2vw, 22px); max-width: 40ch; }
+        .handoff { color: var(--accent2); margin-top: clamp(18px, 2.5vw, 28px); max-width: 42ch; font-style: italic; }
+
+        h2 + .body, h1 + .body { margin-top: clamp(16px, 2.4vw, 26px); }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             }
         }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-        /* Typography */
-        .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: var(--space-sm);
-        }
-        .headline {
-            font-size: var(--fs-hero);
-            font-weight: 700;
-            letter-spacing: clamp(-1px, -0.03em, -2px);
-            line-height: 1.1;
-            margin-bottom: var(--space-md);
-        }
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            margin-bottom: var(--space-md);
-        }
-        .subhead {
-            font-size: var(--fs-subhead);
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(700px, 90vw);
-        }
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-        }
-        .body-text {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        /* Grid layouts */
-        .thirds {
+        /* Stat grid */
+        .stat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(12px, 2vw, 20px);
             width: 100%;
         }
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            width: 100%;
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.5vw, 26px);
         }
-        .quads {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            gap: var(--space-sm);
-            margin-top: var(--space-lg);
-            width: 100%;
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-        .card h3 {
-            font-size: var(--fs-h2);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-            color: var(--text-primary);
-        }
-        .card p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-        .card .icon-card {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: var(--space-xs);
-            display: block;
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-top: var(--space-md);
-            width: 100%;
-            max-width: min(800px, 100%);
-        }
-        .code-comment { color: rgba(255,255,255,0.4); }
-        .code-keyword { color: var(--accent); }
-        .code-string { color: var(--green); }
-
-        /* ========================================
-           GRADIENT VISUALIZATION
-           ======================================== */
-        .gradient-bar {
-            display: flex;
-            width: 100%;
-            max-width: min(900px, 95vw);
-            height: clamp(60px, 10vw, 90px);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-            margin: var(--space-lg) auto;
-            border: 1px solid var(--border-subtle);
-        }
-        .gradient-segment {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            padding: var(--space-xs);
-            text-align: center;
-            transition: opacity 0.3s;
-        }
-        .gradient-segment .seg-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .gradient-segment .seg-detail {
-            font-size: clamp(10px, 1.5vw, 12px);
-            color: rgba(255,255,255,0.6);
-            margin-top: 2px;
-        }
-        .seg-compressed {
-            flex: 2;
-            background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(0,212,255,0.20));
-        }
-        .seg-moderate {
-            flex: 1.5;
-            background: linear-gradient(135deg, rgba(0,212,255,0.25), rgba(0,212,255,0.40));
-        }
-        .seg-verbatim {
-            flex: 2;
-            background: linear-gradient(135deg, rgba(0,212,255,0.45), rgba(0,212,255,0.70));
-        }
-
-        .gradient-arrow {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--space-xs);
-            margin-top: var(--space-sm);
-            width: 100%;
-            max-width: min(900px, 95vw);
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .gradient-arrow .arrow-line {
-            flex: 1;
-            height: 2px;
-            background: linear-gradient(90deg, rgba(0,212,255,0.2), rgba(0,212,255,0.8));
-        }
-        .gradient-arrow .arrow-text {
-            font-size: var(--fs-small);
-            color: var(--text-secondary);
-            white-space: nowrap;
-        }
-
-        /* Bullet list on slides */
-        .slide-list {
-            list-style: none;
-            margin-top: var(--space-md);
-            max-width: min(800px, 100%);
-        }
-        .slide-list li {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            padding: var(--space-xs) 0;
-            padding-left: var(--space-md);
-            position: relative;
-        }
-        .slide-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: calc(var(--space-xs) + 0.55em);
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-        }
-
-        /* ========================================
-           THRESHOLD CASCADE
-           ======================================== */
-        .threshold-stack {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-sm);
-            margin-top: var(--space-lg);
-            width: 100%;
-            max-width: min(800px, 100%);
-        }
-        .threshold-row {
-            display: flex;
-            align-items: center;
-            gap: var(--space-md);
-            padding: var(--space-sm) var(--space-md);
-            border-radius: var(--radius-sm);
-            background: var(--surface-1);
-            border-left: 4px solid;
-        }
-        .threshold-row .threshold-pct {
-            font-size: clamp(28px, 5vw, 40px);
+        .stat-number {
+            font-size: clamp(28px, 5vw, 52px);
             font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            min-width: clamp(60px, 10vw, 90px);
-            flex-shrink: 0;
-        }
-        .threshold-row .threshold-info {
-            flex: 1;
-        }
-        .threshold-row .threshold-name {
-            font-size: var(--fs-body);
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .threshold-row .threshold-desc {
-            font-size: var(--fs-small);
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-        .t-green  { border-color: var(--green); }
-        .t-green .threshold-pct { color: var(--green); }
-        .t-yellow { border-color: var(--yellow); }
-        .t-yellow .threshold-pct { color: var(--yellow); }
-        .t-orange { border-color: var(--orange); }
-        .t-orange .threshold-pct { color: var(--orange); }
-        .t-red    { border-color: var(--red); }
-        .t-red .threshold-pct { color: var(--red); }
-
-        /* Velocity stats */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            width: 100%;
-            max-width: min(900px, 100%);
-        }
-        .velocity-stat {
-            text-align: center;
-            padding: var(--space-md);
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-        }
-        .velocity-number {
-            font-size: clamp(36px, 8vw, 64px);
-            font-weight: 700;
-            color: var(--accent);
             line-height: 1;
-        }
-        .velocity-label {
-            font-size: var(--fs-small);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
-
-        /* Feature status badge */
-        .status-badge {
-            display: inline-block;
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 4px 12px;
-            border-radius: 100px;
-            background: rgba(0,212,255,0.15);
             color: var(--accent);
-            margin-top: var(--space-sm);
+            letter-spacing: -0.02em;
+        }
+        .stat-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: var(--muted);
+            margin-top: 8px;
+            line-height: 1.3;
         }
 
-        /* Title mono text */
-        .mono-title {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: clamp(28px, 6vw, 56px);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        /* Steps / cascade list */
+        .steps { display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); width: 100%; }
+        .step {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 12px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 22px);
+            display: flex;
+            align-items: baseline;
+            gap: clamp(12px, 2vw, 18px);
+        }
+        .step-key { font-size: clamp(20px, 3vw, 30px); font-weight: 700; color: var(--accent2); min-width: 3ch; }
+        .step-body { font-size: clamp(13px, 1.7vw, 17px); color: var(--fg); line-height: 1.35; }
+        .step-body strong { color: var(--fg); }
+        .step-sub { display: block; color: var(--muted); font-size: clamp(12px, 1.4vw, 14px); margin-top: 3px; }
+
+        /* Rules list */
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); width: 100%; }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 22px);
+            position: relative;
+            padding-left: clamp(34px, 4vw, 46px);
+        }
+        .rules li::before {
+            content: "";
+            position: absolute;
+            left: clamp(14px, 2vw, 20px);
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--accent2);
+        }
+
+        code {
+            font-family: "SF Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+            background: #1c1c26;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 1px 6px;
+            font-size: 0.88em;
+            color: var(--accent2);
+        }
+
+        /* Sources slide */
+        .sources-body { max-width: 62ch; }
+        .sources-body p { margin-top: 12px; color: var(--muted); }
+        .sources-body ul { margin: 10px 0 0 0; list-style: none; }
+        .sources-body li { margin-top: 8px; color: var(--muted); line-height: 1.5; }
+        .sources-body code { color: var(--accent2); font-size: 0.82em; }
+        .badge {
+            display: inline-block;
+            background: rgba(126, 224, 192, 0.12);
+            border: 1px solid var(--accent2);
+            color: var(--accent2);
+            border-radius: 999px;
+            padding: 3px 12px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            font-weight: 600;
+            letter-spacing: 0.04em;
         }
 
         /* Navigation */
         .nav {
             position: fixed;
-            bottom: clamp(28px, 4vw, 40px);
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 26px;
+            right: 30px;
             display: flex;
-            gap: clamp(6px, 1vw, 10px);
+            gap: 9px;
             z-index: 100;
         }
         .nav-dot {
-            width: clamp(8px, 1.2vw, 10px);
-            height: clamp(8px, 1.2vw, 10px);
+            width: 9px; height: 9px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.22);
             cursor: pointer;
             transition: background 0.2s, transform 0.2s;
         }
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
-        .nav-dot:hover { background: rgba(255,255,255,0.5); }
-        @media (hover: none) {
-            .nav-dot { min-width: 16px; min-height: 16px; }
-        }
-
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
         .slide-counter {
             position: fixed;
-            bottom: clamp(28px, 4vw, 40px);
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
+            bottom: 24px;
+            left: 30px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: rgba(255,255,255,0.35);
             z-index: 100;
             font-variant-numeric: tabular-nums;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
 
         .more-stories {
@@ -443,373 +248,305 @@
             z-index: 100;
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
-
-        /* CTA link */
-        .cta-link {
-            display: inline-block;
-            font-size: var(--fs-body);
-            font-weight: 600;
-            color: var(--accent);
-            text-decoration: none;
-            padding: var(--space-sm) var(--space-lg);
-            border: 2px solid var(--accent);
-            border-radius: 100px;
-            margin-top: var(--space-lg);
-            transition: background 0.2s;
-        }
-        .cta-link:hover {
-            background: rgba(0,212,255,0.1);
-        }
-
-        /* Tool card highlight */
-        .tool-card {
-            background: var(--surface-2);
-            border: 1px solid rgba(0,212,255,0.25);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-            margin-top: var(--space-md);
-            max-width: min(700px, 100%);
-        }
-        .tool-card h3 {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-h2);
-            color: var(--accent);
-            margin-bottom: var(--space-xs);
-        }
-        .tool-card p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        /* Emphasized text */
-        em.accent { color: var(--accent); font-style: normal; font-weight: 600; }
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
-        html:not(.js) .slide {
-            display: flex !important;
-            position: relative !important;
-            width: 100%;
-            min-height: 100vh;
-            min-height: 100dvh;
-        }
     </style>
 </head>
 <body>
-
 <!--
-  ============================================================
-  NARRATIVE SPINE (built from the deck's existing verified content; no fresh research)
-  ============================================================
-
-  ABT:
-    AND long AI sessions keep accumulating conversation context;
-    BUT when they grow, history gets mechanically chopped - the model silently loses
-        files, decisions and tool outputs, then hallucinates to fill the gaps;
-    THEREFORE amplifier-bundle-context-managed uses the LLM to keep a rolling gradient
-        (compressed -> verbatim) with budget thresholds and on-demand recovery, so
-        context degrades gracefully instead of dying.
-
-  PAYOFF (named up front):
-    The context gradient - older turns compress, recent turns stay verbatim, and the
-    model always has orientation. It never wakes up confused.
-
-  BEATS (proof-first; payoff lands at beat 4 of 8, at the midpoint boundary):
-    1. proof     - tested in production conditions: 329 tests, 10 bugs found & fixed in real E2E.
-                   advances: grounds the AND - it is real and hardened.
-    2. tension   - context dies silently: files forgotten, decisions lost, hallucination.
-                   advances: establishes the BUT.
-    3. setup     - the fix is LLM-powered rolling summaries, not mechanical chopping.
-                   advances: names the mechanism the argument leans on.
-    4. payoff    - the context gradient: the model never wakes up confused.
-                   advances: lands the THEREFORE (payoff at the midpoint).
-    5. mechanism - a four-threshold cascade keeps the model away from the limit. (one claim)
-                   advances: HOW the budget stays safe.
-    6. mechanism - read_transcript pulls verbatim history back on demand. (one claim)
-                   advances: HOW lost detail is recoverable.
-    7. mechanism - a drop-in replacement bundle - tools and agents unchanged. (one claim)
-                   advances: HOW you adopt it with zero friction.
-    8. takeaway  - add the bundle, set it active; then build your own.
-                   advances: what the audience keeps + how to start.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end.
-    Slides = 8 beats + 1 = 9.
+SPINE
+ABT: AND long AI sessions keep accumulating conversation history that outgrows the model's context window; BUT the naive fix mechanically chops the oldest messages, so the model silently loses files, decisions, and tool outputs and then hallucinates to fill the gaps; THEREFORE context-managed lets the LLM itself compress older context into a recoverable gradient, so long sessions degrade gracefully instead of going amnesiac.
+Payoff: Nothing is ever truly gone -- when the model needs a detail that was summarized away, the read_transcript tool pulls the exact verbatim turn back on demand, so the gradient degrades gracefully instead of dying.
+Beats:
+  1. frame     -- mechanical truncation makes long sessions go amnesiac; context-managed is a drop-in replacement for context-simple that fixes it.  advances: orients the audience on the stakes behind the AND/BUT (the amnesia problem) as a hook, not a title card.
+  2. proof     -- shipped public microsoft/* bundle, v0.1.0, ~2,140 lines across two modules, 364 tests + OSS compliance.  advances: establishes the AND is real and credible early -- a working, tested product, not a sketch.
+  3. tension   -- chopping the oldest messages throws away exactly the files, decisions, and tool results the model still needs.  advances: sharpens the BUT -- names why the mechanical approach fails.
+  4. mechanism -- the LLM builds rolling tiered summaries; older context compressed while a 40K-token recent window stays verbatim -- a compressed-to-verbatim gradient.  advances: shows HOW the core idea replaces truncation with a recoverable gradient.
+  5. mechanism -- budget-aware thresholds fire in cascade (60% / 70% / 92% / 100%) so the returned message list never exceeds budget.  advances: shows HOW the gradient stays safe under pressure -- budget is enforced by a staged cascade.
+  6. turn      -- everything is persisted to a versioned JSONL transcript that reloads on mount, so no history is ever actually thrown away.  advances: pivots from AND/BUT toward THEREFORE -- compressed-away detail is still on disk, not lost.
+  7. payoff    -- read_transcript pulls the exact verbatim turn back on demand; summaries are hints to verify, and nothing is ever truly gone.  advances: lands the THEREFORE as the climax -- graceful degradation delivered.
+  8. takeaway  -- treat context as a recoverable gradient, not a fixed window.  advances: gives the audience the generalizable pattern behind the whole THEREFORE.
 -->
 
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>Context That Never Forgets</h1>
+        <p class="subtitle">Graceful degradation for long AI sessions</p>
+    </div>
 
-<!-- beat 1: proof -->
-<div class="slide active">
-    <div class="section-label">Quality</div>
-    <h2 class="medium-headline">Tested in production conditions</h2>
-
-    <div class="velocity-grid">
-        <div class="vbox velocity-stat">
-            <div class="velocity-number">329</div>
-            <div class="velocity-label">Tests across 2 modules</div>
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Problem</div>
+            <h2>When a long session fills the window, the model silently goes amnesiac</h2>
+            <p class="body">Mechanical truncation chops the oldest messages, so the model loses files, decisions, and tool outputs — then hallucinates to fill the gaps.</p>
+            <p class="handoff">amplifier-bundle-context-managed is a drop-in replacement for <code>context-simple</code> that fixes exactly this.</p>
         </div>
-        <div class="vbox velocity-stat">
-            <div class="velocity-number">10</div>
-            <div class="velocity-label">Bugs found &amp; fixed in E2E</div>
-        </div>
-        <div class="vbox velocity-stat">
-            <div class="velocity-number">2</div>
-            <div class="velocity-label">Modules (context + transcript tool)</div>
-        </div>
-        <div class="vbox velocity-stat">
-            <div class="velocity-number">v1</div>
-            <div class="velocity-label">JSONL format versioning</div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>Naive fix: <strong>mechanically chop old messages</strong> when the context window fills</li>
+                <li>The model <strong>silently loses</strong> files, decisions, and tool outputs</li>
+                <li>Then it <strong>hallucinates</strong> to fill the gaps it can't see</li>
+            </ul>
         </div>
     </div>
 
-    <ul class="slide-list" style="margin-top:var(--space-lg)">
-        <li>Real end-to-end testing in Docker containers &mdash; not just unit tests</li>
-        <li>Session resume support for interrupted workflows</li>
-        <li>Persistent transcript survives crashes and restarts</li>
-        <li>Format versioning ensures future compatibility</li>
-    </ul>
-</div>
-
-<!-- beat 2: tension -->
-<div class="slide">
-    <div class="section-label">The Problem</div>
-    <h2 class="headline">Context dies silently</h2>
-    <p class="subhead">When sessions grow long, old conversation history gets mechanically chopped. The model suddenly loses track of everything.</p>
-
-    <div class="thirds">
-        <div class="card">
-            <span class="icon-card">&#x1F50D;</span>
-            <h3>Files forgotten</h3>
-            <p>The model forgets which files it already read, re-reads them, or invents content it never saw.</p>
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">Proof — It's Real</div>
+            <h2>A shipped, public Microsoft bundle — not a sketch</h2>
+            <p class="body"><code>microsoft/amplifier-bundle-context-managed</code> ships as bundle v0.1.0: two modules, an MIT license, and OSS compliance files, all backed by tests.</p>
+            <p class="handoff">So when it claims to replace truncation, that claim has working, tested code behind it.</p>
         </div>
-        <div class="card">
-            <span class="icon-card">&#x2702;&#xFE0F;</span>
-            <h3>Decisions lost</h3>
-            <p>Critical design decisions from early in the session vanish. The model contradicts its own prior reasoning.</p>
-        </div>
-        <div class="card">
-            <span class="icon-card">&#x1F4AD;</span>
-            <h3>Hallucination to fill gaps</h3>
-            <p>Tool outputs and return values disappear from context. The model confabulates results it never received.</p>
-        </div>
-    </div>
-</div>
-
-<!-- beat 3: setup -->
-<div class="slide">
-    <div class="section-label">The Solution</div>
-    <h2 class="headline">LLM-powered rolling summaries</h2>
-    <p class="subhead">Instead of chopping history, the bundle uses the LLM itself to create structured summaries as context grows. The model always sees a gradient: compressed older context, full-detail recent turns.</p>
-
-    <ul class="slide-list">
-        <li>Older turns compressed into structured summaries preserving decisions, files, and tool results</li>
-        <li>Recent turns kept at full verbatim fidelity</li>
-        <li>The model knows what's been compressed and how to recover details</li>
-        <li>No more silent gaps &mdash; no more hallucinations from missing context</li>
-    </ul>
-</div>
-
-<!-- beat 4: payoff -->
-<div class="slide">
-    <div class="section-label">How It Works</div>
-    <h2 class="medium-headline">The context gradient</h2>
-    <p class="body-text">Every turn lives on a spectrum from compressed to verbatim. Older history is always available &mdash; just denser.</p>
-
-    <div class="gradient-bar">
-        <div class="gradient-segment seg-compressed">
-            <span class="seg-label">Compressed</span>
-            <span class="seg-detail">Structured summaries</span>
-        </div>
-        <div class="gradient-segment seg-moderate">
-            <span class="seg-label">Moderate</span>
-            <span class="seg-detail">Condensed detail</span>
-        </div>
-        <div class="gradient-segment seg-verbatim">
-            <span class="seg-label">Verbatim</span>
-            <span class="seg-detail">Full recent turns</span>
-        </div>
-    </div>
-    <div class="gradient-arrow">
-        <span class="arrow-text">Older turns</span>
-        <div class="arrow-line"></div>
-        <span class="arrow-text">Recent turns</span>
-    </div>
-
-    <ul class="slide-list" style="margin-top:var(--space-lg)">
-        <li>Summaries include what was done, which files were touched, what tools returned</li>
-        <li>Summaries are created proactively, with headroom before limits</li>
-        <li>The model always has orientation &mdash; it never wakes up confused</li>
-    </ul>
-</div>
-
-<!-- beat 5: mechanism -->
-<div class="slide">
-    <div class="section-label">Budget-Aware</div>
-    <h2 class="medium-headline">Threshold cascade</h2>
-    <p class="body-text">Four thresholds ensure the model never gets close enough to the limit to behave erratically.</p>
-
-    <div class="threshold-stack">
-        <div class="threshold-row t-green">
-            <div class="threshold-pct">60%</div>
-            <div class="threshold-info">
-                <div class="threshold-name">LLM Summarization</div>
-                <div class="threshold-desc">Proactive &mdash; compress old turns into smart summaries with headroom to spare</div>
-            </div>
-        </div>
-        <div class="threshold-row t-yellow">
-            <div class="threshold-pct">70%</div>
-            <div class="threshold-info">
-                <div class="threshold-name">Budget Pressure Warning</div>
-                <div class="threshold-desc">Model is alerted that context is growing &mdash; adjusts behavior accordingly</div>
-            </div>
-        </div>
-        <div class="threshold-row t-orange">
-            <div class="threshold-pct">92%</div>
-            <div class="threshold-info">
-                <div class="threshold-name">Emergency Mechanical Fallback</div>
-                <div class="threshold-desc">Fast, deterministic trimming with explanatory markers if LLM summarization couldn't keep up</div>
-            </div>
-        </div>
-        <div class="threshold-row t-red">
-            <div class="threshold-pct">100%</div>
-            <div class="threshold-info">
-                <div class="threshold-name">Hard Cap</div>
-                <div class="threshold-desc">Never exceeded &mdash; the budget is the budget</div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">v0.1.0</div>
+                    <div class="stat-label">Bundle &amp; both modules</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">2,140</div>
+                    <div class="stat-label">LOC across two modules (1,721 + 419)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">364</div>
+                    <div class="stat-label">Test functions</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">63</div>
+                    <div class="stat-label">Commits, mostly by bkrabach</div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- beat 6: mechanism -->
-<div class="slide">
-    <div class="section-label">Recovery</div>
-    <h2 class="medium-headline">On-demand verbatim history</h2>
-    <p class="body-text">When a summary isn't enough, the model can pull the exact original conversation back.</p>
-
-    <div class="tool-card">
-        <h3>read_transcript</h3>
-        <p>A bundled tool that retrieves verbatim history &mdash; including full tool call inputs and results &mdash; from any point in the session. Every message ever sent is persisted to disk in JSONL format.</p>
-    </div>
-
-    <ul class="slide-list" style="margin-top:var(--space-md)">
-        <li>Persistent JSONL transcript with format versioning</li>
-        <li>Full tool inputs and outputs preserved &mdash; nothing discarded</li>
-        <li>The model decides when it needs more detail and retrieves it on demand</li>
-        <li>Session resume support &mdash; pick up where you left off</li>
-    </ul>
-</div>
-
-<!-- beat 7: mechanism -->
-<div class="slide">
-    <div class="section-label">Integration</div>
-    <h2 class="medium-headline">Drop-in replacement</h2>
-    <p class="body-text">The bundle includes its own root bundle.md with all foundation behaviors built in. No changes to your existing tools, providers, or agents.</p>
-
-    <div class="halves">
-        <div class="card">
-            <span class="icon-card">&#x1F4E6;</span>
-            <h3>Add the bundle</h3>
-            <p>One command installs the bundle and its modules from the GitHub repo.</p>
+    <div class="slide split">
+        <!-- beat 3: tension -->
+        <div class="col-main">
+            <div class="section-label">Why Truncation Fails</div>
+            <h2>Chopping the oldest messages discards exactly what's still needed</h2>
+            <p class="body">The window fills, so the naive approach deletes the earliest turns — but those turns hold files, decisions, and tool results the model still depends on.</p>
+            <p class="handoff">The fix isn't to delete less. It's to stop deleting and start compressing.</p>
         </div>
-        <div class="card">
-            <span class="icon-card">&#x1F50C;</span>
-            <h3>Set it active</h3>
-            <p>Use it as your main active bundle. Your tools, providers, and agents stay exactly the same.</p>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>Files the model opened earlier — <strong>gone</strong></li>
+                <li>Decisions already made — <strong>gone</strong></li>
+                <li>Tool outputs it acted on — <strong>gone</strong></li>
+            </ul>
         </div>
     </div>
 
-    <div class="code-block"><span class="code-keyword">amplifier bundle add</span> git+https://github.com/microsoft/amplifier-bundle-context-managed
-<span class="code-keyword">amplifier bundle use</span> context-managed
-<span class="code-comment"># That's it. Sessions get intelligent context management immediately.</span>
-<span class="code-comment"># Next: create your own custom bundle taking inspiration from</span>
-<span class="code-comment"># foundation, amplifier-dev, etc.</span></div>
-</div>
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism — The Gradient</div>
+            <h2>The LLM compresses the old and keeps the recent verbatim</h2>
+            <p class="body">Instead of chopping, the bundle uses the LLM itself to build rolling tiered summaries of earlier conversation while a recent window stays full-detail — a deliberate compressed-to-verbatim gradient.</p>
+            <p class="handoff">The gradient is intentional by design — but it has to stay inside a budget.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">40K</div>
+                    <div class="stat-label">Verbatim recent-window tokens</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">Max summary tiers for older context</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">1,500</div>
+                    <div class="stat-label">Target tokens per summary</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">200K</div>
+                    <div class="stat-label">Default max token budget</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<!-- beat 8: takeaway -->
-<div class="slide center">
-    <div class="section-label">Get Started</div>
-    <h2 class="headline">Try it now</h2>
-    <p class="subhead">Add the bundle, set it active. Your sessions get smarter context management immediately.<br>Next: create your own custom bundle taking inspiration from foundation, amplifier-dev, and more.</p>
-    <a href="https://github.com/microsoft/amplifier-bundle-context-managed" class="cta-link" onclick="event.stopPropagation()">View on GitHub</a>
-    <div class="small-text" style="margin-top:var(--space-lg)">github.com/microsoft/amplifier-bundle-context-managed</div>
-</div>
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism — Budget Cascade</div>
+            <h2>A staged cascade means the message list never exceeds budget</h2>
+            <p class="body">Budget-aware thresholds fire in order as usage climbs, ending in a hard inline-compact cap so the returned messages are always within budget.</p>
+            <p class="handoff">Safe under pressure — and, crucially, none of the compressed detail is actually thrown away.</p>
+        </div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step">
+                    <div class="step-key">60%</div>
+                    <div class="step-body"><strong>Async summarization begins</strong><span class="step-sub">summarize_trigger = 0.60</span></div>
+                </div>
+                <div class="step">
+                    <div class="step-key">70%</div>
+                    <div class="step-body"><strong>Budget-pressure warning</strong><span class="step-sub">pressure_warning = 0.70</span></div>
+                </div>
+                <div class="step">
+                    <div class="step-key">92%</div>
+                    <div class="step-body"><strong>Emergency fallback</strong><span class="step-sub">emergency_fallback = 0.92</span></div>
+                </div>
+                <div class="step">
+                    <div class="step-key">100%</div>
+                    <div class="step-body"><strong>Hard inline-compact cap</strong><span class="step-sub">never returns more tokens than budget</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<div class="slide">
-    <div class="section-label">Sources &amp; Methodology</div>
-    <h2 class="medium-headline">Where these numbers come from</h2>
-    <p class="body-text" style="max-width:min(760px,100%)">Every claim traces to the bundle's own repository and test runs &mdash; no external estimates.</p>
-    <ul class="slide-list" style="margin-top:var(--space-lg)">
-        <li><strong>329 tests / 2 modules</strong> &mdash; test suite counts for the context module and the transcript tool</li>
-        <li><strong>10 bugs found &amp; fixed</strong> &mdash; issues surfaced during real end-to-end runs in Docker containers</li>
-        <li><strong>Thresholds (60 / 70 / 92 / 100%)</strong> &mdash; read from the bundle's context-management configuration</li>
-        <li><strong>JSONL transcript &amp; read_transcript</strong> &mdash; verified in the module source and its format-versioning tests</li>
-    </ul>
-    <p class="small-text" style="margin-top:var(--space-lg)">Repository: github.com/microsoft/amplifier-bundle-context-managed &middot; Status: Active &middot; April 2026</p>
-</div>
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">The Turn — Nothing Is Deleted</div>
+            <h2>Everything is persisted to a versioned transcript on disk</h2>
+            <p class="body">The full conversation writes to <code>transcript.jsonl</code> (format version 1.0.0), which reloads on mount so long-running sessions survive process restarts. Large tool results over 50,000 chars are pointer-filed to disk.</p>
+            <p class="handoff">So the detail that was summarized away isn't lost — it's still sitting on disk, waiting.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><code>transcript.jsonl</code> — versioned header <strong>1.0.0</strong></li>
+                <li>Reloads on mount — sessions <strong>survive restarts</strong></li>
+                <li>Tool results over <strong>50,000 chars</strong> pointer-filed to disk</li>
+            </ul>
+        </div>
+    </div>
 
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">Payoff — Recover On Demand</div>
+            <h2>The model pulls the exact verbatim turn back when it needs it</h2>
+            <p class="body">When a detail was summarized away, the bundled <code>read_transcript</code> tool retrieves verbatim turn ranges or searches history — so summaries are hints to verify, not ground truth, and nothing is ever truly gone.</p>
+            <p class="handoff">Graceful degradation delivered: the model recovers ground truth instead of hallucinating it.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><code>read_transcript</code> — <strong>verbatim turn ranges</strong> by <code>start_turn</code> / <code>end_turn</code></li>
+                <li><code>search</code> across full history, with tool inputs and results</li>
+                <li>Rate-limited to <strong>3 calls per turn</strong></li>
+            </ul>
+        </div>
+    </div>
 
-<!-- Navigation -->
-<div class="nav" id="nav"></div>
-<div class="slide-counter" id="counter"></div>
-<a href="index.html" class="more-stories">More Amplifier Stories</a>
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Pattern To Keep</div>
+        <h2>Treat context as a recoverable gradient, not a fixed window</h2>
+        <p class="body">Compress the old, keep the recent verbatim, persist everything to disk, and recover exact detail on demand. That's how long sessions degrade gracefully instead of going amnesiac.</p>
+    </div>
 
-<script>
-    const slides = document.querySelectorAll('.slide');
-    let currentSlide = 0;
+    <!-- Sources & Methodology (no beat comment) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="sources-body">
+            <p><strong>Repository:</strong> <code>microsoft/amplifier-bundle-context-managed</code> — created 2026-04-20, most recent commit 2026-05-06. <span class="badge">Shipped · v0.1.0</span></p>
+            <p><strong>Data as of:</strong> repository pushedAt 2026-07-10.</p>
+            <p><strong>Research performed (git / gh / grep):</strong></p>
+            <ul>
+                <li>Repo identity: <code>gh repo view microsoft/amplifier-bundle-context-managed --json name,description,createdAt,pushedAt,url</code></li>
+                <li>Commit history: <code>git log --oneline | wc -l</code> (63 commits) · <code>git log --format='%an' | sort | uniq -c | sort -rn</code></li>
+                <li>Thresholds &amp; config defaults: <code>sed -n '190,230p' modules/context-managed/amplifier_module_context_managed/__init__.py</code></li>
+                <li>Transcript &amp; large results: <code>grep -n 'TRANSCRIPT_FORMAT_VERSION|transcript.jsonl|_handle_large_result|large_result_threshold' modules/context-managed/.../__init__.py</code></li>
+                <li>read_transcript tool: <code>grep -n 'rate_limit_per_turn|read_transcript|start_turn|end_turn|search' modules/tool-transcript/.../__init__.py</code></li>
+                <li>Line counts &amp; versions: <code>wc -l modules/*/.../__init__.py</code> (1,721 + 419 = 2,140) · <code>grep version modules/*/pyproject.toml bundle.md</code></li>
+                <li>Test suite size: <code>grep -rh 'def test_' tests/ modules/*/tests/ | wc -l</code> (364)</li>
+            </ul>
+            <p><strong>Gaps:</strong> The <code>~50 s</code> summarization window in a code comment is descriptive, not a measured benchmark. Docs (<code>docs/CONFIGURATION.md</code>, <code>bundle.md</code> prose) list a stale 0.80 trigger; the verified code default is 0.60.</p>
+            <p><strong>Primary contributors:</strong> bkrabach (62 of 63 commits), David Koleczek (1).</p>
+        </div>
+    </div>
 
-    function showSlide(n) {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (n + slides.length) % slides.length;
-        slides[currentSlide].classList.add('active');
-        updateNav();
-    }
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
 
-    function updateNav() {
-        const nav = document.getElementById('nav');
-        const counter = document.getElementById('counter');
-        nav.innerHTML = '';
-        slides.forEach((_, i) => {
-            const dot = document.createElement('div');
-            dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-            dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
-            nav.appendChild(dot);
-        });
-        counter.textContent = `${currentSlide + 1} / ${slides.length}`;
-    }
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-        if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
-    });
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-    // Click navigation
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('.nav')) return;
-        if (e.target.closest('a')) return;
-        if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-        else showSlide(currentSlide - 1);
-    });
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
 
-    // Touch/swipe navigation
-    let touchStartX = 0;
-    let touchEndX = 0;
-    const SWIPE_THRESHOLD = 50;
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
 
-    document.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
 
-    document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > SWIPE_THRESHOLD) {
-            if (diff > 0) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
+            updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
-    }, { passive: true });
 
-    updateNav();
-</script>
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
 
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
+        });
+
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
 </body>
 </html>

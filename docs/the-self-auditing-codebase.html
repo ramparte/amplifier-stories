@@ -3,1010 +3,470 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>The Self-Auditing Codebase — Architecture as Bug Specification</title>
+    <title>The Self-Auditing Codebase</title>
     <script>document.documentElement.classList.add('js')</script>
-<style>
-        :root {
-            --accent: #FF375F;
-            --accent-dim: rgba(255, 55, 95, 0.15);
-            --accent-glow: rgba(255, 55, 95, 0.3);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 36px);
-            --fs-h3: clamp(18px, 3vw, 24px);
-            --fs-body: clamp(14px, 2vw, 18px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 1.8vw, 15px);
-            --fs-label: clamp(11px, 1.5vw, 13px);
-            --fs-big-number: clamp(48px, 12vw, 120px);
-
-            /* Spacing */
-            --space-xs: clamp(6px, 1vw, 10px);
-            --space-sm: clamp(10px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Surfaces */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.18);
-
-            /* Text */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
-        }
-
+    <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #9aa0aa;
+            --accent: #ff6b4a;
+            --accent2: #4a9eff;
+            --card: #16161e;
+            --line: #262630;
+        }
+        html, body { background: var(--bg); color: var(--fg); }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Core slide CSS */
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
             padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
         }
 
         .slide.active { display: flex; }
 
-        .slide.center {
+        /* Fit-safe: cap slides to the viewport and let them scroll */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+
+        .slide { transition: transform 0.5s ease, opacity 0.5s ease; }
+
+        /* Centering opt-in */
+        .center {
             text-align: center;
             align-items: center;
             justify-content: center;
         }
 
-        /* Labels */
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: 20px; }
+
         .section-label {
-            font-size: var(--fs-label);
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 3px;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
             color: var(--accent);
-            margin-bottom: var(--space-sm);
-        }
-
-        .act-label {
-            font-size: var(--fs-label);
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: var(--accent);
-            margin-bottom: var(--space-xs);
-            display: inline-block;
-            padding: var(--space-xs) var(--space-sm);
-            border: 1px solid var(--accent);
-            border-radius: var(--radius-sm);
+            margin-bottom: 18px;
         }
+        h1, h2 { margin-bottom: 22px; }
+        .body { color: #d8dae0; max-width: 40ch; margin-bottom: 18px; }
+        .handoff { color: var(--muted); font-style: italic; max-width: 42ch; }
 
-        /* Headlines */
-        .headline {
-            font-size: var(--fs-hero);
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.05;
-            margin-bottom: var(--space-md);
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
         }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.1;
-            margin-bottom: var(--space-md);
-        }
-
-        .small-headline {
-            font-size: var(--fs-h2);
-            font-weight: 600;
-            letter-spacing: -0.01em;
-            line-height: 1.2;
-            margin-bottom: var(--space-sm);
-        }
-
-        /* Body text */
-        .subhead {
-            font-size: var(--fs-h3);
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(700px, 90vw);
-        }
-
-        .body-text {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            max-width: min(800px, 90vw);
-        }
-
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-        }
-
-        /* Accent text */
-        .accent { color: var(--accent); }
-
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            font-size: var(--fs-label);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #30D158;
-            border: 1px solid rgba(48, 209, 88, 0.4);
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: var(--radius-sm);
-            margin-top: var(--space-sm);
-        }
-
-        /* Grids */
-        .grid-2 {
+        /* Stat grid */
+        .stat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-            gap: var(--space-md);
-            width: 100%;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
         }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--space-md);
-            width: 100%;
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 22px 18px;
         }
-
-        .grid-4 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            gap: var(--space-md);
-            width: 100%;
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-
-        .card-accent {
-            background: var(--accent-dim);
-            border: 1px solid var(--accent-glow);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-
-        .card h3, .card h4 { color: var(--text-primary); }
-        .card p, .card li { color: var(--text-secondary); }
-        .card-accent h3, .card-accent h4 { color: var(--text-primary); }
-        .card-accent p { color: var(--text-secondary); }
-
-        .card-icon {
-            font-size: var(--fs-label);
+        .stat-number {
+            font-size: clamp(30px, 5.5vw, 54px);
             font-weight: 700;
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--accent);
-            margin-bottom: var(--space-xs);
-            padding: var(--space-xs) var(--space-sm);
-            border: 1px solid var(--accent-glow);
-            border-radius: var(--radius-sm);
-            display: inline-block;
-        }
-
-        .card-title {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-
-        .card-body {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .card-meta {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: var(--space-xs);
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-        }
-
-        /* Quote block */
-        .quote-block {
-            border-left: 3px solid var(--accent);
-            padding: var(--space-md) var(--space-lg);
-            margin: var(--space-md) 0;
-            max-width: min(800px, 90vw);
-        }
-
-        .quote-text {
-            font-size: var(--fs-h2);
-            font-weight: 500;
-            font-style: italic;
-            line-height: 1.4;
-            color: var(--text-primary);
-        }
-
-        .quote-attr {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: var(--space-sm);
-            font-style: normal;
-        }
-
-        /* Big number */
-        .big-number {
-            font-size: var(--fs-big-number);
-            font-weight: 800;
-            letter-spacing: -0.04em;
             line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #FF8A5C);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--accent);
+            letter-spacing: -0.02em;
+        }
+        .stat-number.alt { color: var(--accent2); }
+        .stat-label {
+            margin-top: 10px;
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: var(--muted);
+            line-height: 1.35;
         }
 
-        .big-number-label {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
+        /* Steps / rules */
+        .steps { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent2);
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: #d8dae0;
         }
-
-        /* Velocity grid */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
-            gap: var(--space-lg);
-            margin-top: var(--space-lg);
-            width: 100%;
-            max-width: min(900px, 100%);
-        }
-
-        .velocity-stat { text-align: center; }
-
-        .velocity-number {
-            font-size: clamp(36px, 8vw, 72px);
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            background: linear-gradient(135deg, var(--accent), #FF8A5C);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .velocity-label {
-            font-size: var(--fs-small);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
+        .steps li strong { color: var(--fg); }
 
         /* Code block */
         .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            line-height: 1.7;
+            background: #101018;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 18px 20px;
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.6vw, 16px);
+            line-height: 1.6;
             white-space: pre-wrap;
-            word-wrap: break-word;
+            color: #d8dae0;
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            color: #30D158;
-            max-width: min(900px, 100%);
+        }
+        .code-block .c { color: #6b7280; }
+        .code-block .buggy { color: #ff7a6b; }
+        .code-block .fixed { color: #5fd08a; }
+
+        .small-text { font-size: clamp(13px, 1.6vw, 15px); }
+        .small-text ul { margin: 8px 0 8px 20px; }
+        .small-text li { margin-bottom: 6px; }
+        .small-text code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            background: #101018;
+            border: 1px solid var(--line);
+            border-radius: 5px;
+            padding: 1px 5px;
+            font-size: 0.92em;
+            color: #cdd0d6;
         }
 
-        .code-comment { color: rgba(255,255,255,0.35); }
-        .code-accent { color: var(--accent); }
-        .code-string { color: #FF9F0A; }
-        .code-keyword { color: #BF5AF2; }
-
-        /* Timeline */
-        .timeline-item {
-            display: flex;
-            gap: var(--space-md);
-            margin-bottom: var(--space-lg);
-            align-items: flex-start;
+        .kicker-big {
+            font-size: clamp(20px, 3.2vw, 30px);
+            color: var(--muted);
+            max-width: 26ch;
+            line-height: 1.3;
         }
+        .accent-word { color: var(--accent); }
+        .accent2-word { color: var(--accent2); }
 
-        .timeline-marker {
-            flex-shrink: 0;
-            width: clamp(36px, 5vw, 48px);
-            height: clamp(36px, 5vw, 48px);
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        .timeline-content { flex: 1; }
-
-        .timeline-title {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-
-        .timeline-body {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        /* Flow diagram */
-        .flow-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--space-sm);
-            flex-wrap: wrap;
-            margin: var(--space-md) 0;
-        }
-
-        .flow-box {
-            background: var(--surface-2);
-            border: 1px solid var(--border-visible);
-            border-radius: var(--radius-sm);
-            padding: var(--space-sm) var(--space-md);
-            font-size: var(--fs-body);
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .flow-arrow {
-            font-size: var(--fs-h3);
-            color: var(--accent);
-        }
-
-        /* Bug category strip */
-        .bug-strip {
-            display: grid;
-            grid-template-columns: auto 1fr auto;
-            gap: var(--space-sm);
-            align-items: center;
-            padding: var(--space-sm) var(--space-md);
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
-            margin-bottom: var(--space-sm);
-        }
-
-        .bug-cat {
-            font-size: var(--fs-small);
-            font-weight: 700;
-            color: var(--accent);
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-        }
-
-        .bug-desc {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-        }
-
-        .bug-count {
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        /* Sources list */
-        .sources-list {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.8;
-            list-style: none;
-        }
-
-        .sources-list li {
-            padding-left: var(--space-md);
-            position: relative;
-            margin-bottom: var(--space-xs);
-        }
-
-        .sources-list li::before {
-            content: '›';
-            position: absolute;
-            left: 0;
-            color: var(--accent);
-            font-weight: 700;
-        }
-
-        .sources-list code {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-small);
-            background: var(--surface-2);
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: var(--text-primary);
-        }
-
-        /* Validation result */
-        .validation-row {
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-            padding: var(--space-xs) 0;
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-        }
-
-        .validation-check {
-            color: #30D158;
-            font-size: var(--fs-h3);
-        }
-
-        .validation-partial {
-            color: #FF9F0A;
-            font-size: var(--fs-h3);
-        }
-
-        /* Navigation */
+        /* Navigation dots */
         .nav {
             position: fixed;
-            bottom: clamp(24px, 4vw, 36px);
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: clamp(6px, 1vw, 10px);
+            bottom: 30px; right: 30px;
+            display: flex; gap: 10px;
             z-index: 100;
         }
-
         .nav-dot {
-            width: clamp(6px, 1vw, 8px);
-            height: clamp(6px, 1vw, 8px);
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            cursor: pointer;
-            transition: all 0.3s;
+            width: 9px; height: 9px; border-radius: 50%;
+            background: rgba(255,255,255,0.22);
+            cursor: pointer; transition: background 0.3s, transform 0.3s;
         }
-
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
-
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
         .slide-counter {
             position: fixed;
-            bottom: clamp(24px, 4vw, 36px);
-            right: clamp(20px, 3vw, 40px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            z-index: 100;
-            font-variant-numeric: tabular-nums;
+            bottom: 30px; left: 30px;
+            font-size: 13px; color: var(--muted);
+            z-index: 100; letter-spacing: 0.05em;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
 
         .more-stories {
             position: fixed;
-            bottom: 8px;
-            left: 50%;
+            bottom: 10px; left: 50%;
             transform: translateX(-50%);
-            font-size: var(--fs-label);
-            color: rgba(255,255,255,0.25);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
             text-decoration: none;
             z-index: 100;
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
-
-        /* Landscape mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
-        }
-
-        /* Touch targets */
-        @media (hover: none) {
-            .nav-dot {
-                min-width: 16px;
-                min-height: 16px;
-            }
-        }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* Subtle animation for title */
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .slide.active .animate-in {
-            animation: fadeUp 0.6s ease-out both;
-        }
-
-        .slide.active .animate-in:nth-child(2) { animation-delay: 0.1s; }
-        .slide.active .animate-in:nth-child(3) { animation-delay: 0.2s; }
-        .slide.active .animate-in:nth-child(4) { animation-delay: 0.3s; }
-    
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+    </style>
 </head>
 <body>
 <!--
-  NARRATIVE SPINE (reused from this deck's own verified content; no fresh research)
-
-  ABT:
-    AND we draw architecture diagrams for humans to glance at;
-    BUT a 667-line DOT graph is worth far more to AI agents as a bug-finding
-        specification than to any human reader;
-    THEREFORE feed the diagram back to the agents and the codebase audits itself.
-
-  PAYOFF (named up front):
-    The self-auditing feedback loop - the architecture diagram is both the map AND
-    the test. In one ~2.5h night session it surfaced 36+ real issues, 24/24 confirmed.
-
-  BEATS (proof-first; payoff at beat 6 of 14, before the midpoint):
-    1. proof     - one night session: 4 parallel runs, 36+ issues, 4 PRs merged in ~2.5h.
-                   advances: grounds the whole ABT with the measured result up front.
-    2. setup     - the idea: what if the architecture diagram is the test?
-                   advances: introduces the named approach the argument leans on.
-    3. mechanism - first build a DOT that explains the system, not a call graph. (one claim)
-                   advances: HOW the spec is made purposeful.
-    4. mechanism - 667 lines of architecture in one DOT file. (one claim)
-                   advances: HOW much structure the graph encodes.
-    5. tension   - comparing graph to design doc exposes real drift.
-                   advances: establishes the BUT - the map and the code disagree.
-    6. payoff    - the self-auditing feedback loop: the diagram is map and test.
-                   advances: lands the THEREFORE before the midpoint.
-    7. mechanism - DOT gives agents more bang per token than prose. (one claim)
-                   advances: HOW the graph pays off for agents specifically.
-    8. mechanism - feed the DOT to four parallel sessions as a spec. (one claim)
-                   advances: HOW the audit runs at scale.
-    9. mechanism - four sessions attack from four angles. (one claim)
-                   advances: HOW coverage compounds.
-   10. tension   - a human hand-carrying findings between sessions is the bottleneck.
-                   advances: the friction that motivates the turn.
-   11. proof     - 36+ verified issues across four categories.
-                   advances: the evidence the loop actually finds bugs.
-   12. proof     - 24/24 issues independently confirmed across sessions.
-                   advances: convergent confidence, multiplicative.
-   13. turn      - the meta-realization: let the sessions talk until they agree.
-                   advances: the pivot from human router to self-coordination.
-   14. takeaway  - your architecture already knows where the bugs are.
-                   advances: what the audience does next.
-
-  + Sources & Methodology (audit-trail slide, not a beat) at the end. Slides = 14 + 1 = 15.
+SPINE
+ABT: AND we draw architecture diagrams as decoration for humans to glance at; BUT a machine-readable graph is worth far more to an AI agent as a bug-finding specification than to any human reader; THEREFORE feed the diagram back to the agents and the codebase audits itself.
+Payoff: The self-auditing loop — the same DOT graph humans skim becomes the agent's map, and a hypothesis-driven bug-hunter turns it into fixes shipped as one reviewable PR.
+Beats:
+  1. frame     — Architecture diagrams are drawn for humans to admire, but the real reader should be the machine that can act on them.  advances: orients the audience on the AND (diagrams-as-human-decoration) and plants the tension the whole deck resolves.
+  2. setup     — string-utils-bug-hunt-demo is a deliberately tiny, fully-traceable bug hunt: a 101-line Python library with four functions.  advances: introduces the named example before the argument leans on it, so its proof lands as evidence.
+  3. proof     — Two real edge-case bugs were each killed with a single line, and a 17-test pytest suite goes green.  advances: establishes the AND with hard evidence early — the workflow actually finds and fixes real bugs.
+  4. tension   — Even in this tiny demo the README and PR claim '15 passed' while the committed suite actually has and passes 17.  advances: establishes the BUT — human-authored descriptions drift from ground truth.
+  5. mechanism — In Amplifier a pipeline IS a DOT graph the agents execute — make-a-deck.dot is a 205-line digraph of 13 nodes with explicit pass/fail/flagged edges.  advances: shows HOW the BUT flips to a THEREFORE.
+  6. turn      — Dense subsystem graphs, up to 736 lines, are near-useless to skim yet ideal as an agent's bug-finding map.  advances: pivots from AND to THEREFORE — the density that defeats humans makes the graph valuable to agents.
+  7. payoff    — Feed the graph to a hypothesis-driven, LSP-aware bug-hunter agent and the codebase audits itself, shipping a fix as one reviewable PR.  advances: lands the THEREFORE as the climax — the self-auditing loop.
+  8. takeaway  — Stop drawing diagrams only for people; author them as specs the machine can read, and every diagram becomes an audit.  advances: generalizes the payoff into the pattern the audience keeps.
 -->
 
-
-    <!-- ============================================================ -->
-    <!-- SLIDE 1: TITLE                                                -->
-    <!-- ============================================================ -->
-    
-<!-- beat 1: proof -->
-<div class="slide active center">
-        <div class="section-label">By The Numbers</div>
-        <h2 class="medium-headline">One night session</h2>
-
-        <div class="velocity-grid">
-            <div class="velocity-stat">
-                <div class="velocity-number">4</div>
-                <div class="velocity-label">Parallel sessions</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">81</div>
-                <div class="velocity-label">Total turns</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">36+</div>
-                <div class="velocity-label">Issues found</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">31</div>
-                <div class="velocity-label">Confirmed unique</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">4</div>
-                <div class="velocity-label">PRs squash-merged</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">~2.5h</div>
-                <div class="velocity-label">Total elapsed time</div>
-            </div>
-        </div>
-
-        <p class="body-text" style="margin-top: var(--space-lg); text-align: center; max-width: min(600px, 90vw);">
-            From DOT generation to merged fixes, driven by architecture-as-specification and cross-session validation.
-        </p>
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>The Self-Auditing Codebase</h1>
+        <p class="subtitle">Architecture as a bug specification</p>
     </div>
 
-<!-- beat 2: setup -->
-<div class="slide center">
-        <div class="section-label">The Idea</div>
-        <h2 class="medium-headline" style="max-width: min(800px, 90vw);">What if the architecture diagram <em>is</em> the test?</h2>
-        <p class="subhead" style="margin-top: var(--space-md);">
-            Generate a DOT graph from code. Compare it to the design doc.<br>
-            Feed the graph to AI agents as a <span class="accent">specification</span>.<br>
-            Let them measure the code against its own architecture.
-        </p>
+    <div class="slide center">
+        <!-- beat 1: frame -->
+        <div class="section-label">The Frame</div>
+        <h1>We draw diagrams for humans to <span class="accent-word">admire</span>. The real reader should be the <span class="accent2-word">machine</span>.</h1>
+        <p class="body" style="max-width:52ch;">Architecture diagrams get drawn as decoration — something people glance at once and forget. But the reader that can actually <em>act</em> on a graph is an AI agent. This deck follows that idea from a tiny, fully-traceable bug hunt all the way to a codebase that audits itself.</p>
+        <p class="handoff">Start where everything is verifiable: one small demo repo.</p>
     </div>
 
-<!-- beat 3: mechanism -->
-<div class="slide">
-        <div class="act-label">Act I · Mar 25–26</div>
-        <h2 class="medium-headline" style="margin-top: var(--space-md);">Building the Pipeline</h2>
-
-        <div class="quote-block">
-            <div class="quote-text">"We want a dot file that is purposeful — to the goal of explaining a system architecture. Not a call graph. Not file names pointing to line numbers. Those aren't useful."</div>
-            <div class="quote-attr">— User, establishing the vision</div>
+    <div class="slide split">
+        <!-- beat 2: setup -->
+        <div class="col-main">
+            <div class="section-label">The Demo</div>
+            <h2>A deliberately tiny, fully-traceable bug hunt</h2>
+            <p class="body">michaeljabbour/string-utils-bug-hunt-demo is a 101-line Python string library with four functions. On the fix branch it tracks exactly three files — small enough to hold the whole story in your head.</p>
+            <p class="handoff">Small enough to verify every claim by hand — starting with the bugs.</p>
         </div>
-
-        <p class="body-text" style="margin-top: var(--space-md);">
-            It started with the team-knowledge-base project. The user generated a deep DOT graph of the team-kb codebase, then compared it against the design document. The <em>gap</em> between diagram and design revealed concrete, actionable issues.
-        </p>
-    </div>
-
-<!-- beat 4: mechanism -->
-<div class="slide">
-        <div class="section-label">The Graph</div>
-        <h2 class="medium-headline">One DOT file. 667 lines of architecture.</h2>
-
-        <div class="grid-4" style="margin-top: var(--space-lg);">
-            <div class="card" style="text-align: center;">
-                <div class="velocity-number">667</div>
-                <div class="velocity-label">Lines of DOT</div>
-            </div>
-            <div class="card" style="text-align: center;">
-                <div class="velocity-number">70</div>
-                <div class="velocity-label">Nodes</div>
-            </div>
-            <div class="card" style="text-align: center;">
-                <div class="velocity-number">99</div>
-                <div class="velocity-label">Edges</div>
-            </div>
-            <div class="card" style="text-align: center;">
-                <div class="velocity-number">8</div>
-                <div class="velocity-label">Clusters</div>
-            </div>
-        </div>
-
-        <p class="body-text" style="margin-top: var(--space-lg);">
-            The user then built DOT generation into the team-kb CLI and ran it against <code style="font-family: 'SF Mono', monospace; color: var(--accent);">amplifier-chat</code>, producing two key files:
-        </p>
-
-        <div class="grid-2" style="margin-top: var(--space-md);">
-            <div class="card">
-                <div class="card-title" style="font-family: 'SF Mono', monospace; font-size: var(--fs-body);">amplifier-chat.dot</div>
-                <p class="card-body">System architecture overview — 5-tier: entry points → daemon → plugin backend → SSE streaming → frontend SPA → disk storage</p>
-            </div>
-            <div class="card">
-                <div class="card-title" style="font-family: 'SF Mono', monospace; font-size: var(--fs-body);">event-flow-deep.dot</div>
-                <p class="card-body">Deep event flow with 7 annotated bugs (BUG-01 through BUG-07) and 3 structural gaps embedded directly in the graph</p>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">101</div>
+                    <div class="stat-label">lines in src/string_utils.py</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number alt">4</div>
+                    <div class="stat-label">functions: truncate, slugify, word_count, contains_html_tags</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">tracked files on feature/fix-string-utils-bugs: README, src, tests</div>
+                </div>
             </div>
         </div>
     </div>
 
-<!-- beat 5: tension -->
-<div class="slide">
-        <div class="section-label">The Gap</div>
-        <h2 class="medium-headline">Diagram vs. Design Doc</h2>
-        <p class="body-text">Comparing the generated architecture graph against the original design document revealed concrete discrepancies:</p>
-
-        <div class="grid-3" style="margin-top: var(--space-lg);">
-            <div class="card-accent">
-                <div class="card-icon">01</div>
-                <div class="card-title">Stub Functions</div>
-                <p class="card-body">Functions declared in the design but never implemented — empty shells that silently passed through.</p>
-            </div>
-            <div class="card-accent">
-                <div class="card-icon">02</div>
-                <div class="card-title">Dead Fields</div>
-                <p class="card-body">Data fields declared in structures but never populated by any code path — ghosts in the schema.</p>
-            </div>
-            <div class="card-accent">
-                <div class="card-icon">03</div>
-                <div class="card-title">170 Lines Duplicated</div>
-                <p class="card-body">Logic duplicated between modules — copy-pasted implementations that should have been shared.</p>
-            </div>
+    <div class="slide split">
+        <!-- beat 3: proof -->
+        <div class="col-main">
+            <div class="section-label">The Proof</div>
+            <h2>Two real bugs, each killed with a single line</h2>
+            <p class="body">slugify left boundary separators in the output; word_count miscounted empties and runs of spaces. One line fixes each — and a 17-test pytest suite goes green.</p>
+            <p class="handoff">The workflow really finds and fixes bugs. So why not trust the humans describing it?</p>
         </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="c"># slugify — strip boundary separators</span>
+<span class="buggy">slugify('  Hello  ')   -> '-hello-'</span>
+<span class="fixed">slug = slug.strip(separator)  -> 'hello'</span>
 
-        <p class="body-text" style="margin-top: var(--space-lg);">
-            The architecture diagram didn't just <em>describe</em> the system. It became a <span class="accent">contract</span> the code was measured against.
-        </p>
+<span class="c"># word_count — split() with no argument</span>
+<span class="buggy">word_count('') -> 1 ; 'Hello   World' -> 4</span>
+<span class="fixed">words = text.split()  -> 0 ; 2</span>
+
+<span class="c"># pytest</span>
+17 passed in 0.01s</div>
+        </div>
     </div>
 
-<!-- beat 6: payoff -->
-<div class="slide center">
-        <div class="section-label">The Pattern</div>
-        <h2 class="medium-headline" style="max-width: min(700px, 90vw);">The Self-Auditing Feedback Loop</h2>
-
-        <div class="flow-row" style="margin-top: var(--space-xl);">
-            <div class="flow-box" style="border-color: var(--accent);">Generate<br>Architecture</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-box" style="border-color: var(--accent);">Compare to<br>Design</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-box" style="border-color: var(--accent);">Feed to<br>Agents</div>
+    <div class="slide split">
+        <!-- beat 4: tension -->
+        <div class="col-main">
+            <div class="section-label">The Tension</div>
+            <h2>The human-written description already drifted from ground truth</h2>
+            <p class="body">Even in this tiny demo, the README and PR #1 body claim "15 passed" — but the committed suite actually collects and passes 17. If a hand-written description drifts here, why trust the diagrams humans glance at?</p>
+            <p class="handoff">The fix: make the machine, not the prose, the source of truth.</p>
         </div>
-        <div class="flow-row">
-            <div class="flow-box" style="border-color: #30D158;">Update<br>Architecture</div>
-            <div class="flow-arrow" style="color: #30D158;">←</div>
-            <div class="flow-box" style="border-color: #30D158;">Fix<br>Bugs</div>
-            <div class="flow-arrow" style="color: #30D158;">←</div>
-            <div class="flow-box" style="border-color: #30D158;">Find<br>Bugs</div>
-        </div>
-
-        <p class="subhead" style="margin-top: var(--space-xl); max-width: min(700px, 90vw);">
-            The architecture diagram is both the <span class="accent">map</span> and the <span style="color: #30D158;">test</span>.<br>
-            The codebase audits itself.
-        </p>
-    </div>
-
-<!-- beat 7: mechanism -->
-<div class="slide center">
-        <div class="section-label">The Breakthrough</div>
-
-        <div class="quote-block" style="text-align: left;">
-            <div class="quote-text">"Less for human consumption and more for context/pointers for agents — they can provide more bang-for-the-buck (more context for fewer tokens) than other approaches."</div>
-            <div class="quote-attr">— Brian, on the value of DOT graphs for AI agents</div>
-        </div>
-
-        <p class="subhead" style="margin-top: var(--space-lg); max-width: min(700px, 90vw);">
-            A 667-line DOT file encodes more structural information than thousands of lines of raw source code.<br><br>
-            <span class="accent">Architecture as compression.</span>
-        </p>
-    </div>
-
-<!-- beat 8: mechanism -->
-<div class="slide center">
-        <div class="act-label">Act II · Mar 27, 1:00 AM</div>
-        <h2 class="headline" style="margin-top: var(--space-md); max-width: min(800px, 90vw);">DOT as<br>Bug-Finding Spec</h2>
-        <p class="subhead" style="margin-top: var(--space-sm);">
-            4 parallel Amplifier sessions.<br>
-            Each consuming a DOT file.<br>
-            Each diving into the code.
-        </p>
-        <div class="small-text" style="margin-top: var(--space-lg);">1:00 AM – 3:30 AM · One continuous night session</div>
-    </div>
-
-<!-- beat 9: mechanism -->
-<div class="slide">
-        <div class="section-label">Parallel Attack</div>
-        <h2 class="medium-headline">Four sessions, four angles</h2>
-
-        <div class="grid-2" style="margin-top: var(--space-md);">
-            <div class="card">
-                <div class="card-icon">S1</div>
-                <div class="card-title">Architecture Audit</div>
-                <div class="card-meta">14 turns · amplifier-chat.dot</div>
-                <p class="card-body" style="margin-top: var(--space-xs);">Fed <code style="font-family: monospace; color: var(--accent);">amplifier-chat.dot</code>. Dispatched 3 parallel agents (frontend, backend, test/git-history). Found <strong style="color: var(--text-primary);">24 issues</strong> across 4 categories.</p>
-            </div>
-            <div class="card">
-                <div class="card-icon">S2</div>
-                <div class="card-title">Bug Validation</div>
-                <div class="card-meta">7 turns · event-flow-deep.dot</div>
-                <p class="card-body" style="margin-top: var(--space-xs);">Fed <code style="font-family: monospace; color: var(--accent);">event-flow-deep.dot</code> with its annotated bugs (BUG-01 through BUG-07). Agents validated each against source code.</p>
-            </div>
-            <div class="card">
-                <div class="card-icon">S3</div>
-                <div class="card-title">Cross-Validator</div>
-                <div class="card-meta">8 turns · independent verification</div>
-                <p class="card-body" style="margin-top: var(--space-xs);">Read Session 1's findings via session-analyst. Dispatched parallel agents (Security, Frontend, Backend) to independently verify every issue. Found an <strong style="color: var(--accent);">additional vulnerability</strong> the original session missed.</p>
-            </div>
-            <div class="card">
-                <div class="card-icon">S4</div>
-                <div class="card-title">Execution</div>
-                <div class="card-meta">52 turns · git worktrees → 4 PRs</div>
-                <p class="card-body" style="margin-top: var(--space-xs);">Cross-checked with all other sessions. Designed a 4-PR fix plan organized by regression risk. Implemented all fixes using git worktrees.</p>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">15</div>
+                    <div class="stat-label">tests the README &amp; PR #1 body claim passed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number alt">17</div>
+                    <div class="stat-label">test functions the committed suite actually collects &amp; passes</div>
+                </div>
             </div>
         </div>
     </div>
 
-<!-- beat 10: tension -->
-<div class="slide">
-        <div class="section-label">The Human Router</div>
-        <h2 class="medium-headline">Manually shuttling findings between sessions</h2>
-
-        <div style="margin-top: var(--space-lg); max-width: min(800px, 95vw);">
-            <div class="quote-block" style="margin-bottom: var(--space-md);">
-                <div class="quote-text" style="font-size: var(--fs-h3);">"Another session found this, can you clarify if it's accurate"</div>
-            </div>
-            <div class="quote-block" style="margin-bottom: var(--space-md);">
-                <div class="quote-text" style="font-size: var(--fs-h3);">"The other session gave you this feedback, can you validate?"</div>
-            </div>
-            <div class="quote-block" style="margin-bottom: var(--space-md);">
-                <div class="quote-text" style="font-size: var(--fs-h3);">"I just passed back your assessment into the other session."</div>
-            </div>
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Mechanism</div>
+            <h2>In Amplifier, a pipeline IS a DOT graph the agents execute</h2>
+            <p class="body">make-a-deck.dot is a 205-line digraph of 13 nodes with explicit pass / fail / flagged edges — start → reset → research → factcheck → spine → render → lint → done. The diagram isn't decoration; it's the machine-readable spec agents run.</p>
+            <p class="handoff">If a small graph is a spec, what about the huge ones?</p>
         </div>
-
-        <p class="body-text" style="margin-top: var(--space-md);">
-            The user became the <span class="accent">orchestrator</span> — a human message bus routing findings between competing AI sessions for independent verification. Each session could challenge the others' conclusions.
-        </p>
-    </div>
-
-<!-- beat 11: proof -->
-<div class="slide">
-        <div class="section-label">The Findings</div>
-        <h2 class="medium-headline">36+ verified issues, 4 categories</h2>
-
-        <div style="margin-top: var(--space-lg); max-width: min(800px, 95vw);">
-            <div class="bug-strip">
-                <span class="bug-cat">G1</span>
-                <span class="bug-desc">Security — path traversal, regex mismatch, event loop blocking</span>
-                <span class="bug-count">6</span>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">205</div>
+                    <div class="stat-label">lines in make-a-deck.dot</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number alt">13</div>
+                    <div class="stat-label">node declarations agents execute</div>
+                </div>
             </div>
-            <div class="bug-strip">
-                <span class="bug-cat">G2</span>
-                <span class="bug-desc">Event Pipeline — token routing, race conditions, lineage loss</span>
-                <span class="bug-count">9</span>
-            </div>
-            <div class="bug-strip">
-                <span class="bug-cat">G3</span>
-                <span class="bug-desc">Backend Reliability — atomic writes, thread safety</span>
-                <span class="bug-count">—</span>
-            </div>
-            <div class="bug-strip">
-                <span class="bug-cat">G4</span>
-                <span class="bug-desc">Frontend State — memory growth, toolMap contamination</span>
-                <span class="bug-count">—</span>
-            </div>
-        </div>
-
-        <p class="body-text" style="margin-top: var(--space-lg);">
-            <strong style="color: var(--text-primary);">31 confirmed unique issues.</strong> Session 4 discovered an additional bug during implementation. All stemming from two DOT files used as specifications.
-        </p>
-    </div>
-
-<!-- beat 12: proof -->
-<div class="slide center">
-        <div class="section-label">Cross-Validation</div>
-        <div class="big-number">24/24</div>
-        <div class="big-number-label" style="margin-bottom: var(--space-lg);">Issues independently confirmed real</div>
-
-        <div class="grid-3" style="max-width: min(800px, 95vw);">
-            <div class="card" style="text-align: center;">
-                <div class="velocity-number" style="font-size: clamp(28px, 6vw, 48px);">22</div>
-                <div class="velocity-label">Fully confirmed</div>
-            </div>
-            <div class="card" style="text-align: center;">
-                <div class="velocity-number" style="font-size: clamp(28px, 6vw, 48px);">2</div>
-                <div class="velocity-label">Partially confirmed</div>
-            </div>
-            <div class="card-accent" style="text-align: center;">
-                <div class="velocity-number" style="font-size: clamp(28px, 6vw, 48px);">+1</div>
-                <div class="velocity-label">New vulnerability found</div>
-            </div>
-        </div>
-
-        <p class="subhead" style="margin-top: var(--space-lg); max-width: min(700px, 90vw);">
-            When parallel sessions independently converge on the same findings, confidence is <span class="accent">multiplicative</span>.
-        </p>
-    </div>
-
-<!-- beat 13: turn -->
-<div class="slide">
-        <div class="act-label">Act III · ~3:00 AM</div>
-        <h2 class="medium-headline" style="margin-top: var(--space-md);">The Meta-Realization</h2>
-
-        <div class="quote-block" style="margin-top: var(--space-lg);">
-            <div class="quote-text">"I have 4 different sessions investigating the same issue. Is there a way I can have them talk to each other? Continue the conversation until they all agree."</div>
-        </div>
-
-        <div class="quote-block" style="margin-top: var(--space-md);">
-            <div class="quote-text">"HELLO! Different amplifier sessions. On my terminal. So what are the ways that they can talk to each other until they all get agreement?"</div>
-        </div>
-
-        <p class="body-text" style="margin-top: var(--space-lg);">
-            The workflow was so powerful it <span class="accent">demanded its own infrastructure</span>. The user designed a cross-session consensus protocol — sessions that could autonomously converge on findings, observable and interruptable.
-        </p>
-    </div>
-
-<!-- beat 14: takeaway -->
-<div class="slide center">
-        <div class="section-label">Try It</div>
-        <h2 class="headline" style="max-width: min(800px, 90vw);">Your architecture knows where the bugs are.</h2>
-        <p class="subhead" style="margin-top: var(--space-md); max-width: min(600px, 90vw);">
-            Generate a DOT graph. Feed it to an agent.<br>
-            Let the code audit itself.
-        </p>
-        <div style="margin-top: var(--space-xl);">
-            <div class="code-block" style="text-align: left; display: inline-block; max-width: min(600px, 90vw);">
-<span class="code-comment"># 1. Generate the architecture</span>
-amplifier dot-graph --repo ./my-project
-
-<span class="code-comment"># 2. Feed it to an agent as a spec</span>
-amplifier chat <span class="code-string">"Review this codebase against</span>
-<span class="code-string">  its architecture: @my-project.dot"</span>
-
-<span class="code-comment"># 3. Cross-validate with a second session</span>
-amplifier chat <span class="code-string">"Verify these findings</span>
-<span class="code-string">  independently: @findings.md"</span></div>
         </div>
     </div>
 
-<div class="slide">
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">The Turn</div>
+            <h2>The density that defeats human readers is exactly what agents want</h2>
+            <p class="body">Dense subsystem graphs run up to 736 lines (03-graph-model.dot; 571 in 02-handler-architecture.dot). No human skims that. But an agent reads it end to end — turning an unreadable diagram into an ideal bug-finding map.</p>
+            <p class="handoff">So hand that map to an agent built to hunt bugs.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">736</div>
+                    <div class="stat-label">lines — largest local architecture DOT graph</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number alt">571</div>
+                    <div class="stat-label">lines in 02-handler-architecture.dot</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>Feed the graph to the bug-hunter and the codebase audits itself</h2>
+            <p class="body">Amplifier ships a 314-line bug-hunter agent — hypothesis-driven and LSP-enhanced. Point it at the graph-as-spec and the loop closes: the demo's whole discovery-to-ship workflow lands as one reviewable PR, #1, +284 / −2 across three files.</p>
+            <p class="handoff">That loop is the pattern worth keeping.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">314</div>
+                    <div class="stat-label">lines in the bug-hunter agent spec (amplifier-foundation)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number alt">+284/−2</div>
+                    <div class="stat-label">PR #1, 3 files, discovery to ship (OPEN)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Takeaway</div>
+        <h1>Stop drawing diagrams only for people. Author them as <span class="accent-word">specs the machine can read</span>.</h1>
+        <p class="body" style="max-width:54ch;">When the diagram is a machine-readable specification — not decoration — every diagram becomes an audit. The same DOT graph a human skims becomes the agent's map, and the codebase checks itself.</p>
+        <p class="handoff">Architecture-as-specification: the pattern to keep.</p>
+    </div>
+
+    <!-- Sources & Methodology (no beat comment) -->
+    <div class="slide">
         <div class="section-label">Sources</div>
-        <h2 class="medium-headline">Research Methodology</h2>
-
-        <div style="margin-top: var(--space-md); max-width: min(800px, 95vw);">
-            <p class="body-text"><strong style="color: var(--text-primary);">Data as of:</strong> March 27, 2026</p>
-            <p class="body-text" style="margin-top: var(--space-xs);"><strong style="color: var(--text-primary);">Pattern status:</strong> <span style="color: #30D158;">Active — discovered workflow, not a shipped product feature</span></p>
-
-            <p class="body-text" style="margin-top: var(--space-md);"><strong style="color: var(--text-primary);">Primary source:</strong></p>
-            <ul class="sources-list" style="margin-top: var(--space-xs);">
-                <li>First-party account from the user who conducted the sessions (March 25–27, 2026)</li>
-                <li>4 parallel Amplifier sessions analyzed via session-analyst</li>
-                <li>DOT graph stats (667 lines, 70 nodes, 99 edges, 8 clusters) from user-reported graph analysis</li>
-                <li>Bug counts (36+ found, 31 unique, 24/24 cross-validated) from user-reported session outcomes</li>
-                <li>Turn counts (14, 7, 8, 52 = 81 total) from session metadata</li>
+        <h2>Sources &amp; Research Methodology</h2>
+        <div class="small-text" style="opacity:0.85; line-height:1.6; max-width:70ch;">
+            <p><strong>Data as of:</strong> 2026-07-21 (repo cloned on this date)</p>
+            <p><strong>Primary source:</strong> michaeljabbour/string-utils-bug-hunt-demo — PR #1 OPEN (not merged); src + tests exist only on branch feature/fix-string-utils-bugs, main holds README only.</p>
+            <p><strong>Feature status:</strong> bug-hunter agent shipped in amplifier-foundation (314 lines, LSP-enhanced, hypothesis-driven); DOT pipelines live in-repo (make-a-deck.dot, 205 lines / 13 nodes).</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>gh repo clone michaeljabbour/string-utils-bug-hunt-demo; git checkout feature/fix-string-utils-bugs; git ls-files</code> (3 files)</li>
+                <li><code>wc -l src/string_utils.py; grep '^def ' src/string_utils.py</code> (101 lines; 4 functions)</li>
+                <li><code>grep -c 'def test_' tests/test_string_utils.py; python3 -m pytest tests/ -q</code> (17 collected; 17 passed in 0.01s)</li>
+                <li><code>gh pr view 1 --repo michaeljabbour/string-utils-bug-hunt-demo --json title,state,additions,deletions,files</code> (PR #1 OPEN, +284/−2, 3 files)</li>
+                <li><code>find . -maxdepth 4 -iname '*.dot' | while read f; do echo "$(wc -l &lt; $f) $f"; done | sort -rn</code> (736 / 571 / 205)</li>
+                <li><code>for f in $(find . -maxdepth 3 -name bug-hunter.md); do wc -l &lt; $f; done</code> (amplifier-foundation = 314 lines)</li>
             </ul>
-
-            <p class="body-text" style="margin-top: var(--space-md);"><strong style="color: var(--text-primary);">Quotes:</strong></p>
-            <ul class="sources-list" style="margin-top: var(--space-xs);">
-                <li>All user quotes are authentic voice transcriptions from the sessions</li>
-                <li>Brian's quote is attributed feedback provided during the workflow</li>
-            </ul>
-
-            <p class="body-text" style="margin-top: var(--space-md);"><strong style="color: var(--text-primary);">Gaps &amp; caveats:</strong></p>
-            <ul class="sources-list" style="margin-top: var(--space-xs);">
-                <li>G3/G4 individual bug counts not specified in source — listed without counts</li>
-                <li>Elapsed time (~2.5h) estimated from stated window of 1:00 AM–3:30 AM</li>
-                <li>170 duplicated lines count from user's report, not independently verified</li>
-                <li>Cross-session consensus protocol was designed, not necessarily shipped/deployed</li>
-            </ul>
-
-            <p class="body-text" style="margin-top: var(--space-md);"><strong style="color: var(--text-primary);">Primary contributor:</strong> Single user conducted all sessions and provided the full account</p>
+            <p><strong>Gaps / corrections:</strong> The topic's "667-line DOT" figure matches no file under the tree — real figures 736 / 571 / 205 used instead. README &amp; PR say "15 passed" but the suite has and passes 17 — the 17 figure is used as ground truth. bug-hunter copies differ by repo (322 in amplifier-foundation-budget-gate); the 314 figure is specific to amplifier-foundation.</p>
+            <p><strong>Primary contributor:</strong> Michael J. Jabbour (michaeljabbour) — sole author of the demo repo, both commits, and PR #1.</p>
         </div>
     </div>
-
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
 
+    <!-- More stories link - REQUIRED -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -1015,29 +475,25 @@ amplifier chat <span class="code-string">"Verify these findings</span>
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch / swipe
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
@@ -1045,16 +501,14 @@ amplifier chat <span class="code-string">"Verify these findings</span>
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 
         updateNav();
     </script>
-<a href="index.html" class="more-stories">More Amplifier Stories</a>
 </body>
 </html>

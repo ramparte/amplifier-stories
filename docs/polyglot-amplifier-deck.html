@@ -1,757 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Polyglot Amplifier — From Python to Rust (and Beyond)</title>
-<script>document.documentElement.classList.add('js')</script>
-
-<style>
-/* =================================================================
-   DESIGN SYSTEM — CSS Custom Properties
-   ================================================================= */
-:root {
-    --accent: #FF375F;
-    --accent-glow: rgba(255, 55, 95, 0.15);
-    --accent-dim: rgba(255, 55, 95, 0.6);
-    --python: #3776AB;
-    --rust: #DEA584;
-    --typescript: #3178C6;
-    --green: #30D158;
-    --purple: #BF5AF2;
-    --cyan: #64D2FF;
-    --orange: #FF9F0A;
-
-    /* Surface hierarchy */
-    --surface-1: rgba(255,255,255,0.06);
-    --surface-2: rgba(255,255,255,0.10);
-    --surface-3: rgba(255,255,255,0.15);
-    --border-subtle: rgba(255,255,255,0.12);
-
-    /* Text hierarchy */
-    --text-primary: #ffffff;
-    --text-secondary: rgba(255,255,255,0.7);
-    --text-tertiary: rgba(255,255,255,0.5);
-
-    /* Typography scale */
-    --font-headline: clamp(32px, 8vw, 72px);
-    --font-medium-headline: clamp(24px, 5vw, 48px);
-    --font-subhead: clamp(16px, 3vw, 32px);
-    --font-body: clamp(14px, 2vw, 20px);
-    --font-small: clamp(12px, 1.6vw, 14px);
-    --font-xs: clamp(11px, 1.4vw, 13px);
-    --font-note: clamp(14px, 2vw, 16px);
-    --font-big-number: clamp(60px, 20vw, 180px);
-
-    /* Spacing */
-    --padding-slide: clamp(20px, 5vw, 80px);
-    --gap-grid: clamp(16px, 3vw, 40px);
-}
-
-/* =================================================================
-   RESET & BASE
-   ================================================================= */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-    background: #000;
-    color: #fff;
-    -webkit-font-smoothing: antialiased;
-}
-
-/* =================================================================
-   SLIDE SYSTEM
-   ================================================================= */
-.slide {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100vw;
-    min-height: 100vh;
-    min-height: 100dvh;
-    padding: var(--padding-slide);
-    display: flex;
-    flex-direction: column;
-    /* NO justify-content: center — content flows from top */
-    opacity: 0;
-    transform: translateX(100px);
-    transition: opacity 0.6s ease, transform 0.6s ease;
-    pointer-events: none;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-
-.slide.center { justify-content: center; }
-
-.slide.active {
-    opacity: 1;
-    transform: translateX(0);
-    pointer-events: auto;
-}
-
-.slide.exit-left {
-    opacity: 0;
-    transform: translateX(-100px);
-}
-
-/* =================================================================
-   TYPOGRAPHY
-   ================================================================= */
-.section-label {
-    font-size: clamp(12px, 1.5vw, 14px);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--accent);
-    margin-bottom: 16px;
-}
-
-.headline {
-    font-size: var(--font-headline);
-    font-weight: 700;
-    letter-spacing: -2px;
-    line-height: 1.05;
-    margin-bottom: 24px;
-}
-
-.medium-headline {
-    font-size: var(--font-medium-headline);
-    font-weight: 700;
-    letter-spacing: -1px;
-    line-height: 1.1;
-    margin-bottom: 20px;
-}
-
-.subhead {
-    font-size: var(--font-subhead);
-    font-weight: 400;
-    color: var(--text-secondary);
-    line-height: 1.4;
-    max-width: 800px;
-}
-
-.body-text {
-    font-size: var(--font-body);
-    color: var(--text-secondary);
-    line-height: 1.6;
-    max-width: 700px;
-}
-
-/* =================================================================
-   CARDS
-   ================================================================= */
-.card {
-    background: var(--surface-1);
-    border: 1px solid var(--border-subtle);
-    border-radius: clamp(12px, 2vw, 16px);
-    padding: clamp(16px, 4vw, 28px);
-}
-
-.card-title {
-    font-size: clamp(16px, 2.5vw, 22px);
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.card-desc {
-    font-size: clamp(13px, 1.8vw, 16px);
-    color: var(--text-secondary);
-    line-height: 1.5;
-}
-
-/* Card border variants */
-.card-accent-border { border-color: rgba(255,55,95,0.2); }
-.card-green-border { border-color: rgba(48,209,88,0.3); }
-.card-dim-border { border-color: rgba(255,255,255,0.08); }
-
-/* =================================================================
-   CODE BLOCKS
-   ================================================================= */
-.code-block {
-    background: var(--surface-1);
-    border: 1px solid var(--border-subtle);
-    border-radius: 12px;
-    padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
-    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-    font-size: clamp(12px, 1.6vw, 15px);
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.code-green { color: #30D158; }
-.code-blue { color: #64D2FF; }
-.code-orange { color: #FF9F0A; }
-.code-gray { color: var(--text-tertiary); }
-.code-pink { color: #FF375F; }
-.code-purple { color: #BF5AF2; }
-
-/* =================================================================
-   UTILITY — Colors
-   ================================================================= */
-.accent { color: var(--accent); }
-.dim { color: var(--text-tertiary); }
-.green { color: var(--green); }
-.lang-python { color: var(--python); }
-.lang-rust { color: var(--rust); }
-.lang-typescript { color: var(--typescript); }
-.color-community { color: var(--purple); }
-.color-cyan { color: var(--cyan); }
-.color-orange { color: var(--orange); }
-.color-white { color: #fff; }
-
-/* =================================================================
-   UTILITY — Spacing
-   ================================================================= */
-.mt-xs  { margin-top: 4px; }
-.mt-sm  { margin-top: 12px; }
-.mt-md  { margin-top: 16px; }
-.mt-lg  { margin-top: 24px; }
-.mt-xl  { margin-top: 32px; }
-.mt-2xl { margin-top: 40px; }
-.mt-3xl { margin-top: 48px; }
-.mb-xs  { margin-bottom: 8px; }
-.mb-sm  { margin-bottom: 12px; }
-.mb-md  { margin-bottom: 16px; }
-.mb-lg  { margin-bottom: 24px; }
-.mb-xl  { margin-bottom: 32px; }
-.mb-2xl { margin-bottom: 40px; }
-.mb-3xl { margin-bottom: 48px; }
-.mb-gap { margin-bottom: var(--gap-grid); }
-.mt-gap { margin-top: var(--gap-grid); }
-.ml-sm  { margin-left: 12px; }
-
-/* =================================================================
-   UTILITY — Layout
-   ================================================================= */
-.text-center { text-align: center; }
-.flex-col { display: flex; flex-direction: column; }
-.gap-sm  { gap: 6px; }
-.gap-md  { gap: 10px; }
-.self-stretch { align-self: stretch; }
-.self-start { align-self: start; }
-.mx-auto { margin-left: auto; margin-right: auto; }
-.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.mono { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; }
-
-/* =================================================================
-   UTILITY — Max Widths
-   ================================================================= */
-.max-w-sm { max-width: 650px; }
-.max-w-content { max-width: 700px; }
-.max-w-code { max-width: 780px; }
-.max-w-md { max-width: 800px; }
-.max-w-lg { max-width: 900px; }
-.max-w-xl { max-width: 950px; }
-.max-w-none { max-width: none; }
-.max-w-cta { max-width: 750px; }
-
-/* =================================================================
-   GRID LAYOUTS
-   ================================================================= */
-.thirds {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-    gap: var(--gap-grid);
-}
-
-.halves {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
-    gap: var(--gap-grid);
-}
-
-/* =================================================================
-   NUMBERS & STATS
-   ================================================================= */
-.big-number {
-    font-size: var(--font-big-number);
-    font-weight: 800;
-    letter-spacing: -4px;
-    line-height: 1;
-    background: linear-gradient(135deg, var(--accent), var(--purple));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.stat-number {
-    font-size: clamp(36px, 10vw, 72px);
-    font-weight: 800;
-    letter-spacing: -2px;
-    line-height: 1;
-}
-
-.stat-label {
-    font-size: clamp(13px, 1.8vw, 16px);
-    color: var(--text-tertiary);
-    margin-top: 8px;
-}
-
-.formula-number {
-    font-size: clamp(40px, 10vw, 80px);
-    font-weight: 800;
-    letter-spacing: -2px;
-}
-
-/* =================================================================
-   TAGS & BADGES
-   ================================================================= */
-.tag {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: clamp(10px, 1.4vw, 12px);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.tag-new {
-    background: rgba(48, 209, 88, 0.15);
-    color: #30D158;
-    border: 1px solid rgba(48, 209, 88, 0.3);
-}
-
-.tag-mature {
-    background: rgba(55, 118, 171, 0.15);
-    color: #64B5F6;
-    border: 1px solid rgba(55, 118, 171, 0.3);
-}
-
-.tag-community {
-    background: rgba(191, 90, 242, 0.15);
-    color: #BF5AF2;
-    border: 1px solid rgba(191, 90, 242, 0.3);
-}
-
-.tag-active {
-    background: rgba(48, 209, 88, 0.15);
-    color: #30D158;
-    border: 1px solid rgba(48, 209, 88, 0.3);
-}
-
-.badge-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
-}
-.badge-row .section-label { margin-bottom: 0; }
-
-/* =================================================================
-   LANGUAGE ICONS
-   ================================================================= */
-.lang-icon {
-    width: clamp(32px, 6vw, 48px);
-    height: clamp(32px, 6vw, 48px);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: clamp(16px, 3vw, 24px);
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-
-.lang-icon-python { background: rgba(55,118,171,0.2); color: var(--python); }
-.lang-icon-rust   { background: rgba(222,165,132,0.2); color: var(--rust); }
-.lang-icon-ts     { background: rgba(49,120,198,0.2); color: var(--typescript); }
-
-/* =================================================================
-   ARCHITECTURE DIAGRAM
-   ================================================================= */
-.arch-box {
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 12px;
-    padding: clamp(12px, 3vw, 20px);
-    text-align: center;
-    position: relative;
-}
-
-.arch-box-accent {
-    border-color: var(--accent);
-    background: var(--accent-glow);
-}
-
-.arch-box-python    { border-color: var(--python); }
-.arch-box-rust      { border-color: var(--rust); }
-.arch-box-typescript { border-color: var(--typescript); }
-.arch-box-muted     { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.03); }
-
-.arch-label {
-    font-size: var(--font-small);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.arch-detail {
-    font-size: var(--font-small);
-    color: var(--text-tertiary);
-    margin-top: 4px;
-}
-
-.merge-label {
-    font-size: clamp(11px, 1.4vw, 13px);
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-weight: 600;
-    padding: 8px 0;
-    text-align: center;
-}
-
-/* =================================================================
-   CAPABILITIES
-   ================================================================= */
-.capability-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-    gap: 8px;
-}
-
-.capability-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 8px;
-    font-size: clamp(12px, 1.6vw, 14px);
-}
-
-.capability-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.dot-green  { background: var(--green); }
-.dot-cyan   { background: var(--cyan); }
-.dot-orange { background: var(--orange); }
-.dot-purple { background: var(--purple); }
-
-.cap-group-label {
-    font-size: var(--font-small);
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 12px;
-}
-
-.cap-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-/* =================================================================
-   TIMELINE
-   ================================================================= */
-.timeline-item {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--surface-1);
-}
-
-.timeline-item-last { border-bottom: none; }
-
-.timeline-date {
-    font-size: clamp(12px, 1.5vw, 14px);
-    color: var(--accent);
-    font-weight: 600;
-    min-width: 100px;
-    font-variant-numeric: tabular-nums;
-}
-
-.timeline-date-community { color: var(--purple); }
-.timeline-date-milestone { color: var(--green); }
-
-.timeline-text {
-    font-size: clamp(14px, 2vw, 18px);
-    color: rgba(255,255,255,0.8);
-}
-
-.flow-arrow {
-    color: var(--accent);
-    font-size: clamp(18px, 3vw, 28px);
-    text-align: center;
-    padding: 8px 0;
-}
-
-/* =================================================================
-   COMPARISON TABLE
-   ================================================================= */
-.compare-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: clamp(13px, 1.8vw, 16px);
-}
-
-.compare-table th {
-    text-align: left;
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.15);
-    color: var(--text-tertiary);
-    font-weight: 500;
-    font-size: var(--font-xs);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.compare-table td {
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--surface-1);
-    color: rgba(255,255,255,0.8);
-    vertical-align: top;
-}
-
-.compare-table tr:last-child td { border-bottom: none; }
-
-.th-python    { color: var(--python); }
-.th-rust      { color: var(--rust); }
-.th-typescript { color: var(--typescript); }
-.td-label     { color: var(--text-tertiary); }
-
-.check { color: #30D158; }
-.dash  { color: rgba(255,255,255,0.2); }
-
-/* =================================================================
-   BACKGROUND GLOWS
-   ================================================================= */
-.bg-glow {
-    position: absolute;
-    width: 600px;
-    height: 600px;
-    border-radius: 50%;
-    filter: blur(200px);
-    opacity: 0.08;
-    pointer-events: none;
-}
-
-.glow-accent-tr  { background: var(--accent); top: -200px; right: -200px; }
-.glow-purple-bl  { background: var(--purple); bottom: -200px; left: -200px; }
-.glow-accent-center { background: var(--accent); top: 50%; left: 50%; transform: translate(-50%, -50%); }
-.glow-purple-tr  { background: var(--purple); top: -100px; right: -100px; }
-.glow-accent-br  { background: var(--accent); bottom: -200px; right: -200px; }
-.glow-cta {
-    background: var(--accent);
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 800px; height: 800px;
-    opacity: 0.5;
-}
-
-/* =================================================================
-   FOOTNOTES, FOOTERS & NOTES
-   ================================================================= */
-.slide-footer {
-    margin-top: 24px;
-    font-size: var(--font-small);
-    color: var(--text-tertiary);
-}
-
-.tag-context {
-    font-size: var(--font-small);
-    color: var(--text-tertiary);
-    margin-left: 12px;
-}
-
-.pattern-note {
-    margin-top: 32px;
-    font-size: var(--font-note);
-    color: var(--text-tertiary);
-    max-width: 700px;
-}
-
-.footnote {
-    font-size: var(--font-small);
-    color: var(--text-tertiary);
-}
-
-/* =================================================================
-   INSIGHT BOX
-   ================================================================= */
-.insight-box {
-    margin-top: 40px;
-    padding: 20px 24px;
-    background: rgba(255,55,95,0.06);
-    border: 1px solid rgba(255,55,95,0.15);
-    border-radius: 12px;
-    max-width: 700px;
-}
-
-.insight-label {
-    font-size: var(--font-small);
-    color: var(--accent);
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.insight-text {
-    font-size: clamp(13px, 1.8vw, 15px);
-    color: var(--text-secondary);
-    line-height: 1.5;
-}
-
-/* =================================================================
-   COMMUNITY PATTERN (Slide 8)
-   ================================================================= */
-.step-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.step-number {
-    color: var(--text-tertiary);
-    min-width: 24px;
-    display: inline-block;
-}
-
-.step-desc {
-    color: var(--text-secondary);
-}
-
-.community-insight {
-    margin-top: 16px;
-    color: var(--accent);
-    font-weight: 500;
-}
-
-/* =================================================================
-   CTA
-   ================================================================= */
-.cta-wrapper {
-    text-align: center;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.cta-actions {
-    max-width: 750px;
-    margin: 0 auto;
-}
-
-.card-code {
-    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-    font-size: var(--font-small);
-}
-
-/* =================================================================
-   SOURCES & METHODOLOGY
-   ================================================================= */
-.sources-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-    gap: var(--gap-grid);
-}
-
-.source-label {
-    font-size: var(--font-xs);
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.source-value {
-    font-size: var(--font-small);
-    color: var(--text-secondary);
-    line-height: 1.6;
-}
-
-.source-list {
-    list-style: none;
-    padding: 0;
-}
-
-.source-list li {
-    font-size: var(--font-small);
-    color: var(--text-secondary);
-    line-height: 1.6;
-    padding: 4px 0;
-    padding-left: 16px;
-    position: relative;
-}
-
-.source-list li::before {
-    content: '•';
-    color: var(--accent);
-    position: absolute;
-    left: 0;
-}
-
-/* =================================================================
-   NAVIGATION
-   ================================================================= */
-.nav-dots {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    z-index: 100;
-}
-
-.nav-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.2);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: none;
-    padding: 0;
-}
-
-.nav-dot.active {
-    background: var(--accent);
-    transform: scale(1.3);
-}
-
-.slide-counter {
-    position: fixed;
-    bottom: 20px;
-    right: 24px;
-    font-size: var(--font-xs);
-    color: var(--text-tertiary);
-    font-variant-numeric: tabular-nums;
-    z-index: 100;
-}
-
-.more-stories {
-    position: fixed;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: clamp(11px, 1.5vw, 12px);
-    color: rgba(255,255,255,0.3);
-    text-decoration: none;
-    z-index: 100;
-}
-
-/* =================================================================
-   RESPONSIVE
-   ================================================================= */
-@media (max-width: 768px) {
-    .slide { padding: clamp(16px, 4vw, 40px); padding-bottom: 60px; }
-    .headline { letter-spacing: -1px; }
-    .compare-table { font-size: clamp(12px, 2vw, 13px); }
-    .compare-table th, .compare-table td { padding: 8px 10px; }
-}
-
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Four Languages, One File</title>
+    <script>document.documentElement.classList.add('js')</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #a1a1aa;
+            --accent: #6ee7b7;
+            --accent2: #7dd3fc;
+            --card: #16161f;
+            --border: rgba(255,255,255,0.10);
+        }
+
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Core slide CSS */
+        .slide {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .slide.active { display: flex; }
+
+        /* Progressive enhancement: no-JS fallback */
         html:not(.js) .slide {
             display: flex !important;
             position: relative !important;
@@ -767,524 +56,516 @@ body {
         /* Progressive enhancement: JS-only slide mode */
         html.js { overflow: hidden; }
         html.js body { overflow: hidden; overscroll-behavior: none; }
-        html.js .slide { display: none; }
+        html.js .slide {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s ease;
+        }
         html.js .slide.active { display: flex; }
+
+        /* Fit-safe: cap to viewport and scroll */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        /* Centering opt-in */
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); max-width: 30ch; }
+
+        .title-slide h1 {
+            background: linear-gradient(120deg, var(--accent) 0%, var(--accent2) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: clamp(14px, 2.5vw, 22px);
+        }
+
+        h2 + .body, h1 + .body { margin-top: clamp(16px, 2.5vw, 24px); }
+        .body { color: var(--fg); max-width: 40ch; }
+        .body + .body { margin-top: 0.7em; }
+        .handoff {
+            color: var(--muted);
+            margin-top: clamp(18px, 3vw, 30px);
+            font-style: italic;
+            max-width: 40ch;
+        }
+
+        strong { color: var(--accent); font-weight: 700; }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: clamp(12px, 2vw, 20px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.5vw, 26px);
+        }
+        .stat .num {
+            font-size: clamp(30px, 5vw, 52px);
+            font-weight: 750;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            color: var(--accent);
+        }
+        .stat .lbl {
+            font-size: clamp(12px, 1.5vw, 15px);
+            color: var(--muted);
+            margin-top: 8px;
+            line-height: 1.3;
+        }
+
+        /* Steps */
+        .steps { display: flex; flex-direction: column; gap: clamp(12px, 2vw, 18px); }
+        .step {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(14px, 2vw, 20px) clamp(16px, 2.5vw, 24px);
+            display: flex;
+            gap: clamp(12px, 2vw, 18px);
+            align-items: flex-start;
+        }
+        .step .n {
+            font-size: clamp(18px, 2.4vw, 26px);
+            font-weight: 750;
+            color: var(--accent2);
+            line-height: 1.1;
+            flex: 0 0 auto;
+        }
+        .step .t { font-size: clamp(13px, 1.7vw, 17px); line-height: 1.4; }
+        .step .t strong { color: var(--fg); }
+
+        /* Rules / list */
+        .rules { display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 15px); list-style: none; }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 20px);
+        }
+        .rules li strong { color: var(--accent2); }
+
+        /* Language chips */
+        .langs { display: flex; flex-wrap: wrap; gap: clamp(10px, 1.6vw, 16px); }
+        .lang {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(14px, 2vw, 22px);
+            flex: 1 1 40%;
+            min-width: 130px;
+        }
+        .lang .name { font-size: clamp(18px, 2.4vw, 26px); font-weight: 750; color: var(--accent); }
+        .lang .role { font-size: clamp(12px, 1.5vw, 15px); color: var(--muted); margin-top: 6px; line-height: 1.35; }
+
+        /* Code block */
+        .code-block {
+            background: #05050a;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(16px, 2.5vw, 24px);
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+            font-size: clamp(12px, 1.6vw, 16px);
+            line-height: 1.55;
+            white-space: pre-wrap;
+            color: #cbd5e1;
+            overflow-x: auto;
+        }
+        .code-block .kw { color: var(--accent2); }
+        .code-block .cm { color: #64748b; }
+        .code-block .st { color: var(--accent); }
+
+        /* Sources slide */
+        .sources-body { max-width: 62ch; color: var(--muted); }
+        .sources-body p { margin-bottom: 0.7em; line-height: 1.5; }
+        .sources-body ul { margin: 0.4em 0 0.9em 1.1em; }
+        .sources-body li { margin-bottom: 0.5em; line-height: 1.45; }
+        .sources-body code {
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+            font-size: 0.86em;
+            background: #05050a;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 1px 6px;
+            color: var(--accent2);
+        }
+        .status-badge {
+            display: inline-block;
+            background: rgba(110,231,183,0.14);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: clamp(11px, 1.4vw, 13px);
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            margin-bottom: clamp(16px, 2.5vw, 22px);
+        }
+
+        /* Nav */
+        .nav {
+            position: fixed;
+            bottom: 28px;
+            right: 32px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.22);
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter {
+            position: fixed;
+            bottom: 26px;
+            left: 32px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
+            z-index: 100;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
     </style>
 </head>
 <body>
 <!--
-  NARRATIVE SPINE — Polyglot Amplifier (LSP)
-
-  ABT: AND Amplifier began as a Python-only tool where LSP let agents truly
-       understand code; BUT hardcoding each new language means M×N integrations
-       nobody can maintain; THEREFORE a language-agnostic LSP core where the
-       engine carries zero language knowledge and adding a language is just YAML —
-       proven when the community shipped TypeScript in 7 days and Rust in one, with
-       zero core code changes.
-
-  PAYOFF (named up front): adding a whole language costs ZERO lines of code — one
-  YAML file deep-merges into tool-lsp and unlocks all 17 semantic operations.
-
-  BEATS (proof-first; payoff at beat 5 of 10, before the midpoint of 5):
-    1. proof     — 3 languages, 17 operations each, 0 lines of code to add one.
-                   advances: grounds the THEREFORE — polyglot scale is already real.
-    2. setup     — it started Python-only; LSP made agents understand code, not grep it.
-                   advances: establishes the AND and introduces LSP, the foundation the argument leans on.
-    3. tension   — hardcoding each language is the M×N trap; LSP collapses it to M+N.
-                   advances: establishes the BUT.
-    4. mechanism — the core carries zero hardcoded language knowledge; bundles inject config by deep merge. (one claim)
-                   advances: HOW the architecture dodges M×N.
-    5. payoff    — adding a whole language is just adding YAML — zero code, all 17 ops.
-                   advances: lands the payoff before midpoint.
-    6. mechanism — same three-file contract per language, uniform ops + a customRequest escape hatch. (one claim)
-                   advances: HOW the pattern repeats identically and stays extensible.
-    7. proof     — a community dev added TypeScript in 7 days without touching core; Rust added 7 custom extensions.
-                   advances: second proof — the pattern is self-documenting and self-serve.
-    8. turn      — it's not 3 Microsoft languages, it's a platform: one contributor, ~55 repos.
-                   advances: the pivot from AND to THEREFORE — a self-serve ecosystem.
-    9. takeaway  — 46 days from one language to three; the pattern documents itself.
-                   advances: generalizes the momentum the audience keeps.
-   10. takeaway  — any LSP language is a YAML file away (use / extend / explore).
-                   advances: what the audience does next.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end.
-    Slides = 10 beats + 1 = 11.
+SPINE
+ABT: AND Amplifier can run an AI agent whose tools are written in four different languages inside a single HTML file; BUT most engines learn a new language by editing the engine — growing a brittle core that has to know about every runtime; THEREFORE Amplifier keeps a thin, policy-free kernel behind one language-neutral contract, so adding a language means writing a module against the contract — not editing the engine.
+Payoff: The engine never changed — a Rust kernel that knows nothing about TypeScript, Python, or Go still ran all four, because every tool speaks the same GetSpec+Execute contract.
+Beats:
+  1. frame     — Most engines go multi-language by rewriting the engine; Amplifier's polyglot demo keeps the engine still and lets the edges move.  advances: Orients on the AND (a real 4-language agent) and plants the BUT (the usual way is editing the core) — the stakes of the whole deck.
+  2. proof     — One HTML file runs an AI agent whose tools are Rust, TypeScript, Python, and Go, in the browser.  advances: Lands the AND fast with concrete evidence: the polyglot capability is real, not a promise.
+  3. proof     — One author built the whole four-language agent in ~17 hours across two days — 22 commits.  advances: Reinforces the AND — the capability is cheap to reach, which only works if the engine isn't rewritten each time.
+  4. tension   — Four runtimes should mean four ways to teach the engine — exactly the brittle core we want to avoid.  advances: Sharpens the BUT: names the trap (a core that grows per-language).
+  5. mechanism — Every tool, in any language, exposes the same contract: a gRPC ToolService with GetSpec and Execute over a generic ToolSpec — not an LSP.  advances: Reveals HOW the BUT is dissolved: one language-neutral contract between engine and every runtime.
+  6. mechanism — The 556-line Rust WASM kernel carries zero per-language knowledge — it iterates over ToolSpecs and dispatches each call to the runtime that owns the tool.  advances: Shows the second half of HOW: the kernel only sees generic ToolSpecs, so no language forces a core edit.
+  7. turn      — Because the engine holds no policy, adding a language becomes an edge move: write a language-native module against the contract, wire it in YAML behaviors.  advances: The pivot from AND/BUT to THEREFORE — a thin, policy-free kernel turns 'a new language' into 'a new module.'
+  8. payoff    — A Zero-Python Rust-native agent shipped in one day and the first Go tool module the same evening — same contract, engine untouched.  advances: Lands the THEREFORE as the climax — new languages arrive as modules against a stable contract while the engine stays still.
 -->
 
-<!-- beat 1: proof -->
-<div class="slide center active" id="slide-1">
-    <div class="bg-glow glow-accent-tr"></div>
-    <div class="bg-glow glow-purple-bl"></div>
-    <div class="badge-row">
-        <div class="section-label">Amplifier Architecture</div>
-        <span class="tag tag-active">Active</span>
+    <!-- Title cover (before beat 1) -->
+    <div class="slide title-slide active center">
+        <h1>Four Languages,<br>One File</h1>
+        <p class="subtitle">how Amplifier goes polyglot without touching the engine</p>
     </div>
-    <div class="headline mb-lg">
-        Three languages.<br>
-        <span class="accent">Zero lines of code</span> to add one.
-    </div>
-    <div class="subhead max-w-md mb-2xl">
-        Amplifier's code-intelligence layer speaks Python, Rust, and TypeScript &mdash; each with the same 17 semantic operations. Adding a new one doesn't touch a single line of the core.
-    </div>
-    <div class="thirds max-w-lg">
-        <div class="card text-center">
-            <div class="stat-number accent">3</div>
-            <div class="stat-label">Languages, one shared engine</div>
-        </div>
-        <div class="card text-center">
-            <div class="stat-number green">17</div>
-            <div class="stat-label">Semantic operations per language</div>
-        </div>
-        <div class="card text-center">
-            <div class="stat-number lang-rust">0</div>
-            <div class="stat-label">Lines of code to add a language</div>
-        </div>
-    </div>
-    <div class="mt-2xl footnote">February 2026 &middot; how that zero is possible &darr;</div>
-</div>
 
-<!-- beat 2: setup -->
-<div class="slide" id="slide-2">
-    <div class="section-label">The Beginning</div>
-    <div class="medium-headline">
-        It started with Python &mdash; and one superpower: <span class="accent">agents that understand code</span>
-    </div>
-    <div class="subhead mb-2xl max-w-md">
-        Amplifier launched Python-only. The Language Server Protocol (LSP) let agents <em>understand</em> code instead of grepping text &mdash; exact definitions, real callers, inferred types.
-    </div>
-    <div class="halves">
-        <div class="card card-accent-border">
-            <div class="card-title dim">Before: Text Search</div>
-            <div class="code-block mt-sm">
-<span class="code-gray"># grep "authenticate" across 500 files</span>
-<span class="code-gray"># matches comments, strings, variable names</span>
-<span class="code-gray"># no type info, no call chains</span>
-<span class="dim">$ grep -r "authenticate" src/</span>
-<span class="dim">auth.py:  # authenticate the user</span>
-<span class="dim">test.py:  name = "authenticate_test"</span>
-<span class="dim">docs.md:  Call authenticate() to...</span></div>
+    <!-- Beat 1 -->
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Frame</div>
+            <h2>Most engines go multi-language by rewriting the engine — this one keeps the engine still</h2>
+            <p class="body">Amplifier's polyglot demo runs a real AI agent whose tools are written in <strong>four different languages</strong>. The usual way to add a language is to edit the core. This deck is about doing it the other way.</p>
+            <p class="handoff">First, the evidence the capability is real.</p>
         </div>
-        <div class="card card-green-border">
-            <div class="card-title"><span class="green">After: Semantic Understanding</span></div>
-            <div class="code-block mt-sm">
-<span class="code-green"># LSP goToDefinition &rarr; exact source</span>
-<span class="code-green"># findReferences &rarr; actual callers only</span>
-<span class="code-green"># hover &rarr; full type signature</span>
-<span class="code-blue">&rarr; def authenticate(user: User) -> Token</span>
-<span class="code-blue">  Called by: login(), refresh(), oauth()</span>
-<span class="code-blue">  Returns: Token (inferred from impl)</span>
-<span class="code-blue">  Defined: src/auth/core.py:42</span></div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><strong>The usual way:</strong> teach the engine each new runtime — a core that must know about everything.</li>
+                <li><strong>This demo's way:</strong> the engine stays fixed; the language-native tools plug in at the edges.</li>
+            </ul>
         </div>
     </div>
-</div>
 
-<!-- beat 3: tension -->
-<div class="slide" id="slide-3">
-    <div class="bg-glow glow-accent-center"></div>
-    <div class="section-label">The Problem</div>
-    <div class="headline mb-xl">
-        Hardcode every language and<br>
-        <span class="accent">you drown in M &times; N.</span>
-    </div>
-    <div class="subhead mb-3xl">
-        M languages &times; N tools = M&times;N custom integrations &mdash; the combinatorial trap LSP was invented to escape. LSP collapses it to <strong class="color-white">M + N</strong>: one server per language, one client per tool.
-    </div>
-    <div class="halves max-w-lg">
-        <div class="card text-center">
-            <div class="formula-number dim">M &times; N</div>
-            <div class="card-desc mt-xs">Traditional: a custom integration<br>for every language &times; every tool</div>
+    <!-- Beat 2 -->
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">Proof · It's Real</div>
+            <h2>One HTML file runs an agent whose tools are Rust, TypeScript, Python, and Go</h2>
+            <p class="body">The primary-source demo is a single self-contained HTML file: a Rust (WASM) <strong>data_transform</strong> tool, TypeScript <strong>web_research</strong>, Python (Pyodide) <strong>code_analysis</strong>, and Go (WASM) <strong>document_builder</strong> — all four in the browser.</p>
+            <p class="handoff">And it wasn't a marathon to build it.</p>
         </div>
-        <div class="card text-center card-green-border">
-            <div class="formula-number"><span class="green">M + N</span></div>
-            <div class="card-desc mt-xs">LSP: one server per language,<br>one client per tool. Done.</div>
-        </div>
-    </div>
-</div>
-
-<!-- beat 4: mechanism -->
-<div class="slide" id="slide-4">
-    <div class="section-label">The Bet</div>
-    <div class="medium-headline mb-lg">
-        The core carries <span class="accent">zero</span> hardcoded language knowledge
-    </div>
-    <div class="body-text mb-xl">
-        The <span class="color-white">tool-lsp</span> module knows nothing about any language. Each language bundle injects its config via a YAML <span class="accent">deep merge</span> &mdash; so the engine is written once and never edited again.
-    </div>
-    <div class="max-w-md">
-        <div class="thirds mb-xs">
-            <div class="arch-box arch-box-python">
-                <div class="arch-label lang-python">lsp-python</div>
-                <div class="arch-detail">languages.python: { ... }</div>
-            </div>
-            <div class="arch-box arch-box-rust">
-                <div class="arch-label lang-rust">lsp-rust</div>
-                <div class="arch-detail">languages.rust: { ... }</div>
-            </div>
-            <div class="arch-box arch-box-typescript">
-                <div class="arch-label lang-typescript">lsp-typescript</div>
-                <div class="arch-detail">languages.typescript: { ... }</div>
-            </div>
-        </div>
-        <div class="merge-label">&#x25BC; deep merge</div>
-        <div class="arch-box arch-box-accent mb-xs">
-            <div class="arch-label accent">lsp-core behavior</div>
-            <div class="arch-detail">tool-lsp &middot; config: { languages: {} }</div>
-        </div>
-        <div class="merge-label">&#x25BC; powers</div>
-        <div class="arch-box arch-box-muted">
-            <div class="arch-label">tool-lsp module</div>
-            <div class="arch-detail">17 operations &middot; persistent proxy &middot; zero language knowledge in code</div>
-        </div>
-    </div>
-</div>
-
-<!-- beat 5: payoff -->
-<div class="slide" id="slide-5">
-    <div class="section-label">The Payoff</div>
-    <div class="medium-headline mb-lg">
-        Adding a whole language is <span class="accent">just adding YAML</span>
-    </div>
-    <div class="code-block max-w-code">
-<span class="code-gray"># rust-lsp.yaml &mdash; the entire Rust integration</span>
-<span class="code-purple">tools:</span>
-  - <span class="code-purple">module:</span> <span class="code-green">tool-lsp</span>
-    <span class="code-purple">config:</span>
-      <span class="code-purple">languages:</span>
-        <span class="code-orange">rust:</span>
-          <span class="code-purple">extensions:</span> <span class="code-blue">[.rs]</span>
-          <span class="code-purple">workspace_markers:</span> <span class="code-blue">[Cargo.toml, Cargo.lock]</span>
-          <span class="code-purple">server:</span>
-            <span class="code-purple">command:</span> <span class="code-blue">[rust-analyzer]</span>
-          <span class="code-purple">capabilities:</span>
-            <span class="code-purple">diagnostics:</span> <span class="code-green">true</span>
-            <span class="code-purple">rename:</span> <span class="code-green">true</span>
-            <span class="code-purple">codeAction:</span> <span class="code-green">true</span>
-            <span class="code-purple">customRequest:</span> <span class="code-green">true</span></div>
-    <div class="pattern-note mt-md">
-        No code changes. No new modules. The YAML deep-merges into tool-lsp's config; the module spawns rust-analyzer and exposes all 17 operations. <strong class="color-white">That is the zero.</strong>
-    </div>
-</div>
-
-<!-- beat 6: mechanism -->
-<div class="slide" id="slide-6">
-    <div class="section-label">The Contract</div>
-    <div class="medium-headline mb-xl">
-        Every language ships the <span class="accent">same three files</span> &mdash; and gets all 17 operations
-    </div>
-    <div class="scroll-x">
-    <table class="compare-table max-w-lg">
-        <thead>
-            <tr>
-                <th>Component</th>
-                <th class="th-python">Python</th>
-                <th class="th-rust">Rust</th>
-                <th class="th-typescript">TypeScript</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td class="td-label">Behavior YAML</td>
-                <td>python-lsp.yaml</td>
-                <td>rust-lsp.yaml</td>
-                <td>typescript-lsp.yaml</td>
-            </tr>
-            <tr>
-                <td class="td-label">Agent</td>
-                <td>python-code-intel.md</td>
-                <td>rust-code-intel.md</td>
-                <td>typescript-code-intel.md</td>
-            </tr>
-            <tr>
-                <td class="td-label">Context</td>
-                <td>python-lsp.md</td>
-                <td>rust-lsp.md</td>
-                <td>typescript-lsp.md</td>
-            </tr>
-            <tr>
-                <td class="td-label">Language Server</td>
-                <td class="lang-python">pyright-langserver</td>
-                <td class="lang-rust">rust-analyzer</td>
-                <td class="lang-typescript">typescript-language-server</td>
-            </tr>
-            <tr>
-                <td class="td-label">Author</td>
-                <td>Microsoft</td>
-                <td>Microsoft</td>
-                <td class="color-community">Community (robotdad)</td>
-            </tr>
-        </tbody>
-    </table>
-    </div>
-    <div class="pattern-note">
-        Behavior YAML injects config, the agent supplies language-specific strategy, the context file guides usage. Navigation ops are always on; diagnostics, rename, inlayHints, and a <span class="accent">customRequest</span> escape hatch layer on per capability. That's the whole contract.
-    </div>
-</div>
-
-<!-- beat 7: proof -->
-<div class="slide" id="slide-7">
-    <div class="section-label color-community">The Pattern Proves Itself</div>
-    <div class="medium-headline mb-lg">
-        A community dev added TypeScript in <span class="color-community">7 days</span> &mdash; without touching the core
-    </div>
-    <div class="subhead mb-2xl max-w-md">
-        robotdad (Marc Goodner) followed the exact same three-file pattern as the official bundles. No guidance needed &mdash; it was self-documenting. And Rust proved the ceiling is high, too:
-    </div>
-    <div class="halves">
-        <div class="card self-start">
-            <div class="card-title color-community mb-sm">TypeScript &mdash; community-built</div>
-            <div class="card-desc max-w-none">
-                <p class="mb-sm">One bundle, two languages (.ts/.tsx and .js/.jsx), full inlay hints, shipped Jan 4, 2026 &mdash; 7 days after Python.</p>
-                <p class="community-insight">The architecture let a contributor add a language without touching Amplifier's core.</p>
-            </div>
-        </div>
-        <div class="card self-stretch">
-            <div class="card-title lang-rust mb-md">Rust &mdash; 7 custom extensions via customRequest</div>
-            <div class="flex-col gap-md">
-                <div class="capability-item"><span class="code-orange">expandMacro</span><span class="dim">&nbsp;&mdash; Expand derive/proc macros</span></div>
-                <div class="capability-item"><span class="code-orange">relatedTests</span><span class="dim">&nbsp;&mdash; Find tests for a function</span></div>
-                <div class="capability-item"><span class="code-orange">externalDocs</span><span class="dim">&nbsp;&mdash; Get docs.rs links</span></div>
-                <div class="capability-item"><span class="code-orange">ssr</span><span class="dim">&nbsp;&mdash; Structural search &amp; replace</span></div>
-                <div class="capability-item"><span class="code-orange">memoryLayout</span><span class="dim">&nbsp;&mdash; Inspect struct layout</span></div>
+        <div class="col-aside">
+            <div class="langs">
+                <div class="lang"><div class="name">Rust</div><div class="role">WASM · data_transform</div></div>
+                <div class="lang"><div class="name">TypeScript</div><div class="role">web_research</div></div>
+                <div class="lang"><div class="name">Python</div><div class="role">Pyodide · code_analysis</div></div>
+                <div class="lang"><div class="name">Go</div><div class="role">WASM · document_builder</div></div>
             </div>
         </div>
     </div>
-    <div class="slide-footer">robotdad/amplifier-bundle-lsp-typescript (Jan 4, 2026) &middot; microsoft/amplifier-bundle-lsp-rust (Feb 10, 2026)</div>
-</div>
 
-<!-- beat 8: turn -->
-<div class="slide" id="slide-8">
-    <div class="bg-glow glow-purple-tr"></div>
-    <div class="section-label color-community">Not a Feature &mdash; a Platform</div>
-    <div class="headline mb-sm">
-        <span class="big-number">55</span>
-    </div>
-    <div class="medium-headline mb-md">
-        amplifier repos from <span class="color-community">one contributor</span>
-    </div>
-    <div class="subhead mb-2xl max-w-md">
-        The polyglot LSP layer isn't just Microsoft's three languages &mdash; it's a self-serve platform. Marc Goodner alone maintains ~55 amplifier repos spanning voice AI, OpenTelemetry, spec-driven development, and the TypeScript LSP bundle.
-    </div>
-    <div class="thirds">
-        <div class="card">
-            <div class="card-title">amplifier-app-voice</div>
-            <div class="card-desc">Standalone voice assistant on OpenAI's Realtime API for native speech-to-speech.</div>
+    <!-- Beat 3 -->
+    <div class="slide split">
+        <!-- beat 3: proof -->
+        <div class="col-main">
+            <div class="section-label">Proof · It's Cheap</div>
+            <h2>One author built the whole four-language agent in ~17 hours across two days</h2>
+            <p class="body">Brian Krabach (Microsoft) authored all <strong>22 commits</strong> of amplifier-polyglot-demo, from first to last in a <strong>16.83-hour span</strong> (Feb 18–19, 2026). That's only cheap if the engine isn't being rewritten for each language.</p>
+            <p class="handoff">Which raises the obvious problem.</p>
         </div>
-        <div class="card">
-            <div class="card-title">amplifier-collection-spec-kit</div>
-            <div class="card-desc">Specification-driven development with constitutional governance.</div>
-        </div>
-        <div class="card">
-            <div class="card-title">amplifier-module-hooks-otel</div>
-            <div class="card-desc">OpenTelemetry instrumentation for team-wide observability.</div>
-        </div>
-    </div>
-    <div class="pattern-note">When one person can build 55 repos on your platform, the architecture is working.</div>
-</div>
-
-<!-- beat 9: takeaway -->
-<div class="slide" id="slide-9">
-    <div class="section-label">Momentum</div>
-    <div class="medium-headline mb-xl">
-        46 days from <span class="accent">one language to three</span>
-    </div>
-    <div class="max-w-content">
-        <div class="timeline-item">
-            <div class="timeline-date">Dec 28, 2025</div>
-            <div class="timeline-text">Core LSP bundle + <span class="lang-python">Python LSP</span> bundle created</div>
-        </div>
-        <div class="timeline-item">
-            <div class="timeline-date timeline-date-community">Jan 4, 2026</div>
-            <div class="timeline-text">Community <span class="lang-typescript">TypeScript LSP</span> bundle contributed by robotdad</div>
-        </div>
-        <div class="timeline-item">
-            <div class="timeline-date timeline-date-milestone">Feb 10, 2026</div>
-            <div class="timeline-text"><span class="lang-rust">Rust LSP</span> bundle created with rust-analyzer + 7 custom extensions</div>
-        </div>
-        <div class="timeline-item timeline-item-last">
-            <div class="timeline-date timeline-date-milestone">Feb 12, 2026</div>
-            <div class="timeline-text">Core LSP bundle updated. Rust bundle cataloged. <span class="accent">Today.</span></div>
-        </div>
-    </div>
-    <div class="insight-box">
-        <div class="insight-label">Key Insight</div>
-        <div class="insight-text">TypeScript arrived 7 days after Python shipped, with no guidance &mdash; the pattern documents itself.</div>
-    </div>
-</div>
-
-<!-- beat 10: takeaway -->
-<div class="slide center" id="slide-10">
-    <div class="bg-glow glow-cta"></div>
-    <div class="cta-wrapper">
-        <div class="section-label mb-lg">What's Next</div>
-        <div class="headline mb-xl">
-            Any LSP language is<br>
-            <span class="accent">a YAML file away.</span>
-        </div>
-        <div class="subhead text-center mx-auto mb-3xl max-w-md">
-            Go (gopls), C/C++ (clangd), Java/Kotlin &mdash; every language with an LSP server is a candidate. Use the bundles today, or add your own: one YAML, one agent, one context doc.
-        </div>
-        <div class="thirds cta-actions">
-            <div class="card text-center">
-                <div class="card-title accent">Use It</div>
-                <div class="card-desc card-code mt-xs">
-                    includes:<br>
-                    &nbsp;&nbsp;- bundle: lsp-python<br>
-                    &nbsp;&nbsp;- bundle: lsp-rust
-                </div>
-            </div>
-            <div class="card text-center">
-                <div class="card-title green">Extend It</div>
-                <div class="card-desc">Fork lsp-python as a template, add your server config, publish your bundle.</div>
-            </div>
-            <div class="card text-center">
-                <div class="card-title color-community">Explore It</div>
-                <div class="card-desc card-code mt-xs">
-                    github.com/microsoft/<br>amplifier-bundle-lsp-*
-                </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">22</div><div class="lbl">commits, single author</div></div>
+                <div class="stat"><div class="num">~17h</div><div class="lbl">first to last commit (16.83h span)</div></div>
+                <div class="stat"><div class="num">2</div><div class="lbl">calendar days (Feb 18–19, 2026)</div></div>
+                <div class="stat"><div class="num">4</div><div class="lbl">languages, 1 HTML file</div></div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- ============================================================ -->
-<!-- SOURCES & METHODOLOGY -->
-<!-- ============================================================ -->
-<div class="slide" id="slide-sources">
-    <div class="section-label">Sources &amp; Methodology</div>
-    <div class="medium-headline mb-xl">
-        Research &amp; Attribution
+    <!-- Beat 4 -->
+    <div class="slide center">
+        <!-- beat 4: tension -->
+        <div class="section-label">The Tension</div>
+        <h2>Four runtimes should mean four ways to teach the engine — the exact brittle core we want to avoid</h2>
+        <p class="body" style="margin-left:auto;margin-right:auto;text-align:center;">Normally, every new runtime forces the engine to grow: another special case, another thing the core must know about. An engine that has to understand Rust <em>and</em> TypeScript <em>and</em> Python <em>and</em> Go is precisely the fragile center this demo is trying not to build.</p>
+        <p class="handoff" style="margin-left:auto;margin-right:auto;text-align:center;">So what stands between the engine and all four runtimes?</p>
     </div>
-    <div class="sources-grid mb-lg">
-        <div class="card">
-            <div class="source-label">Data as of</div>
-            <div class="source-value">February 20, 2026</div>
+
+    <!-- Beat 5 -->
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism · The Contract</div>
+            <h2>Every tool, in any language, speaks one contract: GetSpec + Execute</h2>
+            <p class="body">The language-neutral mechanism is a gRPC <strong>ToolService</strong> with two calls, <strong>GetSpec</strong> and <strong>Execute</strong>, over a generic <strong>ToolSpec{name, description, parameters}</strong> — not an LSP, just one uniform interface. Any-language tools become callable from any gRPC client.</p>
+            <p class="handoff">And the engine on the other side of that contract knows nothing about languages.</p>
         </div>
-        <div class="card">
-            <div class="source-label">Feature Status</div>
-            <div class="source-value"><span class="tag tag-active">Active</span></div>
-        </div>
-    </div>
-    <div class="card mb-lg">
-        <div class="source-label">Research Performed</div>
-        <ul class="source-list">
-            <li>LSP bundle repositories: amplifier-bundle-lsp-python, amplifier-bundle-lsp-rust, amplifier-bundle-lsp-typescript</li>
-            <li>tool-lsp module architecture inspection</li>
-            <li>robotdad GitHub profile: ~55 amplifier-related repositories</li>
-            <li>Timeline derived from repository creation dates</li>
-        </ul>
-    </div>
-    <div class="halves">
-        <div class="card">
-            <div class="source-label">Known Gaps</div>
-            <div class="source-value">Exact line counts and commit counts not individually verified in this regeneration. robotdad repo count (~55) is approximate from prior research.</div>
-        </div>
-        <div class="card">
-            <div class="source-label">Primary Contributors</div>
-            <div class="source-value">Sam Schillace (LSP architecture, Python + Rust bundles), Marc Goodner / robotdad (TypeScript LSP, community ecosystem)</div>
+        <div class="col-aside">
+            <div class="code-block"><span class="cm">// language-neutral tool contract</span>
+<span class="kw">service</span> ToolService {
+  <span class="kw">rpc</span> GetSpec(Empty) <span class="kw">returns</span> (ToolSpec);
+  <span class="kw">rpc</span> Execute(Request) <span class="kw">returns</span> (Response);
+}
+
+<span class="kw">message</span> ToolSpec {
+  <span class="st">name</span>, <span class="st">description</span>, <span class="st">parameters_json</span>
+}</div>
         </div>
     </div>
-</div>
 
+    <!-- Beat 6 -->
+    <div class="slide split">
+        <!-- beat 6: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism · The Kernel</div>
+            <h2>The 556-line Rust WASM kernel carries zero per-language knowledge</h2>
+            <p class="body">The kernel just iterates over a generic list of <strong>ToolSpecs</strong> and dispatches each call through a JS bridge to whichever runtime owns that tool — a <strong>toolRegistry</strong> maps <code>web_research→TypeScript</code>, <code>code_analysis→Python</code>, <code>document_builder→Go</code>, Rust in-process.</p>
+            <p class="handoff">Because the kernel only sees generic specs, no language ever forces a core edit.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">556</div><div class="lbl">LOC in the Rust WASM kernel (lib.rs)</div></div>
+                <div class="stat"><div class="num">0</div><div class="lbl">per-language branches in the kernel</div></div>
+                <div class="stat"><div class="num">1</div><div class="lbl">generic ToolSpec it iterates over</div></div>
+                <div class="stat"><div class="num">4</div><div class="lbl">runtimes reached via the bridge</div></div>
+            </div>
+        </div>
+    </div>
 
-<!-- Navigation -->
-<a href="index.html" class="more-stories">More Amplifier Stories</a>
-<div class="nav-dots" id="navDots"></div>
-<div class="slide-counter" id="slideCounter">1 / 11</div>
+    <!-- Beat 7 -->
+    <div class="slide split">
+        <!-- beat 7: turn -->
+        <div class="col-main">
+            <div class="section-label">The Turn</div>
+            <h2>Adding a language stops being a core change and becomes an edge move</h2>
+            <p class="body">Because the engine holds no policy — <strong>"Mechanism, Not Policy"</strong> — a new language means writing a language-native module against the contract and selecting it in <strong>YAML behaviors</strong> via <code>source: native://…</code>. Modules implement Provider / Orchestrator / ContextManager; policy lives at the edges.</p>
+            <p class="handoff">Here's that pattern proven twice in one evening.</p>
+        </div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step"><div class="n">1</div><div class="t"><strong>Write a module</strong> in the language, against the ToolService / trait contract.</div></div>
+                <div class="step"><div class="n">2</div><div class="t"><strong>Wire it in YAML</strong> — a behaviors file selects it via <code>source: native://…</code>.</div></div>
+                <div class="step"><div class="n">3</div><div class="t"><strong>Leave the engine alone</strong> — the thin kernel needs no change.</div></div>
+            </div>
+        </div>
+    </div>
 
-<script>
-(function() {
-    const slides = document.querySelectorAll('.slide');
-    const counter = document.getElementById('slideCounter');
-    const dotsContainer = document.getElementById('navDots');
-    let current = 0;
-    const total = slides.length;
+    <!-- Beat 8 -->
+    <div class="slide split">
+        <!-- beat 8: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>Same contract, engine untouched — new languages arrive as modules</h2>
+            <p class="body">A <strong>Zero-Python</strong> Rust-native agent (Provider + Orchestrator + ContextManager + gRPC service) shipped in <strong>one day</strong> — 13 commits, all Feb 18, 2026. The <strong>first Go tool module</strong> in the ecosystem landed the same evening as a gRPC ToolService. A TypeScript SDK mirroring the same kernel API followed on Mar 2.</p>
+            <p class="handoff">The engine never learned a language — every tool learned to speak the contract.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">13</div><div class="lbl">commits · Zero-Python Rust bundle, 1 day</div></div>
+                <div class="stat"><div class="num">1st</div><div class="lbl">Go tool module in the ecosystem</div></div>
+                <div class="stat"><div class="num">2</div><div class="lbl">commits · Go document_builder module</div></div>
+                <div class="stat"><div class="num">TS</div><div class="lbl">SDK mirrors the kernel API (Mar 2, 2026)</div></div>
+            </div>
+        </div>
+    </div>
 
-    // Create nav dots
-    for (let i = 0; i < total; i++) {
-        const dot = document.createElement('button');
-        dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
-        dot.addEventListener('click', () => goTo(i));
-        dotsContainer.appendChild(dot);
-    }
+    <!-- Sources & Methodology (no beat) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <span class="status-badge">FEATURE STATUS · WORKING PROOF-OF-CONCEPT</span>
+        <h2>Research Methodology &amp; Sources</h2>
+        <div class="sources-body">
+            <p><strong>Data as of:</strong> based on repos cloned through Mar 2, 2026. Every metric, date, and name was re-derived from git/gh/grep/wc against the primary repos — no claim retained unless a command reproduced it.</p>
+            <p><strong>Primary sources:</strong> bkrabach/amplifier-polyglot-demo, bkrabach/amplifier-bundle-rust-example, bkrabach/amplifier-module-tool-document-builder-go, bkrabach/amplifier-core-ts, ramparte/amplifier-core.</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>git log --format='%h %ai %an' --reverse</code> · <code>git rev-list --count HEAD</code> — 22 commits (polyglot-demo), 13 (rust-example), 2 (go-module), 1 (core-ts scaffold)</li>
+                <li><code>git log --format='%an &lt;%ae&gt;' | sort | uniq -c</code> — all commits: Brian Krabach &lt;brkrabac@microsoft.com&gt;</li>
+                <li><code>wc -l rust/wasm-agent/src/lib.rs</code> — 556 LOC kernel; <code>sed -n '/struct ToolSpec/,/^}/p'</code></li>
+                <li><code>grep 'ToolService|GetSpec|Execute|ToolSpec' server/python-tool/amplifier_module_pb2*.py</code></li>
+                <li><code>grep 'web_research|code_analysis|document_builder' html/bridge.js</code> — toolRegistry runtime mapping</li>
+                <li><code>cat behaviors/provider-anthropic-rust.yaml</code> · <code>grep 'native://'</code> — YAML module selection</li>
+            </ul>
+            <p><strong>Primary contributor:</strong> Brian Krabach (Microsoft) — sole author across all four repos (22/22, 13/13, 2/2, 1/1 commits).</p>
+            <p><strong>Gaps &amp; excluded:</strong> the "language-agnostic LSP core," "7-days/one-day community" and "M×N" framings were NOT found in any repo (grep returned zero hits) and are excluded. "Mechanism, Not Policy" and "zero core code changes" are design claims from the kernel's own docs, not measured diffs. The demo README's "134 tests" is stale vs. the current tree (168 test functions under html/tests).</p>
+        </div>
+    </div>
 
-    function goTo(n) {
-        if (n < 0 || n >= total || n === current) return;
-        const prev = slides[current];
-        const next = slides[n];
-        const dots = dotsContainer.querySelectorAll('.nav-dot');
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
 
-        // Determine direction
-        if (n > current) {
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
+
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
             prev.classList.remove('active');
-            prev.classList.add('exit-left');
-            next.style.transform = 'translateX(100px)';
-        } else {
-            prev.classList.remove('active');
-            prev.style.transform = 'translateX(100px)';
-            next.classList.remove('exit-left');
-            next.style.transform = 'translateX(-100px)';
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
+            updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
-        // Force reflow
-        void next.offsetWidth;
-
-        next.classList.add('active');
-        next.style.transform = '';
-
-        dots[current].classList.remove('active');
-        dots[n].classList.add('active');
-
-        setTimeout(() => {
-            prev.classList.remove('exit-left');
-            prev.style.transform = '';
-        }, 600);
-
-        current = n;
-        counter.textContent = (current + 1) + ' / ' + total;
-    }
-
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
-            e.preventDefault();
-            goTo(current + 1);
-        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-            e.preventDefault();
-            goTo(current - 1);
-        } else if (e.key === 'Home') {
-            e.preventDefault();
-            goTo(0);
-        } else if (e.key === 'End') {
-            e.preventDefault();
-            goTo(total - 1);
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
         }
-    });
 
-    // Click navigation (left/right halves)
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('.nav-dot, a, button, .card')) return;
-        const x = e.clientX / window.innerWidth;
-        if (x > 0.5) goTo(current + 1);
-        else goTo(current - 1);
-    });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
+        });
 
-    // Touch/swipe navigation
-    let touchStartX = 0;
-    let touchStartY = 0;
-    document.addEventListener('touchstart', (e) => {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-
-    document.addEventListener('touchend', (e) => {
-        const dx = e.changedTouches[0].clientX - touchStartX;
-        const dy = e.changedTouches[0].clientY - touchStartY;
-        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-            if (dx < 0) goTo(current + 1);
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
             else goTo(current - 1);
-        }
-    }, { passive: true });
-})();
-</script>
+        });
+
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
 </body>
 </html>

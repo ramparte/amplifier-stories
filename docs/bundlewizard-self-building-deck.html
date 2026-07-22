@@ -3,372 +3,290 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>BundleWizard &mdash; The System That Builds Itself</title>
+    <title>The System That Builds Itself</title>
     <script>document.documentElement.classList.add('js')</script>
-<style>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --accent: #00BCD4;
-            --accent-dim: rgba(0, 188, 212, 0.15);
-            --accent-glow: rgba(0, 188, 212, 0.3);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 36px);
-            --fs-h3: clamp(18px, 3vw, 24px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 1.8vw, 15px);
-
-            /* Spacing */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #a1a1aa;
+            --accent: #7c8cff;
+            --accent2: #4fd6b8;
+            --card: #16161e;
+            --border: rgba(255,255,255,0.08);
         }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Slide base */
+        /* Core slide CSS */
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
             padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
+            position: absolute;
+            top: 0; left: 0;
+            transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s cubic-bezier(0.4,0,0.2,1);
         }
+
         .slide.active { display: flex; }
-        .slide.center {
+
+        /* Progressive enhancement: no-JS fallback */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+
+        /* Fit-safe: cap slides to viewport and allow scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        /* Centering opt-in */
+        .center {
             text-align: center;
             align-items: center;
             justify-content: center;
         }
 
-        /* Typography */
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); font-weight: 400; }
+
         .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: var(--space-sm);
-        }
-        .headline {
-            font-size: var(--fs-hero);
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.08;
-            margin-bottom: var(--space-md);
-        }
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            margin-bottom: var(--space-md);
-        }
-        .subhead {
-            font-size: var(--fs-h3);
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(680px, 90vw);
-        }
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: var(--space-sm);
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent2);
+            font-weight: 600;
+            margin-bottom: clamp(14px, 2.5vw, 22px);
         }
 
-        /* Status badge */
+        .body { color: var(--muted); margin-top: clamp(16px, 2.5vw, 24px); max-width: 40ch; }
+        .handoff {
+            margin-top: clamp(20px, 3vw, 30px);
+            color: var(--accent);
+            font-size: clamp(13px, 1.7vw, 17px);
+            max-width: 42ch;
+        }
+        .body + .body { margin-top: clamp(10px, 1.6vw, 14px); }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(12px, 2vw, 20px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.5vw, 26px) clamp(14px, 2vw, 20px);
+        }
+        .stat-number {
+            font-size: clamp(34px, 6vw, 62px);
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.03em;
+            color: var(--accent);
+        }
+        .stat-number.alt { color: var(--accent2); }
+        .stat-label {
+            margin-top: clamp(8px, 1.4vw, 12px);
+            font-size: clamp(12px, 1.5vw, 15px);
+            color: var(--muted);
+            line-height: 1.35;
+        }
+
+        /* Steps (numbered flow) */
+        .steps { display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
+        .step {
+            display: flex;
+            align-items: center;
+            gap: clamp(12px, 2vw, 18px);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 22px);
+        }
+        .step-num {
+            flex: 0 0 auto;
+            width: clamp(28px, 4vw, 36px);
+            height: clamp(28px, 4vw, 36px);
+            border-radius: 50%;
+            background: rgba(124,140,255,0.15);
+            color: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700;
+            font-size: clamp(13px, 1.7vw, 17px);
+        }
+        .step-body { font-size: clamp(14px, 1.8vw, 18px); }
+        .step-body strong { color: var(--fg); }
+        .step-arrow { color: var(--accent2); font-weight: 700; }
+
+        /* Rules / formula list */
+        .rules { display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
+        .rule {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(14px, 2vw, 20px) clamp(16px, 2.2vw, 24px);
+        }
+        .rule .k { font-weight: 700; color: var(--accent2); font-size: clamp(15px, 2vw, 20px); }
+        .rule .v { color: var(--muted); font-size: clamp(13px, 1.6vw, 16px); margin-top: 4px; }
+        .formula {
+            margin-top: clamp(14px, 2vw, 20px);
+            font-family: "SF Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+            font-size: clamp(12px, 1.6vw, 16px);
+            color: var(--accent);
+            background: rgba(124,140,255,0.08);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: clamp(10px, 1.6vw, 16px);
+            word-break: break-word;
+        }
+
+        code {
+            font-family: "SF Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+            background: rgba(255,255,255,0.06);
+            padding: 1px 6px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            color: var(--accent2);
+        }
+
+        .callout {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: clamp(20px, 3vw, 34px);
+        }
+        .callout .big {
+            font-size: clamp(20px, 3vw, 34px);
+            font-weight: 650;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+        }
+        .callout .mono {
+            display: inline-block;
+            margin-top: clamp(12px, 2vw, 18px);
+            font-family: "SF Mono", ui-monospace, Menlo, monospace;
+            font-size: clamp(13px, 1.7vw, 17px);
+            color: var(--accent2);
+        }
+
+        .title-slide .eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 0.22em;
+            font-size: clamp(11px, 1.6vw, 14px);
+            color: var(--accent2);
+            margin-bottom: clamp(18px, 3vw, 30px);
+            font-weight: 600;
+        }
         .status-badge {
             display: inline-block;
-            font-size: var(--fs-small);
-            font-weight: 600;
+            margin-top: clamp(20px, 3vw, 32px);
+            padding: 6px 16px;
+            border: 1px solid var(--accent2);
+            border-radius: 999px;
+            color: var(--accent2);
+            font-size: clamp(11px, 1.5vw, 13px);
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: 100px;
-            background: rgba(48, 209, 88, 0.15);
-            color: #30D158;
-            margin-top: var(--space-sm);
         }
 
-        /* Grids */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .quads {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-        .card h3, .card h4 {
-            color: var(--text-primary);
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-        .card p, .card li {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.5;
-        }
-        .card .icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: var(--space-xs);
-        }
-
-        /* Card with accent border top */
-        .card-accent {
-            border-top: 2px solid var(--accent);
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            color: #BFC0C5;
-            margin-top: var(--space-md);
-        }
-        .code-comment { color: rgba(255,255,255,0.35); }
-        .code-cmd { color: #30D158; }
-        .code-flag { color: #00BCD4; }
-        .code-string { color: #FF9F0A; }
-        .code-var { color: #64D2FF; }
-
-        /* Flow steps */
-        .flow-steps {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            max-width: min(800px, 95vw);
-        }
-        .flow-step {
-            display: flex;
-            align-items: flex-start;
-            gap: var(--space-md);
-        }
-        .flow-number {
-            flex-shrink: 0;
-            width: clamp(36px, 5vw, 48px);
-            height: clamp(36px, 5vw, 48px);
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--accent);
-        }
-        .flow-content h4 {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .flow-content p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-        .flow-arrow {
-            width: 2px;
-            height: var(--space-sm);
-            background: var(--accent-dim);
-            margin-left: clamp(17px, 2.3vw, 23px);
-        }
-
-        /* Architecture diagram */
-        .arch-entities {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .entity-box {
-            background: var(--surface-2);
-            border: 1px solid var(--border-visible);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-            text-align: center;
-        }
-        .entity-box .icon {
-            font-size: clamp(32px, 6vw, 56px);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box h4 {
-            font-size: var(--fs-h3);
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        /* Velocity stats */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
-            gap: var(--space-lg);
-            margin-top: var(--space-lg);
-        }
-        .velocity-stat { text-align: center; }
-        .velocity-number {
-            font-size: clamp(48px, 12vw, 96px);
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #26C6DA);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .velocity-label {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
-
-        /* Quote / callout box */
-        .callout {
-            background: var(--accent-dim);
-            border-left: 3px solid var(--accent);
-            border-radius: var(--radius-sm);
-            padding: var(--space-md);
-            margin-top: var(--space-md);
-            max-width: min(700px, 95vw);
-        }
-        .callout p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-            font-style: italic;
-        }
-        .callout .attribution {
-            font-style: normal;
-            color: var(--text-tertiary);
-            font-size: var(--fs-small);
-            margin-top: var(--space-xs);
-        }
+        /* Sources slide */
+        .sources { max-width: 60ch; }
+        .sources ul { margin: clamp(10px, 1.6vw, 16px) 0 0 1.1em; }
+        .sources li { margin-bottom: 8px; color: var(--muted); font-size: clamp(13px, 1.6vw, 16px); }
+        .sources p { color: var(--muted); margin-bottom: 8px; }
+        .sources strong { color: var(--fg); }
+        .sources code { font-size: 0.85em; }
 
         /* Navigation */
         .nav {
             position: fixed;
-            bottom: 28px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: clamp(20px, 3vw, 32px);
+            right: clamp(20px, 3vw, 40px);
             display: flex;
-            gap: 8px;
+            gap: 10px;
             z-index: 100;
         }
         .nav-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px; height: 9px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.22);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background 0.3s, transform 0.3s;
         }
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
         .slide-counter {
             position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
+            bottom: clamp(20px, 3vw, 32px);
+            left: clamp(20px, 3vw, 40px);
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: var(--muted);
             z-index: 100;
+            font-variant-numeric: tabular-nums;
         }
 
-        /* Sources slide specifics */
-        .sources-content {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.7;
-            max-width: min(800px, 95vw);
-        }
-        .sources-content strong {
-            color: var(--text-primary);
-        }
-        .sources-content code {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-small);
-            background: var(--surface-1);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .sources-content ul {
-            padding-left: var(--space-md);
-            margin: var(--space-xs) 0;
-        }
-        .sources-content li {
-            margin-bottom: var(--space-xs);
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: center; }
         }
 
-        /* More stories link */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
         .more-stories {
             position: fixed;
             bottom: 10px;
@@ -380,388 +298,198 @@
             z-index: 100;
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
-
-        /* Landscape mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
-        }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* Touch targets */
-        @media (hover: none) {
-            .nav-dot {
-                min-width: 16px;
-                min-height: 16px;
-            }
-        }
-
-        /* Highlight accent text */
-        .accent { color: var(--accent); }
-
-        /* Inline list with subtle bullets */
-        .feature-list {
-            list-style: none;
-            padding: 0;
-        }
-        .feature-list li {
-            padding-left: var(--space-md);
-            position: relative;
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: var(--space-xs);
-        }
-        .feature-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.6em;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-        }
-
-        /* Convergence loop diagram */
-        .loop-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            justify-content: center;
-            align-items: center;
-        }
-        .loop-node {
-            background: var(--surface-2);
-            border: 2px solid var(--accent);
-            border-radius: var(--radius-md);
-            padding: var(--space-sm) var(--space-md);
-            text-align: center;
-            min-width: 120px;
-        }
-        .loop-node h4 {
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 2px;
-        }
-        .loop-node p {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-        }
-        .loop-arrow {
-            font-size: var(--fs-h2);
-            color: var(--accent);
-            font-weight: 300;
-        }
-        .loop-back-label {
-            text-align: center;
-            width: 100%;
-            margin-top: var(--space-sm);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            font-style: italic;
-        }
-    
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+    </style>
 </head>
 <body>
-
     <!--
-      ============================================================
-      NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
-      ============================================================
-
-      ABT:
-        AND an Amplifier bundle is a composition - agents, modes, recipes, context,
-            skills all wired together;
-        BUT building one by hand breaks three ways: composition complexity, ecosystem
-            blindness, and no quality gates - even experts ship broken bundles;
-        THEREFORE BundleWizard is an adversarial convergence factory that interviews,
-            generates, critiques, and converges - so Amplifier can build its own
-            extensions and have machines, not humans, hold the quality bar.
-
-      PAYOFF (named up front):
-        The system that builds itself - when Amplifier hits a capability gap, it spawns
-        BundleWizard, builds the missing bundle through machine-enforced convergence,
-        and continues. No human in the quality pipeline.
-
-      BEATS (proof-first; payoff lands at beat 4 of 8, before the midpoint):
-        1. proof     - a complete bundle factory shipped in 11 days: 145 commits, 11 agents, 7 modes, 6 recipes.
-                       advances: grounds the AND with real, counted scale and velocity.
-        2. tension   - hand-building bundles breaks three ways: complexity, blindness, no gates.
-                       advances: establishes the BUT.
-        3. setup     - what BundleWizard IS: a factory that builds factories, four paths in.
-                       advances: introduces the named tool before the argument leans on it.
-        4. payoff    - the system that builds itself: Amplifier spawns it to fill its own gaps.
-                       advances: lands the THEREFORE (payoff before midpoint).
-        5. mechanism - an adversarial critic drives every artifact to convergence. (one claim)
-                       advances: HOW quality is manufactured, not hoped for.
-        6. mechanism - three gates decide when a bundle is done. (one claim)
-                       advances: HOW the bar is enforced without a human reviewer.
-        7. mechanism - seven stages flow behind three approval gates. (one claim)
-                       advances: HOW a single run travels from need to delivery.
-        8. takeaway  - quality without gatekeepers; four ways in.
-                       advances: what the audience keeps + how to start.
-
-        + Sources & Methodology (audit-trail slide, not a beat) at the end.
-        Slides = 8 beats + 1 = 9.
+    SPINE
+    ABT: An Amplifier bundle is a composition of agents, modes, recipes, context, and skills wired together, and BundleWizard is a factory that generates and improves them; BUT building bundles by hand breaks because generators hallucinate plausible artifacts with subtle bugs and 'simple' bundles are exactly where the bugs hide; THEREFORE BundleWizard runs an adversarial convergence loop behind hard, machine-enforced quality gates, so the human can step out entirely and Amplifier builds its own extensions.
+    Payoff: Amplifier-as-caller — Amplifier detects a missing capability, spawns BundleWizard, and runs the autonomous loop; human approval is gone but the quality bar is not, because machines hold it.
+    Beats:
+      beat 1: frame     — A bundle is a composition, not a monolith; hand-building is where the bugs hide.  advances: orients the audience to the AND (what a bundle is) and the stakes behind the BUT (why hand-building fails)
+      beat 2: proof     — BundleWizard is real and it works: 145 commits, 4 merged PRs, 197 passing tests, one author.  advances: establishes the AND — the factory exists and is verifiably built, earning trust fast
+      beat 3: tension   — Generators hallucinate plausible artifacts with subtle bugs, so a factory with no gate ships broken bundles.  advances: establishes the BUT — names the core failure the mechanism must overcome
+      beat 4: mechanism — The execute stage is an adversarial loop: generate → critique → refine → evaluate, until it converges.  advances: shows HOW the factory answers the BUT — the loop that catches the bugs
+      beat 5: mechanism — The critic runs with context_depth="none" — fresh eyes, none of the generator's context.  advances: deepens HOW — why the critique finds subtle bugs instead of rubber-stamping them
+      beat 6: mechanism — Nothing ships until it clears a hard three-level formula: L1 PASS, L2 ≥ 0.85, L3 ≥ 0.80.  advances: completes HOW — the machine-enforced gate that makes 'converged' objective
+      beat 7: payoff    — Amplifier spawns BundleWizard on a missing capability; human approval is gone, quality bar is not.  advances: lands the THEREFORE — gates enforced by machines let the human step out and the system builds itself
+      beat 8: takeaway  — When machines hold the quality bar, autonomous means trusted — not unconstrained.  advances: what the audience keeps — generalizes the payoff into the principle that makes self-building safe
     -->
 
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Developer Tools &middot; Amplifier Bundle</div>
-        <h1 class="headline">A complete bundle factory,<br>shipped in 11 days</h1>
-        <p class="subhead">One contributor built BundleWizard &mdash; 11 specialized agents, 7 modes, 6 recipes, and adversarial convergence loops &mdash; between March 16 and 27, 2026.</p>
-        <div class="velocity-grid">
-            <div class="velocity-stat">
-                <div class="velocity-number">145</div>
-                <div class="velocity-label">Commits</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">11</div>
-                <div class="velocity-label">Days start to finish</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">~50K</div>
-                <div class="velocity-label">Lines of content</div>
-            </div>
-        </div>
-        <div class="status-badge">Active &middot; v0.4.0 &middot; michaeljabbour/amplifier-bundle-bundlewizard</div>
+    <!-- TITLE COVER (no beat comment; only slide with active) -->
+    <div class="slide title-slide active center">
+        <p class="eyebrow">Amplifier Stories</p>
+        <h1>The System That Builds Itself</h1>
+        <p class="subtitle">Amplifier's adversarial bundle factory</p>
+        <p class="status-badge">BundleWizard &middot; v0.4.0 &middot; Active</p>
     </div>
 
-    <!-- beat 2: tension -->
-    <div class="slide">
-        <div class="section-label">Why it had to exist</div>
-        <h2 class="headline">Hand-building bundles<br>breaks in three ways</h2>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x1F9E9;</div>
-                <h3>Composition Complexity</h3>
-                <p>A well-structured bundle needs agents, behaviors, modes, recipes, context files, and skills &mdash; all wired together correctly. The thin bundle pattern and context sink discipline are easy to violate.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F50D;</div>
-                <h3>Ecosystem Blindness</h3>
-                <p>Without surveying existing bundles, authors rebuild capabilities that already exist. Duplicate agents proliferate. Reusable behaviors go undiscovered.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F3AF;</div>
-                <h3>No Quality Gates</h3>
-                <p>Hand-built bundles ship with structural errors, philosophical violations, and untested assumptions. There's no systematic way to verify convergence.</p>
-            </div>
+    <!-- BEAT 1 -->
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Frame</div>
+            <h2>A bundle is a composition, not a monolith &mdash; and hand-building one is where the bugs hide</h2>
+            <p class="body">An Amplifier bundle wires behaviors, agents, context, and tools together with clear boundaries. It is <em>not</em> one large document that tries to do everything.</p>
+            <p class="handoff">So who should assemble these pieces &mdash; and can it be trusted to?</p>
         </div>
-        <div class="callout">
-            <p>Every bundle is a composition problem. Getting the architecture right requires expertise in Amplifier's patterns, and even experts make mistakes without systematic review.</p>
-        </div>
-    </div>
-
-    <!-- beat 3: setup -->
-    <div class="slide">
-        <div class="section-label">What BundleWizard is</div>
-        <h2 class="headline">A factory that<br>builds factories</h2>
-        <p class="subhead">BundleWizard is an adversarial convergence pipeline. Describe what you need &mdash; or point it at an existing bundle &mdash; and it interviews you, designs the composition, generates artifacts through iterative critique loops, and delivers a ready-to-use bundle.</p>
-        <div class="halves">
-            <div class="card card-accent">
-                <h3>Two Senses of "Wizard"</h3>
-                <ul class="feature-list">
-                    <li><strong>Guided flow</strong> &mdash; a step-by-step process through explore, spec, plan, execute, verify, and finish</li>
-                    <li><strong>Expert builder</strong> &mdash; applying best practices, patterns, and quality gates automatically under the hood</li>
-                </ul>
-            </div>
-            <div class="card card-accent">
-                <h3>Four Paths In</h3>
-                <ul class="feature-list">
-                    <li><strong>Create new</strong> &mdash; from a description</li>
-                    <li><strong>Improve existing</strong> &mdash; audit and fix</li>
-                    <li><strong>Rebuild from reference</strong> &mdash; new artifact from old</li>
-                    <li><strong>Design my experience</strong> &mdash; customize Amplifier itself</li>
-                </ul>
+        <div class="col-aside">
+            <div class="callout">
+                <div class="big">&ldquo;A bundle is a <strong>composition</strong> of capabilities &mdash; behaviors, agents, context, tools &mdash; wired together with clear boundaries.&rdquo;</div>
+                <span class="mono">philosophy.md, line 7</span>
             </div>
         </div>
     </div>
 
-    <!-- beat 4: payoff -->
-    <div class="slide">
-        <div class="section-label">The payoff</div>
-        <h2 class="headline">The system that<br>builds itself</h2>
-        <p class="subhead">This is what the factory unlocks: Amplifier can now generate, critique, and deliver its own extensions &mdash; with no human in the quality pipeline.</p>
-        <div class="halves">
-            <div class="card card-accent">
-                <h3>Self-Extension</h3>
-                <p>When Amplifier detects a capability gap during autonomous operation, it spawns BundleWizard, runs the explore phase directly, builds the missing bundle, and continues: <em>"I needed X capability, so I built it."</em> The system grows itself.</p>
-            </div>
-            <div class="card card-accent">
-                <h3>Quality Without Gatekeepers</h3>
-                <p>Three-level convergence replaces human review with machine rigor. Structural gates catch errors, philosophical rubrics enforce patterns, functional evaluation verifies intent &mdash; a bar higher than most hand-reviews.</p>
-            </div>
+    <!-- BEAT 2 -->
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">The Proof</div>
+            <h2>BundleWizard is real and it works &mdash; and one author built the whole thing</h2>
+            <p class="body">A bundle generation and improvement factory for the Amplifier ecosystem, built and verified in the open over eleven days.</p>
+            <p class="handoff">A working factory. But what stops a factory from mass-producing bad output?</p>
         </div>
-        <div class="callout">
-            <p>The convergence formula is non-negotiable: <code>L1 == PASS AND L2 &ge; 0.85 AND L3 &ge; 0.80</code>. "Simple" bundles are where the bugs hide. There are no shortcuts.</p>
-            <div class="attribution">&mdash; convergence-criteria.md</div>
-        </div>
-    </div>
-
-    <!-- beat 5: mechanism -->
-    <div class="slide">
-        <div class="section-label">How quality is manufactured</div>
-        <h2 class="medium-headline">An adversarial critic drives every artifact to convergence</h2>
-        <p class="subhead">The critic is spawned with <code>context_depth="none"</code> &mdash; it evaluates artifacts as-is, not as-intended. The refiner only touches what the critic flagged; scope creep in refinement destroys convergence. The loop iterates up to 10 times until the bar is met.</p>
-        <div class="loop-container">
-            <div class="loop-node">
-                <h4>Generate</h4>
-                <p>Write artifacts</p>
-            </div>
-            <div class="loop-arrow">&rarr;</div>
-            <div class="loop-node">
-                <h4>Critique</h4>
-                <p>Adversarial review</p>
-            </div>
-            <div class="loop-arrow">&rarr;</div>
-            <div class="loop-node">
-                <h4>Refine</h4>
-                <p>Targeted fixes</p>
-            </div>
-            <div class="loop-arrow">&rarr;</div>
-            <div class="loop-node">
-                <h4>Evaluate</h4>
-                <p>Three-level scoring</p>
-            </div>
-            <div class="loop-back-label">&larr; iterate until converged (up to 10x) &larr;</div>
-        </div>
-    </div>
-
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">How "done" is decided</div>
-        <h2 class="medium-headline">Three gates decide when a bundle is done</h2>
-        <p class="subhead">Every iteration is scored against three rising levels. Miss one, and the loop keeps going.</p>
-        <div class="thirds">
-            <div class="card card-accent">
-                <h4>Level 1: Structural</h4>
-                <p>Pass/fail gates. Bundle loads, agent refs resolve, URIs valid, no duplicate context, modes discoverable. <strong>If any gate fails, stop.</strong></p>
-            </div>
-            <div class="card card-accent">
-                <h4>Level 2: Philosophical</h4>
-                <p>Scored rubric &ge;0.85. Thin bundle pattern, context sink discipline, agent description quality, composition hygiene &mdash; 25% each.</p>
-            </div>
-            <div class="card card-accent">
-                <h4>Level 3: Functional</h4>
-                <p>Domain-specific &ge;0.80. Does it actually do what it claims? Expert judgment with triangulation against spec requirements.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 7: mechanism -->
-    <div class="slide">
-        <div class="section-label">How a run travels</div>
-        <h2 class="medium-headline">Seven stages flow behind three approval gates</h2>
-        <p class="subhead">Modes are the steering wheel. Recipes are cruise control. Say "yolo" and the full pipeline runs without checkpoints &mdash; machine quality gates stay enforced either way.</p>
-        <div class="flow-steps">
-            <div class="flow-step">
-                <div class="flow-number">1</div>
-                <div class="flow-content">
-                    <h4>Explore</h4>
-                    <p>Adaptive-depth interview. Detects experience level, routes to create/improve/rebuild/design. Scouts the ecosystem for similar bundles.</p>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">145</div>
+                    <div class="stat-label">commits, one author (M. Jabbour)</div>
                 </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">2</div>
-                <div class="flow-content">
-                    <h4>Spec</h4>
-                    <p>Designs the full bundle composition &mdash; output tier, file structure, agent definitions, behavior wiring, delegation targets.</p>
+                <div class="stat">
+                    <div class="stat-number alt">4</div>
+                    <div class="stat-label">merged PRs (#1&ndash;#4)</div>
                 </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">3</div>
-                <div class="flow-content">
-                    <h4>Plan</h4>
-                    <p>Breaks the spec into an ordered task list with file-by-file dependencies. For improvements: ordered renovation tasks from audit findings.</p>
+                <div class="stat">
+                    <div class="stat-number">197</div>
+                    <div class="stat-label">passing tests (175 + 22 bridge)</div>
                 </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">4</div>
-                <div class="flow-content">
-                    <h4>Execute</h4>
-                    <p>The convergence loop: <strong>Generate &rarr; Critique &rarr; Refine &rarr; Evaluate</strong>. Iterates up to 10 times until three-level convergence is met.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">5</div>
-                <div class="flow-content">
-                    <h4>Verify &rarr; Finish</h4>
-                    <p>Independent verification collects evidence the bundle works. Packager stamps version, writes provenance, initializes git, and delivers.</p>
+                <div class="stat">
+                    <div class="stat-number alt">11</div>
+                    <div class="stat-label">days: Mar 16&ndash;27, 2026</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 8: takeaway -->
-    <div class="slide">
-        <div class="section-label">What you keep</div>
-        <h2 class="medium-headline">Quality without gatekeepers &mdash; four ways in</h2>
-        <p class="subhead">However you enter, the same adversarial convergence bar applies. The lasting idea: a system that generates, critiques, and delivers its own extensions raises the floor on every bundle it touches.</p>
-        <div class="thirds">
-            <div class="card card-accent">
-                <h3>Point it at a need</h3>
-                <p>Describe the capability. Explore interviews you, scouts the ecosystem for reuse, and routes to create or design &mdash; then the pipeline runs autonomously if you say "yolo."</p>
-            </div>
-            <div class="card card-accent">
-                <h3>Point it at a bundle</h3>
-                <p>Improve or rebuild an existing bundle. It auto-detects older <code>bundlewizard:</code> provenance, migrates to the canonical <code>generated_by</code> schema, and runs targeted improvements.</p>
-            </div>
-            <div class="card card-accent">
-                <h3>Let Amplifier call it</h3>
-                <p>When Amplifier hits a capability gap mid-run, it spawns BundleWizard, builds the missing bundle, and continues &mdash; the self-extending loop, closed.</p>
+    <!-- BEAT 3 -->
+    <div class="slide split">
+        <!-- beat 3: tension -->
+        <div class="col-main">
+            <div class="section-label">The Tension</div>
+            <h2>Generators hallucinate plausible artifacts &mdash; a factory with no gate ships broken bundles</h2>
+            <p class="body">They produce plausible-looking artifacts with subtle bugs. And the danger hides in plain sight, exactly where nobody looks.</p>
+            <p class="handoff">So the factory needs a mechanism that assumes its own output is wrong.</p>
+        </div>
+        <div class="col-aside">
+            <div class="callout">
+                <div class="big">&ldquo;Generators hallucinate &mdash; they produce plausible-looking artifacts with subtle bugs.&rdquo;</div>
+                <span class="mono">philosophy.md, line 54</span>
+                <div class="big" style="margin-top: clamp(14px,2vw,20px)">&ldquo;&lsquo;Simple&rsquo; bundles are where the bugs hide.&rdquo;</div>
+                <span class="mono">convergence-criteria.md, line 3</span>
             </div>
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- SOURCES & METHODOLOGY                                          -->
-    <!-- ============================================================ -->
+    <!-- BEAT 4 -->
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Mechanism &mdash; the loop</div>
+            <h2>The execute stage is an adversarial loop that repeats until it converges</h2>
+            <p class="body">One cycle inside BundleWizard's six-stage flow (explore &rarr; spec &rarr; plan &rarr; execute &rarr; verify &rarr; finish). If the critique says &ldquo;NEEDS CHANGES&rdquo; the refiner runs; &ldquo;APPROVED&rdquo; skips straight to evaluate.</p>
+            <p class="handoff">The loop only works if the critique is honest. So who reviews the work?</p>
+        </div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Generate</strong> &mdash; produce the artifact</div></div>
+                <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Critique</strong> &mdash; adversarial review</div></div>
+                <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Refine</strong> &mdash; only if changes needed</div></div>
+                <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Evaluate</strong> &mdash; score against the gate</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BEAT 5 -->
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Mechanism &mdash; fresh eyes</div>
+            <h2>The critic runs with fresh eyes &mdash; none of the generator's context</h2>
+            <p class="body">Spawned with <code>context_depth="none"</code>, the critic has zero context from the generation process. That is what makes the review genuinely adversarial instead of a rubber stamp.</p>
+            <p class="handoff">Honest critique catches bugs &mdash; but when is a bundle actually done?</p>
+        </div>
+        <div class="col-aside">
+            <div class="callout">
+                <div class="big">&ldquo;You are the adversarial reviewer&hellip; you should have been spawned with <code>context_depth=&quot;none&quot;</code>, meaning you have NO context from the generation process.&rdquo;</div>
+                <span class="mono">bundle-critic.md, line 43</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- BEAT 6 -->
+    <div class="slide split">
+        <!-- beat 6: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Mechanism &mdash; the gate</div>
+            <h2>Nothing ships until it clears a hard three-level formula</h2>
+            <p class="body">&ldquo;Converged&rdquo; is an objective threshold, not an opinion. The loop runs up to 10 iterations (typically 2&ndash;5 passes), and the best result is always checkpointed.</p>
+            <p class="handoff">Because the gate is machine-checked, the human no longer has to stand at it.</p>
+        </div>
+        <div class="col-aside">
+            <div class="rules">
+                <div class="rule"><div class="k">L1 &mdash; Structural</div><div class="v">must PASS</div></div>
+                <div class="rule"><div class="k">L2 &mdash; Philosophical</div><div class="v">score &ge; 0.85</div></div>
+                <div class="rule"><div class="k">L3 &mdash; Functional</div><div class="v">score &ge; 0.80</div></div>
+            </div>
+            <div class="formula">converged = (L1 == PASS) AND (L2 &ge; 0.85) AND (L3 &ge; 0.80)</div>
+        </div>
+    </div>
+
+    <!-- BEAT 7 -->
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>Amplifier spawns BundleWizard when it detects a missing capability</h2>
+            <p class="body">Amplifier performs the explore phase directly &mdash; it already knows what it needs &mdash; then launches the autonomous continuation. Human approval is gone, but the quality bar is not.</p>
+            <p class="handoff">The machines hold the bar. That is how Amplifier builds its own extensions.</p>
+        </div>
+        <div class="col-aside">
+            <div class="callout">
+                <div class="big">&ldquo;Machine quality gates remain fully enforced &mdash; you skip human approval, not quality.&rdquo;</div>
+                <span class="mono">README.md, line 66</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- BEAT 8 -->
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Takeaway</div>
+        <h2 style="max-width: 30ch">When machines hold the quality bar, autonomous means trusted &mdash; not unconstrained</h2>
+        <p class="body" style="max-width: 46ch; margin-left: auto; margin-right: auto;">Removing the human checkpoints does not remove the craft. The gates stay; the loop stays; the critic stays adversarial. What leaves is only the wait for a human to say yes.</p>
+    </div>
+
+    <!-- SOURCES & METHODOLOGY (no beat comment) -->
     <div class="slide">
-        <div class="section-label">Sources &amp; Methodology</div>
-        <h2 class="medium-headline">How this deck was built</h2>
-        <div class="sources-content">
-            <p><strong>Primary source:</strong> <code>michaeljabbour/amplifier-bundle-bundlewizard</code> repository, cloned and analyzed directly.</p>
+        <div class="section-label">Sources</div>
+        <h2>Sources &amp; Research Methodology</h2>
+        <div class="sources">
+            <p><strong>Data as of:</strong> July 21, 2026 &nbsp;&middot;&nbsp; <strong>Feature status:</strong> Active (v0.4.0)</p>
+            <p><strong>Repository:</strong> <code>michaeljabbour/amplifier-bundle-bundlewizard</code> (local clone <code>/tmp/bundlewizard</code>, HEAD <code>e1c5f9f</code>)</p>
+            <p><strong>Research performed &mdash; every claim independently re-derived:</strong></p>
             <ul>
-                <li><strong>README.md</strong> and <strong>bundle.md</strong> (v0.4.0) for feature descriptions, pipeline stages, and two-track architecture</li>
-                <li><strong>git log</strong> &mdash; 145 commits, 1 contributor (michaeljabbour), development period March 16&ndash;27, 2026 (11 days)</li>
-                <li><strong>git shortlog -sne</strong> &mdash; 157 total entries (Michael J. Jabbour), single-author repository</li>
-                <li><strong>File inventory</strong> &mdash; 103 files: 50 Markdown, 27 Python, 9 YAML; ~49,877 total lines</li>
-                <li><strong>agents/</strong> &mdash; 11 agent definitions (1,588 lines): bundle-explorer, spec-writer, plan-writer, generator, critic, refiner, evaluator, packager, auditor, ecosystem-scout, orchestrator-advisor</li>
-                <li><strong>modes/</strong> &mdash; 7 modes (530 lines): explore, spec, plan, execute, verify, finish, debug</li>
-                <li><strong>recipes/</strong> &mdash; 6 recipes (1,399 lines): development-cycle, autonomous-post-explore, single-iteration, refinement-loop, batch-generation, audit</li>
-                <li><strong>context/convergence-criteria.md</strong> for three-level convergence formula and scoring rubrics</li>
-                <li><strong>Team knowledge</strong> capability records for BundleWizard and all sub-components</li>
-                <li><strong>overview.dot</strong> architecture diagram for pipeline structure and dependency verification</li>
+                <li>Commit history: <code>git log --oneline | wc -l</code> &rarr; 145 commits</li>
+                <li>Contributor: <code>git log --format='%an &lt;%ae&gt;' | sort | uniq -c</code> &rarr; 1 author (Michael J. Jabbour)</li>
+                <li>Date span: <code>git log --format='%ad' --date=short | sort | uniq -c</code> &rarr; 2026-03-16 to 2026-03-27</li>
+                <li>PR history: <code>gh pr list --repo michaeljabbour/amplifier-bundle-bundlewizard --state all</code> &rarr; PRs #1&ndash;#4 merged</li>
+                <li>Tests: <code>python3 -m pytest tests/ -q</code> &rarr; 175 passed; <code>bridge/</code> with <code>PYTHONPATH=src</code> &rarr; 22 passed (197 total)</li>
+                <li>Composition: <code>ls agents/*.md context/*.md recipes/*.yaml modes/*.md | wc -l</code>; <code>ls -d skills/*/</code> &rarr; 11 / 8 / 6 / 7 / 2</li>
+                <li>Mechanism &amp; gates: <code>sed -n</code> / <code>grep -rn</code> over <code>philosophy.md</code>, <code>convergence-criteria.md</code>, <code>bundle-critic.md</code>, <code>recipes/bundle-single-iteration.yaml</code>, <code>README.md</code>, <code>bundle.md</code></li>
             </ul>
-            <p><strong>Category:</strong> Developer Tools<br>
-            <strong>Accent rationale:</strong> #00BCD4 (cyan) &mdash; tool/factory convention<br>
-            <strong>All statistics verified</strong> via direct repository analysis. No estimated or projected numbers.</p>
+            <p><strong>Gaps / framing notes:</strong> The phrase &ldquo;even experts ship broken bundles&rdquo; is narrative framing, not a repo quote; the &ldquo;composition complexity / ecosystem blindness / no quality gates&rdquo; triad is synthesized framing (each maps to real repo content). Commit count is the local HEAD; upstream may have advanced.</p>
+            <p><strong>Primary contributor:</strong> Michael J. Jabbour &mdash; 145 / 145 commits (100%).</p>
         </div>
     </div>
 
@@ -774,13 +502,43 @@ html.js .slide.active{display:flex;}
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -789,29 +547,25 @@ html.js .slide.active{display:flex;}
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
@@ -819,11 +573,10 @@ html.js .slide.active{display:flex;}
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

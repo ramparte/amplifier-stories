@@ -3,56 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Amplifier Resolve — How Amplifier Builds Software</title>
+    <title>A Plugin, Not a Platform</title>
     <script>document.documentElement.classList.add('js')</script>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --accent: #2ECC71;
-            --accent-dim: rgba(46, 204, 113, 0.15);
-            --accent-glow: rgba(46, 204, 113, 0.3);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 36px);
-            --fs-h3: clamp(18px, 3vw, 24px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 1.8vw, 15px);
-
-            /* Spacing */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #a1a1aa;
+            --accent: #6ea8fe;
+            --accent2: #7ee787;
+            --card: #16161e;
+            --border: #2a2a36;
         }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Slide base */
         .slide {
             display: flex;
             width: 100vw;
@@ -60,9 +32,13 @@
             min-height: 100dvh;
             padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
         }
+
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
         .slide.active { display: flex; }
 
         /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
@@ -83,367 +59,159 @@
         html.js body { overflow: hidden; overscroll-behavior: none; }
         html.js .slide { display: none; }
         html.js .slide.active { display: flex; }
-        .slide.center {
+
+        .slide { transition: transform 0.5s ease, opacity 0.5s ease; }
+
+        .center {
             text-align: center;
             align-items: center;
             justify-content: center;
         }
 
-        /* Typography */
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(14px, 2vw, 24px); }
+
         .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 14px);
             color: var(--accent);
-            margin-bottom: var(--space-sm);
-        }
-        .headline {
-            font-size: var(--fs-hero);
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.08;
-            margin-bottom: var(--space-md);
-        }
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            margin-bottom: var(--space-md);
-        }
-        .subhead {
-            font-size: var(--fs-h3);
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(680px, 90vw);
-        }
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: var(--space-sm);
-        }
-
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            font-size: var(--fs-small);
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: 100px;
-            background: rgba(46, 204, 113, 0.15);
-            color: #2ECC71;
-            margin-top: var(--space-sm);
+            margin-bottom: clamp(14px, 2vw, 22px);
         }
 
-        /* Grids */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .quads {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
+        .body { color: var(--fg); margin-top: clamp(14px, 2vw, 22px); max-width: 46ch; }
+        .handoff { color: var(--muted); margin-top: clamp(18px, 2.4vw, 28px); max-width: 46ch; font-style: italic; }
 
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
+        /* Horizontal split */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
         }
-        .card h3, .card h4 {
-            color: var(--text-primary);
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-        .card p, .card li {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.5;
-        }
-        .card .icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: var(--space-xs);
-        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-        /* Card with accent border top */
-        .card-accent {
-            border-top: 2px solid var(--accent);
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: clamp(12px, 1.6vw, 18px); }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.2vw, 26px);
         }
+        .stat-value { font-size: clamp(28px, 5vw, 52px); font-weight: 700; color: var(--accent2); line-height: 1.05; }
+        .stat-label { font-size: clamp(12px, 1.5vw, 15px); color: var(--muted); margin-top: 8px; }
 
-        /* Code blocks */
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.4vw, 16px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 20px);
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+        .steps .step-n {
+            flex: 0 0 auto;
+            font-weight: 700;
+            color: var(--accent);
+            font-size: clamp(14px, 1.8vw, 18px);
+            min-width: 1.6em;
+        }
+        .steps .step-t code { color: var(--accent2); }
+
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.4vw, 16px); }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 20px);
+        }
+        .rules .r-head { font-weight: 700; color: var(--fg); }
+        .rules .r-sub { color: var(--muted); font-size: clamp(12px, 1.5vw, 15px); margin-top: 4px; }
+
+        .quote-block {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent2);
+            border-radius: 14px;
+            padding: clamp(22px, 3.2vw, 40px);
+        }
+        .quote-block blockquote { font-size: clamp(18px, 2.8vw, 30px); line-height: 1.32; font-weight: 500; }
+        .quote-block cite { display: block; margin-top: clamp(14px, 2vw, 22px); color: var(--muted); font-style: normal; font-size: clamp(12px, 1.5vw, 15px); }
+
         .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
+            background: #05050a;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(16px, 2.2vw, 26px);
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.6vw, 16px);
             line-height: 1.7;
             white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            color: #BFC0C5;
-            margin-top: var(--space-md);
+            color: var(--fg);
         }
-        .code-comment { color: rgba(255,255,255,0.35); }
-        .code-cmd { color: #2ECC71; }
-        .code-flag { color: #3498DB; }
-        .code-string { color: #FF9F0A; }
-        .code-var { color: #64D2FF; }
+        .code-comment { color: var(--muted); }
+        .code-block .accent { color: var(--accent2); }
 
-        /* Flow steps */
-        .flow-steps {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            max-width: min(800px, 95vw);
+        .contract-list { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: clamp(8px, 1.2vw, 12px); }
+        .contract-list li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: clamp(10px, 1.4vw, 14px);
+            font-size: clamp(12px, 1.5vw, 15px);
         }
-        .flow-step {
-            display: flex;
-            align-items: flex-start;
-            gap: var(--space-md);
-        }
-        .flow-number {
-            flex-shrink: 0;
-            width: clamp(36px, 5vw, 48px);
-            height: clamp(36px, 5vw, 48px);
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--accent);
-        }
-        .flow-content h4 {
-            font-size: var(--fs-h3);
+        .contract-list .grp { color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; font-size: clamp(10px, 1.2vw, 12px); }
+
+        .sources-text { color: var(--muted); line-height: 1.6; max-width: 70ch; }
+        .sources-text p { margin-bottom: 10px; }
+        .sources-text ul { margin: 8px 0 8px 20px; }
+        .sources-text li { margin-bottom: 6px; }
+        .sources-text code { color: var(--accent2); font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; }
+        .badge {
+            display: inline-block;
+            background: rgba(126,231,135,0.14);
+            color: var(--accent2);
+            border: 1px solid rgba(126,231,135,0.4);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: clamp(11px, 1.4vw, 13px);
             font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .flow-content p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-        .flow-arrow {
-            width: 2px;
-            height: var(--space-sm);
-            background: var(--accent-dim);
-            margin-left: clamp(17px, 2.3vw, 23px);
-        }
-
-        /* Architecture diagram */
-        .arch-entities {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .entity-box {
-            background: var(--surface-2);
-            border: 1px solid var(--border-visible);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-            text-align: center;
-        }
-        .entity-box .icon {
-            font-size: clamp(32px, 6vw, 56px);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box h4 {
-            font-size: var(--fs-h3);
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        /* Velocity stats */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
-            gap: var(--space-lg);
-            margin-top: var(--space-lg);
-        }
-        .velocity-stat { text-align: center; }
-        .velocity-number {
-            font-size: clamp(48px, 12vw, 96px);
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #27AE60);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .velocity-label {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
-
-        /* Timeline */
-        .timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            margin-top: var(--space-lg);
-            max-width: min(700px, 95vw);
-        }
-        .timeline-item {
-            display: flex;
-            gap: var(--space-md);
-            padding-bottom: var(--space-md);
-            position: relative;
-        }
-        .timeline-item:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            left: clamp(30px, 4vw, 40px);
-            top: clamp(36px, 5vw, 48px);
-            bottom: 0;
-            width: 2px;
-            background: var(--accent-dim);
-        }
-        .timeline-date {
-            flex-shrink: 0;
-            width: clamp(60px, 8vw, 80px);
-            height: clamp(60px, 8vw, 80px);
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-        }
-        .timeline-date .day {
-            font-size: var(--fs-h3);
-            color: var(--accent);
-            line-height: 1;
-        }
-        .timeline-date .month {
-            font-size: var(--fs-small);
-            color: var(--accent);
-            text-transform: uppercase;
-        }
-        .timeline-text h4 {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .timeline-text p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        /* Quote / callout box */
-        .callout {
-            background: var(--accent-dim);
-            border-left: 3px solid var(--accent);
-            border-radius: var(--radius-sm);
-            padding: var(--space-md);
-            margin-top: var(--space-md);
-            max-width: min(700px, 95vw);
-        }
-        .callout p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-            font-style: italic;
-        }
-        .callout .attribution {
-            font-style: normal;
-            color: var(--text-tertiary);
-            font-size: var(--fs-small);
-            margin-top: var(--space-xs);
         }
 
         /* Navigation */
-        .nav {
-            position: fixed;
-            bottom: 28px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            z-index: 100;
-        }
-        .nav-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
-        .slide-counter {
-            position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            z-index: 100;
+        .nav { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100; }
+        .nav-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.25); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter { position: fixed; bottom: 24px; right: 28px; font-size: clamp(11px, 1.5vw, 13px); color: var(--muted); z-index: 100; }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
         }
 
-        /* Sources slide specifics */
-        .sources-content {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.7;
-            max-width: min(800px, 95vw);
-        }
-        .sources-content strong {
-            color: var(--text-primary);
-        }
-        .sources-content code {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-small);
-            background: var(--surface-1);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .sources-content ul {
-            padding-left: var(--space-md);
-            margin: var(--space-xs) 0;
-        }
-        .sources-content li {
-            margin-bottom: var(--space-xs);
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
 
-        /* More stories link */
         .more-stories {
             position: fixed;
             bottom: 10px;
@@ -455,364 +223,202 @@
             z-index: 100;
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
-
-        /* Landscape mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
-        }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* Touch targets */
-        @media (hover: none) {
-            .nav-dot {
-                min-width: 16px;
-                min-height: 16px;
-            }
-        }
-
-        /* Highlight accent text */
-        .accent { color: var(--accent); }
-
-        /* Inline list with subtle bullets */
-        .feature-list {
-            list-style: none;
-            padding: 0;
-        }
-        .feature-list li {
-            padding-left: var(--space-md);
-            position: relative;
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: var(--space-xs);
-        }
-        .feature-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.6em;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-        }
-
-        /* Layer diagram */
-        .layer-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            margin-top: var(--space-lg);
-            max-width: min(800px, 95vw);
-        }
-        .layer {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
-            padding: var(--space-sm) var(--space-md);
-            display: flex;
-            align-items: center;
-            gap: var(--space-md);
-        }
-        .layer-num {
-            flex-shrink: 0;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--fs-small);
-            font-weight: 700;
-            color: var(--accent);
-        }
-        .layer h4 {
-            font-size: var(--fs-body);
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .layer p {
-            font-size: var(--fs-small);
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-        .layer-connector {
-            width: 2px;
-            height: 12px;
-            background: var(--accent-dim);
-            margin-left: 40px;
-        }
     </style>
 </head>
 <body>
+<!--
+SPINE
+ABT: Turning intent into working software means picking a coding approach, and each approach is really just one strategy among many; BUT if every new approach forces you to rebuild the whole platform around it, the platform itself becomes the bottleneck; THEREFORE Amplifier Resolve keeps the host thin — owning only lifecycle, routing, and validation — so the intelligence lives in pluggable resolvers, and a new coding approach is a new plugin, not a new platform.
+Payoff: The plugin swap — because a resolver is a separate package registered via one CLI command (`amplifier-resolve resolver add`) and discovered through the ManifestRegistry catalog, adopting a new coding approach means dropping in a plugin; the platform never changes.
+Beats:
+  beat 1 (frame):     Amplifier Resolve is a thin host that runs coding agents — it owns lifecycle, routing, and validation, and nothing else.  advances: Orients the audience on what this is and the problem it solves, setting up the AND — a host that deliberately owns very little.
+  beat 2 (proof):     The repo says it in its own words: "The host is a thin lifecycle/routing/validation layer. Resolvers own all resolution semantics."  advances: Lands hard evidence within the first three beats that the AND is real — the thin-host split is stated verbatim in README.md, not an aspiration.
+  beat 3 (tension):   Any single coding approach is only one strategy — and rebuilding the whole platform for each new one is untenable.  advances: Establishes the BUT — the cost of coupling intelligence to the platform is what the thin-host design has to defeat.
+  beat 4 (mechanism): The intelligence lives behind one contract: a 12-member Resolver Protocol (4 properties + 8 methods) the host talks to.  advances: Shows HOW the split works — a single narrow interface is the seam that lets the host stay dumb while resolvers stay smart.
+  beat 5 (mechanism): Every instance-creation input is validated against the resolver's A2UI v0.9 schema before anything runs — bad input gets a 422, not a broken container.  advances: Shows HOW the host earns the right to be thin — it enforces the contract at the boundary so resolvers can trust what they receive.
+  beat 6 (turn):      The platform is actively shedding coupling: the in-process execution path was deleted, and 'resolver:completed' became the single authoritative completion contract.  advances: Pivots from AND to THEREFORE — proves the thin-host discipline is enforced over time, not just declared once.
+  beat 7 (payoff):    A new coding approach is a new plugin, not a new platform: a resolver is a separate package registered via 'amplifier-resolve resolver add' and discovered through the catalog.  advances: Lands the THEREFORE as the climax — the payoff of the thin host is that extensibility costs a plugin, never a rebuild.
+  beat 8 (takeaway):  Keep the host thin and push intelligence behind a contract, and you can adopt new strategies forever without touching the platform.  advances: Generalizes the ABT into the pattern the audience keeps — the thin-host-plus-plugins shape as a reusable design principle.
+-->
 
-    <!--
-      ═══════════════════════════════════════════════════════════════════════
-      NARRATIVE SPINE  (built from the deck's existing content; no fresh research)
-      ═══════════════════════════════════════════════════════════════════════
-
-      ABT:
-        AND turning intent into working software means either trusting a monolithic
-            AI you can't extend, or hand-building a bespoke pipeline;
-        BUT any single coding approach is only one strategy, and rebuilding the whole
-            platform for each new one is untenable;
-        THEREFORE Amplifier Resolve is a thin host that owns lifecycle, routing, and
-            validation while pluggable resolvers own the intelligence — so a new
-            coding approach is a new plugin, not a new platform.
-
-      PAYOFF (named up front):
-        "The factory for factories" — a thin orchestration layer where new coding
-        strategies plug in as resolvers (registered with one command) and are trusted
-        by observable HTTP behavior, not source inspection.
-
-      BEATS (proof-first; payoff lands at beat 4 of 8, before the midpoint):
-        1. proof     — Resolve already turns a written spec into a tested PR
-                       autonomously; built in 22 days with a ~2.8:1 test-to-source
-                       ratio.  advances: grounds the AND in a real working artifact.
-        2. setup     — what Resolve IS: intent → resolve → PR, three steps.
-                       advances: introduces the subject/flow before leaning on it.
-        3. tension   — the trap: monolithic AI you can't extend, or a bespoke
-                       pipeline you rebuild each time.  advances: the BUT.
-        4. payoff    — the factory for factories: thin host + pluggable resolvers;
-                       a new approach is a plugin.  advances: lands the THEREFORE.
-        5. mechanism — the thin host: four layers, host owns lifecycle/routing/
-                       validation, resolvers own semantics. (one claim)  advances:
-                       HOW the boundary is drawn.
-        6. mechanism — A2UI v0.9 + one-command register makes a new approach a plugin,
-                       not a platform. (one claim)  advances: HOW plugins interchange.
-        7. mechanism — Reality Check trusts output by observable HTTP behavior, not
-                       source inspection. (one claim)  advances: HOW output is trusted.
-        8. takeaway  — run it today; the composable factory.  advances: what the
-                       audience keeps.
-
-        + Sources & Methodology (audit-trail slide, not a beat) at the end.
-        Slides = 8 beats + 1 = 9.
-    -->
-
-    <!-- beat 1: proof -->
-    <div class="slide center">
-        <div class="section-label">Amplifier Platform &middot; microsoft/amplifier-resolve</div>
-        <h1 class="headline">A written spec becomes a tested PR — no human in the loop</h1>
-        <p class="subhead">Amplifier Resolve turns intent into working code, and it was built the way it builds: 100 commits in 22 days, tests outweighing source ~2.8&#58;1.</p>
-        <div class="velocity-grid">
-            <div class="velocity-stat">
-                <div class="velocity-number">22</div>
-                <div class="velocity-label">Days to build</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">3,400</div>
-                <div class="velocity-label">Test cases</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">2.8:1</div>
-                <div class="velocity-label">Test-to-source ratio</div>
-            </div>
-        </div>
-        <div class="status-badge">Active &middot; A2UI v0.9 Protocol</div>
+    <!-- Title cover slide (before beat 1) -->
+    <div class="slide title-slide active center">
+        <h1>A Plugin, Not a Platform</h1>
+        <p class="subtitle">A thin host, pluggable resolvers</p>
     </div>
 
-    <!-- beat 2: setup -->
-    <div class="slide">
-        <div class="section-label">What Resolve Is</div>
-        <h2 class="medium-headline">Three steps: describe intent, resolve it autonomously, deliver a PR</h2>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x1F4DD;</div>
-                <h3>1 &middot; Describe Intent</h3>
-                <p>A user writes a spec &mdash; what the software should do, defined as observable HTTP behavior. No implementation details.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x2699;&#xFE0F;</div>
-                <h3>2 &middot; Resolve Autonomously</h3>
-                <p>A resolver instance explores the codebase, plans changes, implements them, tests in a live environment, and iterates until done.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F680;</div>
-                <h3>3 &middot; Deliver a Pull Request</h3>
-                <p>The platform promotes results back to GitHub or Gitea as a PR. Working code, tested and ready for review.</p>
-            </div>
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">Amplifier Resolve</div>
+            <h1>A thin host that runs coding agents</h1>
+            <p class="body">Amplifier Resolve is a FastAPI host whose Orchestrator creates one isolated worker container per instance. It owns lifecycle, routing, and validation — and deliberately nothing more.</p>
+            <p class="handoff">Owning very little is not an accident. The repo says so in its own words.</p>
         </div>
-        <div class="callout">
-            <p>Keep those three steps in mind &mdash; the question the rest of the deck answers is <em>who</em> does step 2, and how the platform stays out of its way.</p>
-        </div>
-    </div>
-
-    <!-- beat 3: tension -->
-    <div class="slide">
-        <div class="section-label">The Complication</div>
-        <h2 class="medium-headline">Every "AI that writes code" forces the same bad trade-off</h2>
-        <div class="halves">
-            <div class="card card-accent">
-                <h3>The monolith you can't extend</h3>
-                <p>One giant AI system owns the whole pipeline. It works &mdash; until you want a different coding strategy, and there's no seam to plug into.</p>
-            </div>
-            <div class="card card-accent">
-                <h3>The bespoke pipeline you rebuild</h3>
-                <p>Hand-wire git, containers, testing, and promotion for one approach. Then a new approach arrives and you rebuild the plumbing from scratch.</p>
-            </div>
-        </div>
-        <div class="callout">
-            <p>Either way, a <em>single coding approach</em> is just one strategy &mdash; and treating each new one as a new platform doesn't scale.</p>
-        </div>
-    </div>
-
-    <!-- beat 4: payoff -->
-    <div class="slide center">
-        <div class="section-label">The Resolution</div>
-        <h2 class="medium-headline">The factory for factories: a thin host, and the strategy is a plugin</h2>
-        <p class="subhead">Resolve owns lifecycle, routing, and validation. Resolvers own all the intelligence. A new coding approach is a new resolver &mdash; not a new platform.</p>
-        <div class="callout" style="margin-top: var(--space-lg);">
-            <p>"The host is a thin lifecycle/routing/validation layer. Resolvers own all resolution semantics. New capabilities are added as new broker handlers conforming to CapabilityHandlerProtocol."</p>
-            <div class="attribution">&mdash; design/ARCHITECTURE.md</div>
-        </div>
-        <p class="small-text">The next three slides show the three things that make this real: the boundary, the plug, and the trust.</p>
-    </div>
-
-    <!-- beat 5: mechanism -->
-    <div class="slide">
-        <div class="section-label">The Boundary &middot; Claim 1</div>
-        <h2 class="medium-headline">Four layers draw one line: the host runs it, resolvers decide it</h2>
-        <div class="layer-stack">
-            <div class="layer">
-                <div class="layer-num">1</div>
-                <div>
-                    <h4>App Shell</h4>
-                    <p>React SPA &mdash; A2UI rendering surface with optional viewport extensions for custom resolver visualization.</p>
-                </div>
-            </div>
-            <div class="layer-connector"></div>
-            <div class="layer">
-                <div class="layer-num">2</div>
-                <div>
-                    <h4>Headless Core</h4>
-                    <p>FastAPI service &mdash; instance lifecycle, broker, resolver registry, auth, observability. ~24,000 lines of source.</p>
-                </div>
-            </div>
-            <div class="layer-connector"></div>
-            <div class="layer">
-                <div class="layer-num">3</div>
-                <div>
-                    <h4>Resolvers</h4>
-                    <p>One child process per phase, speaking JSONL over stdio via amplifier-resolver-sdk. Pluggable &mdash; discovered via entry points.</p>
-                </div>
-            </div>
-            <div class="layer-connector"></div>
-            <div class="layer">
-                <div class="layer-num">4</div>
-                <div>
-                    <h4>Per-Instance Services</h4>
-                    <p>Sidecar containers: Gitea, GH-router, DTU spawn, Reality-Check spawn. New capabilities via CapabilityHandlerProtocol.</p>
-                </div>
-            </div>
-        </div>
-        <div class="callout">
-            <p>Layers 1, 2, and 4 are infrastructure the host owns. Layer 3 is where a strategy lives &mdash; the only layer a new coding approach has to touch.</p>
-        </div>
-    </div>
-
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">The Plug &middot; Claim 2</div>
-        <h2 class="medium-headline">A2UI v0.9 makes any resolver interchangeable — and one command registers it</h2>
-        <div class="thirds">
-            <div class="entity-box">
-                <div class="icon">&#x1F9F2;</div>
-                <h4>Attractor</h4>
-                <p>Multi-stage AI pipeline &mdash; plan, implement, test, review. Ships as a submodule at <code>amplifier-bundle-attractor</code>.</p>
-            </div>
-            <div class="entity-box">
-                <div class="icon">&#x1F4BB;</div>
-                <h4>Dev Machine</h4>
-                <p>Interactive resolver that pairs with a human developer in the loop for guided implementation.</p>
-            </div>
-            <div class="entity-box">
-                <div class="icon">&#x1F4CA;</div>
-                <h4>Dot Graph</h4>
-                <p>Specialized resolver for architecture diagrams and codebase visualization.</p>
-            </div>
-        </div>
-        <div class="callout">
-            <p>All three speak the same 12-member protocol &mdash; schema-driven input, typed messages, SSE events. <code>amplifier-resolve resolver add &lt;spec&gt;</code> validates a new one in an ephemeral container; it inherits workspace, git sidecars, and promotion for free.</p>
-        </div>
-    </div>
-
-    <!-- beat 7: mechanism -->
-    <div class="slide">
-        <div class="section-label">The Trust &middot; Claim 3</div>
-        <h2 class="medium-headline">Reality Check trusts what the code does — not how it's written</h2>
-        <p class="subhead">However a resolver produced its code, the platform validates it the same way: by exercising observable HTTP behavior against live services.</p>
-        <div class="code-block"><span class="code-comment"># Create an instance — the spec is behavior, not implementation</span>
-<span class="code-cmd">curl</span> <span class="code-flag">-X POST</span> <span class="code-string">http://localhost:10120/instances</span> \
-  <span class="code-flag">-d</span> <span class="code-var">'{"resolver": "attractor", "input": {"spec": "Add GET /api/version", "repo": "org/repo"}}'</span>
-
-<span class="code-comment"># Watch it work in real time, then collect the PR</span>
-<span class="code-cmd">curl</span> <span class="code-flag">-N</span> <span class="code-string">http://localhost:10120/instances/{id}/events</span></div>
-        <div class="callout">
-            <p>Because trust is behavioral, the platform doesn't care which strategy wrote the code &mdash; which is exactly what lets strategies stay pluggable.</p>
-        </div>
-    </div>
-
-    <!-- beat 8: takeaway -->
-    <div class="slide center">
-        <div class="section-label">Run It Today</div>
-        <h1 class="headline">One thin platform. Bring your own strategy.</h1>
-        <p class="subhead">Install it, start the server, and point a resolver at a spec. New coding approaches join as plugins &mdash; the factory stays thin.</p>
-        <div class="code-block" style="text-align: left; max-width: min(600px, 90vw);"><span class="code-comment"># Install</span>
-<span class="code-cmd">uv tool install</span> <span class="code-string">'git+https://github.com/microsoft/amplifier-resolve@main'</span>
-
-<span class="code-comment"># Start the server</span>
-<span class="code-cmd">amplifier-resolve</span> <span class="code-flag">--port</span> <span class="code-var">10120</span>
-
-<span class="code-comment"># Build the worker cache (cuts startup 5 min &rarr; 15 sec)</span>
-<span class="code-cmd">./docker/build-cache-image.sh</span></div>
-        <div class="small-text" style="margin-top: var(--space-lg);">
-            github.com/<strong>microsoft/amplifier-resolve</strong><br>
-            Python 3.11+ &middot; FastAPI &middot; Incus/Docker &middot; A2UI v0.9
-        </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- SOURCES & METHODOLOGY  (audit-trail slide, not a beat)        -->
-    <!-- ============================================================ -->
-    <div class="slide">
-        <div class="section-label">Sources & Methodology</div>
-        <h2 class="medium-headline">How this deck was built</h2>
-        <div class="sources-content">
-            <p><strong>Repository:</strong> <code>microsoft/amplifier-resolve</code> &mdash; cloned and analyzed May 20, 2026.</p>
-            <ul>
-                <li><strong>Commit range:</strong> 100 commits, <code>9bf3b55</code> (Apr 29) to <code>d4eb669</code> (May 20)</li>
-                <li><strong>Contributors (git shortlog):</strong> Brian Krabach (97 commits), dependabot[bot] (2), Salil Das (1)</li>
-                <li><strong>Primary contributors (team knowledge):</strong> bkrabach, DavidKoleczek, singh2</li>
-                <li><strong>Source code:</strong> 77 Python files, ~24,000 lines in <code>src/amplifier_resolve/</code></li>
-                <li><strong>Test code:</strong> 184 Python files, ~66,600 lines in <code>tests/</code>; ~3,400 test cases (per README)</li>
-                <li><strong>Total Python:</strong> ~96,500 lines across 291 files</li>
-                <li><strong>Key modules by LOC:</strong> orchestrator.py (3,001), reality_check.py (1,066), promotion.py (806), workspace/service.py (656), containers/incus.py (641)</li>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>
+                    <div class="r-head">Lifecycle</div>
+                    <div class="r-sub">One worker container per instance, named resolve-{id}, over 8 platform statuses.</div>
+                </li>
+                <li>
+                    <div class="r-head">Routing</div>
+                    <div class="r-sub">Mirrors events, routes input-requests and messages between host and resolver.</div>
+                </li>
+                <li>
+                    <div class="r-head">Validation</div>
+                    <div class="r-sub">Validates every POST /instances input before the instance is created.</div>
+                </li>
             </ul>
-            <p><strong>Sources consulted:</strong></p>
-            <ul>
-                <li><code>README.md</code> &mdash; API surface, quick start, environment variables, architecture table</li>
-                <li><code>design/ARCHITECTURE.md</code> &mdash; four-layer architecture, two-domain auth, router topology</li>
-                <li><code>docs/INSTANCE_LIFECYCLE.md</code> &mdash; 8-state machine, transitions, state diagram</li>
-                <li><code>docs/AUTHORING_GUIDE.md</code> &mdash; instance spec conventions, observable behavior requirement</li>
-                <li>Team knowledge YAML: <code>amplifier-resolve.yaml</code>, <code>amplifier-bundle-attractor.yaml</code>, <code>amplifier-reality-check-runner.yaml</code></li>
-                <li>Source inspection: <code>core/resolve_orchestrator.py</code>, <code>core/events.py</code>, <code>broker/</code>, <code>containers/</code>, <code>workspace/</code></li>
+        </div>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 2: proof -->
+        <div class="section-label">Proof — in the repo's own words</div>
+        <div class="quote-block">
+            <blockquote>&ldquo;The host is a thin lifecycle/routing/validation layer. Resolvers own all resolution semantics.&rdquo;</blockquote>
+            <cite>README.md, line 254 — Amplifier Resolve (microsoft/amplifier-resolve)</cite>
+        </div>
+        <p class="handoff">The split is stated verbatim, not aspired to. So why draw the line exactly there?</p>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 3: tension -->
+        <div class="col-main">
+            <div class="section-label">The tension</div>
+            <h2>Any one coding approach is just one strategy</h2>
+            <p class="body">A resolver is a strategy plugin: it defines its own approach, phase progression, and documentation. Bind that intelligence into the platform and every new approach forces a rebuild.</p>
+            <p class="handoff">The thin host has to defeat that coupling. It does it with one narrow seam.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>
+                    <div class="r-head">Couple intelligence to the platform</div>
+                    <div class="r-sub">A new approach means a new platform — untenable as strategies multiply.</div>
+                </li>
+                <li>
+                    <div class="r-head">Keep the host thin instead</div>
+                    <div class="r-sub">The host owns only lifecycle, routing, and validation; resolvers own the semantics.</div>
+                </li>
             </ul>
-            <p><strong>Commands used:</strong> <code>git log --oneline | wc -l</code>, <code>git shortlog -sn --all</code>, <code>find . -name "*.py" | xargs wc -l</code>, <code>wc -l</code> on key modules.</p>
-            <p style="margin-top: var(--space-sm);"><strong>No metrics were fabricated.</strong> All numbers come from git history and file system analysis at the commit referenced above.</p>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism — the seam</div>
+            <h2>Intelligence lives behind one 12-member contract</h2>
+            <p class="body">The host talks to every resolver through a single Resolver Protocol — 4 properties and 8 methods. That narrow interface is what lets the host stay dumb while resolvers stay smart.</p>
+            <p class="handoff">A contract is only as strong as the boundary that enforces it.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="contract-list">
+                <li><span class="grp">4 properties</span><br>name</li>
+                <li>version</li>
+                <li>description</li>
+                <li>supports_resume</li>
+                <li><span class="grp">8 methods</span><br>instantiation_schema</li>
+                <li>workspace_spec</li>
+                <li>container_setup</li>
+                <li>message_types</li>
+                <li>run</li>
+                <li>on_input_response</li>
+                <li>on_message</li>
+                <li>stop</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism — the boundary</div>
+            <h2>Bad input gets a 422, not a broken container</h2>
+            <p class="body">The host validates every POST /instances request against the resolver's A2UI v0.9 instantiation schema before creating the instance. Fail validation and you get a 422 with an errors list — nothing runs.</p>
+            <p class="handoff">Enforcing the contract at the edge is how the host earns the right to be thin.</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># POST /instances — validated at the boundary</span>
+<span class="accent">200</span>  input matches the resolver's A2UI v0.9 schema
+     &rarr; instance created
+
+<span class="accent">422</span>  Unprocessable Entity
+     &rarr; errors list returned, no instance,
+       no broken container</div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">The turn</div>
+            <h2>The platform is actively shedding coupling</h2>
+            <p class="body">This is enforced over time, not declared once. The in-process execution path (ResolveCore) was deleted; resolvers now run via JSON-RPC over stdio inside worker containers. And a single completion contract replaced the legacy handlers.</p>
+            <p class="handoff">Discipline maintained means extensibility can cost almost nothing.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>
+                    <div class="r-head">In-process path deleted</div>
+                    <div class="r-sub">ResolveCore / ResolverResult removed — there is no host-side resolver execution path.</div>
+                </li>
+                <li>
+                    <div class="r-head">One completion contract</div>
+                    <div class="r-sub">resolver:completed is the sole terminator; the legacy complete/error handler was removed in PR #59 (893fcba).</div>
+                </li>
+                <li>
+                    <div class="r-head">Magic string retired</div>
+                    <div class="r-sub">The __RESOLVE_WORKER_COMPLETE__ check was removed in PR #51 (376b915).</div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The payoff — the plugin swap</div>
+            <h2>A new approach is a new plugin, not a new platform</h2>
+            <p class="body">A resolver is a separate package. Register it with one CLI command and it's discovered through the ManifestRegistry catalog (resolvers.json). Adopting a new coding approach means dropping in a plugin — the platform never changes.</p>
+            <p class="handoff">That is the whole point of keeping the host thin.</p>
+        </div>
+        <div class="col-aside">
+            <ol class="steps">
+                <li><span class="step-n">1</span><span class="step-t">Package the resolver separately — it defines its own approach, phases, and docs.</span></li>
+                <li><span class="step-n">2</span><span class="step-t">Register it: <code>amplifier-resolve resolver add</code></span></li>
+                <li><span class="step-n">3</span><span class="step-t">The ManifestRegistry catalog (resolvers.json) is the single source of truth for discovery.</span></li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The pattern to keep</div>
+        <h2>Keep the host thin; push intelligence behind a contract</h2>
+        <p class="body">Own only lifecycle, routing, and validation. Put every strategy behind one narrow interface. Then you can adopt new approaches forever — without touching the platform.</p>
+    </div>
+
+    <!-- Sources & Methodology (not a beat) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="sources-text">
+            <p><span class="badge">Feature status: Active</span></p>
+            <p><strong>Primary source:</strong> microsoft/amplifier-resolve, checked out at ~/dev/ANext/amplifier-resolve (shallow clone, 100 commits visible; earliest 2026-04-29, latest 2026-05-20).</p>
+            <p><strong>Research performed:</strong></p>
+            <ul>
+                <li>Thin-host claim: <code>grep -rn "thin|host handles|resolvers own" README.md</code> (README.md:254, :7)</li>
+                <li>Resolver Protocol 12 members: <code>sed -n '58,145p' docs/ARCHITECTURE.md</code> (ARCHITECTURE.md:140)</li>
+                <li>Schema validation / 422: <code>grep -n "422|A2UI|instantiation_schema|validate" README.md docs/ARCHITECTURE.md</code></li>
+                <li>Completion contract cleanup: <code>git log --format="%h %s" | grep -iE "#59|#51"</code> (893fcba #59, 376b915 #51)</li>
+                <li>Plugin registration &amp; catalog: <code>grep -rn "resolver add|separate packages|ManifestRegistry" docs/ARCHITECTURE.md src/amplifier_resolve/plugins/catalog.py</code> (ARCHITECTURE.md:337)</li>
+                <li>In-process path removal: <code>cat src/amplifier_resolve/core/resolve_core.py</code> (tombstone); launcher via ResolverProcess (orchestrator.py:857)</li>
+                <li>Contributors: <code>git shortlog -sn --all</code></li>
+            </ul>
+            <p><strong>Gaps:</strong> The checkout is a shallow clone, so true repo origin date and total commit/contributor counts are not verifiable — only the 100-commit window is visible. The runnable Resolver Protocol lives in the external amplifier-resolver-sdk; the 12-member count is quoted from ARCHITECTURE.md:140. Two stale doc details were corrected: the worker runs a 'sleep infinity' keepalive (not a resolve_worker module) with the resolver launched via ResolverProcess.</p>
+            <p><strong>Primary contributor (visible history):</strong> Brian Krabach, 97 of 100 commits.</p>
         </div>
     </div>
 
@@ -820,18 +426,48 @@
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
 
-    <!-- More stories link -->
+    <!-- More stories link - REQUIRED -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -840,29 +476,25 @@
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
@@ -870,11 +502,10 @@
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

@@ -3,53 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>The Kepler Refactor — 606 Lines of Dead Code & 104 New Tests</title>
+    <title>Deleting a Second Platform</title>
     <script>document.documentElement.classList.add('js')</script>
-
     <style>
-        :root {
-            --accent: #E8915A;
-            --accent-dim: rgba(232, 145, 90, 0.15);
-            --accent-glow: rgba(232, 145, 90, 0.3);
-            --bg: #000;
-            --text: #fff;
-            --text-dim: rgba(255,255,255,0.5);
-            --card-bg: rgba(255,255,255,0.05);
-            --card-border: rgba(255,255,255,0.12);
-            --green: #30D158;
-            --red: #FF453A;
-            --blue: #0A84FF;
-            --purple: #BF5AF2;
-            --teal: #64D2FF;
-
-            --font-headline: clamp(32px, 8vw, 72px);
-            --font-medium-headline: clamp(24px, 5vw, 48px);
-            --font-subhead: clamp(16px, 3vw, 28px);
-            --font-body: clamp(14px, 2.2vw, 18px);
-            --font-small: clamp(12px, 1.8vw, 14px);
-            --font-big-number: clamp(48px, 15vw, 140px);
-
-            --padding-slide: clamp(20px, 5vw, 80px);
-            --padding-slide-top: clamp(60px, 10vw, 120px);
-            --padding-slide-bottom: clamp(80px, 12vw, 100px);
-            --gap-grid: clamp(16px, 3vw, 40px);
-
-    /* Surface hierarchy (injected by deck-style-fix) */
-    --surface-1: rgba(255,255,255,0.06);
-    --surface-2: rgba(255,255,255,0.10);
-    --surface-3: rgba(255,255,255,0.15);
-    --border-subtle: rgba(255,255,255,0.12);
-    --text-primary: #ffffff;
-    --text-readable: rgba(255,255,255,0.7);
-    --text-muted-floor: rgba(255,255,255,0.5);
-}
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #a0a0a8;
+            --accent: #5eb0ff;
+            --accent2: #ff7a59;
+            --card: #16161e;
+            --border: rgba(255,255,255,0.09);
+        }
+
+        html, body {
             background: var(--bg);
-            color: var(--text);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
         .slide {
@@ -57,535 +30,14 @@
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
-            padding: var(--padding-slide-top) var(--padding-slide) var(--padding-slide-bottom);
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: flex-start;
             overflow-y: auto;
             overflow-x: hidden;
         }
 
         .slide.active { display: flex; }
-
-        .center {
-            text-align: center;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Typography */
-        .section-label {
-            font-size: clamp(12px, 1.5vw, 14px);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: clamp(12px, 2vw, 24px);
-        }
-
-        .headline {
-            font-size: var(--font-headline);
-            font-weight: 700;
-            letter-spacing: -2px;
-            line-height: 1.05;
-            margin-bottom: clamp(16px, 3vw, 32px);
-        }
-
-        .medium-headline {
-            font-size: var(--font-medium-headline);
-            font-weight: 700;
-            letter-spacing: -1px;
-            line-height: 1.15;
-            margin-bottom: clamp(16px, 3vw, 32px);
-        }
-
-        .subhead {
-            font-size: var(--font-subhead);
-            font-weight: 400;
-            color: rgba(255,255,255,0.7);
-            line-height: 1.4;
-            max-width: 700px;
-        }
-
-        .small-text {
-            font-size: var(--font-small);
-            color: var(--text-dim);
-            margin-top: clamp(16px, 3vw, 32px);
-        }
-
-        p, .body-text {
-            font-size: var(--font-body);
-            line-height: 1.6;
-            color: rgba(255,255,255,0.8);
-            max-width: 800px;
-        }
-
-        /* Grid Layouts */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--gap-grid);
-            margin-top: clamp(16px, 3vw, 32px);
-            width: 100%;
-        }
-
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-            gap: var(--gap-grid);
-            margin-top: clamp(16px, 3vw, 32px);
-            width: 100%;
-        }
-
-        .five-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            gap: clamp(12px, 2vw, 20px);
-            margin-top: clamp(16px, 3vw, 32px);
-            width: 100%;
-        }
-
-        /* Cards */
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(16px, 4vw, 28px);
-        }
-
-        .card h3 {
-            font-size: clamp(16px, 2.5vw, 20px);
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--text);
-        }
-
-        .card p {
-            font-size: var(--font-small);
-            color: rgba(255,255,255,0.7);
-            line-height: 1.5;
-        }
-
-        .card .card-accent {
-            font-size: clamp(28px, 6vw, 42px);
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 8px;
-        }
-
-        .card-highlight {
-            border-color: var(--accent);
-            background: var(--accent-dim);
-        }
-
-        /* Phase Cards */
-        .phase-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(20px, 4vw, 32px);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .phase-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--accent);
-        }
-
-        .phase-number {
-            font-size: clamp(11px, 1.4vw, 13px);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: 12px;
-        }
-
-        .phase-card h3 {
-            font-size: clamp(18px, 3vw, 24px);
-            font-weight: 700;
-            margin-bottom: 12px;
-            line-height: 1.2;
-        }
-
-        .phase-card p {
-            font-size: var(--font-small);
-            color: rgba(255,255,255,0.7);
-            line-height: 1.5;
-        }
-
-        .phase-stat {
-            display: inline-block;
-            background: rgba(255,255,255,0.08);
-            border-radius: 6px;
-            padding: 4px 10px;
-            font-size: clamp(11px, 1.4vw, 13px);
-            font-weight: 600;
-            color: rgba(255,255,255,0.7);
-            margin-top: 12px;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-        }
-
-        .phase-stat.green { color: var(--green); }
-        .phase-stat.red { color: var(--red); }
-
-        /* Code Blocks */
-        .code-block {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: clamp(12px, 1.8vw, 15px);
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-top: clamp(12px, 2vw, 24px);
-            width: 100%;
-        }
-
-        .code-block .comment { color: rgba(255,255,255,0.5); }
-        .code-block .keyword { color: #FF7EB3; }
-        .code-block .function { color: var(--green); }
-        .code-block .string { color: #FFD60A; }
-        .code-block .deleted { color: var(--red); text-decoration: line-through; opacity: 0.6; }
-        .code-block .added { color: var(--green); }
-        .code-block .accent { color: var(--accent); }
-        .code-block .dim { color: rgba(255,255,255,0.5); }
-
-        /* Velocity Stats */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
-            gap: var(--gap-grid);
-            margin-top: clamp(24px, 5vw, 48px);
-            width: 100%;
-            max-width: 1000px;
-        }
-
-        .velocity-stat {
-            text-align: center;
-            padding: clamp(16px, 3vw, 24px) 0;
-        }
-
-        .velocity-number {
-            font-size: clamp(40px, 10vw, 80px);
-            font-weight: 800;
-            letter-spacing: -2px;
-            background: linear-gradient(135deg, var(--accent), #FFD060);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1;
-        }
-
-        .velocity-label {
-            font-size: var(--font-small);
-            color: var(--text-dim);
-            margin-top: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* Timeline */
-        .timeline {
-            width: 100%;
-            margin-top: clamp(20px, 4vw, 40px);
-        }
-
-        .timeline-item {
-            display: flex;
-            gap: clamp(12px, 3vw, 24px);
-            padding: clamp(12px, 2vw, 16px) 0;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            align-items: flex-start;
-        }
-
-        .timeline-item:last-child { border-bottom: none; }
-
-        .timeline-time {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: clamp(11px, 1.4vw, 13px);
-            color: var(--accent);
-            white-space: nowrap;
-            min-width: clamp(60px, 10vw, 90px);
-            padding-top: 2px;
-        }
-
-        .timeline-content h4 {
-            font-size: clamp(14px, 2vw, 17px);
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .timeline-content p {
-            font-size: clamp(12px, 1.6vw, 14px);
-            color: rgba(255,255,255,0.5);
-            line-height: 1.4;
-        }
-
-        /* Comparison */
-        .comparison-table {
-            width: 100%;
-            margin-top: clamp(16px, 3vw, 32px);
-        }
-
-        .comparison-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2px;
-            margin-bottom: 2px;
-        }
-
-        .comparison-header {
-            padding: clamp(10px, 2vw, 16px) clamp(12px, 3vw, 20px);
-            font-weight: 700;
-            font-size: clamp(12px, 1.8vw, 15px);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .comparison-header.before {
-            background: rgba(255, 69, 58, 0.15);
-            color: var(--red);
-            border-radius: 12px 0 0 0;
-        }
-
-        .comparison-header.after {
-            background: rgba(48, 209, 88, 0.15);
-            color: var(--green);
-            border-radius: 0 12px 0 0;
-        }
-
-        .comparison-cell {
-            padding: clamp(10px, 2vw, 14px) clamp(12px, 3vw, 20px);
-            font-size: clamp(12px, 1.8vw, 15px);
-            color: rgba(255,255,255,0.7);
-            line-height: 1.4;
-        }
-
-        .comparison-cell.before { background: rgba(255,69,58,0.05); }
-        .comparison-cell.after { background: rgba(48,209,88,0.05); }
-
-        .comparison-row:last-child .comparison-cell.before { border-radius: 0 0 0 12px; }
-        .comparison-row:last-child .comparison-cell.after { border-radius: 0 0 12px 0; }
-
-        /* Highlight Box */
-        .highlight-box {
-            background: var(--accent-dim);
-            border: 1px solid rgba(232, 145, 90, 0.3);
-            border-radius: 12px;
-            padding: clamp(16px, 3vw, 24px);
-            margin-top: clamp(16px, 3vw, 24px);
-            width: 100%;
-            max-width: 800px;
-        }
-
-        .highlight-box p {
-            color: rgba(255,255,255,0.85);
-        }
-
-        /* Quote */
-        .quote {
-            font-size: clamp(20px, 4vw, 36px);
-            font-weight: 500;
-            font-style: italic;
-            line-height: 1.4;
-            color: rgba(255,255,255,0.85);
-            max-width: 800px;
-            margin: clamp(16px, 4vw, 40px) 0;
-        }
-
-        .quote::before { content: '\201C'; color: var(--accent); }
-        .quote::after { content: '\201D'; color: var(--accent); }
-
-        .quote-attr {
-            font-size: var(--font-small);
-            color: var(--text-dim);
-            font-style: normal;
-        }
-
-        /* Progress Bar */
-        .progress-bar {
-            width: 100%;
-            max-width: 700px;
-            margin-top: clamp(16px, 3vw, 32px);
-        }
-
-        .progress-item {
-            display: flex;
-            align-items: center;
-            gap: clamp(12px, 2vw, 16px);
-            margin-bottom: clamp(10px, 2vw, 16px);
-        }
-
-        .progress-label {
-            font-size: clamp(12px, 1.6vw, 14px);
-            color: rgba(255,255,255,0.7);
-            min-width: clamp(80px, 12vw, 120px);
-        }
-
-        .progress-track {
-            flex: 1;
-            height: 8px;
-            background: rgba(255,255,255,0.08);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 4px;
-            background: linear-gradient(90deg, var(--accent), #FFD060);
-        }
-
-        .progress-value {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: clamp(11px, 1.4vw, 13px);
-            color: var(--accent);
-            min-width: 50px;
-            text-align: right;
-        }
-
-        /* Big statement */
-        .big-statement {
-            font-size: clamp(28px, 7vw, 56px);
-            font-weight: 700;
-            letter-spacing: -1px;
-            line-height: 1.15;
-            max-width: 900px;
-        }
-
-        .big-statement .accent { color: var(--accent); }
-
-        /* Test file grid */
-        .test-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: clamp(10px, 2vw, 16px);
-            margin-top: clamp(16px, 3vw, 24px);
-            width: 100%;
-        }
-
-        .test-file {
-            background: rgba(48, 209, 88, 0.06);
-            border: 1px solid rgba(48, 209, 88, 0.15);
-            border-radius: 12px;
-            padding: clamp(14px, 3vw, 20px);
-        }
-
-        .test-file h4 {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: clamp(11px, 1.4vw, 13px);
-            color: var(--green);
-            margin-bottom: 8px;
-            word-break: break-all;
-        }
-
-        .test-file .count {
-            font-size: clamp(28px, 5vw, 36px);
-            font-weight: 800;
-            color: var(--text);
-        }
-
-        .test-file .label {
-            font-size: clamp(11px, 1.3vw, 12px);
-            color: rgba(255,255,255,0.5);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* Navigation */
-        .nav {
-            position: fixed;
-            bottom: clamp(16px, 3vw, 24px);
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            z-index: 100;
-        }
-
-        .nav-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
-
-        .nav-dot:hover { background: rgba(255,255,255,0.4); }
-
-        .slide-counter {
-            position: fixed;
-            bottom: clamp(16px, 3vw, 24px);
-            right: clamp(16px, 3vw, 24px);
-            font-size: 12px;
-            color: var(--text-dim);
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            z-index: 100;
-        }
-
-        .more-stories {
-            position: fixed;
-            bottom: clamp(16px, 3vw, 24px);
-            left: clamp(16px, 3vw, 24px);
-            font-size: 12px;
-            color: var(--text-dim);
-            text-decoration: none;
-            z-index: 100;
-            transition: color 0.3s;
-        }
-
-        .more-stories:hover { color: var(--accent); }
-
-        /* Landscape mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
-        }
-
-        /* Status Badge */
-        .status-badge {
-            display: inline-block;
-            font-size: clamp(10px, 1.3vw, 12px);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            padding: 4px 12px;
-            border-radius: 4px;
-            margin-top: 12px;
-        }
-        .status-active {
-            background: rgba(48, 209, 88, 0.15);
-            color: #30D158;
-            border: 1px solid rgba(48, 209, 88, 0.3);
-        }
-
-        /* Accessibility */
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-    
 
         /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
         html:not(.js) .slide {
@@ -603,304 +55,438 @@
         /* Progressive enhancement: JS-only slide mode */
         html.js { overflow: hidden; }
         html.js body { overflow: hidden; overscroll-behavior: none; }
-        html.js .slide { display: none; }
+        html.js .slide {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            max-height: 100dvh;
+            overflow-y: auto;
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
         html.js .slide.active { display: flex; }
+
+        /* Centering is OPT-IN for title/short slides only */
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); font-weight: 400; }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: clamp(14px, 2.5vw, 22px);
+        }
+
+        .body { color: var(--muted); margin-top: clamp(16px, 2.5vw, 24px); max-width: 44ch; }
+        .handoff { color: var(--fg); margin-top: clamp(18px, 3vw, 28px); font-style: italic; opacity: 0.85; max-width: 44ch; }
+
+        h1 + .body, h2 + .body { margin-top: clamp(18px, 3vw, 26px); }
+
+        /* Horizontal split */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(14px, 2vw, 20px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.5vw, 26px);
+        }
+        .stat-num {
+            font-size: clamp(30px, 5vw, 52px);
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            color: var(--accent);
+        }
+        .stat-num.warn { color: var(--accent2); }
+        .stat-label { color: var(--muted); font-size: clamp(12px, 1.5vw, 14px); margin-top: 10px; line-height: 1.35; }
+
+        /* Steps / rules list */
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 20px);
+            display: flex;
+            gap: clamp(12px, 1.8vw, 18px);
+            align-items: baseline;
+        }
+        .steps .n {
+            color: var(--accent);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+            font-size: clamp(14px, 1.9vw, 19px);
+        }
+        .steps .txt { color: var(--fg); }
+        .steps .txt b { color: var(--fg); }
+
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2vw, 20px);
+            color: var(--fg);
+        }
+        .rules li b { color: var(--accent); }
+
+        code {
+            font-family: "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+            background: rgba(255,255,255,0.06);
+            border-radius: 5px;
+            padding: 1px 6px;
+            font-size: 0.86em;
+        }
+
+        /* Sources slide */
+        .small-text { font-size: clamp(13px, 1.6vw, 15px); }
+        .sources-body { color: var(--muted); line-height: 1.6; max-width: 68ch; }
+        .sources-body p { color: var(--muted); margin-top: 12px; }
+        .sources-body ul { margin: 10px 0 0 20px; }
+        .sources-body li { color: var(--muted); margin-top: 8px; }
+        .sources-body code { font-size: 0.82em; word-break: break-word; }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 26px;
+            right: 30px;
+            display: flex;
+            gap: 9px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.22);
+            cursor: pointer;
+            transition: background 0.25s, transform 0.25s;
+        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter {
+            position: fixed;
+            bottom: 24px;
+            left: 30px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
+            z-index: 100;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        .badge {
+            display: inline-block;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 5px 14px;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--muted);
+            margin-top: clamp(18px, 3vw, 28px);
+        }
+        .badge b { color: #6ee7a5; }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
     </style>
 </head>
 <body>
-
 <!--
-  ============================================================
-  NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
-  ============================================================
-
-  ABT:
-    AND Kepler, Amplifier's desktop GUI, worked and grew fast;
-    BUT it had quietly rebuilt the platform's own machinery inside itself - its own
-        provider registry, config parser, and session lifecycle - so every distro
-        improvement had to be re-done in Kepler or was simply missed;
-    THEREFORE the refactor's value wasn't new features, it was subtraction: 606 dead
-        lines removed and 104 tests added, turning a second platform back into a surface.
-
-  PAYOFF (named up front):
-    The subtraction moment - amplifier_hooks.py collapsing from 647 lines to a 41-line
-    thin adapter, because Kepler finally consumed the platform instead of reinventing it.
-
-  BEATS (proof-first; payoff lands at beat 5 of 9, before the midpoint):
-    1. proof     - the refactor deleted 606 lines and added 104 tests.  advances: grounds the AND (real, disciplined outcome).
-    2. setup     - what Kepler IS: Amplifier's desktop GUI.             advances: introduces the named entity the argument leans on.
-    3. tension   - Kepler was rebuilding what Distro already had.       advances: establishes the BUT (the duplication problem).
-    4. mechanism - the reframe: Kepler is a surface, not a platform.    advances: HOW the fix is conceived (one claim).
-    5. payoff    - the win was subtraction: 647 lines became 41.        advances: lands the THEREFORE (payoff before midpoint).
-    6. mechanism - one concern per phase kept every step shippable.     advances: HOW the subtraction was done safely (one claim).
-    7. mechanism - Phase 5 removed the dead code in three passes.       advances: HOW the deletion was made surgical, proven by tests (one claim).
-    8. turn      - Amplifier planned the migration, not just wrote it.  advances: pivot from a refactor to a method.
-    9. takeaway  - AI-assisted doesn't mean undisciplined.             advances: what the audience keeps + where to go.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end - reused verbatim.
-    Slides = 9 beats + 1 = 10.
+  SPINE
+  ABT: AND Kepler, Amplifier's desktop GUI, shipped fast and worked by rebuilding the platform's own machinery inside itself — its own provider registry, config namespace, and session pipeline; BUT that made Kepler a second platform where every amplifier-distro improvement had to be redone in Kepler or was simply missed and the code steadily diverged; THEREFORE a 5-phase refactor whose value was subtraction deleted the duplicated machinery and delegated to distro — turning Kepler back into a surface that consumes the platform.
+  Payoff: Kepler stops being a second platform and becomes a surface — architecturally equivalent to distro's Slack, Voice, and Web Chat bridges — consuming the platform instead of rebuilding it.
+  Beats:
+    1. frame     — Kepler is Amplifier's desktop GUI and to ship fast it quietly rebuilt the platform's own machinery inside itself. advances: orients the audience on what Kepler is and plants the AND — it worked, but only by duplicating the platform, the tension the whole deck resolves.
+    2. proof     — the approved design named three duplicated subsystems: provider registry, config/settings module, session lifecycle. advances: delivers early evidence for the AND — the duplication is real and documented in DISTRO_INTEGRATION_DESIGN.md, not asserted.
+    3. tension   — because Kepler had become a second platform, every distro improvement had to be redone there or was missed. advances: establishes the BUT — the concrete cost of duplication is missed features and divergence risk, raising the stakes for a fix.
+    4. setup     — Kepler already carried amplifier-distro as a submodule but barely used it, the same distro that powers Slack, Voice, and Web Chat. advances: introduces amplifier-distro as the platform Kepler could delegate to, so the audience knows the target before the mechanism leans on it.
+    5. mechanism — a 5-phase plan rerouted Kepler onto distro: sessions through the Bridge, providers to distro's catalog, config to distro.yaml, onboarding to preflight. advances: shows HOW the fix works — the one mechanism claim, delegate each subsystem to distro rather than rebuild it, enabling the THEREFORE.
+    6. turn      — with delegation in place the duplicated modules became dead weight: provider_registry.py, settings.py, and events.py had zero importers left. advances: pivots from AND to THEREFORE — delegation makes the old machinery deletable, setting up the subtractive payoff.
+    7. payoff    — the value was subtraction: 606 dead lines removed in one cleanup commit (amplifier_hooks.py 647→41) and 104 new tests added. advances: lands the THEREFORE as the climax — the headline deletions and tests prove Kepler became a surface consuming distro.
+    8. takeaway  — the best refactor often ships negative lines: stop rebuilding the platform, consume it, let every upstream improvement arrive for free. advances: generalizes the THEREFORE into the reusable lesson the audience keeps.
 -->
 
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Amplifier &times; Kepler</div>
-        <h1 class="headline">The refactor deleted 606 lines<br>and added 104 tests</h1>
-        <p class="subhead">A disciplined, AI-assisted 5-phase migration of Amplifier's desktop GUI &mdash; measured not in features shipped, but in duplication removed.</p>
-        <div class="velocity-grid" style="max-width: 1100px;">
-            <div class="velocity-stat">
-                <div class="velocity-number" style="background: linear-gradient(135deg, var(--red), #FF9F0A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">606</div>
-                <div class="velocity-label">Dead Lines Removed</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number" style="background: linear-gradient(135deg, var(--green), var(--teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">104</div>
-                <div class="velocity-label">New Tests Added</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number" style="background: linear-gradient(135deg, var(--purple), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">3</div>
-                <div class="velocity-label">Files Deleted Entirely</div>
-            </div>
-        </div>
-        <div class="status-badge status-active">Active &bull; February 2026</div>
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>Deleting a Second Platform</h1>
+        <p class="subtitle">How Kepler became a surface, not a fork</p>
     </div>
 
-    <!-- beat 2: setup -->
-    <div class="slide">
-        <div class="section-label">Meet Kepler</div>
-        <h2 class="medium-headline">Kepler is Amplifier's desktop GUI</h2>
-        <p class="body-text" style="margin-bottom: clamp(16px, 3vw, 24px);">An Electron-based application that gives users a native desktop experience for Amplifier&mdash;session management, provider configuration, artifact editing, and more. Remember this: the rest of the story is about what it was quietly duplicating.</p>
-        <div class="thirds">
-            <div class="card">
-                <h3>Desktop Native</h3>
-                <p>Electron app with full OS integration&mdash;tray icon, native menus, file system access, local sidecar process.</p>
-            </div>
-            <div class="card">
-                <h3>Full-Featured</h3>
-                <p>Session creation, provider management, settings configuration, onboarding flows, artifact preview and editing.</p>
-            </div>
-            <div class="card">
-                <h3>Growing Fast</h3>
-                <p>67 commits, 3 contributors, rapid feature development. But rapid growth was creating architectural debt.</p>
-            </div>
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Frame</div>
+            <h2>Kepler shipped fast — by quietly rebuilding the platform inside itself</h2>
+            <p class="body">Kepler is Amplifier's native desktop GUI: a Tauri Rust shell, a React/TypeScript frontend, and a Python sidecar. To move fast, it rebuilt the platform's own machinery internally instead of reusing it.</p>
+            <p class="handoff">It worked — but only by becoming a duplicate of the platform. That is the tension this deck resolves.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><b>Provider registry</b> — its own <code>provider_registry.py</code></li>
+                <li><b>Config namespace</b> — its own <code>settings.py</code> under <code>~/.kepler/</code></li>
+                <li><b>Session pipeline</b> — direct amplifier-foundation calls + a 647-line <code>amplifier_hooks.py</code></li>
+            </ul>
         </div>
     </div>
 
-    <!-- beat 3: tension -->
-    <div class="slide">
-        <div class="section-label">The Problem</div>
-        <h2 class="headline">Kepler was rebuilding<br>what Distro already had</h2>
-        <p class="body-text" style="margin-bottom: clamp(8px, 2vw, 16px);">Distro is Amplifier's platform layer&mdash;the shared engine behind every surface, from the Slack bridge to Web Chat. Kepler had reinvented pieces of it inside itself.</p>
-        <div class="thirds">
-            <div class="card">
-                <div class="card-accent" style="color: var(--red);">&#x2717;</div>
-                <h3>Duplicated Infrastructure</h3>
-                <p>Provider registry, session lifecycle, and config management were all rebuilt independently inside Kepler&mdash;logic that already existed in the distro platform.</p>
-            </div>
-            <div class="card">
-                <div class="card-accent" style="color: var(--red);">&#x2717;</div>
-                <h3>Missed Platform Features</h3>
-                <p>Sessions didn't get distro's handoff injection, preflight checks, or streaming hooks. Kepler users got a degraded experience.</p>
-            </div>
-            <div class="card">
-                <div class="card-accent" style="color: var(--red);">&#x2717;</div>
-                <h3>Divergence Risk</h3>
-                <p>Two codebases evolving the same concerns independently. Every distro improvement required a separate Kepler update&mdash;or was simply missed.</p>
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">The Proof</div>
+            <h2>The approved design named three duplicated subsystems</h2>
+            <p class="body">This isn't asserted — <code>DISTRO_INTEGRATION_DESIGN.md</code> states it verbatim: Kepler has "its own provider management, its own session creation pipeline, its own configuration namespace (~/.kepler/)."</p>
+            <p class="handoff">Three copies of platform machinery, documented before a line was changed.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-num">138</div>
+                    <div class="stat-label">lines in provider_registry.py</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">222</div>
+                    <div class="stat-label">lines in settings.py</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">647</div>
+                    <div class="stat-label">lines in amplifier_hooks.py</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 4: mechanism -->
-    <div class="slide">
-        <div class="section-label">The Insight</div>
-        <h2 class="medium-headline">Kepler should be a surface,<br>not a second platform</h2>
-        <p class="body-text" style="margin-bottom: clamp(20px, 4vw, 36px);">Architecturally equivalent to distro's Slack bridge, Voice bridge, and Web Chat. Kepler should <strong style="color: var(--accent);">consume</strong> the platform, not <strong style="color: var(--red);">rebuild</strong> it.</p>
-        <div class="comparison-table">
-            <div class="comparison-row">
-                <div class="comparison-header before">Before: Direct Coupling</div>
-                <div class="comparison-header after">After: Platform Consumer</div>
-            </div>
-            <div class="comparison-row">
-                <div class="comparison-cell before">Kepler &rarr; amplifier-foundation directly</div>
-                <div class="comparison-cell after">Kepler &rarr; distro Bridge API</div>
-            </div>
-            <div class="comparison-row">
-                <div class="comparison-cell before">Own provider registry module</div>
-                <div class="comparison-cell after">distro catalog (shared with all surfaces)</div>
-            </div>
-            <div class="comparison-row">
-                <div class="comparison-cell before">Custom settings.yaml parser</div>
-                <div class="comparison-cell after">distro.yaml config (single source of truth)</div>
-            </div>
-            <div class="comparison-row">
-                <div class="comparison-cell before">Custom onboarding validation</div>
-                <div class="comparison-cell after">distro preflight checks</div>
-            </div>
-            <div class="comparison-row">
-                <div class="comparison-cell before">647-line amplifier_hooks.py</div>
-                <div class="comparison-cell after">41-line thin adapter</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 5: payoff -->
     <div class="slide center">
-        <div class="section-label">The Payoff</div>
-        <h2 class="big-statement">The value wasn't new code.<br>It was <span class="accent">subtraction.</span></h2>
-        <p class="subhead" style="margin-top: clamp(16px, 3vw, 24px);">One file tells the whole story. When Kepler stopped reinventing the platform and started consuming it, <code style="color: var(--accent);">amplifier_hooks.py</code> collapsed to a thin adapter&mdash;everything it used to hand-roll now lived in distro.</p>
-        <div class="highlight-box" style="text-align: center;">
-            <p style="font-size: clamp(22px, 5vw, 40px); font-weight: 700; letter-spacing: -1px;"><code style="color: var(--red);">amplifier_hooks.py</code>&nbsp;&nbsp;647 lines <span style="color: var(--accent);">&rarr;</span> <span style="color: var(--green);">41 lines</span></p>
+        <!-- beat 3: tension -->
+        <div class="section-label">The Complication</div>
+        <h2>A second platform means every distro improvement is redone — or missed</h2>
+        <p class="body" style="margin-left:auto;margin-right:auto;">The design named the cost directly: duplicated infrastructure and divergence risk. Because provider registry, session lifecycle, and config were rebuilt in Kepler instead of reused from distro, upstream work — handoff injection, preflight, streaming — had to be re-implemented or was simply left behind.</p>
+        <p class="handoff" style="margin-left:auto;margin-right:auto;">The code kept diverging. The fix had to make Kepler stop being its own platform.</p>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 4: setup -->
+        <div class="col-main">
+            <div class="section-label">The Platform Already There</div>
+            <h2>Kepler carried amplifier-distro as a submodule — but barely used it</h2>
+            <p class="body">amplifier-distro is the platform layer that already powers distro's Slack, Voice, and Web Chat surfaces. Kepler declared it as a git submodule yet delegated almost nothing to it.</p>
+            <p class="handoff">The target was in the repo the whole time. The refactor just had to lean on it.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><b>Slack bridge</b> — a distro surface</li>
+                <li><b>Voice bridge</b> — a distro surface</li>
+                <li><b>Web Chat bridge</b> — a distro surface</li>
+                <li>Submodule → <code>github.com/ramparte/amplifier-distro.git</code></li>
+            </ul>
         </div>
     </div>
 
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">How It Stayed Safe</div>
-        <h2 class="medium-headline">One concern per phase kept<br>every step shippable</h2>
-        <p class="body-text" style="margin-bottom: clamp(8px, 2vw, 16px);">Not speed&mdash;discipline. Five phases, each replacing one concern with its distro equivalent, each independently deployable and backward-compatible.</p>
-        <div class="timeline">
-            <div class="timeline-item">
-                <div class="timeline-time">Phase 1</div>
-                <div class="timeline-content">
-                    <h4>Bridge API</h4>
-                    <p>Session lifecycle migrated to distro <code style="color: var(--accent);">LocalBridge</code>, replacing direct amplifier-foundation calls. The biggest single change: +469 / -304.</p>
-                </div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-time">Phase 2</div>
-                <div class="timeline-content">
-                    <h4>Provider Catalog</h4>
-                    <p>All provider lookups moved to <code style="color: var(--accent);">amplifier_distro.features.PROVIDERS</code>. Surgical: 3 files, +47 / -44.</p>
-                </div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-time">Phase 3</div>
-                <div class="timeline-content">
-                    <h4>Settings Migration</h4>
-                    <p>New <code style="color: var(--accent);">distro_config.py</code> adapter bridges Settings to distro.yaml&mdash;with legacy settings.yaml fallback preserved. +405 / -69.</p>
-                </div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-time">Phase 4</div>
-                <div class="timeline-content">
-                    <h4>Onboarding Preflight</h4>
-                    <p>Routes now call distro's <code style="color: var(--accent);">run_preflight()</code> and <code style="color: var(--accent);">detect_github_identity()</code>&mdash;non-blocking, with graceful fallback. +105 / -13.</p>
-                </div>
-            </div>
-            <div class="timeline-item">
-                <div class="timeline-time">Phase 5</div>
-                <div class="timeline-content">
-                    <h4 style="color: var(--red);">Cleanup</h4>
-                    <p>With all four replacements live, the now-dead code could finally be removed. &minus;606 lines.</p>
-                </div>
-            </div>
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Mechanism</div>
+            <h2>A 5-phase plan rerouted every subsystem onto distro instead of rebuilding it</h2>
+            <p class="body">One idea, applied five times: delegate to distro rather than duplicate. Documented in an approved design and executed phase by phase.</p>
+            <p class="handoff">With each subsystem delegated, the old copies had nothing left to do.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="steps">
+                <li><span class="n">1</span><span class="txt"><b>Sessions</b> through distro's Bridge</span></li>
+                <li><span class="n">2</span><span class="txt"><b>Providers</b> to distro's PROVIDERS catalog</span></li>
+                <li><span class="n">3</span><span class="txt"><b>Config</b> migrated to distro.yaml</span></li>
+                <li><span class="n">4</span><span class="txt"><b>Onboarding</b> to distro preflight</span></li>
+                <li><span class="n">5</span><span class="txt"><b>Cleanup</b> — delete the dead machinery</span></li>
+            </ul>
         </div>
     </div>
 
-    <!-- beat 7: mechanism -->
-    <div class="slide">
-        <div class="section-label">Phase 5 &mdash; The Cleanup</div>
-        <h2 class="headline" style="color: var(--red);">&#x2212;606 lines, removed in three passes</h2>
-        <p class="body-text" style="margin-bottom: clamp(20px, 3vw, 32px);">Deletion was surgical, not reckless&mdash;mark first, then remove, then eliminate&mdash;and 104 new tests proved nothing broke.</p>
-        <div class="thirds">
-            <div class="card">
-                <h3 style="color: var(--accent);">Pass 1: Mark</h3>
-                <p>Deprecated <code>create_bridge</code>, <code>mount_bridge_hooks</code>, <code>create_forwarder</code>, plus <code>provider_registry.py</code> and <code>settings.py</code>.</p>
-                <div class="phase-stat">+224 / -101</div>
-            </div>
-            <div class="card">
-                <h3 style="color: var(--red);">Pass 2: Remove</h3>
-                <p><code>amplifier_hooks.py</code>: <strong>647 &rarr; 41 lines</strong>. Dead FEATURE_MODULES, dead composer routes, stale tests&mdash;all gone.</p>
-                <div class="phase-stat red">-689 lines</div>
-            </div>
-            <div class="card">
-                <h3 style="color: var(--green);">Pass 3: Eliminate</h3>
-                <p>Deleted 3 entire files: <code>provider_registry.py</code> (138), <code>events.py</code> (68), <code>settings.py</code> (222 lines).</p>
-                <div class="phase-stat red">-503 lines</div>
-            </div>
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">The Turn</div>
+            <h2>Once delegated, the duplicated modules had zero importers left</h2>
+            <p class="body">Delegation turned the old machinery into dead weight. Grepping the sidecar found no remaining <code>provider_registry</code> or <code>settings</code> imports — so the modules could simply be deleted.</p>
+            <p class="handoff">Nothing consumed them anymore. That made subtraction the payoff.</p>
         </div>
-        <div class="highlight-box">
-            <p><strong style="color: var(--green);">Proven safe:</strong> 5 new test files added 104 tests across config, streaming, sessions, tool lookup, and onboarding&mdash;bringing the suite to 211 tests, all passing.</p>
-        </div>
-    </div>
-
-    <!-- beat 8: turn -->
-    <div class="slide">
-        <div class="section-label">The Turn</div>
-        <h2 class="medium-headline">Amplifier didn't just write the code.<br>It planned the migration.</h2>
-        <div class="halves">
-            <div class="card card-highlight">
-                <h3>Design Phase</h3>
-                <p style="font-size: var(--font-body); color: rgba(255,255,255,0.8);">3 design documents totaling <strong style="color: var(--accent);">1,064 lines</strong> were produced before a single line of code changed:</p>
-                <div style="margin-top: 12px;">
-                    <div style="padding: 6px 0; font-size: var(--font-small); color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.06);">DISTRO_INTEGRATION_DESIGN.md</div>
-                    <div style="padding: 6px 0; font-size: var(--font-small); color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.06);">IMPLEMENTATION_TASKS.md</div>
-                    <div style="padding: 6px 0; font-size: var(--font-small); color: rgba(255,255,255,0.7);">IMPLEMENTATION_HANDOFF.md</div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-num warn">138</div>
+                    <div class="stat-label">provider_registry.py deleted</div>
                 </div>
-            </div>
-            <div class="card">
-                <h3>Execution Phase</h3>
-                <p style="font-size: var(--font-body); color: rgba(255,255,255,0.8);">Every commit co-authored by Amplifier. ~48 sessions orchestrated the work across all 5 phases.</p>
-                <div class="code-block" style="margin-top: 12px; font-size: clamp(10px, 1.4vw, 12px);">
-                    <pre><code><span class="dim">Co-Authored-By: Amplifier</span>
-<span class="dim">&#x1F916; Generated with Amplifier</span>
-
-<span class="comment"># The handoff doc explicitly described</span>
-<span class="comment"># orchestration by an AI session:</span>
-<span class="accent">IMPLEMENTATION_HANDOFF.md</span>
-<span class="string">"Handoff to implementation</span>
-<span class="string"> orchestrator session"</span></code></pre>
+                <div class="stat">
+                    <div class="stat-num warn">222</div>
+                    <div class="stat-label">settings.py deleted</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num warn">68</div>
+                    <div class="stat-label">events.py deleted</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">0</div>
+                    <div class="stat-label">importers remaining in sidecar/</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 9: takeaway -->
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>The value was subtraction: 606 dead lines out, 104 tests in</h2>
+            <p class="body">One cleanup commit removed 606 lines of dead code — <code>amplifier_hooks.py</code> shrank from 647 to 41 lines. A follow-up added 104 new tests (211 passing total). Kepler is now a surface, not a fork.</p>
+            <p class="handoff">Architecturally equal to distro's Slack, Voice, and Web Chat — it consumes the platform.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-num warn">606</div>
+                    <div class="stat-label">dead lines removed (647 → 41)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">104</div>
+                    <div class="stat-label">new tests added</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">211</div>
+                    <div class="stat-label">tests passing total</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="slide center">
-        <div class="section-label">The Lesson</div>
-        <div class="quote">AI-assisted doesn't mean undisciplined. It means you can afford to do it right.</div>
-        <p class="body-text" style="text-align: center; max-width: 700px;">Design docs before code. One concern per phase. Backward compatibility at every step. Tests after every change. Dead code identified, marked, then removed. The Kepler refactor is a template: design first, migrate phase by phase, test everything, delete fearlessly.</p>
-        <div class="small-text" style="margin-top: clamp(20px, 4vw, 32px);">
-            amplifier-distro-kepler &nbsp;&bull;&nbsp; 5 phases &nbsp;&bull;&nbsp; 12 commits &nbsp;&bull;&nbsp; ~48 Amplifier sessions
-        </div>
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Takeaway</div>
+        <h2>The best refactor often ships negative lines</h2>
+        <p class="body" style="margin-left:auto;margin-right:auto;">Stop rebuilding the platform. Consume it. When a surface delegates instead of duplicating, every upstream improvement arrives for free — and the duplicated machinery becomes deletable dead weight.</p>
+        <p class="handoff" style="margin-left:auto;margin-right:auto;">23 files changed, net-subtractive where it counted — the win was what got removed.</p>
     </div>
 
-    <!-- Sources & Methodology (audit-trail slide, not a beat) -->
+    <!-- Sources & Methodology (no beat comment) -->
     <div class="slide">
         <div class="section-label">Sources</div>
-        <h2 class="medium-headline">Research Methodology</h2>
-        <div style="line-height: 1.6; color: rgba(255,255,255,0.7); font-size: var(--font-small);">
-            <p><strong style="color: var(--accent);">Data as of:</strong> February 20, 2026</p>
-            <p><strong style="color: var(--accent);">Feature status:</strong> Active</p>
-            <p style="margin-top: 16px;"><strong style="color: var(--accent);">Research performed:</strong></p>
-            <ul style="margin-left: 20px; margin-top: 8px;">
-                <li>Git log analysis: <code style="color: var(--accent);">git log --oneline amplifier-distro-kepler</code> (67 commits)</li>
-                <li>Contributor analysis: <code style="color: var(--accent);">git log --format="%an" | sort | uniq -c</code></li>
-                <li>Timeline: extracted from commit timestamps (Feb 11&ndash;12, 2026)</li>
-                <li>Line counts: from commit messages and diff stats</li>
+        <h2>Research Methodology</h2>
+        <div class="sources-body small-text">
+            <p><strong>Data as of:</strong> repository state through 2026-03-24 (latest commit cb00138).</p>
+            <p><strong>Feature status:</strong> <span style="color:#6ee7a5">Active / DONE</span> — refactor merged across commits 4eae89d..9288bb9.</p>
+            <p><strong>Primary source:</strong> local checkout of ramparte/amplifier-distro-kepler; amplifier-distro consumed as submodule (<code>github.com/ramparte/amplifier-distro.git</code>).</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>git show 7543dee --stat ; echo $((647-41))</code> → 606 lines removed (647 → 41)</li>
+                <li><code>git show --stat 9288bb9</code> → 104 new tests, 211 total (104 new + 107 pre-existing)</li>
+                <li><code>for f in ...; do git show 9288bb9:sidecar/tests/$f.py | grep -c 'def test_'; done</code> → 31+33+13+8+19 = 104</li>
+                <li><code>git show 9f99f03^:sidecar-shared/{provider_registry,settings,events}.py | wc -l</code> → 138, 222, 68</li>
+                <li><code>grep -rn 'provider_registry' sidecar/ ; grep -rn 'from settings import' sidecar/</code> → 0 matches</li>
+                <li><code>sed -n '1,60p' docs/DISTRO_INTEGRATION_DESIGN.md</code> → duplicated-infrastructure problem statement + surface framing</li>
+                <li><code>grep -n 'Phase' docs/IMPLEMENTATION_TASKS.md ; git log --oneline 4eae89d..9288bb9</code> → 5-phase plan</li>
+                <li><code>cat .gitmodules</code> → amplifier-distro submodule declaration</li>
             </ul>
-            <p style="margin-top: 16px;"><strong style="color: var(--accent);">Gaps &amp; estimates:</strong></p>
-            <ul style="margin-left: 20px; margin-top: 8px;">
-                <li>"~48 AI sessions" &mdash; from project narrative, not independently verified</li>
-                <li>"1,064 lines" design docs &mdash; from commit messages, not recounted</li>
-            </ul>
-            <p style="margin-top: 16px;"><strong style="color: var(--accent);">Primary contributors:</strong> Michael J. Jabbour (38 commits, 58%), Marc Goodner (15 commits, 23%), Sam Schillace (12 commits, 18%)</p>
+            <p><strong>Primary contributor:</strong> Sam Schillace (author of all 11 refactor-arc commits), co-authored by Amplifier per commit trailers.</p>
+            <p><strong>Gaps:</strong> <code>wc -l</code> of the post-commit amplifier_hooks.py blob reports 38 (a trailing-newline/counting artifact); the headline 606 = author-stated 647 − 41, internally consistent. Design-doc line estimates (129/204/542) differ from the authoritative deletion-commit blob measurements (138/222/647) used here. "211 passing" is per commit body plus an independent <code>def test_</code> grep count; tests were not re-executed this session.</p>
         </div>
     </div>
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link - REQUIRED -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
-            slides[currentSlide].scrollTop = 0;
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -909,30 +495,25 @@
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard navigation
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click navigation
         document.addEventListener('click', (e) => {
             if (e.target.closest('.nav')) return;
-            if (e.target.closest('.more-stories')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe navigation
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
@@ -940,11 +521,10 @@
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

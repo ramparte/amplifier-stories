@@ -3,463 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>The Kernel That Does Less — amplifier-core Architecture</title>
+    <title>The Kernel That Does Less</title>
     <script>document.documentElement.classList.add('js')</script>
-
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            /* Warm graphite palette */
-            --bg: #2C2A28;
-            --bg-deep: #1E1C1A;
-            --parchment: #F7F5F2;
-            --parchment-90: rgba(247,245,242,0.9);
-            --parchment-70: rgba(247,245,242,0.7);
-            --parchment-50: rgba(247,245,242,0.5);
-            --parchment-30: rgba(247,245,242,0.3);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(247,245,242,0.05);
-            --surface-2: rgba(247,245,242,0.08);
-            --surface-3: rgba(247,245,242,0.12);
-            --border-subtle: rgba(247,245,242,0.10);
-            --border-visible: rgba(247,245,242,0.18);
-
-            /* Mineral accents */
-            --copper: #D4956A;
-            --malachite: #5CB88A;
-            --slate-blue: #8B7FDB;
-            --sandstone: #D4B896;
-            --iron: #A8A8A8;
-            --rust: #CD6B6B;
-            --accent: #C9956B;
-
-            /* Fluid typography */
-            --font-headline: clamp(32px, 6vw, 64px);
-            --font-medium: clamp(22px, 4vw, 40px);
-            --font-subhead: clamp(16px, 2.5vw, 24px);
-            --font-body: clamp(14px, 2vw, 17px);
-            --font-small: clamp(12px, 1.6vw, 14px);
-            --font-code: clamp(12px, 1.8vw, 15px);
-            --font-code-sm: clamp(11px, 1.5vw, 13px);
-
-            /* Spacing */
-            --pad-slide: clamp(24px, 5vw, 80px);
-            --pad-slide-top: clamp(48px, 8vw, 100px);
-            --gap: clamp(16px, 3vw, 32px);
+            --bg: #0a0a0f;
+            --fg: #f4f4f6;
+            --muted: #a0a0ad;
+            --accent: #5ed3f4;
+            --accent2: #b58cff;
+            --card: #16161f;
+            --line: #2a2a38;
         }
+        html, body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Inter', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--parchment);
-            -webkit-font-smoothing: antialiased;
-        }
-
-        .mono {
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Courier New', monospace;
-        }
-
-        /* Slide system */
         .slide {
             display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
-            padding: var(--pad-slide-top) var(--pad-slide) clamp(80px, 10vw, 100px);
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
-            gap: var(--gap);
         }
+
         .slide.active { display: flex; }
-        .slide.center {
-            text-align: center;
-            align-items: center;
-            justify-content: center;
-        }
 
-        /* Typography */
-        .section-label {
-            font-size: var(--font-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: var(--accent);
-        }
-        .headline {
-            font-size: var(--font-headline);
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.1;
-            color: var(--parchment);
-        }
-        .medium-headline {
-            font-size: var(--font-medium);
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            line-height: 1.2;
-        }
-        .subhead {
-            font-size: var(--font-subhead);
-            color: var(--parchment-70);
-            line-height: 1.5;
-            max-width: 680px;
-        }
-        .body-text {
-            font-size: var(--font-body);
-            color: var(--parchment-70);
-            line-height: 1.6;
-        }
-        .small-text {
-            font-size: var(--font-small);
-            color: var(--parchment-50);
-        }
-
-        /* Layout */
-        .grid-2 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--gap);
-        }
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--gap);
-        }
-        .grid-5 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-            gap: clamp(10px, 2vw, 16px);
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(8px, 1.5vw, 12px);
-            padding: clamp(14px, 3vw, 24px);
-        }
-        .card-title {
-            font-size: var(--font-body);
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-        .card-body {
-            font-size: var(--font-small);
-            color: var(--parchment-70);
-            line-height: 1.5;
-        }
-        .card-code {
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-            font-size: var(--font-code-sm);
-            color: var(--parchment-70);
-            line-height: 1.5;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--bg-deep);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(8px, 1.5vw, 12px);
-            padding: clamp(12px, 3vw, 20px) clamp(16px, 3vw, 24px);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-            font-size: var(--font-code);
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            color: var(--parchment-70);
-        }
-        .code-comment { color: var(--parchment-50); font-style: italic; }
-        .code-keyword { color: var(--slate-blue); }
-        .code-type { color: var(--copper); }
-        .code-string { color: var(--malachite); }
-        .code-fn { color: var(--sandstone); }
-
-        /* Data table */
-        .data-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-        .data-table th {
-            color: var(--accent);
-            font-size: var(--font-small);
-            font-weight: 600;
-            text-align: left;
-            padding: clamp(6px, 1vw, 10px) clamp(8px, 1.5vw, 14px);
-            border-bottom: 1px solid var(--border-visible);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .data-table td {
-            font-size: var(--font-small);
-            color: var(--parchment-70);
-            padding: clamp(5px, 1vw, 8px) clamp(8px, 1.5vw, 14px);
-            border-bottom: 1px solid var(--surface-1);
-            vertical-align: top;
-        }
-        .data-table .file-name {
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-            color: var(--parchment);
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        .data-table .lines {
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-            color: var(--parchment-50);
-            text-align: right;
-            white-space: nowrap;
-        }
-        .data-table .group-row td {
-            color: var(--accent);
-            font-weight: 600;
-            font-size: var(--font-small);
-            padding-top: clamp(10px, 2vw, 16px);
-            border-bottom: 1px solid var(--border-subtle);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* Mount table */
-        .mount-row {
-            display: flex;
-            align-items: baseline;
-            gap: clamp(8px, 2vw, 16px);
-            padding: clamp(8px, 1.5vw, 14px) 0;
-            border-bottom: 1px solid var(--surface-1);
-            flex-wrap: wrap;
-        }
-        .mount-name {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: var(--font-code);
-            font-weight: 600;
-            min-width: 140px;
-        }
-        .mount-type {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: var(--font-code-sm);
-            color: var(--parchment-50);
-            min-width: 160px;
-        }
-        .mount-desc {
-            font-size: var(--font-small);
-            color: var(--parchment-70);
-            flex: 1;
-            min-width: 200px;
-        }
-
-        /* Flow diagram */
-        .flow {
-            display: flex;
-            gap: clamp(8px, 2vw, 20px);
-            align-items: stretch;
-            flex-wrap: wrap;
-        }
-        .flow-step {
-            flex: 1;
-            min-width: min(240px, 100%);
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(8px, 1.5vw, 12px);
-            padding: clamp(14px, 3vw, 24px);
-        }
-        .flow-step-header {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: var(--font-body);
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-        .flow-arrow {
-            display: flex;
-            align-items: center;
-            color: var(--parchment-30);
-            font-size: clamp(20px, 3vw, 32px);
-        }
-
-        /* Event grid */
-        .event-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: clamp(8px, 1.5vw, 14px);
-        }
-        .event-category {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(6px, 1vw, 10px);
-            padding: clamp(10px, 2vw, 16px);
-        }
-        .event-cat-name {
-            font-size: var(--font-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-        }
-        .event-list {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: var(--font-code-sm);
-            color: var(--parchment-70);
-            line-height: 1.6;
-        }
-
-        /* Precedence chain */
-        .precedence {
-            display: flex;
-            align-items: center;
-            gap: clamp(4px, 1vw, 10px);
-            flex-wrap: wrap;
-            justify-content: center;
-            padding: clamp(10px, 2vw, 16px) 0;
-        }
-        .prec-item {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: var(--font-code-sm);
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-weight: 600;
-        }
-        .prec-arrow {
-            color: var(--parchment-30);
-            font-size: var(--font-body);
-        }
-
-        /* Exclusion grid */
-        .exclusion-item {
-            display: flex;
-            gap: 10px;
-            align-items: baseline;
-            padding: clamp(6px, 1vw, 10px) 0;
-            border-bottom: 1px solid var(--surface-1);
-        }
-        .exclusion-x {
-            color: var(--rust);
-            font-weight: 700;
-            font-size: var(--font-body);
-            flex-shrink: 0;
-        }
-        .exclusion-text {
-            font-size: var(--font-small);
-            color: var(--parchment-70);
-        }
-
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            font-size: var(--font-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 4px 12px;
-            border-radius: 6px;
-            background: rgba(92,184,138,0.15);
-            color: var(--malachite);
-            border: 1px solid rgba(92,184,138,0.3);
-        }
-
-        /* Stats row */
-        .stats-row {
-            display: flex;
-            gap: clamp(16px, 4vw, 40px);
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .stat-item {
-            text-align: center;
-        }
-        .stat-number {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: clamp(28px, 5vw, 48px);
-            font-weight: 700;
-            color: var(--parchment);
-        }
-        .stat-label {
-            font-size: var(--font-small);
-            color: var(--parchment-50);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* Navigation */
-        .nav {
-            position: fixed;
-            bottom: 28px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            z-index: 100;
-        }
-        .nav-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--parchment-30);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
-        .slide-counter {
-            position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: var(--font-small);
-            color: var(--parchment-30);
-            z-index: 100;
-        }
-        .more-stories {
-            position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: clamp(10px, 1.3vw, 11px);
-            color: var(--parchment-30);
-            text-decoration: none;
-            z-index: 100;
-        }
-        .more-stories:hover { color: var(--parchment-50); }
-
-        /* Color accents for card borders */
-        .border-copper { border-left: 3px solid var(--copper); }
-        .border-malachite { border-left: 3px solid var(--malachite); }
-        .border-slate { border-left: 3px solid var(--slate-blue); }
-        .border-sandstone { border-left: 3px solid var(--sandstone); }
-        .border-iron { border-left: 3px solid var(--iron); }
-        .border-rust { border-left: 3px solid var(--rust); }
-
-        .color-copper { color: var(--copper); }
-        .color-malachite { color: var(--malachite); }
-        .color-slate { color: var(--slate-blue); }
-        .color-sandstone { color: var(--sandstone); }
-        .color-iron { color: var(--iron); }
-
-        /* Responsive */
-        @media (max-width: 600px) {
-            .mount-row { flex-direction: column; gap: 4px; }
-            .mount-name { min-width: auto; }
-            .mount-type { min-width: auto; }
-            .flow-arrow { display: none; }
-            .data-table .lines { display: none; }
-        }
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide { padding: 16px var(--pad-slide) 60px; }
-            .slide.center { justify-content: flex-start; padding-top: 24px; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * { animation: none !important; transition: none !important; }
-        }
-    
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        /* No-JS fallback: all slides visible + scrollable */
         html:not(.js) .slide {
             display: flex !important;
             position: relative !important;
@@ -472,636 +45,398 @@
             min-height: 100dvh;
         }
 
-        /* Progressive enhancement: JS-only slide mode */
+        /* JS-only slide mode */
         html.js { overflow: hidden; }
         html.js body { overflow: hidden; overscroll-behavior: none; }
         html.js .slide { display: none; }
         html.js .slide.active { display: flex; }
+        /* Fit-safe: cap to viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide { transition: transform 0.5s ease, opacity 0.5s ease; }
+
+        .center { text-align: center; align-items: center; justify-content: center; }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); font-weight: 400; }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: clamp(14px, 2.5vw, 22px);
+        }
+        .body { color: var(--fg); margin-top: clamp(14px, 2.4vw, 22px); max-width: 42ch; }
+        .handoff { color: var(--muted); margin-top: clamp(16px, 2.8vw, 26px); max-width: 42ch; font-style: italic; }
+        h2 + .body { margin-top: clamp(16px, 3vw, 26px); }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(14px, 2vw, 22px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px, 2.4vw, 26px);
+        }
+        .stat .num {
+            font-size: clamp(30px, 6vw, 56px);
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.03em;
+            color: var(--accent);
+        }
+        .stat .lbl {
+            margin-top: clamp(8px, 1.4vw, 12px);
+            color: var(--muted);
+            font-size: clamp(12px, 1.6vw, 15px);
+            line-height: 1.35;
+        }
+
+        /* Steps / rules list */
+        .steps, .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(12px, 1.8vw, 18px); }
+        .steps li, .rules li {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(13px, 2vw, 20px) clamp(15px, 2.2vw, 22px);
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+        }
+        .steps li .k, .rules li .k {
+            color: var(--accent2);
+            font-weight: 700;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: clamp(13px, 1.7vw, 16px);
+            flex-shrink: 0;
+        }
+        .steps li .v, .rules li .v { color: var(--fg); font-size: clamp(13px, 1.7vw, 16px); }
+
+        /* Code block */
+        .code-block {
+            background: #05050a;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(16px, 2.4vw, 26px);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: clamp(13px, 1.8vw, 17px);
+            line-height: 1.8;
+            white-space: pre-wrap;
+            color: var(--fg);
+        }
+        .code-block .c { color: var(--muted); }
+        .code-block .fn { color: var(--accent); }
+
+        .lead-num {
+            font-size: clamp(64px, 16vw, 150px);
+            font-weight: 800;
+            line-height: 0.9;
+            letter-spacing: -0.04em;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* Sources slide */
+        .small-text { font-size: clamp(13px, 1.7vw, 16px); }
+        .small-text ul { margin: 10px 0 10px 20px; }
+        .small-text li { margin-bottom: 7px; }
+        .small-text code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--card); padding: 2px 6px; border-radius: 5px; font-size: 0.9em; color: var(--accent); }
+        .small-text p { margin-bottom: 8px; }
+
+        /* Navigation */
+        .nav { position: fixed; bottom: 26px; right: 30px; display: flex; gap: 9px; z-index: 100; }
+        .nav-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.22); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter { position: fixed; bottom: 24px; left: 30px; font-size: clamp(11px, 1.5vw, 13px); color: var(--muted); z-index: 100; font-variant-numeric: tabular-nums; }
+
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
     </style>
 </head>
 <body>
-<!--
-  NARRATIVE SPINE (reused from this deck's own verified content; no fresh research)
+    <!--
+      SPINE
+      ABT: A kernel is supposed to be the powerful core that does everything, so amplifier-core is where every module plugs in; BUT this kernel deliberately does LESS — 18 flat source files, a three-method session API, and a hard rule against holding opinions; THEREFORE by refusing to decide behavior, the kernel stays a small, stable, boring center that every swappable module can safely build on.
+      Payoff: The litmus test made concrete — "Could two teams want different behavior? Then it's a module, not the kernel" — is the single rule that keeps the center still.
+      Beats:
+        1 frame     — amplifier-core is the coordination layer for modular AI agents and wins by doing LESS.  advances: orients the audience to the inverted premise behind the AND — a kernel everything plugs into, framed as deliberately minimal.
+        2 proof     — 18 top-level files, a ~2,600-line documented center, run with initialize() -> execute() -> cleanup().  advances: delivers hard evidence fast that the AND is real and genuinely tiny.
+        3 tension   — most kernels grow by accretion; every baked-in opinion makes the core bigger and harder to trust.  advances: establishes the BUT — the instinct to add behavior is what a stable center must resist.
+        4 mechanism — the kernel ships mechanisms, not policy: mount/get, capabilities, contributions modules attach to.  advances: shows HOW less-is-more works via the Coordinator's stable primitives.
+        5 mechanism — modules snap onto fixed studs: 6 stable Protocol contracts and a 47-name canonical event surface.  advances: shows HOW the small surface stays useful without the kernel bending.
+        6 turn      — one litmus test decides everything: if two teams could want different behavior, it's a module.  advances: the pivot from AND to THEREFORE — names the rule that keeps opinions out.
+        7 payoff    — holding no opinions and favoring deletion over accretion, the kernel stays small, stable, boring.  advances: lands the THEREFORE as the climax — minimalism is the feature.
+        8 takeaway  — version 1.0.0, upstreamed to microsoft/amplifier-core: a boring kernel is a shipped, dependable one.  advances: what the audience keeps — a released, stable foundation others can adopt.
+    -->
 
-  ABT:
-    AND a kernel is supposed to be the powerful core that does everything;
-    BUT Amplifier's kernel deliberately does LESS - 18 source files, a three-method API;
-    THEREFORE by refusing to hold opinions the kernel becomes the still center that
-        every module can safely build on.
-
-  PAYOFF (named up front):
-    The QNX principle - reliability through radical exclusion. A ~3,400-line kernel
-    is the leverage; what you leave OUT matters more than what you put in.
-
-  BEATS (proof-first; payoff at beat 5 of 10, before the midpoint):
-    1. proof     - the kernel really is tiny: 18 source files, every one with a purpose.
-                   advances: grounds the AND+BUT - 'does less' is literally true.
-    2. setup     - six runtime-checkable protocols are the entire extension contract.
-                   advances: introduces the seam the whole argument leans on.
-    3. mechanism - the public API is just three methods. (one claim)
-                   advances: HOW little surface the kernel exposes.
-    4. mechanism - ModuleCoordinator is a mount table, nothing more. (one claim)
-                   advances: HOW modules attach without the kernel knowing them.
-    5. payoff    - the QNX principle: reliability through radical exclusion.
-                   advances: lands the THEREFORE before the midpoint.
-    6. mechanism - 46 canonical events carry all cross-module traffic. (one claim)
-                   advances: HOW modules talk without direct coupling.
-    7. mechanism - five actions ride one dispatch mechanism. (one claim)
-                   advances: HOW behavior stays uniform and small.
-    8. mechanism - modules are discovered, not hard-wired. (one claim)
-                   advances: HOW the edge grows while the center stays fixed.
-    9. turn      - what's deliberately NOT in the kernel is the design.
-                   advances: the pivot - omission is the feature.
-   10. takeaway  - the discipline: five kernel jobs, everything else at the edge.
-                   advances: the pattern the audience keeps.
-
-  + Sources & Methodology (audit-trail slide, not a beat) at the end. Slides = 10 + 1 = 11.
--->
-
-
-<!-- ============================================================ -->
-<!-- SLIDE 1: Title                                                -->
-<!-- ============================================================ -->
-
-<!-- beat 1: proof -->
-<div class="slide active">
-    <div class="section-label">Anatomy</div>
-    <h2 class="medium-headline">18 Source Files. Every One With a Purpose.</h2>
-    <p class="body-text" style="max-width: 680px;">
-        12 architecture-critical files total ~3,400 lines. The full core including validation
-        and test infrastructure: 18 files, ~5,000 lines. Nothing is dead weight.
-    </p>
-    <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
-        <table class="data-table">
-            <thead>
-                <tr><th>File</th><th style="text-align:right">Lines</th><th>Purpose</th></tr>
-            </thead>
-            <tbody>
-                <tr class="group-row"><td colspan="3">Core Architecture</td></tr>
-                <tr>
-                    <td class="file-name">session.py</td>
-                    <td class="lines">474</td>
-                    <td><strong style="color:var(--parchment)">AmplifierSession</strong> — the only public entry point. Config → initialize → execute.</td>
-                </tr>
-                <tr>
-                    <td class="file-name">coordinator.py</td>
-                    <td class="lines">606</td>
-                    <td><strong style="color:var(--parchment)">ModuleCoordinator</strong> — mount points, capabilities, channels, cancellation.</td>
-                </tr>
-                <tr>
-                    <td class="file-name">loader.py</td>
-                    <td class="lines">598</td>
-                    <td><strong style="color:var(--parchment)">ModuleLoader</strong> — module discovery, resolution, validation, loading.</td>
-                </tr>
-                <tr>
-                    <td class="file-name">hooks.py</td>
-                    <td class="lines">347</td>
-                    <td><strong style="color:var(--parchment)">HookRegistry</strong> — event dispatch, handler chains, result merging.</td>
-                </tr>
-
-                <tr class="group-row"><td colspan="3">Data Contracts</td></tr>
-                <tr>
-                    <td class="file-name">models.py</td>
-                    <td class="lines">429</td>
-                    <td>ToolResult, HookResult, ModelInfo, ProviderInfo, SessionStatus, 15 LLM error classes.</td>
-                </tr>
-                <tr>
-                    <td class="file-name">message_models.py</td>
-                    <td class="lines">271</td>
-                    <td>ChatRequest, ChatResponse, 7 content block types (text, thinking, tool_call, image…).</td>
-                </tr>
-                <tr>
-                    <td class="file-name">interfaces.py</td>
-                    <td class="lines">264</td>
-                    <td>6 Protocol classes — the structural typing contracts all modules implement.</td>
-                </tr>
-                <tr>
-                    <td class="file-name">events.py</td>
-                    <td class="lines">133</td>
-                    <td>46 canonical event name constants. The full event taxonomy.</td>
-                </tr>
-
-                <tr class="group-row"><td colspan="3">Supporting Infrastructure</td></tr>
-                <tr>
-                    <td class="file-name">cancellation.py</td>
-                    <td class="lines"></td>
-                    <td>CancellationToken — cooperative cancellation across the agent loop.</td>
-                </tr>
-                <tr>
-                    <td class="file-name">approval.py</td>
-                    <td class="lines"></td>
-                    <td>ApprovalRequest/Result — human-in-the-loop approval gates.</td>
-                </tr>
-                <tr>
-                    <td class="file-name">display.py</td>
-                    <td class="lines"></td>
-                    <td>DisplaySystem protocol — streaming output abstraction.</td>
-                </tr>
-                <tr>
-                    <td class="file-name">validation/</td>
-                    <td class="lines"></td>
-                    <td>Module contract validation and test harnesses.</td>
-                </tr>
-            </tbody>
-        </table>
+    <!-- Title cover (before beat 1) -->
+    <div class="slide title-slide active center">
+        <h1>The Kernel That Does Less</h1>
+        <p class="subtitle">How amplifier-core stays small on purpose</p>
     </div>
-</div>
 
-<!-- beat 2: setup -->
-<div class="slide">
-    <div class="section-label">Contracts</div>
-    <h2 class="medium-headline">Six <span class="mono">@runtime_checkable</span> Protocols</h2>
-    <p class="body-text" style="max-width: 720px;">
-        Structural typing, not inheritance. If your class has the right methods, it's a valid module.
-        No base classes, no registration decorators, no framework lock-in.
-    </p>
-    <div class="grid-3">
-        <div class="card border-iron">
-            <div class="card-title color-iron">Orchestrator</div>
-            <div class="card-code"><span class="code-keyword">async def</span> <span class="code-fn">execute</span>(
-    prompt, context,
-    providers, tools, hooks
-) → <span class="code-type">str</span></div>
-            <div class="card-body" style="margin-top: 8px;">THE execution loop. Takes everything, returns the final response. This IS the agent.</div>
-        </div>
-        <div class="card border-copper">
-            <div class="card-title color-copper">Provider</div>
-            <div class="card-code"><span class="code-keyword">async def</span> <span class="code-fn">complete</span>(
-    request: <span class="code-type">ChatRequest</span>
-) → <span class="code-type">ChatResponse</span>
-<span class="code-fn">parse_tool_calls</span>()
-<span class="code-fn">get_info</span>() → <span class="code-type">ProviderInfo</span>
-<span class="code-fn">list_models</span>() → <span class="code-type">list[ModelInfo]</span></div>
-        </div>
-        <div class="card border-malachite">
-            <div class="card-title color-malachite">Tool</div>
-            <div class="card-code"><span class="code-keyword">async def</span> <span class="code-fn">execute</span>(
-    input: <span class="code-type">dict</span>
-) → <span class="code-type">ToolResult</span>
-<span class="code-keyword">@property</span> name → <span class="code-type">str</span>
-<span class="code-keyword">@property</span> description → <span class="code-type">str</span></div>
-        </div>
-        <div class="card border-sandstone">
-            <div class="card-title color-sandstone">ContextManager</div>
-            <div class="card-code"><span class="code-fn">add_message</span>(msg)
-<span class="code-fn">get_messages_for_request</span>()
-<span class="code-fn">get_messages</span>() / <span class="code-fn">set_messages</span>()
-<span class="code-fn">clear</span>()</div>
-            <div class="card-body" style="margin-top: 8px;">One memory manager at a time. Owns the conversation history.</div>
-        </div>
-        <div class="card border-slate">
-            <div class="card-title color-slate">HookHandler</div>
-            <div class="card-code"><span class="code-keyword">async def</span> <span class="code-fn">__call__</span>(
-    event: <span class="code-type">str</span>, data: <span class="code-type">dict</span>
-) → <span class="code-type">HookResult</span></div>
-            <div class="card-body" style="margin-top: 8px;">5 possible actions: continue, deny, modify, inject_context, ask_user.</div>
-        </div>
-        <div class="card border-rust">
-            <div class="card-title" style="color: var(--rust);">ApprovalProvider</div>
-            <div class="card-code"><span class="code-keyword">async def</span> <span class="code-fn">request_approval</span>(
-    request: <span class="code-type">ApprovalRequest</span>
-) → <span class="code-type">ApprovalResult</span></div>
-            <div class="card-body" style="margin-top: 8px;">Human-in-the-loop gates. Separate from hooks — approval is a first-class concern.</div>
-        </div>
+    <div class="slide center">
+        <!-- beat 1: frame -->
+        <div class="section-label">amplifier-core</div>
+        <h1>A kernel everything plugs into &mdash; that wins by doing LESS</h1>
+        <p class="body" style="margin-left:auto;margin-right:auto;text-align:center;">amplifier-core is the ultra-thin coordination layer for modular AI agents. It's where every provider, tool, and orchestrator plugs in &mdash; and its whole design bet is to hold no opinions.</p>
+        <p class="handoff" style="margin-left:auto;margin-right:auto;text-align:center;">Small enough to prove in three numbers.</p>
     </div>
-</div>
 
-<!-- beat 3: mechanism -->
-<div class="slide">
-    <div class="section-label">Lifecycle</div>
-    <h2 class="medium-headline">Three Methods. That's the API.</h2>
-    <div class="flow">
-        <div class="flow-step">
-            <div class="flow-step-header color-sandstone">__init__(config)</div>
-            <div class="card-body">
-                Takes a raw config dict — the <em>"mount plan"</em>. Validates two required keys:
-                <span class="mono" style="color: var(--parchment);">session.orchestrator</span> and
-                <span class="mono" style="color: var(--parchment);">session.context</span>.
-                Creates coordinator and loader.
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">The evidence</div>
+            <h2>The whole kernel is 18 files and a ~2,600-line documented center</h2>
+            <p class="body">You run it through one lifecycle: <code>initialize()</code> &rarr; <code>execute()</code> &rarr; <code>cleanup()</code> &mdash; a three-method public API on <code>AmplifierSession</code>.</p>
+            <p class="handoff">Tiny on purpose &mdash; but staying tiny fights an instinct.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">18</div><div class="lbl">top-level source files in amplifier_core</div></div>
+                <div class="stat"><div class="num">~2,600</div><div class="lbl">documented lines in the stable center</div></div>
+                <div class="stat"><div class="num">5</div><div class="lbl">runtime dependencies</div></div>
+                <div class="stat"><div class="num">3</div><div class="lbl">public session methods</div></div>
             </div>
-            <div class="card-code" style="margin-top: 10px; color: var(--parchment-50);">
-<span class="code-comment"># No modules loaded yet.</span>
-<span class="code-comment"># Just the mount plan.</span></div>
-        </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-step">
-            <div class="flow-step-header color-copper">await initialize()</div>
-            <div class="card-body">
-                Loads modules in dependency order:
-            </div>
-            <div class="card-code" style="margin-top: 10px;">
-<span class="code-string">1.</span> orchestrator <span class="code-comment"># required, fatal</span>
-<span class="code-string">2.</span> context     <span class="code-comment"># required, fatal</span>
-<span class="code-string">3.</span> providers   <span class="code-comment"># warns on failure</span>
-<span class="code-string">4.</span> tools       <span class="code-comment"># warns on failure</span>
-<span class="code-string">5.</span> hooks       <span class="code-comment"># warns on failure</span>
-<span class="code-string">6.</span> emit <span class="code-keyword">session:fork</span> <span class="code-comment"># if parent_id</span></div>
-        </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-step">
-            <div class="flow-step-header color-malachite">await execute(prompt)</div>
-            <div class="card-body">
-                Emits <span class="mono" style="color:var(--parchment)">session:start</span> or
-                <span class="mono" style="color:var(--parchment)">session:resume</span>.
-                Gets all modules from coordinator.
-                Calls <span class="mono" style="color:var(--parchment)">orchestrator.execute()</span>.
-            </div>
-            <div class="card-code" style="margin-top: 10px; color: var(--parchment-50);">
-<span class="code-comment"># orchestrator.execute()</span>
-<span class="code-comment"># IS the agent loop.</span>
-<span class="code-comment"># Kernel doesn't know what</span>
-<span class="code-comment"># happens inside.</span></div>
-        </div>
-    </div>
-</div>
-
-<!-- beat 4: mechanism -->
-<div class="slide">
-    <div class="section-label">Coordination</div>
-    <h2 class="medium-headline">ModuleCoordinator: The Mount Table</h2>
-    <p class="body-text" style="max-width: 720px;">
-        The coordinator manages <em>mount points</em> — the slots where modules plug in. Some slots
-        hold a single module, others accumulate. This is the entire runtime topology.
-    </p>
-
-    <div style="background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: clamp(8px, 1.5vw, 12px); padding: clamp(16px, 3vw, 28px);">
-        <div class="mount-row">
-            <span class="mount-name color-iron">orchestrator</span>
-            <span class="mount-type">Optional[Orchestrator]</span>
-            <span class="mount-desc"><strong>Single slot.</strong> One execution strategy at a time. Required.</span>
-        </div>
-        <div class="mount-row">
-            <span class="mount-name color-copper">providers</span>
-            <span class="mount-type">dict[str, Provider]</span>
-            <span class="mount-desc"><strong>Dict by name.</strong> Multiple LLM backends simultaneously. At least one required.</span>
-        </div>
-        <div class="mount-row">
-            <span class="mount-name color-malachite">tools</span>
-            <span class="mount-type">dict[str, Tool]</span>
-            <span class="mount-desc"><strong>Dict by name.</strong> All agent capabilities. Zero or more.</span>
-        </div>
-        <div class="mount-row">
-            <span class="mount-name color-sandstone">context</span>
-            <span class="mount-type">Optional[ContextManager]</span>
-            <span class="mount-desc"><strong>Single slot.</strong> One memory manager. Required.</span>
-        </div>
-        <div class="mount-row">
-            <span class="mount-name color-slate">hooks</span>
-            <span class="mount-type">HookRegistry</span>
-            <span class="mount-desc"><strong>Always present.</strong> Accumulates handlers. Never empty — the registry itself is always there.</span>
         </div>
     </div>
 
-    <div class="grid-3" style="margin-top: var(--gap);">
-        <div class="card">
-            <div class="card-title">capabilities</div>
-            <div class="card-body">Dict for inter-module communication. Modules register capabilities; others can discover them at runtime.</div>
-        </div>
-        <div class="card">
-            <div class="card-title">channels</div>
-            <div class="card-body">Aggregation channels. Modules can publish/subscribe to named data streams without direct coupling.</div>
-        </div>
-        <div class="card">
-            <div class="card-title">cancellation · approval · display</div>
-            <div class="card-body">CancellationToken for cooperative abort. ApprovalSystem for human gates. DisplaySystem for streaming output.</div>
-        </div>
+    <div class="slide center">
+        <!-- beat 3: tension -->
+        <div class="section-label">The instinct to resist</div>
+        <h1>Kernels grow by accretion &mdash; and every baked-in opinion is harder to trust</h1>
+        <p class="body" style="margin-left:auto;margin-right:auto;text-align:center;">The usual pull is to add: bake one more behavior into the core, then another. amplifier-core's design philosophy inverts it &mdash; <em>"Favor deletion over accretion in kernel,"</em> and <em>"Small, Stable, Boring Kernel &mdash; Kernel changes rarely."</em></p>
+        <p class="handoff" style="margin-left:auto;margin-right:auto;text-align:center;">So how does a kernel stay useful while refusing to grow?</p>
     </div>
-</div>
 
-<!-- beat 5: payoff -->
-<div class="slide center">
-    <div class="section-label">Philosophy</div>
-    <h2 class="medium-headline" style="max-width: 800px;">The QNX Principle</h2>
-    <p class="subhead" style="margin-top: 12px;">
-        QNX runs nuclear power plants with a 100KB kernel.<br>
-        Amplifier runs AI agents with ~3,400 lines.
-    </p>
-    <p class="body-text" style="max-width: 640px; margin-top: clamp(16px, 3vw, 28px);">
-        Both achieve reliability through radical exclusion. The things you leave
-        <em>out</em> of the kernel matter more than what you put in.
-    </p>
-    <div class="card" style="max-width: 640px; margin-top: clamp(16px, 3vw, 28px); text-align: left;">
-        <div class="card-title" style="color: var(--accent);">The Two-Implementation Rule</div>
-        <div class="card-body">
-            Nothing gets promoted to the kernel until two independent modules converge on the need.
-            One implementation is a feature. Two implementations with the same pattern is a kernel candidate.
-            This prevents premature abstraction — the most expensive kind of technical debt.
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism, not policy</div>
+            <h2>The Coordinator ships primitives modules attach to &mdash; it never decides behavior</h2>
+            <p class="body">Instead of opinions, the kernel's <code>ModuleCoordinator</code> exposes stable mechanisms. Modules mount, register capabilities, and contribute &mdash; the kernel just wires them.</p>
+            <p class="handoff">Those primitives are only useful if their shape never shifts.</p>
         </div>
-    </div>
-    <div class="stats-row" style="margin-top: clamp(20px, 4vw, 36px);">
-        <div class="stat-item">
-            <div class="stat-number">139</div>
-            <div class="stat-label">Commits</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-number">5</div>
-            <div class="stat-label">Contributors</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-number">~140</div>
-            <div class="stat-label">Days of History</div>
-        </div>
-    </div>
-</div>
-
-<!-- beat 6: mechanism -->
-<div class="slide">
-    <div class="section-label">Events</div>
-    <h2 class="medium-headline">46 Canonical Events, 14 Categories</h2>
-    <p class="body-text" style="max-width: 720px;">
-        Every event is a string constant in <span class="mono">events.py</span>. Modules subscribe via hooks.
-        The kernel emits events at lifecycle boundaries — modules decide what to do with them.
-    </p>
-    <div class="event-grid">
-        <div class="event-category">
-            <div class="event-cat-name color-sandstone">Session</div>
-            <div class="event-list">start · resume<br>fork · end</div>
-        </div>
-        <div class="event-category">
-            <div class="event-cat-name color-iron">Prompt</div>
-            <div class="event-list">submit · complete</div>
-        </div>
-        <div class="event-category">
-            <div class="event-cat-name color-copper">Provider</div>
-            <div class="event-list">request · response<br>error · retry · throttle</div>
-        </div>
-        <div class="event-category">
-            <div class="event-cat-name color-copper">LLM</div>
-            <div class="event-list">request · response<br>request:raw · response:raw<br>request:debug · response:debug</div>
-        </div>
-        <div class="event-category">
-            <div class="event-cat-name" style="color: var(--parchment-70);">Content</div>
-            <div class="event-list">block:start · block:delta<br>block:end<br>thinking:delta · thinking:final</div>
-        </div>
-        <div class="event-category">
-            <div class="event-cat-name color-malachite">Tool</div>
-            <div class="event-list">pre · post · error</div>
-        </div>
-        <div class="event-category">
-            <div class="event-cat-name color-sandstone">Context</div>
-            <div class="event-list">pre_compact · post_compact<br>compaction · include</div>
-        </div>
-        <div class="event-category">
-            <div class="event-cat-name color-iron">Orchestrator</div>
-            <div class="event-list">complete</div>
-        </div>
-        <div class="event-category">
-            <div class="event-cat-name color-rust">Policy</div>
-            <div class="event-list">violation<br>approval:required<br>approval:granted<br>approval:denied</div>
-        </div>
-        <div class="event-category">
-            <div class="event-cat-name color-rust">Cancel</div>
-            <div class="event-list">requested · completed</div>
-        </div>
-    </div>
-</div>
-
-<!-- beat 7: mechanism -->
-<div class="slide">
-    <div class="section-label">Hooks</div>
-    <h2 class="medium-headline">Five Actions. One Mechanism.</h2>
-    <p class="body-text" style="max-width: 720px;">
-        Every hook handler returns a <span class="mono">HookResult</span> with one action.
-        The registry chains handlers and merges results with strict precedence.
-        This single primitive enables approval gates, redaction, cost governance,
-        streaming UI, and automated feedback loops.
-    </p>
-    <div class="grid-5">
-        <div class="card border-rust">
-            <div class="card-title" style="color: var(--rust);">deny</div>
-            <div class="card-body">Block the operation. Short-circuits the handler chain. Nothing else runs.</div>
-        </div>
-        <div class="card" style="border-left: 3px solid #E8A87C;">
-            <div class="card-title" style="color: #E8A87C;">ask_user</div>
-            <div class="card-body">Pause for human approval before proceeding. The approval gate.</div>
-        </div>
-        <div class="card border-slate">
-            <div class="card-title color-slate">inject_context</div>
-            <div class="card-body">Insert text into the conversation. Automated feedback loops without tool calls.</div>
-        </div>
-        <div class="card border-sandstone">
-            <div class="card-title color-sandstone">modify</div>
-            <div class="card-body">Alter event data in-flight. Chains through all handlers. Enables redaction, transformation.</div>
-        </div>
-        <div class="card border-malachite">
-            <div class="card-title color-malachite">continue</div>
-            <div class="card-body">Proceed normally. The default. Most hooks observe and continue.</div>
+        <div class="col-aside">
+            <ul class="steps">
+                <li><span class="k">mount / unmount / get</span><span class="v">attach modules to the coordinator</span></li>
+                <li><span class="k">register_capability / get_capability</span><span class="v">publish and look up capabilities</span></li>
+                <li><span class="k">register_contributor / collect_contributions</span><span class="v">gather module contributions</span></li>
+            </ul>
         </div>
     </div>
 
-    <div style="margin-top: var(--gap);">
-        <div class="small-text" style="text-align: center; margin-bottom: 8px;">PRECEDENCE ORDER (highest → lowest)</div>
-        <div class="precedence">
-            <span class="prec-item" style="background: rgba(205,107,107,0.2); color: var(--rust);">deny</span>
-            <span class="prec-arrow">›</span>
-            <span class="prec-item" style="background: rgba(232,168,124,0.2); color: #E8A87C;">ask_user</span>
-            <span class="prec-arrow">›</span>
-            <span class="prec-item" style="background: rgba(139,127,219,0.2); color: var(--slate-blue);">inject_context</span>
-            <span class="prec-arrow">›</span>
-            <span class="prec-item" style="background: rgba(212,184,150,0.2); color: var(--sandstone);">modify</span>
-            <span class="prec-arrow">›</span>
-            <span class="prec-item" style="background: rgba(92,184,138,0.2); color: var(--malachite);">continue</span>
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Fixed studs</div>
+            <h2>Modules snap onto stable contracts &mdash; a small surface that never bends</h2>
+            <p class="body">Providers, tools, and hooks build against 6 typing.Protocol contracts and a canonical event surface of 47 stable event names &mdash; documented as the "stable surface for hooks and observability."</p>
+            <p class="handoff">Small, fixed, and shared &mdash; which raises one question about what belongs here.</p>
         </div>
-    </div>
-</div>
-
-<!-- beat 8: mechanism -->
-<div class="slide">
-    <div class="section-label">Loading</div>
-    <h2 class="medium-headline">How Modules Get Discovered</h2>
-    <p class="body-text" style="max-width: 720px;">
-        The loader resolves module IDs to code, validates contracts, and calls <span class="mono">mount()</span>.
-        That's the entire loading contract. Six steps from config string to running module.
-    </p>
-    <div class="code-block">
-<span class="code-comment"># Step 1: Resolve</span>
-<span class="code-keyword">if</span> module_source_resolver mounted:
-    path = <span class="code-keyword">await</span> resolver.<span class="code-fn">async_resolve</span>(module_id, source_hint)
-<span class="code-comment"># Usually foundation's activator provides the resolver</span>
-
-<span class="code-comment"># Step 2: Discover</span>
-<span class="code-comment"># Try entry points (amplifier.modules group)</span>
-<span class="code-comment"># Fall back to direct import (amplifier_module_*)</span>
-
-<span class="code-comment"># Step 3: Validate type marker</span>
-module.<span class="code-type">__amplifier_module_type__</span> = <span class="code-string">"tool"</span> | <span class="code-string">"provider"</span> | <span class="code-string">"orchestrator"</span> | <span class="code-string">"context"</span> | <span class="code-string">"hook"</span>
-
-<span class="code-comment"># Step 4: Validate mount function exists</span>
-<span class="code-keyword">assert</span> <span class="code-keyword">hasattr</span>(module, <span class="code-string">"mount"</span>)
-<span class="code-comment"># async def mount(coordinator, config) → Optional[Callable]</span>
-
-<span class="code-comment"># Step 5: Call mount</span>
-cleanup_fn = <span class="code-keyword">await</span> module.<span class="code-fn">mount</span>(coordinator, config)
-<span class="code-comment"># mount() registers the module on the coordinator</span>
-<span class="code-comment"># cleanup_fn called on session teardown (optional)</span>
-
-<span class="code-comment"># Step 6: Done.</span>
-<span class="code-comment"># THAT'S the contract.</span></div>
-</div>
-
-<!-- beat 9: turn -->
-<div class="slide">
-    <div class="section-label">Exclusion</div>
-    <h2 class="medium-headline">What's Deliberately Not Here</h2>
-    <p class="body-text" style="max-width: 720px;">
-        Every item below was verified absent via grep across the entire amplifier-core source.
-        Each is implemented as a module or foundation feature — plugged in at the edge, not welded into the kernel.
-    </p>
-    <div class="grid-2">
-        <div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No bundle format</strong> — bundle parsing, YAML loading, agent descriptions: that's foundation.</span>
-            </div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No @mention resolution</strong> — file references, context includes: foundation.</span>
-            </div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No module downloading</strong> — fetching, caching, activating modules: foundation's activator.</span>
-            </div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No spawn/delegation</strong> — child agents, session forking logic: foundation's spawn_utils.</span>
-            </div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No git, filesystem, or web tools</strong> — all tool implementations are modules.</span>
-            </div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No model selection logic</strong> — which model to call, fallback strategies: module decisions.</span>
-            </div>
-        </div>
-        <div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No retry strategy</strong> — backoff, jitter, circuit breaking: all in provider modules.</span>
-            </div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No cost management</strong> — token budgets, spend tracking: hook modules.</span>
-            </div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No streaming UI</strong> — terminal rendering, progress bars: display modules.</span>
-            </div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No logging implementation</strong> — log formats, destinations, levels: hook modules.</span>
-            </div>
-            <div class="exclusion-item">
-                <span class="exclusion-x">✕</span>
-                <span class="exclusion-text"><strong>No redaction</strong> — PII filtering, content masking: hook modules via modify action.</span>
-            </div>
-            <div class="exclusion-item" style="border-bottom: none;">
-                <span class="exclusion-x" style="visibility: hidden;">✕</span>
-                <span class="exclusion-text" style="color: var(--accent); font-style: italic;">The kernel provides the slots. Everything else plugs in.</span>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">6</div><div class="lbl">Protocol contracts: Orchestrator, Provider, Tool, ContextManager, HookHandler, ApprovalProvider</div></div>
+                <div class="stat"><div class="num">47</div><div class="lbl">canonical event-name constants for hooks &amp; observability</div></div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- beat 10: takeaway -->
-<div class="slide center">
-    <div class="section-label">The Discipline</div>
-    <p class="subhead" style="max-width: 720px; line-height: 1.7; margin-top: 12px; color: var(--parchment-90);">
-        The kernel does five things: load modules, manage sessions, dispatch events,
-        coordinate protocols, and fork child sessions.
-    </p>
-    <p class="subhead" style="max-width: 720px; line-height: 1.7; margin-top: clamp(16px, 3vw, 28px); color: var(--parchment-70);">
-        Everything else — every provider, every tool, every orchestration strategy, every
-        logging decision, every safety policy — is a loadable module at the edge.
-    </p>
-    <p class="medium-headline" style="margin-top: clamp(24px, 5vw, 48px); color: var(--accent);">
-        That's the architecture.<br>That's the discipline.
-    </p>
-    <div class="small-text" style="margin-top: clamp(24px, 4vw, 40px);">
-        amplifier-core · microsoft/amplifier-core
+    <div class="slide center">
+        <!-- beat 6: turn -->
+        <div class="section-label">The one rule</div>
+        <h1>One litmus test decides everything that belongs in the kernel</h1>
+        <p class="body" style="margin-left:auto;margin-right:auto;text-align:center;font-size:clamp(18px,2.6vw,26px);">&ldquo;Could two teams want different behavior? &rarr; If yes, it's policy &rarr; Module, not kernel.&rdquo;</p>
+        <p class="handoff" style="margin-left:auto;margin-right:auto;text-align:center;">That single test is what keeps opinions out &mdash; and the center still.</p>
     </div>
-</div>
 
-<div class="slide">
-    <div class="section-label">Sources</div>
-    <h2 class="medium-headline">Research Methodology</h2>
-    <div class="body-text" style="line-height: 1.7; max-width: 760px;">
-        <p><strong style="color: var(--parchment);">Data as of:</strong> February 26, 2026</p>
-        <p><strong style="color: var(--parchment);">Feature status:</strong> <span class="status-badge" style="font-size: inherit; padding: 2px 8px;">Active</span></p>
-        <p style="margin-top: 12px;"><strong style="color: var(--parchment);">Research performed:</strong></p>
-        <ul style="padding-left: 20px; margin-top: 6px;">
-            <li>File inventory: <span class="mono">find src/amplifier_core -name "*.py" | xargs wc -l</span> — 18 core files, ~5,000 total lines; 12 architecture-critical files, ~3,400 lines</li>
-            <li>Protocol analysis: manual inspection of <span class="mono">interfaces.py</span> — 6 <span class="mono">@runtime_checkable</span> Protocol classes verified</li>
-            <li>Event constants: <span class="mono">grep -c "=" events.py</span> — 46 canonical events in 14 categories</li>
-            <li>Hook actions: manual inspection of <span class="mono">hooks.py</span> and <span class="mono">models.py</span> — 5 actions with documented precedence</li>
-            <li>Absence verification: <span class="mono">grep</span> across entire source for 11 claimed absences — all 11 confirmed absent</li>
-            <li>Git history: <span class="mono">git log --oneline</span> — 139 commits, 5 contributors, first commit 2025-10-08</li>
-            <li>Commit types: 40 feat, 37 fix, 30 docs, 13 chore, 9 refactor, 2 test</li>
-        </ul>
-        <p style="margin-top: 12px;"><strong style="color: var(--parchment);">Gaps:</strong> Individual line counts for supporting files (cancellation.py, approval.py, display.py) not enumerated — total validated via aggregate count. Per-file numbers for 8 primary architecture files sourced from project documentation.</p>
-        <p style="margin-top: 8px;"><strong style="color: var(--parchment);">Repository:</strong> amplifier-core (Microsoft Amplifier ecosystem)</p>
+    <div class="slide center">
+        <!-- beat 7: payoff -->
+        <div class="section-label">Why less wins</div>
+        <h1>Holding no opinions keeps the center small, stable, and boring</h1>
+        <p class="body" style="margin-left:auto;margin-right:auto;text-align:center;">By favoring deletion over accretion, the kernel changes rarely. That's not a limitation &mdash; it's the point. A center that doesn't move is the still point every swappable module can safely build on.</p>
+        <p class="handoff" style="margin-left:auto;margin-right:auto;text-align:center;">And a boring kernel isn't theory &mdash; it's shipped.</p>
     </div>
-</div>
 
+    <div class="slide split">
+        <!-- beat 8: takeaway -->
+        <div class="col-main">
+            <div class="section-label">Shipped &amp; dependable</div>
+            <h2>A boring kernel is a released one &mdash; version 1.0.0, upstreamed to microsoft/amplifier-core</h2>
+            <p class="body">Extracted from a monorepo in October 2025, amplifier-core is now versioned 1.0.0 with stability guarantees &mdash; a discipline others can adopt, not a prototype.</p>
+            <p class="handoff">Do less in the core, and the whole system gets easier to trust.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">1.0.0</div><div class="lbl">released version (__init__.py)</div></div>
+                <div class="stat"><div class="num">134</div><div class="lbl">total commits</div></div>
+                <div class="stat"><div class="num">5</div><div class="lbl">contributors across the kernel</div></div>
+            </div>
+        </div>
+    </div>
 
-<!-- Navigation -->
-<div class="nav" id="nav"></div>
-<div class="slide-counter" id="counter"></div>
-<a href="index.html" class="more-stories">More Amplifier Stories</a>
+    <!-- Sources & Methodology (no beat comment) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="small-text" style="opacity: 0.82; line-height: 1.6; max-width: 70ch;">
+            <p><strong>Subject:</strong> amplifier-core (origin git@github.com:ramparte/amplifier-core.git; upstream git@github.com:microsoft/amplifier-core.git)</p>
+            <p><strong>Feature status:</strong> Released / stable &mdash; version 1.0.0</p>
+            <p><strong>Data as of latest commit:</strong> 2026-02-17 (HEAD 5249084)</p>
+            <p><strong>Research performed:</strong></p>
+            <ul>
+                <li>Source-file count: <code>ls amplifier_core/*.py | wc -l</code> (18)</li>
+                <li>Session API: <code>grep -n '    async def ' amplifier_core/session.py</code> (initialize / execute / cleanup)</li>
+                <li>Line count: <code>grep -vhE '^\s*(#|$)' amplifier_core/{coordinator,loader,session,hooks,interfaces,events,models,cancellation}.py | wc -l</code> (2,304 code / ~2,600 documented)</li>
+                <li>Dependencies: <code>grep -A6 '^dependencies = \[' pyproject.toml</code> (5)</li>
+                <li>Protocol contracts: <code>grep -n 'class .*Protocol' amplifier_core/interfaces.py</code> (6)</li>
+                <li>Event surface: <code>grep -cE '^[A-Z_]+ = "' amplifier_core/events.py</code> (47)</li>
+                <li>Coordinator mechanisms: <code>grep -nE '    def |    async def ' amplifier_core/coordinator.py | grep -v 'def _'</code></li>
+                <li>Design philosophy: <code>sed -n '9,26p' docs/DESIGN_PHILOSOPHY.md</code></li>
+                <li>Timeline &amp; contributors: <code>git log --reverse --format='%h %ad %s' --date=short</code>, <code>git shortlog -sne HEAD</code>, <code>git rev-list --count HEAD</code> (134)</li>
+            </ul>
+            <p><strong>Gaps / notes:</strong> "~2,600 lines" is a documented characterization (README.md line 7, bundle.md line 18); measured = 2,304 code lines in core mechanism files, 4,752 raw lines across all 18 top-level files. "18 files" counts flat top-level <code>amplifier_core/*.py</code> only; including subpackages the total is 40.</p>
+            <p><strong>Contributors:</strong> Brian Krabach (130 commits), plus Diego Colombo, Marc Goodner, Sam Schillace, and Samuel Lee (1 each).</p>
+        </div>
+    </div>
 
-<script>
-    const slides = document.querySelectorAll('.slide');
-    let currentSlide = 0;
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
 
-    function showSlide(n) {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (n + slides.length) % slides.length;
-        slides[currentSlide].classList.add('active');
-        slides[currentSlide].scrollTop = 0;
-        updateNav();
-    }
+    <!-- More stories link - REQUIRED -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
-    function updateNav() {
-        const nav = document.getElementById('nav');
-        const counter = document.getElementById('counter');
-        nav.innerHTML = '';
-        slides.forEach((_, i) => {
-            const dot = document.createElement('div');
-            dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-            dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
-            nav.appendChild(dot);
-        });
-        counter.textContent = `${currentSlide + 1} / ${slides.length}`;
-    }
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-        if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
-    });
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
 
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('.nav') || e.target.closest('a')) return;
-        if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-        else showSlide(currentSlide - 1);
-    });
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
 
-    let touchStartX = 0;
-    let touchEndX = 0;
-    const SWIPE_THRESHOLD = 50;
-    document.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-    document.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > SWIPE_THRESHOLD) {
-            if (diff > 0) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
+            updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
-    }, { passive: true });
 
-    updateNav();
-</script>
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
 
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
+        });
+
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
 </body>
 </html>

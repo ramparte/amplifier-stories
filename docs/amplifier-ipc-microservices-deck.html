@@ -3,430 +3,267 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Amplifier IPC &mdash; Every Component, Its Own Container</title>
+    <title>One Component, One Process</title>
     <script>document.documentElement.classList.add('js')</script>
-<style>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --accent: #42A5F5;
-            --accent-dim: rgba(66, 165, 245, 0.15);
-            --accent-glow: rgba(66, 165, 245, 0.3);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 36px);
-            --fs-h3: clamp(18px, 3vw, 24px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 1.8vw, 15px);
-
-            /* Spacing */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
+            --bg: #0a0a0f;
+            --bg2: #12121b;
+            --ink: #f5f5f7;
+            --muted: #a1a1aa;
+            --accent: #6ea8fe;
+            --accent2: #7ee7c7;
+            --warn: #f0b866;
+            --card: rgba(255,255,255,0.05);
+            --border: rgba(255,255,255,0.12);
         }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+        html, body { background: var(--bg); color: var(--ink); }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Slide base */
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
             padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
+            background:
+                radial-gradient(1200px 600px at 15% 0%, rgba(110,168,254,0.10), transparent 60%),
+                radial-gradient(900px 500px at 100% 100%, rgba(126,231,199,0.07), transparent 55%),
+                var(--bg);
         }
+
         .slide.active { display: flex; }
-        .slide.center {
+
+        /* No-JS fallback: all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+
+        /* Fit-safe: cap slides to viewport and allow scroll */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide {
+            transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s ease;
+        }
+
+        .center {
             text-align: center;
             align-items: center;
             justify-content: center;
         }
 
-        /* Typography */
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); }
+
         .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.5vw, 13px);
+            font-weight: 600;
             color: var(--accent);
-            margin-bottom: var(--space-sm);
-        }
-        .headline {
-            font-size: var(--fs-hero);
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.08;
-            margin-bottom: var(--space-md);
-        }
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            margin-bottom: var(--space-md);
-        }
-        .subhead {
-            font-size: var(--fs-h3);
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(680px, 90vw);
-        }
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: var(--space-sm);
+            margin-bottom: clamp(14px, 2vw, 22px);
         }
 
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: 100px;
-            background: rgba(48, 209, 88, 0.15);
-            color: #30D158;
-            margin-top: var(--space-sm);
-        }
-
-        /* Grids */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .quads {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-        .card h3, .card h4 {
-            color: var(--text-primary);
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-        .card p, .card li {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.5;
-        }
-        .card .icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: var(--space-xs);
-        }
-
-        /* Card with accent border top */
-        .card-accent {
-            border-top: 2px solid var(--accent);
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            color: #BFC0C5;
-            margin-top: var(--space-md);
-        }
-        .code-comment { color: rgba(255,255,255,0.35); }
-        .code-cmd { color: #30D158; }
-        .code-flag { color: #42A5F5; }
-        .code-string { color: #FF9F0A; }
-        .code-var { color: #64D2FF; }
-
-        /* Flow steps */
-        .flow-steps {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            max-width: min(800px, 95vw);
-        }
-        .flow-step {
-            display: flex;
-            align-items: flex-start;
-            gap: var(--space-md);
-        }
-        .flow-number {
-            flex-shrink: 0;
-            width: clamp(36px, 5vw, 48px);
-            height: clamp(36px, 5vw, 48px);
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--accent);
-        }
-        .flow-content h4 {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .flow-content p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-        .flow-arrow {
-            width: 2px;
-            height: var(--space-sm);
-            background: var(--accent-dim);
-            margin-left: clamp(17px, 2.3vw, 23px);
-        }
-
-        /* Architecture diagram */
-        .arch-entities {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .entity-box {
-            background: var(--surface-2);
-            border: 1px solid var(--border-visible);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-            text-align: center;
-        }
-        .entity-box .icon {
-            font-size: clamp(32px, 6vw, 56px);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box h4 {
-            font-size: var(--fs-h3);
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        /* Velocity stats */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
-            gap: var(--space-lg);
-            margin-top: var(--space-lg);
-        }
-        .velocity-stat { text-align: center; }
-        .velocity-number {
-            font-size: clamp(48px, 12vw, 96px);
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #BF5AF2);
+        .title-slide h1 {
+            background: linear-gradient(120deg, #fff 20%, var(--accent) 70%, var(--accent2));
             -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
             background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        .velocity-label {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
+        .title-slide .subtitle {
+            color: var(--muted);
+            margin-top: clamp(16px, 3vw, 28px);
+            max-width: 30ch;
+        }
+        .title-slide .kicker {
+            text-transform: uppercase;
+            letter-spacing: 0.22em;
+            font-size: clamp(11px, 1.6vw, 14px);
+            color: var(--accent2);
+            margin-top: clamp(24px, 4vw, 40px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
         }
 
-        /* Timeline */
-        .timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            margin-top: var(--space-lg);
-            max-width: min(700px, 95vw);
+        h1 + .body, h2 + .body { margin-top: clamp(14px, 2vw, 22px); }
+        .body { color: var(--ink); max-width: 40ch; }
+        .body + .body { margin-top: clamp(10px, 1.4vw, 16px); }
+        .handoff {
+            margin-top: clamp(18px, 2.6vw, 28px);
+            color: var(--muted);
+            font-style: italic;
+            max-width: 40ch;
         }
-        .timeline-item {
-            display: flex;
-            gap: var(--space-md);
-            padding-bottom: var(--space-md);
+        strong { color: var(--accent2); font-weight: 600; }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(12px, 1.6vw, 18px);
+            width: 100%;
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: clamp(16px, 2.2vw, 26px);
+        }
+        .stat .num {
+            font-size: clamp(30px, 5.2vw, 54px);
+            font-weight: 700;
+            line-height: 1;
+            background: linear-gradient(120deg, #fff, var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat .lbl {
+            margin-top: clamp(8px, 1.2vw, 12px);
+            color: var(--muted);
+            font-size: clamp(12px, 1.5vw, 15px);
+            line-height: 1.35;
+        }
+
+        /* Numbered steps */
+        .steps { list-style: none; width: 100%; display: flex; flex-direction: column; gap: clamp(10px, 1.4vw, 16px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 12px;
+            padding: clamp(12px, 1.6vw, 18px) clamp(14px, 2vw, 20px);
+            color: var(--ink);
+        }
+        .steps li b { color: var(--accent2); }
+
+        /* Rules / bullets list */
+        .rules { list-style: none; width: 100%; display: flex; flex-direction: column; gap: clamp(9px, 1.2vw, 14px); }
+        .rules li {
             position: relative;
+            padding-left: 1.5em;
+            color: var(--ink);
         }
-        .timeline-item:not(:last-child)::after {
-            content: '';
+        .rules li::before {
+            content: "›";
             position: absolute;
-            left: clamp(30px, 4vw, 40px);
-            top: clamp(36px, 5vw, 48px);
-            bottom: 0;
-            width: 2px;
-            background: var(--accent-dim);
-        }
-        .timeline-date {
-            flex-shrink: 0;
-            width: clamp(60px, 8vw, 80px);
-            height: clamp(60px, 8vw, 80px);
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            left: 0;
+            color: var(--accent);
             font-weight: 700;
         }
-        .timeline-date .day {
-            font-size: var(--fs-h3);
-            color: var(--accent);
-            line-height: 1;
-        }
-        .timeline-date .month {
-            font-size: var(--fs-small);
-            color: var(--accent);
-            text-transform: uppercase;
-        }
-        .timeline-text h4 {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .timeline-text p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
+        .rules.warn li::before { content: "!"; color: var(--warn); }
 
-        /* Quote / callout box */
-        .callout {
-            background: var(--accent-dim);
-            border-left: 3px solid var(--accent);
-            border-radius: var(--radius-sm);
-            padding: var(--space-md);
-            margin-top: var(--space-md);
-            max-width: min(700px, 95vw);
+        /* Code block */
+        .code-block {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.2vw, 26px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.6vw, 16px);
+            line-height: 1.7;
+            color: var(--accent2);
+            white-space: pre-wrap;
+            width: 100%;
         }
-        .callout p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-            font-style: italic;
+        .code-comment { color: var(--muted); }
+
+        .src-meta { color: var(--muted); line-height: 1.6; max-width: 70ch; }
+        .src-meta ul { margin: 0.5em 0 0.5em 1.2em; }
+        .src-meta li { margin-bottom: 0.4em; }
+        .src-meta code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: 0.85em;
+            color: var(--accent2);
+            background: rgba(255,255,255,0.05);
+            padding: 0.1em 0.35em;
+            border-radius: 5px;
         }
-        .callout .attribution {
-            font-style: normal;
-            color: var(--text-tertiary);
-            font-size: var(--fs-small);
-            margin-top: var(--space-xs);
-        }
+        .src-meta strong { color: var(--ink); }
 
         /* Navigation */
         .nav {
             position: fixed;
-            bottom: 28px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: clamp(20px, 3vh, 34px);
+            right: clamp(20px, 3vw, 40px);
             display: flex;
-            gap: 8px;
+            gap: 10px;
             z-index: 100;
         }
         .nav-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px; height: 9px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.22);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background 0.2s, transform 0.2s;
         }
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
         .slide-counter {
             position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
+            bottom: clamp(20px, 3vh, 34px);
+            left: clamp(20px, 3vw, 40px);
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
             z-index: 100;
+            font-variant-numeric: tabular-nums;
         }
 
-        /* Sources slide specifics */
-        .sources-content {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.7;
-            max-width: min(800px, 95vw);
-        }
-        .sources-content strong {
-            color: var(--text-primary);
-        }
-        .sources-content code {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-small);
-            background: var(--surface-1);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .sources-content ul {
-            padding-left: var(--space-md);
-            margin: var(--space-xs) 0;
-        }
-        .sources-content li {
-            margin-bottom: var(--space-xs);
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
         }
 
-        /* More stories link */
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
         .more-stories {
             position: fixed;
             bottom: 10px;
@@ -439,365 +276,211 @@
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
 
-        /* Landscape mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
+        .badge {
+            display: inline-block;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.3em 0.9em;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent2);
+            margin-top: clamp(14px, 2vw, 22px);
         }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* Touch targets */
-        @media (hover: none) {
-            .nav-dot {
-                min-width: 16px;
-                min-height: 16px;
-            }
-        }
-
-        /* Highlight accent text */
-        .accent { color: var(--accent); }
-
-        /* Inline list with subtle bullets */
-        .feature-list {
-            list-style: none;
-            padding: 0;
-        }
-        .feature-list li {
-            padding-left: var(--space-md);
-            position: relative;
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: var(--space-xs);
-        }
-        .feature-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.6em;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-        }
-    
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+    </style>
 </head>
 <body>
-
     <!--
-      ============================================================================
-      NARRATIVE SPINE  (built from the deck's existing content; no fresh research)
-      ============================================================================
-
-      ABT:
-        AND the in-process architecture that got Amplifier to v1 packs every tool,
-            hook, and provider into a single Python process;
-        BUT that shared-fate monolith is the ceiling for v2 -- dependency hell,
-            Python lock-in, and a blast radius where one crashing tool kills the
-            whole session;
-        THEREFORE amplifier-ipc gives every component its own subprocess behind
-            JSON-RPC, spawned fresh per turn -- process isolation, dependency
-            freedom, language-agnostic -- and that IPC boundary becomes tomorrow's
-            container (Dapr) boundary.
-
-      PAYOFF (named up front):
-        "Every component, its own container." The IPC boundary IS the future
-        network boundary: process isolation and dependency freedom today,
-        Dapr-native containers tomorrow -- proven by a complete rewrite shipped in
-        a 10-day solo sprint.
-
-      BEATS (proof-first; payoff lands at beat 3 of 8, before the midpoint):
-        1. proof     -- a complete IPC rewrite shipped: 407 commits, 13 services,
-                        >1:1 tests, in 10 days.  advances: grounds the AND in a real,
-                        working artifact.
-        2. tension   -- the monolith trap: dependency hell, Python lock-in, blast
-                        radius.  advances: the BUT (why v1's architecture caps v2).
-        3. payoff    -- every component runs as its own isolated subprocess over
-                        JSON-RPC.  advances: lands the THEREFORE.
-        4. mechanism -- the per-turn lifecycle: spawn, discover, route, tear down.
-                        (one claim)  advances: HOW isolation stays cheap and clean.
-        5. mechanism -- Host is a dumb router; the orchestrator owns all logic.
-                        (one claim)  advances: HOW responsibilities split.
-        6. setup     -- what runs on it: 13 services in one mono-repo.  advances:
-                        introduces the services the Dapr future decomposes.
-        7. turn      -- the IPC boundary is tomorrow's container boundary: from
-                        stdio to a Dapr service mesh (~28 containers).  advances:
-                        pivots from "a rewrite" to "the roadmap."
-        8. takeaway  -- what the architecture buys you, and how to run it today.
-                        advances: what the audience keeps.
-
-        + Sources & Methodology (audit-trail slide, not a beat) at the end.
-        Slides = 8 beats + 1 = 9.
+      SPINE
+      ABT: AND Amplifier v1 shipped by packing every tool, hook, provider, orchestrator and context manager into one Python process; BUT that shared-fate monolith meant dependency hell, Python lock-in, and one crashing tool could kill the whole session; THEREFORE amplifier-ipc gives every component its own subprocess behind JSON-RPC over stdio, and that IPC seam is designed to become tomorrow's container boundary.
+      Payoff: The stdio JSON-RPC seam of today is engineered to become the HTTP/gRPC container seam of tomorrow — one behavior = one container.
+      Beats:
+        1. frame     — Amplifier v1 ran everything in one Python process; amplifier-ipc rebuilds it so every component is its own subprocess.  advances: orients the audience on the shared-fate monolith (the AND) and names the rearchitecture that resolves it — the stakes behind the whole ABT.
+        2. proof     — ~10 days, 407 commits, one author, entire Rust kernel deleted: ~55k Python+Rust down to ~15.7k Python.  advances: establishes the AND with hard evidence — a real, shipped rearchitecture, not a proposal (repo-documented cloc figures).
+        3. tension   — one process meant one fate: a buggy tool could corrupt shared state, leak memory, or crash the whole session.  advances: establishes the BUT — the shared-fate cost of the monolith the new architecture must pay off.
+        4. mechanism — every component now runs as its own subprocess with its own process group, over JSON-RPC 2.0 via stdio.  advances: shows HOW isolation works — start_new_session=True per subprocess (core of the THEREFORE).
+        5. mechanism — each service gets its own uv virtualenv, so Service A can pin pydantic 2.0 while Service B pins 1.10 — no conflicts.  advances: shows a second consequence of the seam — dependency freedom the shared venv could never give (advances the THEREFORE).
+        6. turn      — the framing layer is ~40 lines: any process that reads stdin and writes stdout can be a service.  advances: pivots from AND/BUT toward the THEREFORE — the tiny stdio seam is the language-agnostic, portable hinge.
+        7. payoff    — the design doc turns the IPC seam into a container seam: one behavior = one container, Dapr sidecars.  advances: lands the THEREFORE as the climax — today's stdio JSON-RPC boundary is shaped to become tomorrow's HTTP/gRPC container boundary (design-only).
+        8. takeaway  — draw the boundary once, make it the seam that scales — but the honest catch remains: local-client monolith, ~200ms per-turn spawn, single-host broker.  advances: what the audience keeps — the generalizable pattern plus the repo's own named limitations, so the payoff is earned.
     -->
 
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Architecture & Philosophy &middot; Amplifier IPC</div>
-        <h2 class="medium-headline">A complete IPC rewrite, shipped in a 10-day solo sprint</h2>
-        <div class="velocity-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));">
-            <div class="velocity-stat">
-                <div class="velocity-number">407</div>
-                <div class="velocity-label">Commits</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">13</div>
-                <div class="velocity-label">Services</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">10</div>
-                <div class="velocity-label">Days</div>
-            </div>
-        </div>
-        <div class="halves" style="max-width: min(800px, 95vw);">
-            <div class="card">
-                <h4 class="accent">Test Ratio: &gt;1:1</h4>
-                <p>28,262 lines of tests covering 26,300 lines of source across 147 test files. The protocol library has zero external dependencies &mdash; pure Python.</p>
-            </div>
-            <div class="card">
-                <h4 class="accent">Solo Sprint</h4>
-                <p>394 of 407 commits by Paul Payne (payneio) between March 20&ndash;30, 2026 &mdash; a complete IPC rewrite in 10 days, with AI-assisted development.</p>
-            </div>
-        </div>
-        <div class="small-text">May 2026 &middot; payneio/amplifier-ipc</div>
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>One Component, One Process</h1>
+        <p class="subtitle">amplifier-ipc breaks the monolith apart</p>
+        <p class="kicker">payneio/amplifier-ipc</p>
     </div>
 
-    <!-- beat 2: tension -->
-    <div class="slide">
-        <div class="section-label">The Problem</div>
-        <h2 class="medium-headline">The architecture that reached v1 is the ceiling on v2</h2>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x1F517;</div>
-                <h3>Dependency Hell</h3>
-                <p>Every tool, hook, and provider shares a single process. One package conflict breaks everything. Anthropic SDK pins clash with OpenAI pins.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F512;</div>
-                <h3>Python-Only Lock-In</h3>
-                <p>Dynamic <code>import_and_create()</code> machinery ties every component to Python. No path to Rust tools, Go providers, or TypeScript hooks.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F4A5;</div>
-                <h3>Blast Radius</h3>
-                <p>A crashing tool takes down the entire agent session. No process isolation means no fault boundaries.</p>
-            </div>
+    <!-- Beat 1 -->
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Rearchitecture</div>
+            <h2>Amplifier v1 ran everything in one Python process — amplifier-ipc gives every component its own subprocess</h2>
+            <p class="body">v1 packed the orchestrator, tools, hooks, providers and context manager into a single process. amplifier-ipc rebuilds Amplifier so each of those runs as its own subprocess behind JSON-RPC 2.0 over stdio.</p>
+            <p class="handoff">And this isn't a proposal — it already shipped.</p>
         </div>
-        <div class="callout">
-            <p>Every component shares memory, shares dependencies, shares fate. The in-process design that got Amplifier to v1 becomes the wall that prevents v2.</p>
-        </div>
-    </div>
-
-    <!-- beat 3: payoff -->
-    <div class="slide">
-        <div class="section-label">The Solution</div>
-        <h2 class="medium-headline">Every component runs as its own container-in-waiting</h2>
-        <p class="subhead">Each tool, hook, and provider runs as its own subprocess. A central Host routes messages over JSON-RPC 2.0 via stdio &mdash; so the IPC boundary you get today is the network boundary you deploy tomorrow.</p>
-        <div class="halves">
-            <div class="card card-accent">
-                <h3>What you get today</h3>
-                <ul class="feature-list">
-                    <li>Process isolation &mdash; a crash can't spread</li>
-                    <li>Dependency freedom &mdash; each service its own <code>uv</code> virtualenv</li>
-                    <li>Language-agnostic wire format &mdash; JSON-RPC, not Python imports</li>
-                    <li>Fresh processes per turn &mdash; no stale state, no concurrency bugs</li>
-                </ul>
-            </div>
-            <div class="card card-accent">
-                <h3>What it unlocks tomorrow</h3>
-                <ul class="feature-list">
-                    <li>The subprocess boundary becomes a container boundary</li>
-                    <li>Business logic doesn't change &mdash; only the transport</li>
-                    <li>Any HTTP server can implement a component</li>
-                    <li>A clean path from monolith to service mesh</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 4: mechanism -->
-    <div class="slide">
-        <div class="section-label">Mechanism &middot; Per-Turn Lifecycle</div>
-        <h2 class="medium-headline">Fresh processes every turn keep isolation cheap</h2>
-        <div class="flow-steps">
-            <div class="flow-step">
-                <div class="flow-number">1</div>
-                <div class="flow-content">
-                    <h4>Spawn</h4>
-                    <p>Host spawns all service subprocesses from isolated <code>uv</code> virtualenvs. Each service gets its own dependency tree. ~200ms startup cost, paid once per turn.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">2</div>
-                <div class="flow-content">
-                    <h4>Discover</h4>
-                    <p>Host sends <code>describe</code> to every service &mdash; builds a routing table of tools, hooks, providers, and content manifests. No static config needed.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">3</div>
-                <div class="flow-content">
-                    <h4>Route</h4>
-                    <p>Orchestrator drives the agent loop. All tool calls, provider requests, and hook events flow through the Host as a dumb message bus. Fan-out, chaining, parallel dispatch.</p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">4</div>
-                <div class="flow-content">
-                    <h4>Tear Down</h4>
-                    <p>Turn completes. SIGTERM all services, SIGKILL after timeout. Next turn starts fresh &mdash; clean processes, clean state, zero stale memory.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 5: mechanism -->
-    <div class="slide">
-        <div class="section-label">Mechanism &middot; Separation of Concerns</div>
-        <h2 class="medium-headline">The Host stays dumb so the orchestrator can own the logic</h2>
-        <div class="arch-entities">
-            <div class="entity-box">
-                <div class="icon">&#x1F3AF;</div>
-                <h4>CLI / REPL</h4>
-                <p>User-facing entry point &mdash; Click + Rich + prompt-toolkit</p>
-            </div>
-            <div class="entity-box">
-                <div class="icon">&#x1F4E1;</div>
-                <h4>Host</h4>
-                <p>Dumb message bus &mdash; spawns services, routes requests, persists transcripts</p>
-            </div>
-            <div class="entity-box">
-                <div class="icon">&#x1F9E0;</div>
-                <h4>Orchestrator</h4>
-                <p>Agent loop driver &mdash; calls providers, tools, hooks via JSON-RPC</p>
-            </div>
-        </div>
-        <div class="callout">
-            <p>The Host does NOT interpret hook results, drive the agent loop, hold conversation state, or call LLMs. It's a router. The orchestrator owns all logic &mdash; which is exactly why the transport can be swapped later.</p>
-        </div>
-    </div>
-
-    <!-- beat 6: setup -->
-    <div class="slide">
-        <div class="section-label">What runs on it</div>
-        <h2 class="medium-headline">13 services in one mono-repo, discovered by decorator</h2>
-        <p class="subhead">A service is just a Python package that exposes components via decorators &mdash; the Host discovers them automatically, no YAML registration of individual tools.</p>
-        <div class="thirds">
-            <div class="card card-accent">
-                <h4 class="accent">Behavior services</h4>
-                <p><code>amplifier-foundation</code> (orchestrator, context, core tools/hooks), <code>amplifier-modes</code>, <code>amplifier-skills</code>, <code>amplifier-routing-matrix</code>.</p>
-            </div>
-            <div class="card card-accent">
-                <h4 class="accent">Provider services</h4>
-                <p><code>amplifier-providers</code> &mdash; 8 LLM adapters with streaming, plus specialist services like <code>filesystem</code> and <code>browser-tester</code>.</p>
-            </div>
-            <div class="card card-accent">
-                <h4 class="accent">Content-only services</h4>
-                <p><code>amplifier-recipes</code>, <code>amplifier-core</code> and more &mdash; pure context and definitions, zero custom code.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 7: turn -->
-    <div class="slide">
-        <div class="section-label">The Dapr Future</div>
-        <h2 class="medium-headline">Today's subprocess boundary is tomorrow's container boundary</h2>
-        <p class="subhead">Swap the stdio IPC layer for Dapr-native microservices and every behavior becomes its own container &mdash; ~28 of them, decomposed from today's 13 services.</p>
-        <div class="halves">
-            <div class="card card-accent">
-                <h3>Why Dapr</h3>
-                <ul class="feature-list">
-                    <li>Service invocation with mTLS, retries, circuit breakers</li>
-                    <li>Pub/sub for streaming tokens and hook fan-out</li>
-                    <li>State store for session persistence (Redis)</li>
-                    <li>Built-in observability and tracing</li>
-                </ul>
-            </div>
-            <div class="card card-accent">
-                <h3>The Decomposition</h3>
-                <ul class="feature-list">
-                    <li>~28 application containers from today's 13 services</li>
-                    <li>Foundation alone splits into 14 behavior containers</li>
-                    <li>Shared base image + thin SDK keeps overhead minimal</li>
-                    <li>Standard HTTP endpoints &mdash; no custom protocol</li>
-                </ul>
-            </div>
-        </div>
-        <div class="code-block"><span class="code-comment"># Three communication patterns cover all interactions:</span>
-
-<span class="code-flag">Pattern 1:</span> <span class="code-var">Request/Response</span>  <span class="code-comment"># tools, providers, /describe</span>
-<span class="code-flag">Pattern 2:</span> <span class="code-var">Pub/Sub Streaming</span> <span class="code-comment"># LLM tokens -> orchestrator -> CLI</span>
-<span class="code-flag">Pattern 3:</span> <span class="code-var">Pub/Sub Hooks</span>     <span class="code-comment"># lifecycle events, parallel fan-out</span></div>
-    </div>
-
-    <!-- beat 8: takeaway -->
-    <div class="slide">
-        <div class="section-label">What you keep</div>
-        <h2 class="medium-headline">Isolation and dependency freedom you can run today</h2>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x1F50C;</div>
-                <h3>Process Isolation</h3>
-                <p>A crashing tool can't take down the orchestrator. Each service has its own memory space, dependencies, and fault boundary.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F4E6;</div>
-                <h3>Dependency Freedom</h3>
-                <p>Each service gets its own <code>uv</code> virtualenv. Anthropic SDK v0.40 and OpenAI SDK v1.60 coexist without conflict.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F6E3;&#xFE0F;</div>
-                <h3>Migration Path</h3>
-                <p>The IPC boundary is the future network boundary. Today's subprocess becomes tomorrow's container &mdash; business logic unchanged.</p>
-            </div>
-        </div>
-        <div class="code-block"><span class="code-comment"># Install, discover, run</span>
-<span class="code-cmd">uv tool install</span> <span class="code-string">git+https://github.com/payneio/amplifier-ipc</span>
-<span class="code-cmd">amplifier-ipc discover</span> <span class="code-string">./services/amplifier-foundation</span> <span class="code-flag">--register</span> <span class="code-flag">--install</span>
-<span class="code-cmd">amplifier-ipc run</span> <span class="code-flag">--agent</span> <span class="code-var">foundation</span></div>
-    </div>
-
-    <!-- Sources & Methodology -->
-    <div class="slide">
-        <div class="section-label">Sources & Methodology</div>
-        <h2 class="medium-headline">How this deck was built</h2>
-        <div class="sources-content">
-            <p><strong>Repository:</strong> <code>payneio/amplifier-ipc</code> (GitHub)</p>
-            <ul>
-                <li><strong>README.md</strong> &mdash; project overview, quick start, service writing guide</li>
-                <li><strong>docs/specs/amplifier-ipc-spec.md</strong> &mdash; 1,612-line authoritative specification covering architecture, wire protocol, component types, registration, and session lifecycle</li>
-                <li><strong>docs/design/amplifier-ipc-microservices-design.md</strong> &mdash; Dapr migration design document detailing the ~28-container decomposition plan</li>
-                <li><strong>pyproject.toml</strong> &mdash; root package and <code>amplifier-ipc-protocol</code> sub-package definitions</li>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>orchestrator</li>
+                <li>tools</li>
+                <li>hooks</li>
+                <li>providers</li>
+                <li>context manager</li>
             </ul>
-            <p><strong>Code analysis:</strong></p>
-            <ul>
-                <li>318 Python files total &mdash; 170 source files (26,300 lines), 147 test files (28,262 lines)</li>
-                <li>Key modules: <code>host/host.py</code> (1,295 lines), <code>protocol/server.py</code> (884 lines), <code>host/spawner.py</code> (560 lines), <code>host/router.py</code> (295 lines)</li>
-                <li>13 service directories under <code>services/</code>, each with its own <code>pyproject.toml</code></li>
+            <span class="badge">each now its own subprocess</span>
+        </div>
+    </div>
+
+    <!-- Beat 2 -->
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">The Proof</div>
+            <h2>One author rebuilt Amplifier and deleted the entire Rust kernel</h2>
+            <p class="body">In ~10 days and 407 commits, Paul Payne (394 of 407 commits) drove the rewrite. The repo's own cloc comparison: ~55,448 Python+Rust lines down to 15,742 Python — the Rust engine eliminated entirely.</p>
+            <p class="handoff">So why break the monolith apart at all?</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">407</div><div class="lbl">commits in ~10 days (Mar 20–30 2026)</div></div>
+                <div class="stat"><div class="num">55,448</div><div class="lbl">old Python+Rust lines (repo cloc)</div></div>
+                <div class="stat"><div class="num">15,742</div><div class="lbl">new Python lines (repo cloc)</div></div>
+                <div class="stat"><div class="num">0</div><div class="lbl">Rust — engine eliminated entirely</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Beat 3 -->
+    <div class="slide split">
+        <!-- beat 3: tension -->
+        <div class="col-main">
+            <div class="section-label">The Cost of One Process</div>
+            <h2>One process meant one fate — a buggy tool could take down the whole session</h2>
+            <p class="body">In the old system every module ran in the same Python process. A buggy tool could corrupt shared state, leak memory, or crash the entire session. A shared virtualenv forced dependency hell, and the whole thing was Python-only.</p>
+            <p class="handoff">The fix: stop sharing the process.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules warn">
+                <li>Corrupt shared state</li>
+                <li>Leak memory across modules</li>
+                <li>Crash the entire session</li>
+                <li>Shared virtualenv → dependency conflicts</li>
             </ul>
-            <p><strong>Git history:</strong> <code>git log --all</code> &mdash; 407 commits, March 20&ndash;30, 2026. 394 by Paul Payne, 13 by Amplifier Implementer.</p>
-            <p><strong>Team knowledge:</strong> Amplifier team knowledge base &mdash; capability entries for all 13 IPC services plus the <code>amplifier-ipc-protocol</code> package, and the architecture overview DOT diagram.</p>
-            <p><strong>Category:</strong> Architecture & Philosophy &middot; <strong>Primary contributor:</strong> payneio &middot; <strong>Accent:</strong> #42A5F5 (infrastructure blue)</p>
+        </div>
+    </div>
+
+    <!-- Beat 4 -->
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">How Isolation Works</div>
+            <h2>Every component now runs as its own subprocess with its own process group</h2>
+            <p class="body">Each service is spawned with <strong>start_new_session=True</strong> for process-group isolation, talking to a central host over JSON-RPC 2.0 via stdio. A crashing tool service no longer takes down the session — the host detects the exit and the rest continues.</p>
+            <p class="handoff">Isolation is one payoff. Dependency freedom is the next.</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># lifecycle.py:56</span>
+subprocess.Popen(
+    ...,
+    start_new_session=True,
+)
+<span class="code-comment"># JSON-RPC 2.0 over stdio</span>
+{"jsonrpc": "2.0", ...}</div>
+        </div>
+    </div>
+
+    <!-- Beat 5 -->
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Dependency Freedom</div>
+            <h2>Each service gets its own uv virtualenv — conflicting pins coexist</h2>
+            <p class="body">Every service has its own uv-managed virtual environment with dependencies declared in its own pyproject.toml. Service A can use <strong>pydantic==2.0</strong> while Service B uses <strong>pydantic==1.10</strong>. No conflicts, no workarounds.</p>
+            <p class="handoff">And the seam that enables this is astonishingly small.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="steps">
+                <li><b>Service A</b> — venv pins pydantic==2.0</li>
+                <li><b>Service B</b> — venv pins pydantic==1.10</li>
+                <li>Independent pyproject.toml per service</li>
+                <li>No shared-venv dependency hell</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Beat 6 -->
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">The Hinge</div>
+            <h2>The framing layer is ~40 lines — any stdin/stdout process can be a service</h2>
+            <p class="body">The JSON-RPC newline-delimited framing layer measures 39 lines (the design doc rounds to "40 lines"). Any language that can read stdin and write stdout can be a service — polyglot comes essentially free. (A Python SDK is the only one shipped today.)</p>
+            <p class="handoff">That tiny seam is the thing designed to scale.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">~40</div><div class="lbl">lines in protocol/framing.py (39 measured)</div></div>
+                <div class="stat"><div class="num">stdin<br>stdout</div><div class="lbl">the only contract a service must speak</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Beat 7 -->
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>The IPC seam is designed to become a container seam: one behavior = one container</h2>
+            <p class="body">The repo's microservices design doc turns today's stdio JSON-RPC boundary into tomorrow's boundary: a Dapr-native framework where each behavior runs as an independent container over HTTP/gRPC and pub/sub, with Dapr sidecars for invocation and state.</p>
+            <p class="handoff">Design-only for now — no Dockerfiles or Dapr components in the source yet.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="steps">
+                <li><b>Today</b> — stdio JSON-RPC seam between subprocesses</li>
+                <li><b>Design</b> — one behavior = one container</li>
+                <li><b>Transport</b> — HTTP/gRPC + pub/sub via Dapr sidecars</li>
+                <li>Design doc only, not yet implemented</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Beat 8 -->
+    <div class="slide split">
+        <!-- beat 8: takeaway -->
+        <div class="col-main">
+            <div class="section-label">The Takeaway</div>
+            <h2>Draw the boundary once, make it the seam that scales — honestly</h2>
+            <p class="body">The stdio JSON-RPC seam of today is engineered to become the HTTP/gRPC container seam of tomorrow. But the repo names its own catch: the foundation service still co-locates orchestrator+tools+hooks+context in-process to dodge deadlock, spawning costs ~200ms per turn, and the host is still a single 1248-line broker.</p>
+            <p class="handoff">The payoff is earned, not oversold.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules warn">
+                <li>_OrchestratorLocalClient still a co-located monolith</li>
+                <li>~200ms per-turn spawn overhead (doc-stated)</li>
+                <li>Single-host broker mediates every message</li>
+                <li>Python-only in practice today</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Sources & Methodology (no beat comment) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="src-meta" style="margin-top: clamp(14px,2vw,22px);">
+            <p><strong>Repository:</strong> payneio/amplifier-ipc @ d82d2d8 (branch main, HEAD 2026-03-30), remote git@github.com:payneio/amplifier-ipc.git</p>
+            <p><strong>Data as of:</strong> 2026-03-30 &nbsp;·&nbsp; <strong>Feature status:</strong> Active (Dapr/container direction is design-doc only, not implemented)</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li>Timeline: <code>git log --reverse --format='%ci %h %s' | head -1</code>; <code>git log --oneline | wc -l</code> (first 6205449 2026-03-20; 407 commits)</li>
+                <li>Contributors: <code>git shortlog -sne --all</code> (Paul Payne 394, Amplifier Implementer 13)</li>
+                <li>Line counts: <code>wc -l src/amplifier_ipc/protocol/framing.py</code> (39); <code>wc -l src/amplifier_ipc/host/host.py</code> (1295)</li>
+                <li>Isolation: <code>grep -rn 'start_new_session' src/</code> (lifecycle.py:56)</li>
+                <li>Protocol: <code>grep -rn 'jsonrpc' src/amplifier_ipc/protocol/client.py</code></li>
+                <li>Docs read: README.md, docs/architectural-comparison.md, docs/design/amplifier-ipc-microservices-design.md, docs/design/amplifier-ipc.md</li>
+            </ul>
+            <p><strong>Gaps:</strong> Old-repo LOC (33,753 Python + 21,695 Rust → 15,742 Python) and ~200ms per-turn overhead are repo-documented (cloc / design doc), not independently re-measured or benchmarked by the verifier. host.py measures 1295 lines today vs the doc's cited 1248 (minor drift). No Dockerfiles or Dapr components exist in source yet.</p>
+            <p><strong>Primary contributor:</strong> Paul Payne — 394 of 407 commits (~97%).</p>
         </div>
     </div>
 
@@ -805,18 +488,47 @@ html.js .slide.active{display:flex;}
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
 
-    <!-- More stories link -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -825,29 +537,25 @@ html.js .slide.active{display:flex;}
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
@@ -855,11 +563,10 @@ html.js .slide.active{display:flex;}
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

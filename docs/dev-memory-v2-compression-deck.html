@@ -3,60 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Dev Memory V2 &mdash; 93% Compression: When Less Context Means More Memory</title>
+    <title>Less Context, More Memory</title>
     <script>document.documentElement.classList.add('js')</script>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --accent: #E67E22;
-            --accent-dim: rgba(230, 126, 34, 0.15);
-            --accent-glow: rgba(230, 126, 34, 0.3);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 36px);
-            --fs-h3: clamp(18px, 3vw, 24px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 1.8vw, 15px);
-
-            /* Spacing */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #a1a1aa;
+            --accent: #6ee7b7;
+            --accent2: #60a5fa;
+            --danger: #f87171;
+            --card: #16161f;
+            --border: rgba(255,255,255,0.09);
         }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Slide base */
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
@@ -65,363 +36,233 @@
             overflow-y: auto;
             overflow-x: hidden;
         }
+
         .slide.active { display: flex; }
-        .slide.center {
+
+        /* No-JS fallback: all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+
+        /* Fit-safe: cap to viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide { transition: transform .5s ease, opacity .5s ease; }
+
+        .center {
             text-align: center;
             align-items: center;
             justify-content: center;
         }
 
-        /* Typography */
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); font-weight: 400; }
+
         .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
             color: var(--accent);
-            margin-bottom: var(--space-sm);
-        }
-        .headline {
-            font-size: var(--fs-hero);
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.08;
-            margin-bottom: var(--space-md);
-        }
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            margin-bottom: var(--space-md);
-        }
-        .subhead {
-            font-size: var(--fs-h3);
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(680px, 90vw);
-        }
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: var(--space-sm);
+            font-weight: 600;
+            margin-bottom: clamp(14px, 2.5vw, 24px);
         }
 
-        /* Status badge */
+        .body { color: var(--muted); margin-top: clamp(14px, 2.4vw, 22px); max-width: 46ch; }
+        .handoff { color: var(--fg); margin-top: clamp(18px, 3vw, 28px); max-width: 46ch; opacity: 0.85; font-style: italic; }
+
+        .slide.center h1 { max-width: 20ch; }
+        .slide.center .body, .slide.center .handoff { margin-left: auto; margin-right: auto; }
+
+        .accent { color: var(--accent); }
+        .accent2 { color: var(--accent2); }
+        .danger { color: var(--danger); }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: clamp(14px, 2vw, 22px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: clamp(18px, 2.6vw, 30px);
+        }
+        .stat-num {
+            font-size: clamp(30px, 6vw, 58px);
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+        .stat-label { color: var(--muted); font-size: clamp(12px, 1.5vw, 15px); margin-top: 10px; }
+
+        /* Big single number */
+        .bignum {
+            font-size: clamp(64px, 16vw, 200px);
+            font-weight: 800;
+            line-height: 0.9;
+            letter-spacing: -0.04em;
+        }
+
+        /* Steps / rules list */
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(12px, 1.8vw, 18px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(14px, 2vw, 20px) clamp(16px, 2.2vw, 22px);
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+        .steps .n {
+            flex: 0 0 auto;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: rgba(110,231,183,0.14);
+            color: var(--accent);
+            font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+        }
+        .steps .txt { color: var(--fg); }
+        .steps .txt strong { color: var(--fg); }
+        .steps .txt span { color: var(--muted); display: block; margin-top: 4px; font-size: clamp(12px,1.5vw,15px); }
+
+        /* Before/after flow */
+        .flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: clamp(10px,1.8vw,20px); align-items: stretch; }
+        .flow .box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: clamp(16px,2.4vw,26px);
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .flow .box.before { border-color: rgba(248,113,113,0.35); }
+        .flow .box.after { border-color: rgba(110,231,183,0.4); }
+        .flow .arrow { display: flex; align-items: center; color: var(--muted); font-size: clamp(22px,4vw,36px); }
+        .flow .big { font-size: clamp(24px,5vw,44px); font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+        .flow .cap { color: var(--muted); font-size: clamp(12px,1.5vw,15px); margin-top: 8px; }
+
+        /* Code block */
+        .code-block {
+            background: #05050a;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.4vw, 26px);
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.6vw, 15px);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            color: #d6d6e0;
+            overflow-x: auto;
+        }
+        .code-comment { color: #6b7280; }
+        .code-key { color: var(--accent2); }
+
+        /* Sources */
+        .sources { color: var(--muted); line-height: 1.6; max-width: 62ch; }
+        .sources p { margin-bottom: 10px; font-size: clamp(13px,1.6vw,16px); }
+        .sources ul { margin: 8px 0 8px 20px; }
+        .sources li { margin-bottom: 6px; font-size: clamp(12px,1.5vw,15px); }
+        .sources code {
+            background: #05050a;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 1px 6px;
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            font-size: 0.88em;
+            color: #cdd3de;
+        }
         .status-badge {
             display: inline-block;
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: 100px;
-            background: rgba(230, 126, 34, 0.15);
+            background: rgba(110,231,183,0.14);
             color: var(--accent);
-            margin-top: var(--space-sm);
-        }
-
-        /* Grids */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .quads {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-        .card h3, .card h4 {
-            color: var(--text-primary);
-            font-size: var(--fs-h3);
+            border: 1px solid rgba(110,231,183,0.35);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: clamp(11px,1.4vw,13px);
             font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-        .card p, .card li {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.5;
-        }
-        .card .icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: var(--space-xs);
+            letter-spacing: 0.04em;
         }
 
-        /* Card with accent border top */
-        .card-accent {
-            border-top: 2px solid var(--accent);
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
         }
 
-        /* Code blocks */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            color: #BFC0C5;
-            margin-top: var(--space-md);
-        }
-        .code-comment { color: rgba(255,255,255,0.35); }
-        .code-cmd { color: #30D158; }
-        .code-flag { color: #E67E22; }
-        .code-string { color: #FF9F0A; }
-        .code-var { color: #64D2FF; }
-        .code-del { color: #FF453A; text-decoration: line-through; opacity: 0.7; }
-        .code-add { color: #30D158; }
-
-        /* Flow steps */
-        .flow-steps {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            max-width: min(800px, 95vw);
-        }
-        .flow-step {
-            display: flex;
-            align-items: flex-start;
-            gap: var(--space-md);
-        }
-        .flow-number {
-            flex-shrink: 0;
-            width: clamp(36px, 5vw, 48px);
-            height: clamp(36px, 5vw, 48px);
-            border-radius: 50%;
-            background: var(--accent-dim);
-            border: 2px solid var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--accent);
-        }
-        .flow-content h4 {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-        .flow-content p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-        .flow-arrow {
-            width: 2px;
-            height: var(--space-sm);
-            background: var(--accent-dim);
-            margin-left: clamp(17px, 2.3vw, 23px);
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
 
-        /* Architecture diagram */
-        .arch-entities {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-        .entity-box {
-            background: var(--surface-2);
-            border: 1px solid var(--border-visible);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-            text-align: center;
-        }
-        .entity-box .icon {
-            font-size: clamp(32px, 6vw, 56px);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box h4 {
-            font-size: var(--fs-h3);
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-xs);
-        }
-        .entity-box p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        /* Velocity stats */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(140px, 45%), 1fr));
-            gap: var(--space-lg);
-            margin-top: var(--space-lg);
-        }
-        .velocity-stat { text-align: center; }
-        .velocity-number {
-            font-size: clamp(48px, 12vw, 96px);
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #F39C12);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .velocity-label {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
-
-        /* Comparison bars */
-        .comparison-row {
-            display: flex;
-            align-items: center;
-            gap: var(--space-md);
-            margin-bottom: var(--space-md);
-        }
-        .comparison-label {
-            flex-shrink: 0;
-            width: clamp(60px, 10vw, 80px);
-            font-size: var(--fs-body);
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-align: right;
-        }
-        .comparison-bar-track {
-            flex: 1;
-            height: clamp(32px, 5vw, 44px);
-            background: var(--surface-1);
-            border-radius: var(--radius-sm);
-            position: relative;
-            overflow: hidden;
-        }
-        .comparison-bar {
-            height: 100%;
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            padding-left: var(--space-sm);
-            font-size: var(--fs-body);
-            font-weight: 700;
-            transition: width 0.8s ease;
-        }
-        .bar-v1 {
-            background: rgba(255, 69, 58, 0.4);
-            border: 1px solid rgba(255, 69, 58, 0.6);
-            color: #FF6961;
-        }
-        .bar-v2 {
-            background: rgba(48, 209, 88, 0.4);
-            border: 1px solid rgba(48, 209, 88, 0.6);
-            color: #30D158;
-        }
-        .comparison-value {
-            flex-shrink: 0;
-            width: clamp(90px, 14vw, 120px);
-            font-size: var(--fs-body);
-            color: var(--text-tertiary);
-            text-align: left;
-        }
-
-        /* Quote / callout box */
-        .callout {
-            background: var(--accent-dim);
-            border-left: 3px solid var(--accent);
-            border-radius: var(--radius-sm);
-            padding: var(--space-md);
-            margin-top: var(--space-md);
-            max-width: min(700px, 95vw);
-        }
-        .callout p {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-            font-style: italic;
-        }
-        .callout .attribution {
-            font-style: normal;
-            color: var(--text-tertiary);
-            font-size: var(--fs-small);
-            margin-top: var(--space-xs);
-        }
-
-        /* Navigation */
+        /* Nav */
         .nav {
             position: fixed;
-            bottom: 28px;
+            bottom: 22px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 8px;
-            z-index: 100;
+            gap: 10px;
+            z-index: 90;
         }
         .nav-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px; height: 9px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.22);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background .2s, transform .2s;
         }
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.25); }
         .slide-counter {
             position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            z-index: 100;
+            bottom: 20px;
+            right: 24px;
+            color: rgba(255,255,255,0.4);
+            font-size: 13px;
+            z-index: 90;
+            font-variant-numeric: tabular-nums;
         }
 
-        /* Sources slide specifics */
-        .sources-content {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.7;
-            max-width: min(800px, 95vw);
-        }
-        .sources-content strong {
-            color: var(--text-primary);
-        }
-        .sources-content code {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-small);
-            background: var(--surface-1);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .sources-content ul {
-            padding-left: var(--space-md);
-            margin: var(--space-xs) 0;
-        }
-        .sources-content li {
-            margin-bottom: var(--space-xs);
-        }
-
-        /* More stories link */
         .more-stories {
             position: fixed;
             bottom: 10px;
@@ -433,426 +274,200 @@
             z-index: 100;
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
-
-        /* Landscape mobile */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
-        }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* Touch targets */
-        @media (hover: none) {
-            .nav-dot {
-                min-width: 16px;
-                min-height: 16px;
-            }
-        }
-
-        /* Highlight accent text */
-        .accent { color: var(--accent); }
-
-        /* Inline list with subtle bullets */
-        .feature-list {
-            list-style: none;
-            padding: 0;
-        }
-        .feature-list li {
-            padding-left: var(--space-md);
-            position: relative;
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: var(--space-xs);
-        }
-        .feature-list li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.6em;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-        }
-
-        /* Diff-style visual */
-        .diff-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            line-height: 1.8;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-top: var(--space-md);
-            max-width: min(700px, 95vw);
-        }
-        .diff-del {
-            color: #FF453A;
-            background: rgba(255, 69, 58, 0.1);
-            display: block;
-            padding: 0 var(--space-xs);
-            margin: 0 calc(-1 * var(--space-xs));
-        }
-        .diff-add {
-            color: #30D158;
-            background: rgba(48, 209, 88, 0.1);
-            display: block;
-            padding: 0 var(--space-xs);
-            margin: 0 calc(-1 * var(--space-xs));
-        }
-        .diff-context {
-            color: rgba(255,255,255,0.35);
-            display: block;
-        }
-
-        /* Layer diagram */
-        .layer-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            margin-top: var(--space-lg);
-            max-width: min(700px, 95vw);
-        }
-        .layer-item {
-            display: flex;
-            align-items: stretch;
-            min-height: clamp(60px, 10vw, 80px);
-        }
-        .layer-badge {
-            flex-shrink: 0;
-            width: clamp(80px, 12vw, 100px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: var(--fs-h3);
-            border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-        }
-        .layer-badge.l0 { background: var(--accent); color: #000; }
-        .layer-badge.l1 { background: rgba(230, 126, 34, 0.5); color: var(--text-primary); }
-        .layer-badge.l2 { background: rgba(230, 126, 34, 0.2); color: var(--text-secondary); }
-        .layer-body {
-            flex: 1;
-            padding: var(--space-sm) var(--space-md);
-            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-        }
-        .layer-body.l0 { background: rgba(230, 126, 34, 0.15); }
-        .layer-body.l1 { background: var(--surface-2); }
-        .layer-body.l2 { background: var(--surface-1); }
-        .layer-body h4 {
-            font-size: var(--fs-body);
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 2px;
-        }
-        .layer-body p {
-            font-size: var(--fs-small);
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
     </style>
 </head>
 <body>
-    <!--
-      ============================================================
-      NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
-      ============================================================
+<!--
+SPINE
+ABT: AND dev-memory gives an AI persistent memory across sessions by teaching it how to use that memory up front; BUT V1 auto-loaded 4 instruction files (738 lines, ~7K tokens) into every session before the first user turn, and that read guidance implied a cost that grew as memory grew; THEREFORE V2 states a compact 37-line contract and delegates reads to a context-sink sub-agent, cutting startup cost ~93% and holding it constant even at 1000+ memories.
+Payoff: Constant startup cost as memory scales — the main session only ever loads the fixed 37-line contract, so ~500 tokens buys 1000+ memories.
+Beats:
+  beat 1 (frame): dev-memory lets an AI remember across sessions — but first it has to teach the AI how, and that lesson isn't free. advances: Orients the audience on what dev-memory is and why the cost of the instructions themselves matters — sets up the AND.
+  beat 2 (proof): V1 auto-loaded 4 instruction files — 738 lines, the author's ~7K tokens — into every session before you said hello. advances: Lands hard evidence for the AND early: the instruction tax was real and paid before the first user turn.
+  beat 3 (tension): The instructions cost more than most conversations, and the read guidance implied a bill that grew as memory grew. advances: Establishes the BUT — the model didn't just start expensive, it threatened to get worse with scale.
+  beat 4 (mechanism): V2 replaced all four files with a single 37-line contract that just states the rules — the author's ~500 tokens. advances: Shows the first half of HOW the THEREFORE works: compress the always-loaded instructions to a compact contract.
+  beat 5 (mechanism): Reads never touch the memory store directly — they delegate to a memory-retrieval sub-agent that absorbs the full file in its own context and returns only matches (~200 tokens). advances: Shows the second half of HOW: a context-sink sub-agent keeps the growing memory out of the main session entirely.
+  beat 6 (turn): Because the main session only ever loads the fixed contract, adding memories no longer adds startup cost. advances: The pivot from BUT to THEREFORE — the growth problem is designed away, not just made smaller.
+  beat 7 (payoff): Startup dropped ~93% (7K → ~500 tokens) and stays constant even at 1000+ memories — less context loaded, more memory available. advances: Lands the THEREFORE as the climax: the named payoff of constant cost at scale.
+  beat 8 (takeaway): Shipped as v2.0.0 (commit 69c3629) with the same 3 operations — the win came from where cost is paid, not from doing less. advances: What the audience keeps: a generalizable pattern (delegate growth to a sub-agent) grounded in a real shipped change.
+-->
 
-      ABT:
-        AND dev-memory gives an AI persistent memory across sessions;
-        BUT V1 taught the AI how to use that memory by loading 4 files / 738 lines /
-            ~7,000 tokens into every session before you said hello - the instructions
-            cost more than most conversations, and grew worse as memory grew;
-        THEREFORE V2 flipped it: state a 37-line contract and delegate reads to a
-            context-sink sub-agent, cutting startup cost 93% (~500 tokens) and holding
-            it CONSTANT at any scale - less context, more memory.
-
-      PAYOFF (named up front):
-        Constant token cost at any scale - ~500 tokens whether you have 10 memories or
-        10,000, a 93% cut, because a sub-agent absorbs the load and returns only matches.
-
-      BEATS (proof-first; payoff lands at beat 4 of 8, before the midpoint):
-        1. proof     - 93%: ~7,000 -> ~500 tokens, 37-line contract, one commit.
-                       advances: grounds the result with the headline number.
-        2. tension   - V1 burned ~7,000 tokens before you said hello.
-                       advances: establishes the BUT (instructions cost more than chat).
-        3. turn      - stop teaching what the model already knows; state the contract.
-                       advances: the pivot from teach-everything to state-the-contract.
-        4. payoff    - constant token cost at any scale (~500 tokens, flat).
-                       advances: lands the THEREFORE (payoff before midpoint).
-        5. mechanism - the context-sink: reads delegate to a sub-agent. (one claim)
-                       advances: HOW main-session cost stays flat as memory grows.
-        6. mechanism - memory as an index, not storage: the 3-layer design. (one claim)
-                       advances: HOW it keeps scaling past a flat file.
-        7. mechanism - beyond compression, V2 maintains itself. (one claim)
-                       advances: HOW memory stays clean without bloating context.
-        8. takeaway  - the best context is the minimum that produces correct behavior.
-                       advances: the principle the audience keeps.
-
-        + Sources & Methodology (audit-trail slide, not a beat) at the end.
-        Slides = 8 beats + 1 = 9.
-    -->
-
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Features &middot; Dev Memory</div>
-        <h1 class="headline">93% Less Context,<br>Same Memory</h1>
-        <p class="subhead">V2 cut the memory system's startup cost from ~7,000 tokens to ~500 &mdash; replacing 738 lines of instructions with a 37-line contract, in a single commit.</p>
-        <div class="velocity-grid">
-            <div class="velocity-stat">
-                <div class="velocity-number">93%</div>
-                <div class="velocity-label">Context<br>compression</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">~500</div>
-                <div class="velocity-label">Tokens at<br>session start</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">1</div>
-                <div class="velocity-label">Commit to<br>ship V2</div>
-            </div>
-        </div>
-        <div class="status-badge">V2.0 &middot; ~7,000 &rarr; ~500 tokens</div>
-        <div class="small-text">May 2026 &middot; Sam Schillace</div>
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>Less Context,<br>More Memory</h1>
+        <p class="subtitle">dev-memory V2 cut startup context 93%</p>
     </div>
 
-    <!-- beat 2: tension -->
-    <div class="slide">
-        <div class="section-label">The Problem</div>
-        <h2 class="headline">7,000 tokens<br>before you said hello</h2>
-        <p class="subhead">V1 loaded four context files into every session just to teach the AI how its own memory works. The instructions were longer than most conversations.</p>
-        <div class="thirds">
-            <div class="card card-accent">
-                <div class="icon">&#x1F4DC;</div>
-                <h3>738 Lines of Instructions</h3>
-                <p>Four files &mdash; delegation rules, auto-context, writer instructions, a system guide &mdash; loaded at session start, every time.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F4B8;</div>
-                <h3>~7,000 Tokens Burned</h3>
-                <p>Before the user typed a word, the memory system had already eaten 7K tokens of the context window. And it grew as memory grew.</p>
-            </div>
-            <div class="card card-accent">
-                <div class="icon">&#x1F503;</div>
-                <h3>Said Four Times Over</h3>
-                <p>The same &ldquo;never read memory-store.yaml directly&rdquo; warning appeared in four different files. The AI got the message &mdash; redundantly.</p>
-            </div>
-        </div>
-        <div class="callout">
-            <p>The memory system's instructions about being token-efficient were themselves the biggest source of token waste.</p>
-        </div>
-    </div>
-
-    <!-- beat 3: turn -->
-    <div class="slide">
-        <div class="section-label">The Reframe</div>
-        <h2 class="headline">Stop teaching what<br>the model already knows</h2>
-        <p class="subhead">V1 spent hundreds of tokens explaining YAML formatting, bash appends, and pattern matching &mdash; things a modern LLM already understands. V2 asked a different question and just stated the contract.</p>
-        <div class="halves">
-            <div class="card">
-                <h3 class="accent">V1: Teach Everything</h3>
-                <ul class="feature-list">
-                    <li>Full bash examples for append operations</li>
-                    <li>YAML templates and formatting rules</li>
-                    <li>&ldquo;Don't do this&rdquo; counter-examples</li>
-                    <li>Self-check rubrics and decision trees</li>
-                    <li>Keyword lists and error procedures</li>
-                </ul>
-            </div>
-            <div class="card" style="border: 1px solid var(--accent);">
-                <h3 class="accent">V2: State the Contract</h3>
-                <ul class="feature-list">
-                    <li>Three operations, three rules</li>
-                    <li>Writes: append to the file, never load it</li>
-                    <li>Reads: delegate to a sub-agent, always</li>
-                    <li>Work status: read the small file directly</li>
-                    <li>37 lines. Trust the LLM. Done.</li>
-                </ul>
-            </div>
-        </div>
-        <div class="callout">
-            <p>The best context is the minimum context that produces correct behavior. Everything else is overhead. &mdash; one commit, <code>69c3629</code>, swapped 4 includes for 1.</p>
-        </div>
-    </div>
-
-    <!-- beat 4: payoff -->
-    <div class="slide">
-        <div class="section-label">Token Efficiency</div>
-        <h2 class="medium-headline">~500 tokens &mdash; and it stays there at any scale</h2>
-        <p class="subhead" style="margin-bottom: var(--space-md);">Whether you hold 10 memories or 10,000, the cost in the main session stays flat. That's the real win: not just smaller, but <em>constant</em>.</p>
-        <div style="margin-top: var(--space-md); max-width: min(700px, 95vw); width:100%;">
-            <div class="comparison-row">
-                <div class="comparison-label">V1</div>
-                <div class="comparison-bar-track">
-                    <div class="comparison-bar bar-v1" style="width: 100%;">~7,000 tokens</div>
-                </div>
-            </div>
-            <div class="comparison-row">
-                <div class="comparison-label">V2</div>
-                <div class="comparison-bar-track">
-                    <div class="comparison-bar bar-v2" style="width: 7%;">~500</div>
-                </div>
-            </div>
-        </div>
-        <div class="callout">
-            <p>V1's cost climbed with every memory added. V2's doesn't &mdash; because the heavy loading moved out of the main session entirely. Here's how.</p>
-        </div>
-        <div class="small-text">Token estimates from commit message: &ldquo;Replace 4 context files (738 lines, ~7K tokens) with single compact memory-instructions.md (~40 lines, ~500 tokens)&rdquo;</div>
-    </div>
-
-    <!-- beat 5: mechanism -->
-    <div class="slide">
-        <div class="section-label">Architecture</div>
-        <h2 class="medium-headline">A sub-agent absorbs the load so the session stays lean</h2>
-        <p class="subhead">Memory reads go to a sub-agent. It absorbs the token cost of loading large files and returns only the matches. The main session never sees the bulk.</p>
-        <div class="flow-steps">
-            <div class="flow-step">
-                <div class="flow-number">W</div>
-                <div class="flow-content">
-                    <h4>Writes: Main Agent, Append-Only</h4>
-                    <p><code>cat &gt;&gt; memory-store.yaml</code> &mdash; read the last few lines for the next ID, append the entry. Never load the full file. Cost: <strong class="accent">~100 tokens</strong></p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">R</div>
-                <div class="flow-content">
-                    <h4>Reads: Delegated to Sub-Agent</h4>
-                    <p>The <code>memory-retrieval</code> agent loads the full store in its own isolated context, searches, and returns only 2&ndash;3 matching entries. Cost in the main session: <strong class="accent">~200 tokens</strong></p>
-                </div>
-            </div>
-            <div class="flow-arrow"></div>
-            <div class="flow-step">
-                <div class="flow-number">S</div>
-                <div class="flow-content">
-                    <h4>Work Status: Direct Read</h4>
-                    <p><code>work-log.yaml</code> is a small file (~500 tokens). Safe to read directly &mdash; no delegation needed.</p>
-                </div>
-            </div>
-        </div>
-        <div class="callout">
-            <p>The sub-agent is a &ldquo;context sink&rdquo; &mdash; it absorbs 10,000+ tokens of memory data, but only ~200 tokens flow back. When it finishes, its context is cleared. That's why cost stays flat.</p>
-        </div>
-    </div>
-
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">Deep Dive</div>
-        <h2 class="medium-headline">Memory as an index, not storage</h2>
-        <p class="subhead">To scale past a flat YAML file, V2's design replaces it with three layers &mdash; each loaded only when needed, each cheaper than the last.</p>
-        <div class="layer-stack">
-            <div class="layer-item">
-                <div class="layer-badge l0">L0</div>
-                <div class="layer-body l0">
-                    <h4>MEMORY.md &mdash; The Index (always loaded)</h4>
-                    <p>~200 lines max, hard-capped. One-liner summaries with pointers to topic files. The only file the retrieval agent always reads.</p>
-                </div>
-            </div>
-            <div class="layer-item">
-                <div class="layer-badge l1">L1</div>
-                <div class="layer-body l1">
-                    <h4>topics/*.md &mdash; Topic Files (on-demand)</h4>
-                    <p>5&ndash;50 entries per theme, free-form markdown. Opened only when a search hits the relevant index line. The unit of consolidation.</p>
-                </div>
-            </div>
-            <div class="layer-item">
-                <div class="layer-badge l2">L2</div>
-                <div class="layer-body l2">
-                    <h4>Session Transcripts &mdash; Layer 2 (never loaded)</h4>
-                    <p>Amplifier's existing session logs. Searched via session-analyst delegation only when Layers 0 and 1 don't have the answer.</p>
-                </div>
-            </div>
-        </div>
-        <div class="callout">
-            <p>The 200-line index cap is enforced by consolidation: grow past it and pruning must run. A vector-search seam activates only when smoke tests show retrieval misses at ~50+ topic files &mdash; not before.</p>
-        </div>
-    </div>
-
-    <!-- beat 7: mechanism -->
-    <div class="slide">
-        <div class="section-label">V2 Design Spec</div>
-        <h2 class="medium-headline">Beyond compression, memory maintains itself</h2>
-        <p class="subhead">Loading less is only step one. The V2 design spec (April 2026, 342 lines) keeps the store clean so it never re-bloats the context it just trimmed.</p>
-        <div class="card card-accent" style="max-width: min(760px, 95vw); margin-top: var(--space-md);">
-            <h3>Self-maintaining by design</h3>
-            <ul class="feature-list" style="margin-top: var(--space-sm);">
-                <li><strong>autoDream</strong> &mdash; a background agent merges, dedups, and prunes stale entries, resolving contradictions</li>
-                <li><strong>Derivability rule</strong> &mdash; &ldquo;if you can grep for it, don't remember it.&rdquo; Store only non-derivable knowledge</li>
-                <li><strong>Temporal tags</strong> &mdash; <code>[temporal:DATE]</code> and <code>[persistent]</code> make staleness a first-class concept</li>
-                <li><strong>Contradiction check</strong> &mdash; new memories are checked against the index; conflicts surface to the user before storing</li>
-                <li><strong>Git safety net</strong> &mdash; pre/post-consolidation commits; if autoDream corrupts data, <code>git revert</code> restores it</li>
-            </ul>
-        </div>
-        <div class="small-text">From docs/specs/2026-04-07-memory-v2-design.md (342 lines)</div>
-    </div>
-
-    <!-- beat 8: takeaway -->
     <div class="slide center">
-        <div class="section-label">The Principle</div>
-        <h2 class="headline">Less context,<br>more memory</h2>
-        <p class="subhead">The counter-intuitive lesson: a memory system got radically better by loading less. State the minimum contract, delegate the heavy lifting, and let the model do what it already knows how to do.</p>
-        <div class="callout" style="text-align:left;">
-            <p>The best context is the minimum context that produces correct behavior &mdash; everything else is overhead you pay for on every single session.</p>
-        </div>
-        <div class="small-text">amplifier-collection-dev-memory &middot; behavior v2.0.0 &middot; Sam Schillace</div>
+        <!-- beat 1: frame -->
+        <div class="section-label">The dev-memory bundle</div>
+        <h1>To remember across sessions, an&nbsp;AI first has to be taught how &mdash; and that lesson isn't free</h1>
+        <p class="body">dev-memory gives an AI persistent memory across sessions by teaching it how to use that memory up front. But those teaching instructions are context, and context has a price.</p>
+        <p class="handoff">So how big was that price in V1?</p>
     </div>
 
-    <!-- Sources & Methodology (audit-trail slide, not a beat) -->
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">V1 startup tax</div>
+            <h2>V1 auto-loaded 4 instruction files into every session before you said hello</h2>
+            <p class="body">738 lines &mdash; the author's ~7K tokens &mdash; loaded at startup. auto-context.md states it is "included in every session," so that cost was paid before the first user turn.</p>
+            <p class="handoff">And that was just the cost to <em>begin</em>.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-num accent2">4</div>
+                    <div class="stat-label">context files auto-loaded</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num accent2">738</div>
+                    <div class="stat-label">lines (160 + 89 + 310 + 179)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num danger">~7K</div>
+                    <div class="stat-label">tokens at startup (author's figure)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">0</div>
+                    <div class="stat-label">user turns taken yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 3: tension -->
+        <div class="section-label">The complication</div>
+        <h1>The instructions cost more than most conversations &mdash; and threatened to grow with memory</h1>
+        <p class="body">A fixed ~7K-token bill paid up front is bad enough. Worse, V1's read guidance implied a cost that grew as the memory store grew, so the model didn't just start expensive &mdash; it threatened to get worse at scale.</p>
+        <p class="handoff">V2's fix came in two moves.</p>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Move 1 &mdash; compress</div>
+            <h2>V2 replaced all four files with a single 37-line contract that just states the rules</h2>
+            <p class="body">One file, memory-instructions.md, now loads at startup instead of four &mdash; the author's ~500 tokens. It states the rules and nothing more.</p>
+            <p class="handoff">But shrinking the contract alone doesn't fix growth.</p>
+        </div>
+        <div class="col-aside">
+            <div class="flow">
+                <div class="box before">
+                    <div class="big danger">4 files</div>
+                    <div class="cap">738 lines &middot; ~7K tokens (V1)</div>
+                </div>
+                <div class="arrow">&rarr;</div>
+                <div class="box after">
+                    <div class="big accent">1 file</div>
+                    <div class="cap">37 lines &middot; ~500 tokens (V2)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Move 2 &mdash; delegate</div>
+            <h2>Reads never touch the memory store directly &mdash; they delegate to a sub-agent</h2>
+            <p class="body">The contract forbids reading memory-store.yaml directly. Instead it delegates to the memory-retrieval sub-agent, which absorbs the full file in its own context and returns only matches (~200 tokens).</p>
+            <p class="handoff">That's a context sink &mdash; and it changes the math.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="steps">
+                <li>
+                    <span class="n">1</span>
+                    <span class="txt"><strong>Main session</strong><span>Never uses read_file on memory-store.yaml</span></span>
+                </li>
+                <li>
+                    <span class="n">2</span>
+                    <span class="txt"><strong>Delegate</strong><span>Calls the memory-retrieval sub-agent</span></span>
+                </li>
+                <li>
+                    <span class="n">3</span>
+                    <span class="txt"><strong>Sub-agent absorbs</strong><span>Loads the full memory file in its own context</span></span>
+                </li>
+                <li>
+                    <span class="n">4</span>
+                    <span class="txt"><strong>Returns matches only</strong><span>~200 tokens back to the main session</span></span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 6: turn -->
+        <div class="section-label">The pivot</div>
+        <h1>Because the main session only ever loads the fixed contract, adding memories no longer adds startup cost</h1>
+        <p class="body">The growing memory-store.yaml is only ever read inside the sub-agent's separate context. The main session sees just the 37-line contract &mdash; so the growth problem isn't made smaller, it's designed away.</p>
+        <p class="handoff">Which lands the payoff.</p>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The payoff</div>
+            <h2>Startup dropped ~93% &mdash; and stays constant even at 1000+ memories</h2>
+            <p class="body">~7K &rarr; ~500 tokens is a ~93% cut. And because the fixed contract is all the main session loads, that cost holds constant as memory scales. Less context loaded, more memory available.</p>
+            <p class="handoff">A real, shipped change &mdash; here's what carried the win.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="bignum accent">93%</div>
+                    <div class="stat-label">startup cost cut (~7K &rarr; ~500 tokens)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">1000+</div>
+                    <div class="stat-label">memories at constant startup cost</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 8: takeaway -->
+        <div class="col-main">
+            <div class="section-label">What to keep</div>
+            <h2>Shipped as v2.0.0 &mdash; the win came from <em>where</em> cost is paid, not from doing less</h2>
+            <p class="body">Same 3 operations as before: delegate reads, append writes, direct work-log reads. Nothing was removed &mdash; the growing cost was just moved into a sub-agent's context. That's the generalizable pattern.</p>
+            <p class="handoff">Delegate growth to a sub-agent; keep the main session's cost fixed.</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># commit 69c3629 (HEAD of master, 2026-04-13)</span>
+<span class="code-comment"># behaviors/dev-memory.yaml</span>
+<span class="code-key">version</span>: 1.0.0  <span class="code-comment">&rarr;</span>  <span class="code-key">version</span>: 2.0.0
+
+<span class="code-comment"># context.include: 4 files &rarr; 1 file</span>
+- dev-memory:context/memory-instructions.md
+
+<span class="code-comment"># Same 3 operations:</span>
+<span class="code-comment">#   delegate reads &middot; append writes</span>
+<span class="code-comment">#   direct work-log reads</span></div>
+        </div>
+    </div>
+
+    <!-- Sources & Methodology (no beat comment) -->
     <div class="slide">
-        <div class="section-label">Sources &amp; Methodology</div>
-        <h2 class="medium-headline">How we verified this</h2>
-        <div class="sources-content">
-            <p><strong>Repository:</strong> <code>amplifier-collection-dev-memory</code> (private, ramparte/amplifier-collection-dev-memory)</p>
-
-            <p><strong>Compression claim verification:</strong></p>
+        <div class="section-label">Sources</div>
+        <h2>Sources &amp; Research Methodology</h2>
+        <div class="sources">
+            <p><span class="status-badge">Shipped &middot; v2.0.0</span></p>
+            <p><strong>Source repo:</strong> ramparte/amplifier-collection-dev-memory (confirmed via <code>git remote -v</code>). HEAD commit <code>69c3629</code> "feat: compact context from ~7K to ~500 tokens (v2.0)", 2026-04-13.</p>
+            <p><strong>Research performed:</strong></p>
             <ul>
-                <li>Commit <code>69c3629</code> message: "Replace 4 context files (738 lines, ~7K tokens) with single compact memory-instructions.md (~40 lines, ~500 tokens)"</li>
-                <li><code>git diff 69c3629^..69c3629 -- behaviors/dev-memory.yaml</code> confirms V1 loaded 4 files, V2 loads 1</li>
-                <li>V1 total: 738 lines across 4 context files (verified via <code>wc -l</code>)</li>
-                <li>V2 total: 37 lines in memory-instructions.md (verified via <code>wc -l</code>)</li>
-                <li>Behavior YAML description: "compact context (~500 tokens vs ~7K in v1)"</li>
-                <li>Math: (7000 &minus; 500) / 7000 = 92.9%, rounded to <strong>93%</strong></li>
+                <li>V1 file list: <code>git show 0a9529d:behaviors/dev-memory.yaml</code> &mdash; 4 context.include files</li>
+                <li>V1 line counts: <code>git show 0a9529d:context/$f | wc -l</code> &mdash; 160 + 89 + 310 + 179 = 738 lines</li>
+                <li>V2 contract: <code>wc -l context/memory-instructions.md</code> &mdash; 37 lines (single file)</li>
+                <li>Delegation &amp; ops: <code>cat context/memory-instructions.md</code>; <code>cat agents/memory-retrieval.md</code></li>
+                <li>Constant-cost claim: <code>grep -rin constant bundle.md</code> &mdash; "Constant token usage even with 1000+ memories"</li>
+                <li>Version bump: <code>git show 69c3629 -- behaviors/dev-memory.yaml</code> &mdash; 1.0.0 &rarr; 2.0.0</li>
+                <li>Contributors: <code>git log --format='%an &lt;%ae&gt;' | sort | uniq -c</code></li>
             </ul>
-
-            <p><strong>Git history (last 60 days, non-merge):</strong></p>
-            <ul>
-                <li><code>69c3629</code> &mdash; feat: compact context from ~7K to ~500 tokens (v2.0)</li>
-                <li><code>0a9529d</code> &mdash; docs: add 8 concrete improvements to Memory V2 design spec</li>
-                <li><code>f04ac82</code> &mdash; Add Memory V2 design spec</li>
-            </ul>
-
-            <p><strong>All commits (total):</strong> 4 commits across the full repo history</p>
-
-            <p><strong>Key files examined:</strong></p>
-            <ul>
-                <li><code>behaviors/dev-memory.yaml</code> &mdash; Bundle behavior definition (version 2.0.0)</li>
-                <li><code>context/memory-instructions.md</code> &mdash; V2 compact context (37 lines)</li>
-                <li><code>context/auto-context.md</code>, <code>context/DELEGATION-RULES.md</code>, <code>context/memory-writer-instructions.md</code>, <code>context/memory-system-guide.md</code> &mdash; V1 context files (retained but no longer loaded)</li>
-                <li><code>agents/memory-retrieval.md</code> &mdash; Sub-agent definition (142 lines)</li>
-                <li><code>docs/specs/2026-04-07-memory-v2-design.md</code> &mdash; V2 design specification (342 lines)</li>
-                <li><code>ARCHITECTURE.md</code> &mdash; Token-efficient architecture documentation (290 lines)</li>
-            </ul>
-
-            <p><strong>Primary contributor:</strong> Sam Schillace (all commits authored)</p>
-
-            <p><strong>Methodology:</strong> All metrics derived from <code>git log</code>, <code>git diff</code>, <code>wc -l</code>, and direct file inspection. Token counts are the repository's own estimates from commit messages and behavior YAML descriptions. No external tokenizer was used. The 93% figure is the mathematical result of the repo's stated ~7K &rarr; ~500 token reduction.</p>
+            <p><strong>Gaps / estimates:</strong> The ~7K (V1) and ~500 (V2) token figures are the author's stated estimates from the commit message and behavior description, not independently reproducible token counts; a naive chars/4 estimate gives V1 ~4,300 and V2 ~270 tokens. The ~93% ratio holds under both. The ~200-token per-read figure is stated in the source files, not measured here. The commit rounds the V2 file to "~40 lines"; measured is 37.</p>
+            <p><strong>Primary contributor:</strong> Sam Schillace &mdash; sole author (by name) on all 4 commits, including the v2.0 compression commit 69c3629.</p>
         </div>
     </div>
 
@@ -860,18 +475,48 @@
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
 
-    <!-- More stories link -->
+    <!-- More stories link - REQUIRED -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -880,26 +525,25 @@
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
@@ -907,11 +551,10 @@
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

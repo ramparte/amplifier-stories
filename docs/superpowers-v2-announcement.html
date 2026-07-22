@@ -3,765 +3,542 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Drawing the Ownership Line</title>
     <script>document.documentElement.classList.add('js')</script>
-    <title>Superpowers v2 — Major Methodology Refresh</title>
     <style>
-        :root {
-            --accent: #FF375F;
-            --accent-dim: rgba(255, 55, 95, 0.15);
-            --accent-glow: rgba(255, 55, 95, 0.3);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 32px);
-            --fs-h3: clamp(18px, 3vw, 24px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 1.8vw, 15px);
-            --fs-big-number: clamp(56px, 15vw, 132px);
-
-            /* Spacing scale */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Surfaces */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #a1a1aa;
+            --accent: #6ea8fe;
+            --accent2: #f4a261;
+            --card: #16161d;
+            --border: #26262f;
+        }
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
             padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: flex-start;
             overflow-y: auto;
             overflow-x: hidden;
         }
-
         .slide.active { display: flex; }
 
-        .slide.center {
-            text-align: center;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
-        html:not(.js) body { overflow: auto; }
+        /* No-JS fallback: all slides visible + scrollable */
         html:not(.js) .slide {
             display: flex !important;
             position: relative !important;
             opacity: 1 !important;
+            pointer-events: auto !important;
             visibility: visible !important;
+            transform: none !important;
             width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
         }
 
-        /* Section labels */
-        .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: var(--space-sm);
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+        /* Fit-safe: cap to viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide {
+            transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s ease;
         }
 
-        /* Headlines */
-        .headline {
-            font-size: var(--fs-hero);
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.1;
-            margin-bottom: var(--space-md);
-        }
-
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            margin-bottom: var(--space-md);
-        }
-
-        .subhead {
-            font-size: var(--fs-h3);
-            font-weight: 400;
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(700px, 90vw);
-        }
-
-        .body-text {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            max-width: min(800px, 90vw);
-        }
-
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-        }
-
-        /* Big number */
-        .big-number {
-            font-size: var(--fs-big-number);
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #FFD60A);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: 100px;
-            background: rgba(48, 209, 88, 0.15);
-            color: #30D158;
-            border: 1px solid rgba(48, 209, 88, 0.3);
-            margin-top: var(--space-sm);
-        }
-
-        /* Grids */
-        .grid-2 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-            gap: var(--space-md);
-            width: 100%;
-        }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--space-md);
-            width: 100%;
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-
-        .card-accent {
-            background: var(--accent-dim);
-            border: 1px solid var(--accent-glow);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-
-        .card h3, .card h4 { color: var(--text-primary); }
-        .card p, .card li { color: var(--text-secondary); }
-        .card-accent h3, .card-accent h4 { color: var(--text-primary); }
-        .card-accent p, .card-accent li { color: var(--text-secondary); }
-
-        .card-icon {
-            font-size: clamp(28px, 5vw, 40px);
-            margin-bottom: var(--space-xs);
-        }
-
-        .card-title {
-            font-size: var(--fs-h3);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-
-        .card-body {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .card-body ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .card-body li {
-            padding: var(--space-xs) 0;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            font-size: var(--fs-body);
-        }
-
-        .card-body li:last-child { border-bottom: none; }
-
-        .card-body li::before {
-            content: "\2192 ";
-            color: var(--accent);
-            font-weight: 600;
-        }
-
-        /* Highlight spans */
-        .accent { color: var(--accent); }
-        .green { color: #30D158; }
-        .blue { color: #0A84FF; }
-        .yellow { color: #FFD60A; }
-        .mono {
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            background: var(--surface-2);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-
-        /* Comparison */
-        .comparison {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--space-md);
-            width: 100%;
-        }
-
-        .comparison-before {
-            background: rgba(255, 69, 58, 0.08);
-            border: 1px solid rgba(255, 69, 58, 0.2);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-
-        .comparison-after {
-            background: rgba(48, 209, 88, 0.08);
-            border: 1px solid rgba(48, 209, 88, 0.2);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-
-        .comparison-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: var(--space-sm);
-        }
-
-        .comparison-before .comparison-label { color: #FF453A; }
-        .comparison-after .comparison-label { color: #30D158; }
-
-        .comparison p, .comparison li {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        .comparison ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .comparison li {
-            padding: var(--space-xs) 0;
-        }
-
-        /* Architecture diagram */
-        .arch-flow {
-            display: flex;
+        .center {
+            text-align: center;
             align-items: center;
-            gap: var(--space-sm);
-            flex-wrap: wrap;
             justify-content: center;
         }
 
-        .arch-box {
-            background: var(--surface-2);
-            border: 1px solid var(--border-visible);
-            border-radius: var(--radius-sm);
-            padding: var(--space-sm) var(--space-md);
-            text-align: center;
-            font-size: var(--fs-body);
-            font-weight: 500;
-            min-width: min(160px, 40vw);
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: 24px; max-width: 30ch; }
+
+        .section-label {
+            font-size: clamp(11px, 1.5vw, 14px);
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--accent);
+            font-weight: 650;
+            margin-bottom: 20px;
+        }
+        .body { margin-top: 22px; color: var(--muted); max-width: 40ch; }
+        .handoff { margin-top: 28px; color: var(--accent2); font-style: italic; max-width: 40ch; }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(14px, 2vw, 22px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(18px, 2.6vw, 28px);
+        }
+        .stat-value {
+            font-size: clamp(30px, 5vw, 52px);
+            font-weight: 750;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            color: var(--fg);
+        }
+        .stat-value.accent { color: var(--accent); }
+        .stat-value.warn { color: var(--accent2); }
+        .stat-label {
+            margin-top: 12px;
+            font-size: clamp(12px, 1.6vw, 15px);
+            color: var(--muted);
+            line-height: 1.35;
         }
 
-        .arch-box.accent-box {
-            background: var(--accent-dim);
-            border-color: var(--accent-glow);
+        /* Steps / rules list */
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(12px, 1.8vw, 18px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(14px, 2vw, 20px);
+            color: var(--fg);
+        }
+        .steps li strong { color: var(--fg); display: block; margin-bottom: 4px; }
+        .steps li span { color: var(--muted); }
+
+        .drift-bar { display: flex; flex-direction: column; gap: 18px; }
+        .drift-row {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(16px, 2.4vw, 24px);
+        }
+        .drift-row .tag { font-size: clamp(11px, 1.5vw, 13px); text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); }
+        .drift-row .ver { font-size: clamp(26px, 4.5vw, 44px); font-weight: 750; letter-spacing: -0.02em; margin-top: 6px; }
+        .drift-row.pinned { border-left: 3px solid var(--accent2); }
+        .drift-row.pinned .ver { color: var(--accent2); }
+        .drift-row.live { border-left: 3px solid var(--accent); }
+        .drift-row.live .ver { color: var(--accent); }
+        .drift-row .date { font-size: clamp(12px, 1.6vw, 14px); color: var(--muted); margin-top: 4px; }
+
+        /* Files list for enforcement */
+        .file-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+        .file-list li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.5vw, 15px);
+            color: var(--fg);
+        }
+
+        /* Sources */
+        .small-text { font-size: clamp(13px, 1.6vw, 15px); }
+        .small-text ul { margin: 10px 0 10px 20px; }
+        .small-text li { margin-bottom: 8px; }
+        .small-text code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 1px 6px;
+            font-size: 0.9em;
             color: var(--accent);
         }
-
-        .arch-arrow {
-            font-size: var(--fs-h3);
-            color: var(--text-tertiary);
-        }
-
-        /* Links */
-        a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-        a:hover { text-decoration: underline; }
-
-        /* Compact list for dense content */
-        .compact-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .compact-list li {
-            padding: var(--space-xs) 0;
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .compact-list li strong {
-            color: var(--text-primary);
+        .badge {
+            display: inline-block;
+            background: rgba(244,162,97,0.15);
+            border: 1px solid var(--accent2);
+            color: var(--accent2);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            font-weight: 650;
+            letter-spacing: 0.04em;
+            margin-top: 22px;
         }
 
         /* Navigation */
         .nav {
             position: fixed;
-            bottom: 28px;
+            bottom: 26px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 8px;
+            gap: 10px;
             z-index: 100;
         }
-
         .nav-dot {
-            width: 8px;
-            height: 8px;
+            width: 8px; height: 8px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.25);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background 0.3s, transform 0.3s;
         }
-
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
-
+        .nav-dot.active { background: var(--accent); transform: scale(1.4); }
         .slide-counter {
             position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: rgba(255,255,255,0.3);
+            bottom: 24px;
+            right: 28px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: rgba(255,255,255,0.4);
             z-index: 100;
         }
 
         .more-stories {
             position: fixed;
-            bottom: 28px;
-            left: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
             color: rgba(255,255,255,0.3);
             text-decoration: none;
             z-index: 100;
         }
-        .more-stories:hover { color: var(--accent); text-decoration: none; }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
 
-        /* Landscape mobile */
         @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
         }
-
-        /* Touch targets */
-        @media (hover: none) {
-            .nav-dot {
-                min-width: 16px;
-                min-height: 16px;
-            }
-        }
-
-        /* Reduced motion */
         @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
     </style>
 </head>
 <body>
-
 <!--
-  ============================================================
-  NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
-  ============================================================
-
-  ABT:
-    AND the Amplifier Superpowers bundle wrapped Jesse Vincent's (obra) methodology
-        into Amplifier-native modes, agents, and recipes;
-    BUT it maintained 7 copied skill files that drifted from upstream, and duplicated
-        the same enforcement text across every mode;
-    THEREFORE v2 draws a clean ownership line -- pull methodology LIVE from
-        obra/superpowers (7 copies down to 2 Amplifier-specific skills) and centralize
-        enforcement -- so upstream improvements arrive automatically while Amplifier
-        owns only integration and enforcement.
-
-  PAYOFF (named up front):
-    7 bundle-owned skill copies became 2 Amplifier-specific ones. Methodology now
-    flows live from upstream, so obra's improvements land automatically -- Amplifier
-    owns the integration and enforcement layer, nothing more.
-
-  BEATS (proof-first; payoff lands at beat 4 of 9, before the midpoint of 5):
-    1. proof     - v2 shipped: methodology pulled live from upstream, 7 copies -> 2.
-                   advances: grounds the THEREFORE with the shipped result.
-    2. setup     - what Superpowers IS: obra's methodology, made Amplifier-native.
-                   advances: introduces obra/Jesse before the argument leans on them.
-    3. tension   - the old way: 7 copied skills drifted; enforcement text duplicated.
-                   advances: establishes the BUT.
-    4. payoff    - the ownership line: live upstream + Amplifier-owned enforcement.
-                   advances: lands the THEREFORE before the midpoint.
-    5. mechanism - anti-rationalization in one shared file, @-mentioned by every mode (one claim).
-                   advances: HOW enforcement stays consistent everywhere.
-    6. mechanism - all six modes carry the latest enforcement and completion discipline (one claim).
-                   advances: HOW methodology reaches day-to-day work.
-    7. mechanism - three agents gained status protocols, architectural review, distrust (one claim).
-                   advances: HOW quality is checked, not assumed.
-    8. mechanism - recipes hardened: retries, real sub-recipe composition, tuned timeouts (one claim).
-                   advances: HOW the pipeline became reliable.
-    9. takeaway  - update, restart, you're on v2 -- and the platform gains ship for everyone.
-                   advances: what the audience does next.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end.
-    Slides = 9 beats + 1 = 10.
+SPINE
+ABT: AND Amplifier's Superpowers bundle wraps Jesse Vincent's proven development methodology into Amplifier-native agents; BUT v1 pinned a frozen copy of upstream that has since drifted three major versions behind, while enforcement text was scattered across separate files instead of centralized; THEREFORE v2 draws a clean ownership line: pull methodology live from upstream and have Amplifier own only integration and enforcement.
+Payoff: The ownership line -- a thin Amplifier core that owns integration and enforcement while methodology flows live from obra/superpowers.
+Beats:
+  1. frame     -- Superpowers is Jesse Vincent's disciplined-development methodology; Amplifier wrapped it into native agents so the discipline travels with the platform.  advances: Orients the audience on what Superpowers is and why wrapping it matters -- establishes the AND.
+  2. proof     -- v1 shipped: imports obra/superpowers as a git submodule and exposes 9 thin wrapper agents, each referencing one distinct upstream skill.  advances: Concrete evidence the wrapping is real and shipped -- grounds the AND with committed facts.
+  3. tension   -- That submodule is frozen at v3.6.2 from December while upstream raced ahead to v6.1.1 -- three major versions of drift.  advances: Introduces the complication -- establishes the first half of the BUT.
+  4. tension   -- Enforcement wasn't centralized either: the TDD 'Iron Law' text is repeated across 4 separate markdown files.  advances: Deepens the BUT -- scattered enforcement is the second structural weakness v2 must fix.
+  5. mechanism -- The fix is a clean split: keep only knowledge as skills, reclassify every multi-step workflow as an Amplifier recipe.  advances: Shows HOW v2 resolves drift-and-duplication -- the single mechanism bridging BUT to THEREFORE.
+  6. turn      -- In the v2 staging design, that split collapses to a thin bundle: 3 copied knowledge-skills and 7 recipes over a behavior and one expert agent.  advances: The pivot from problem to resolution -- the ownership line made concrete in the staging redesign.
+  7. payoff    -- The ownership line: Amplifier owns integration and enforcement, and methodology flows live from upstream instead of a frozen pin.  advances: Lands the THEREFORE -- the climax the whole deck drives toward.
+  8. takeaway  -- v2 is a staged design, not yet shipped -- the direction is set, so borrow the wisdom and own only the integration.  advances: Honestly states status and generalizes the pattern the audience keeps.
 -->
 
-<!-- beat 1: proof -->
-<div class="slide active center">
-    <div class="section-label">Amplifier Superpowers v2</div>
-    <h1 class="medium-headline">Methodology now flows live from upstream &mdash;<br>7 skill copies became 2.</h1>
-    <div class="comparison" style="max-width: min(760px, 100%); margin-top: var(--space-md);">
-        <div class="comparison-before">
-            <div class="comparison-label">Before v2</div>
-            <div class="big-number" style="background: none; -webkit-text-fill-color: #FF453A; color: #FF453A;">7</div>
-            <p>bundle-owned skill copies, drifting from upstream</p>
-        </div>
-        <div class="comparison-after">
-            <div class="comparison-label">After v2</div>
-            <div class="big-number">2</div>
-            <p>Amplifier-specific skills; the rest pulled live from obra</p>
-        </div>
+    <!-- Title cover (before beat 1) -->
+    <div class="slide title-slide active center">
+        <h1>Drawing the Ownership Line</h1>
+        <p class="subtitle">Superpowers v2: own integration, borrow methodology</p>
     </div>
-    <div class="status-badge">Active &mdash; Live on main &middot; PR #24</div>
-    <div class="small-text" style="margin-top: var(--space-md);">March 2026</div>
-</div>
 
-<!-- beat 2: setup -->
-<div class="slide">
-    <div class="section-label">What Superpowers Is</div>
-    <h2 class="medium-headline">obra&rsquo;s methodology, made Amplifier-native.</h2>
-    <p class="body-text" style="margin-bottom: var(--space-lg);">
-        Superpowers is a bundle that takes Jesse Vincent&rsquo;s <a href="https://github.com/obra/superpowers">obra/superpowers</a> methodology &mdash; anti-rationalization, TDD, debugging, brainstorming &mdash; and wraps it in the layers Amplifier actually runs: skills, modes, agents, and recipes.
-    </p>
-    <div class="arch-flow" style="justify-content: flex-start; margin-bottom: var(--space-lg);">
-        <div class="arch-box accent-box">obra methodology</div>
-        <span class="arch-arrow">&rarr;</span>
-        <div class="arch-box">Skills</div>
-        <span class="arch-arrow">&rarr;</span>
-        <div class="arch-box">Modes</div>
-        <span class="arch-arrow">&rarr;</span>
-        <div class="arch-box">Agents</div>
-        <span class="arch-arrow">&rarr;</span>
-        <div class="arch-box">Recipes</div>
-    </div>
-    <p class="body-text">
-        v2 touched every layer at once. But the change that matters most is not any single layer &mdash; it&rsquo;s where the methodology now comes from.
-    </p>
-</div>
-
-<!-- beat 3: tension -->
-<div class="slide">
-    <div class="section-label">The Old Way</div>
-    <h2 class="medium-headline">Copied skills drifted, and enforcement was duplicated everywhere.</h2>
-    <div class="comparison" style="margin-top: var(--space-md);">
-        <div class="comparison-before">
-            <div class="comparison-label">7 bundle-owned skill copies</div>
-            <ul>
-                <li>Methodology copied into our bundle repo</li>
-                <li>Drift from upstream as obra kept iterating</li>
-                <li>Manual sync needed for every update</li>
-                <li>Unclear which version we were running</li>
-            </ul>
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Frame</div>
+            <h2>Amplifier wrapped a proven methodology so its discipline travels with the platform</h2>
+            <p class="body">Superpowers is Jesse Vincent's (obra) disciplined-development methodology: TDD's "Iron Law: NO CODE WITHOUT FAILING TEST FIRST," systematic debugging, plan-first work.</p>
+            <p class="handoff">Amplifier's bundle turned that methodology into Amplifier-native agents. Did the wrapping actually ship?</p>
         </div>
-        <div class="comparison-before">
-            <div class="comparison-label">Anti-rationalization, duplicated</div>
-            <ul>
-                <li>Spirit-vs-letter / YAGNI text pasted into every mode</li>
-                <li>Updating meant editing each mode individually</li>
-                <li>Drift between modes was inevitable</li>
-                <li>Enforcement quietly diverged over time</li>
+        <div class="col-aside">
+            <ul class="steps">
+                <li><strong>Upstream author</strong><span>Jesse Vincent (@obra) — author of obra/superpowers</span></li>
+                <li><strong>The methodology</strong><span>TDD, systematic debugging, plan-first discipline</span></li>
+                <li><strong>The wrapper</strong><span>ramparte/amplifier-bundle-superpowers (Adapter: Ramparte)</span></li>
             </ul>
         </div>
     </div>
-    <p class="body-text" style="margin-top: var(--space-lg);">
-        Two kinds of duplication, one root cause: the bundle owned content it should only have been <em>referencing</em>.
-    </p>
-</div>
 
-<!-- beat 4: payoff -->
-<div class="slide">
-    <div class="section-label">The Reframe</div>
-    <h2 class="medium-headline">One ownership line makes every upstream improvement arrive automatically.</h2>
-    <p class="body-text" style="margin-bottom: var(--space-lg);">
-        As Jesse iterates on anti-rationalization, TDD, debugging, and the rest, those improvements now flow to us with no manual sync. We maintain just 2 Amplifier-specific skills &mdash; listed first, so we can override when we need platform-specific behavior.
-    </p>
-    <div class="arch-flow" style="justify-content: flex-start; margin-bottom: var(--space-lg);">
-        <div class="arch-box accent-box">obra owns<br>methodology</div>
-        <span class="arch-arrow">&rarr;</span>
-        <div class="arch-box">referenced live<br>at runtime</div>
-        <span class="arch-arrow">&rarr;</span>
-        <div class="arch-box accent-box">Amplifier owns<br>integration &amp; enforcement</div>
-    </div>
-    <div class="card-accent" style="max-width: min(760px, 100%);">
-        <div class="card-title">The right architecture</div>
-        <div class="card-body">
-            <strong>We own the platform integration and enforcement mechanisms; Jesse owns the methodology content.</strong> Our bundle references his skills at runtime and overrides only where Amplifier needs something specific. Clear boundary, automatic updates.
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">Proof — It Shipped</div>
+            <h2>v1 shipped: a git submodule import plus 9 thin wrapper agents</h2>
+            <p class="body">The primary repo imports obra/superpowers via a git submodule (url = github.com/obra/superpowers.git) and exposes 9 wrapper agents. Each references exactly one distinct upstream skill — 9 skills in all.</p>
+            <p class="handoff">The import is real and committed. But which version did it freeze?</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-value accent">9</div>
+                    <div class="stat-label">wrapper agents, one per upstream skill</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">9</div>
+                    <div class="stat-label">distinct upstream skills referenced</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">31</div>
+                    <div class="stat-label">commits; default branch master</div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- beat 5: mechanism -->
-<div class="slide">
-    <div class="section-label">Consistent Enforcement</div>
-    <h2 class="medium-headline">Anti-rationalization now lives in one file, @-mentioned by every mode.</h2>
-    <p class="body-text" style="margin-bottom: var(--space-lg);">
-        Cross-mode enforcement &mdash; spirit-vs-letter, YAGNI, false-completion detection, scope-creep prevention &mdash; moved into a single shared context file. A new ecosystem capability lets mode bodies resolve <span class="mono">@</span>-mentions, so that one file is always in attention when a mode is active.
-    </p>
-    <div class="comparison">
-        <div class="comparison-before">
-            <div class="comparison-label">Before</div>
-            <ul>
-                <li>Enforcement text duplicated across modes</li>
-                <li>Every update meant editing each mode</li>
+    <div class="slide split">
+        <!-- beat 3: tension -->
+        <div class="col-main">
+            <div class="section-label">The Tension — Drift</div>
+            <h2>The submodule is frozen at v3.6.2 while upstream raced to v6.1.1</h2>
+            <p class="body">v1 pinned obra/superpowers to commit 154d664 = tag v3.6.2, dated 2025-12-03. Upstream's latest tag is v6.1.1, dated 2026-07-02 — three major versions of drift.</p>
+            <p class="handoff">That's the first structural weakness. It isn't the only one.</p>
+        </div>
+        <div class="col-aside">
+            <div class="drift-bar">
+                <div class="drift-row pinned">
+                    <div class="tag">Pinned in v1</div>
+                    <div class="ver">v3.6.2</div>
+                    <div class="date">2025-12-03</div>
+                </div>
+                <div class="drift-row live">
+                    <div class="tag">Upstream latest</div>
+                    <div class="ver">v6.1.1</div>
+                    <div class="date">2026-07-02</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 4: tension -->
+        <div class="col-main">
+            <div class="section-label">The Tension — Scatter</div>
+            <h2>Enforcement wasn't centralized: the "Iron Law" text lives in 4 separate files</h2>
+            <p class="body">The TDD "Iron Law: NO CODE WITHOUT FAILING TEST FIRST" text is repeated across 4 markdown files rather than centralized — duplication the refresh targets.</p>
+            <p class="handoff">Drift plus scatter. So what's the fix that resolves both?</p>
+        </div>
+        <div class="col-aside">
+            <ul class="file-list">
+                <li>context/philosophy-bridge.md</li>
+                <li>context/workflow-integration.md</li>
+                <li>examples/tdd-enforcement.md</li>
+                <li>docs/plans/2025-12-08-superpowers-integration.md</li>
             </ul>
         </div>
-        <div class="comparison-after">
-            <div class="comparison-label">After</div>
-            <ul>
-                <li>One shared file, <span class="mono">@</span>-mentioned from every mode body</li>
-                <li>One place to update &mdash; consistent enforcement everywhere</li>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Mechanism</div>
+            <h2>The fix is one clean split: knowledge stays a skill, workflows become recipes</h2>
+            <p class="body">The v2 staging analysis examined 14 upstream skills. It keeps only the 3 knowledge/reference ones as skills and maps 6 multi-step workflows to Amplifier recipes.</p>
+            <p class="handoff">Apply that split and the whole bundle collapses to something thin.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-value">14</div>
+                    <div class="stat-label">upstream skills analyzed in v2 staging</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value accent">3</div>
+                    <div class="stat-label">kept as knowledge "True Skills"</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value warn">6</div>
+                    <div class="stat-label">workflows mapped to recipes</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 6: turn -->
+        <div class="col-main">
+            <div class="section-label">The Turn</div>
+            <h2>The split collapses to a thin bundle: 3 skills, 7 recipes, one expert agent</h2>
+            <p class="body">The v2 staging area (Inactive/superpowers-2) keeps just 3 copied knowledge-skills — test-driven-development, systematic-debugging, verification-before-completion — plus 7 recipes over a behavior and one superpowers-expert agent.</p>
+            <p class="handoff">That thin shape is the ownership line made concrete.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-value accent">3</div>
+                    <div class="stat-label">copied knowledge-skills retained</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">7</div>
+                    <div class="stat-label">recipes for multi-step workflows</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">1</div>
+                    <div class="stat-label">expert agent over one behavior</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 7: payoff -->
+        <div class="section-label">The Payoff</div>
+        <h1>Amplifier owns integration and enforcement — methodology flows live from upstream</h1>
+        <p class="body" style="max-width: 46ch; margin-left: auto; margin-right: auto;">The README states the design intent: a single source of truth in obra/superpowers, with <code>git submodule update --remote</code> so improvements flow through automatically — no frozen pin to chase.</p>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 8: takeaway -->
+        <div class="col-main">
+            <div class="section-label">The Takeaway</div>
+            <h2>The direction is set: borrow the wisdom, own only the integration</h2>
+            <p class="body">v2 is a staged design, not yet shipped on the primary repo's master branch. But the pattern generalizes: pull methodology live from its source, and keep your own layer thin — integration and enforcement.</p>
+            <p class="handoff">Own the seam, not the whole library.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="steps">
+                <li><strong>Borrow the methodology</strong><span>Pull it live from its upstream source of truth</span></li>
+                <li><strong>Own the integration</strong><span>A thin Amplifier core over a behavior + expert agent</span></li>
+                <li><strong>Centralize enforcement</strong><span>One place, not scattered across files</span></li>
             </ul>
+            <span class="badge">Status: v2 staging — not yet shipped</span>
         </div>
     </div>
-</div>
 
-<!-- beat 6: mechanism -->
-<div class="slide">
-    <div class="section-label">Modes</div>
-    <h2 class="medium-headline">All six modes carry the latest enforcement and completion discipline.</h2>
-    <p class="body-text" style="margin-bottom: var(--space-lg);">
-        Every mode was enriched with current thinking on escalation signals and knowing when work is actually done. Three that show the flavor:
-    </p>
-    <div class="grid-3">
-        <div class="card">
-            <div class="card-icon">&#128027;</div>
-            <div class="card-title">Debug</div>
-            <div class="card-body">&ldquo;3+ fixes &rarr; question the architecture&rdquo; escalation, plus human-partner signal recognition.</div>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#9889;</div>
-            <div class="card-title">Execute-plan</div>
-            <div class="card-body">A structured status protocol: DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED &mdash; no free-form guesswork.</div>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#128221;</div>
-            <div class="card-title">Write-plan</div>
-            <div class="card-body">Plan-size guidance: more than 15 tasks &rarr; split into phases. Brainstorm, Verify, and tool-based mode activation rounded out the six.</div>
+    <!-- Sources & Methodology -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="small-text" style="opacity: 0.85; line-height: 1.6; max-width: 70ch;">
+            <p><strong>Data as of:</strong> July 21, 2026</p>
+            <p><strong>Feature status:</strong> v1 SHIPPED on ramparte/amplifier-bundle-superpowers (master); v2 STAGING / not yet shipped (Inactive/superpowers-2, not a functioning git repo; no v2 branch/PR/issue).</p>
+            <p><strong>Research performed:</strong></p>
+            <ul>
+                <li>Submodule import: <code>cat ~/dev/ANext/amplifier-bundle-superpowers/.gitmodules</code> → url = github.com/obra/superpowers.git</li>
+                <li>Pinned version: <code>git ls-tree HEAD superpowers</code> → 154d664; <code>gh api repos/obra/superpowers/tags</code> → v3.6.2, commit date 2025-12-03T18:14:19Z</li>
+                <li>Upstream drift: <code>gh api repos/obra/superpowers/tags</code> → top tag v6.1.1, commit date 2026-07-02T21:56:55Z</li>
+                <li>Wrapper agents: <code>ls agents/*.md | wc -l</code> → 9; skill refs scoped to <code>agents/</code> → 9 distinct skills</li>
+                <li>Enforcement scatter: <code>grep -rc 'Iron Law\|NO CODE WITHOUT' --include=*.md</code> → 4 files (README.md = 0)</li>
+                <li>v2 staging: <code>ls Inactive/superpowers-2/skills/</code> → 3; <code>ls .../recipes/</code> → 7; <code>cat docs/ANALYSIS_SUMMARY.md</code> → 14 skills, 3 True Skills, 6 recipes</li>
+                <li>Repo history: <code>gh api 'repos/ramparte/amplifier-bundle-superpowers/commits?per_page=100'</code> → 31 commits; default branch master</li>
+            </ul>
+            <p><strong>Gaps:</strong> "Pull methodology live" is a stated design goal (README + v2 bundle design), not an observed running behavior — the submodule remains pinned to v3.6.2. The "7→2" skill figure was not verifiable; grounded counts are 9 skills referenced in v1 and 3 copied skills in v2 staging. v2 commit dates/authors could not be established (staging dir is not a functioning git repo).</p>
+            <p><strong>Contributors:</strong> Jesse Vincent (@obra) — upstream methodology author; Sam Schillace — author of the primary repo's current HEAD commit (073253a); ramparte — owner of the Amplifier integration repo (Adapter: Ramparte).</p>
         </div>
     </div>
-</div>
 
-<!-- beat 7: mechanism -->
-<div class="slide">
-    <div class="section-label">Agents</div>
-    <h2 class="medium-headline">Three agents gained status protocols, architectural review, and built-in distrust.</h2>
-    <p class="body-text" style="margin-bottom: var(--space-lg);">
-        The agents that carry the work now report and review more rigorously.
-    </p>
-    <div class="grid-3">
-        <div class="card">
-            <div class="card-icon">&#128296;</div>
-            <div class="card-title">Implementer</div>
-            <div class="card-body">Structured exit codes (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED) instead of free-form text, plus guidance on when to escalate vs. proceed.</div>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#128269;</div>
-            <div class="card-title">Code Quality Reviewer</div>
-            <div class="card-body">Architecture-level checks, not just line-by-line, with YAGNI enforced at the review layer.</div>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#128737;</div>
-            <div class="card-title">Spec Reviewer</div>
-            <div class="card-body">Strengthened institutional distrust: &ldquo;the implementer finished suspiciously quickly&rdquo; is now built-in skepticism.</div>
-        </div>
-    </div>
-</div>
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
 
-<!-- beat 8: mechanism -->
-<div class="slide">
-    <div class="section-label">Recipes</div>
-    <h2 class="medium-headline">Recipes got retries, real sub-recipe composition, and tuned timeouts.</h2>
-    <p class="body-text" style="margin-bottom: var(--space-lg);">
-        Reliability fixes across the pipeline &mdash; including an ecosystem capability, staged sub-recipe composition with approval gates, that every bundle now gets.
-    </p>
-    <div class="grid-3">
-        <div class="card">
-            <div class="card-icon">&#128257;</div>
-            <div class="card-title">Retry with backoff</div>
-            <div class="card-body">Exponential backoff on all agent steps &mdash; API hiccups no longer kill pipeline runs.</div>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#129513;</div>
-            <div class="card-title">Sub-recipe composition</div>
-            <div class="card-body">The full-development-cycle recipe now properly composes the SDD recipe via staged sub-recipes &mdash; fixing a gap where it used self-review instead of the three-agent pipeline.</div>
-        </div>
-        <div class="card">
-            <div class="card-icon">&#9201;&#65039;</div>
-            <div class="card-title">Timeout tuning</div>
-            <div class="card-body">Plan-writer and load-plan timeouts bumped for large plans &mdash; no more premature timeouts on complex projects.</div>
-        </div>
-    </div>
-</div>
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
-<!-- beat 9: takeaway -->
-<div class="slide center">
-    <div class="section-label">Get Started</div>
-    <h2 class="headline">Update, restart, and you&rsquo;re on v2.</h2>
-    <p class="subhead" style="margin-bottom: var(--space-lg);">
-        Update Amplifier to get the latest bundles, then start or restart your session &mdash; the improvements are active immediately, and the platform gains (@-mentions in modes, staged sub-recipes, bundle source overrides) ship for everyone.
-    </p>
-    <div class="grid-3" style="max-width: min(760px, 100%);">
-        <a href="https://github.com/microsoft/amplifier-bundle-superpowers/pull/24" class="card" style="text-align: center;">
-            <div class="card-body"><strong class="accent">PR #24</strong><br>Full changelog</div>
-        </a>
-        <a href="https://github.com/obra/superpowers" class="card" style="text-align: center;">
-            <div class="card-body"><strong class="accent">obra/superpowers</strong><br>Upstream methodology</div>
-        </a>
-        <a href="https://github.com/microsoft/amplifier-bundle-superpowers" class="card" style="text-align: center;">
-            <div class="card-body"><strong class="accent">Bundle repo</strong><br>Our integration</div>
-        </a>
-    </div>
-</div>
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-<!-- ============ Sources & Methodology ============ -->
-<div class="slide">
-    <div class="section-label">Sources</div>
-    <h2 class="medium-headline">Sources &amp; Links</h2>
-    <div class="body-text" style="line-height: 1.8;">
-        <p><strong>Date:</strong> March 2026</p>
-        <p><strong>Feature status:</strong> Active &mdash; live on main branch</p>
-        <p style="margin-top: var(--space-sm);"><strong>Repositories:</strong></p>
-        <ul class="compact-list" style="margin-top: var(--space-xs); margin-bottom: var(--space-sm);">
-            <li>&bull; Bundle: <a href="https://github.com/microsoft/amplifier-bundle-superpowers">microsoft/amplifier-bundle-superpowers</a></li>
-            <li>&bull; Upstream methodology: <a href="https://github.com/obra/superpowers">obra/superpowers</a></li>
-            <li>&bull; PR: <a href="https://github.com/microsoft/amplifier-bundle-superpowers/pull/24">#24</a></li>
-        </ul>
-        <p style="margin-top: var(--space-sm);"><strong>Contributors:</strong></p>
-        <ul class="compact-list" style="margin-top: var(--space-xs);">
-            <li>&bull; <strong>Brian Krabach</strong> &mdash; v2 integration, enforcement mechanisms, ecosystem improvements</li>
-            <li>&bull; <strong>Jesse Vincent</strong> &mdash; methodology content (<a href="https://github.com/obra/superpowers">obra/superpowers</a>)</li>
-        </ul>
-        <p style="margin-top: var(--space-sm);"><strong>Note:</strong> Skill counts (7 &rarr; 2), mode/agent/recipe changes, and the ownership boundary are drawn from PR #24 and the bundle repository; no performance metrics are claimed.</p>
-    </div>
-</div>
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
 
-<!-- Navigation -->
-<a href="index.html" class="more-stories">&#x2190; More Amplifier Stories</a>
-<div class="nav" id="nav"></div>
-<div class="slide-counter" id="counter"></div>
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
 
-<script>
-    const slides = document.querySelectorAll('.slide');
-    let currentSlide = 0;
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
 
-    function showSlide(n) {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (n + slides.length) % slides.length;
-        slides[currentSlide].classList.add('active');
-        updateNav();
-    }
+            void next.offsetWidth;
 
-    function updateNav() {
-        const nav = document.getElementById('nav');
-        const counter = document.getElementById('counter');
-        nav.innerHTML = '';
-        slides.forEach((_, i) => {
-            const dot = document.createElement('div');
-            dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-            dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
-            nav.appendChild(dot);
-        });
-        counter.textContent = `${currentSlide + 1} / ${slides.length}`;
-    }
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
 
-    // Keyboard
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-        if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
-    });
+            current = n;
+            updateNav();
 
-    // Click
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('.nav') || e.target.closest('a')) return;
-        if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-        else showSlide(currentSlide - 1);
-    });
-
-    // Touch/swipe
-    let touchStartX = 0;
-    const SWIPE_THRESHOLD = 50;
-
-    document.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-
-    document.addEventListener('touchend', (e) => {
-        const diff = touchStartX - e.changedTouches[0].screenX;
-        if (Math.abs(diff) > SWIPE_THRESHOLD) {
-            if (diff > 0) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
-    }, { passive: true });
 
-    updateNav();
-</script>
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
 
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
+        });
+
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
+
+        updateNav();
+    </script>
 </body>
 </html>

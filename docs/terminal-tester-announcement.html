@@ -3,536 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>amplifier-bundle-terminal-tester — AI That Can See Your TUI</title>
+    <title>Give the AI Eyes</title>
     <script>document.documentElement.classList.add('js')</script>
     <style>
-        :root {
-            --accent: #FF375F;
-            --accent-dim: rgba(255, 55, 95, 0.15);
-            --accent-glow: rgba(255, 55, 95, 0.3);
-
-            --font-headline: clamp(36px, 8vw, 72px);
-            --font-medium-headline: clamp(24px, 5vw, 48px);
-            --font-subhead: clamp(16px, 3vw, 28px);
-            --font-body: clamp(14px, 2vw, 18px);
-            --font-small: clamp(12px, 1.8vw, 14px);
-            --font-big-number: clamp(48px, 14vw, 120px);
-
-            --padding-slide: clamp(20px, 5vw, 80px);
-            --gap-grid: clamp(16px, 3vw, 40px);
-
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: #fff;
-            overflow: hidden;
-            overscroll-behavior: none;
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f2f2f5;
+            --muted: #9a9aa8;
+            --accent: #5ec8f2;
+            --accent2: #7df2b8;
+            --card: #16161f;
+            --line: #26263a;
+        }
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
             -webkit-font-smoothing: antialiased;
         }
 
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
-            padding: clamp(60px, 10vw, 120px) var(--padding-slide) clamp(80px, 12vw, 100px);
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: flex-start;
             overflow-y: auto;
             overflow-x: hidden;
-            gap: clamp(20px, 4vw, 40px);
+            position: absolute;
+            top: 0; left: 0;
+            transition: transform 0.5s ease, opacity 0.5s ease;
         }
-
         .slide.active { display: flex; }
 
-        .slide.center {
+        /* No-JS fallback: all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+        /* Fit-safe: cap to viewport and allow scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .center {
             text-align: center;
             align-items: center;
             justify-content: center;
         }
 
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px var(--padding-slide) 60px;
-                gap: clamp(12px, 2vw, 20px);
-            }
-            .slide.center { justify-content: flex-start; }
-        }
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: 20px; }
 
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* Typography */
         .section-label {
-            font-size: var(--font-small);
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.5vw, 14px);
             color: var(--accent);
-        }
-
-        .headline {
-            font-size: var(--font-headline);
-            font-weight: 700;
-            letter-spacing: clamp(-1px, -0.03em, -2px);
-            line-height: 1.1;
-            color: var(--text-primary);
-        }
-
-        .medium-headline {
-            font-size: var(--font-medium-headline);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            color: var(--text-primary);
-        }
-
-        .subhead {
-            font-size: var(--font-subhead);
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: 800px;
-        }
-
-        .body-text {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        .small-text {
-            font-size: var(--font-small);
-            color: var(--text-tertiary);
-        }
-
-        /* Big numbers */
-        .big-number {
-            font-size: var(--font-big-number);
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #FF6B8A);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(16px, 4vw, 28px);
-        }
-        .card h3, .card h4 { color: var(--text-primary); }
-        .card p, .card li { color: var(--text-secondary); }
-
-        .card-accent {
-            border-color: rgba(255, 55, 95, 0.25);
-            background: var(--accent-dim);
-        }
-
-        .card-icon {
-            font-size: clamp(28px, 5vw, 42px);
-            margin-bottom: clamp(8px, 1.5vw, 12px);
-        }
-
-        .card-title {
-            font-size: clamp(16px, 2.5vw, 20px);
             font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: clamp(4px, 1vw, 8px);
+            margin-bottom: 18px;
         }
+        .body { color: var(--fg); margin-top: 22px; max-width: 42ch; }
+        .handoff { color: var(--muted); margin-top: 22px; max-width: 42ch; font-style: italic; }
+        h1 + .body, h2 + .body { margin-top: 22px; }
 
-        .card-body {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        /* Grids */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            gap: var(--gap-grid);
-            width: 100%;
-        }
-
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-            gap: var(--gap-grid);
-            width: 100%;
-        }
-
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--gap-grid);
-            width: 100%;
-        }
-
-        .bug-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: clamp(10px, 2vw, 16px);
-            width: 100%;
-        }
-
-        /* Stats */
-        .stat-card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(16px, 3vw, 28px);
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: clamp(32px, 8vw, 64px);
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            line-height: 1;
-            color: var(--accent);
-            margin-bottom: clamp(4px, 1vw, 8px);
-        }
-
-        .stat-label {
-            font-size: var(--font-small);
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-
-        .stat-detail {
-            font-size: clamp(11px, 1.5vw, 13px);
-            color: var(--text-tertiary);
-            margin-top: clamp(2px, 0.5vw, 4px);
-        }
-
-        /* Quote */
-        .quote-block {
-            background: var(--surface-1);
-            border-left: 4px solid var(--accent);
-            border-radius: 0 clamp(12px, 2vw, 16px) clamp(12px, 2vw, 16px) 0;
-            padding: clamp(20px, 4vw, 36px);
-            max-width: 900px;
-        }
-
-        .quote-text {
-            font-size: clamp(16px, 3vw, 24px);
-            font-style: italic;
-            color: var(--text-primary);
-            line-height: 1.5;
-        }
-
-        .quote-attr {
-            font-size: var(--font-small);
-            color: var(--text-tertiary);
-            margin-top: clamp(8px, 2vw, 16px);
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: clamp(12px, 1.8vw, 15px);
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .code-green { color: #30D158; }
-        .code-comment { color: rgba(255,255,255,0.35); }
-        .code-accent { color: var(--accent); }
-        .code-blue { color: #64D2FF; }
-        .code-yellow { color: #FFD60A; }
-
-        /* Flow diagram */
-        .flow {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: clamp(8px, 1.5vw, 16px);
-            justify-content: center;
-        }
-
-        .flow-step {
-            background: var(--surface-2);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(8px, 1.5vw, 12px);
-            padding: clamp(8px, 2vw, 14px) clamp(12px, 2.5vw, 20px);
-            font-size: clamp(12px, 1.8vw, 15px);
-            font-weight: 600;
-            color: var(--text-primary);
-            white-space: nowrap;
-        }
-
-        .flow-step.highlight {
-            background: var(--accent-dim);
-            border-color: rgba(255, 55, 95, 0.3);
-            color: var(--accent);
-        }
-
-        .flow-arrow {
-            font-size: clamp(14px, 2vw, 20px);
-            color: var(--text-tertiary);
-        }
-
-        /* Bug cards */
-        .bug-card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(10px, 1.5vw, 14px);
-            padding: clamp(12px, 2.5vw, 20px);
-        }
-
-        .bug-card-title {
-            font-size: clamp(13px, 2vw, 16px);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: clamp(4px, 0.8vw, 6px);
-        }
-
-        .bug-card-desc {
-            font-size: clamp(12px, 1.6vw, 14px);
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        .bug-number {
-            font-size: clamp(11px, 1.5vw, 13px);
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: clamp(4px, 0.8vw, 6px);
-            font-family: 'SF Mono', 'Fira Code', monospace;
-        }
-
-        /* Badge */
-        .badge {
-            display: inline-block;
-            font-size: clamp(10px, 1.3vw, 12px);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            background: rgba(48, 209, 88, 0.15);
-            color: #30D158;
-            border: 1px solid rgba(48, 209, 88, 0.3);
-        }
-
-        .badge-new {
-            background: var(--accent-dim);
-            color: var(--accent);
-            border-color: rgba(255, 55, 95, 0.3);
-        }
-
-        /* Status badge */
+        .title-slide h1 .accent { color: var(--accent); }
         .status-badge {
             display: inline-block;
-            font-size: clamp(10px, 1.3vw, 12px);
+            margin-top: 32px;
+            padding: 6px 16px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--muted);
+        }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 18px;
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 24px 20px;
+        }
+        .stat-num {
+            font-size: clamp(30px, 6vw, 54px);
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            padding: 4px 14px;
-            border-radius: 20px;
-        }
-
-        .status-active {
-            background: rgba(48, 209, 88, 0.15);
-            color: #30D158;
-            border: 1px solid rgba(48, 209, 88, 0.3);
-        }
-
-        /* Credits */
-        .credit-card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(16px, 3vw, 24px);
-        }
-
-        .credit-name {
-            font-size: clamp(16px, 2.5vw, 20px);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: clamp(4px, 1vw, 8px);
-        }
-
-        .credit-role {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .credit-link {
             color: var(--accent);
-            text-decoration: none;
-            font-size: var(--font-small);
+            line-height: 1;
         }
-        .credit-link:hover { text-decoration: underline; }
+        .stat-label { color: var(--muted); font-size: clamp(12px, 1.6vw, 15px); margin-top: 10px; }
 
-        /* Install block */
-        .install-block {
-            background: var(--surface-2);
-            border: 1px solid var(--accent);
-            border-radius: clamp(12px, 2vw, 16px);
-            padding: clamp(20px, 4vw, 32px);
-            max-width: 900px;
-            width: 100%;
+        /* Steps */
+        .steps { display: flex; flex-direction: column; gap: 14px; }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 16px 18px;
         }
-
-        .install-label {
-            font-size: var(--font-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+        .step-num {
+            flex: 0 0 auto;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: rgba(94,200,242,0.15);
             color: var(--accent);
-            margin-bottom: clamp(8px, 1.5vw, 12px);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
         }
+        .step-text { font-size: clamp(13px, 1.7vw, 17px); }
+        .step-text strong { color: var(--fg); }
 
-        .install-cmd {
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-            font-size: clamp(12px, 1.6vw, 15px);
-            color: var(--text-primary);
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-wrap: break-word;
+        /* Rules / list */
+        .rules { display: flex; flex-direction: column; gap: 12px; list-style: none; }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: 14px 18px;
         }
+        .rules li strong { color: var(--accent2); }
 
-        /* Prereq list */
-        .prereq-list {
-            list-style: none;
-            padding: 0;
+        /* Cards */
+        .cards { display: grid; grid-template-columns: 1fr; gap: 14px; }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 18px 20px;
         }
+        .card h3 { font-size: clamp(15px, 2vw, 19px); color: var(--accent); margin-bottom: 8px; }
+        .card p { color: var(--muted); }
 
-        .prereq-list li {
-            font-size: var(--font-body);
-            color: var(--text-secondary);
-            padding: clamp(4px, 1vw, 8px) 0;
-            padding-left: clamp(20px, 3vw, 28px);
-            position: relative;
-        }
-
-        .prereq-list li::before {
-            content: '▸';
-            position: absolute;
-            left: 0;
-            color: var(--accent);
-        }
-
-        /* Separator */
-        .separator {
-            width: 60px;
-            height: 3px;
-            background: var(--accent);
-            border-radius: 2px;
-        }
-
-        /* Tag */
-        .tag {
-            display: inline-block;
-            font-size: clamp(11px, 1.4vw, 13px);
-            font-weight: 600;
-            padding: 3px 10px;
-            border-radius: 6px;
-            background: var(--surface-2);
-            color: var(--text-secondary);
-            margin-right: 6px;
-            margin-bottom: 4px;
-        }
-
-        /* Sources */
-        .sources-content {
-            font-size: var(--font-small);
-            color: var(--text-secondary);
-            line-height: 1.7;
-            max-width: 800px;
-        }
-
-        .sources-content strong {
-            color: var(--text-primary);
-        }
-
-        .sources-content code {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: clamp(11px, 1.4vw, 13px);
-            background: var(--surface-2);
+        code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            background: rgba(94,200,242,0.1);
+            color: var(--accent2);
             padding: 2px 6px;
-            border-radius: 4px;
-            color: var(--accent);
+            border-radius: 5px;
+            font-size: 0.9em;
         }
 
-        .sources-content ul {
-            list-style: none;
-            padding-left: clamp(12px, 2vw, 20px);
-        }
-
-        .sources-content li {
-            padding: 3px 0;
-        }
-
-        .sources-content li::before {
-            content: '→ ';
-            color: var(--accent);
-        }
+        .sources-body { color: var(--muted); line-height: 1.7; max-width: 70ch; }
+        .sources-body p { margin-top: 12px; }
+        .sources-body ul { margin: 10px 0 0 22px; }
+        .sources-body li { margin-bottom: 8px; font-size: clamp(12px, 1.6vw, 15px); }
+        .sources-body code { font-size: 0.85em; }
 
         /* Nav */
         .nav {
             position: fixed;
-            bottom: 28px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 26px;
+            right: 30px;
             display: flex;
-            gap: 8px;
+            gap: 9px;
             z-index: 100;
         }
-
         .nav-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px; height: 9px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.22);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: background 0.2s, transform 0.2s;
         }
-
-        .nav-dot.active {
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent-glow);
-        }
-
-        .nav-dot:hover { background: rgba(255,255,255,0.4); }
-
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
         .slide-counter {
             position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: clamp(11px, 1.3vw, 13px);
-            color: rgba(255,255,255,0.3);
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            bottom: 24px;
+            left: 30px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: rgba(255,255,255,0.35);
             z-index: 100;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
 
         .more-stories {
@@ -546,335 +245,239 @@
             z-index: 100;
         }
         .more-stories:hover { color: rgba(255,255,255,0.5); }
-
-        /* Links */
-        a.inline-link {
-            color: var(--accent);
-            text-decoration: none;
-        }
-        a.inline-link:hover { text-decoration: underline; }
-
-        /* Accent highlight text */
-        .accent { color: var(--accent); }
-        .accent-bold { color: var(--accent); font-weight: 700; }
-
-        /* Monospace inline */
-        .mono {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 0.9em;
-        }
     </style>
 </head>
 <body>
 <!--
-  ============================================================
-  NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
-  ============================================================
-
-  ABT:
-    AND an AI was building a Rust/Ratatui terminal UI with 835 passing tests;
-    BUT it was blind - it couldn't see the rendered screen, so obvious visual bugs
-        shipped and a human became the sole QA tester;
-    THEREFORE terminal-tester gave the AI eyes - it now spawns, screenshots, and drives
-        any TUI, catching bugs no unit test can and closing the fix-verify loop itself.
-
-  PAYOFF (named up front):
-    The AI verifying its own visual output - ~1,700 inspector operations found 37+ bugs
-    invisible to unit tests and ran 23 autonomous QA rounds against 53 dev-machine
-    iterations, with no human in the visual loop.
-
-  BEATS (proof-first; payoff lands at beat 5 of 9, before the midpoint of 5):
-    1. proof     - the AI now sees and tests its own UI: ~1,700 ops, 37+ hidden bugs, autonomous QA.
-                   advances: grounds the THEREFORE with real usage.
-    2. tension   - 835 tests green, UI visibly broken; a blind AI and a human bottleneck.
-                   advances: establishes the BUT.
-    3. setup     - terminal-tester gives the agent eyes: one tool, nine operations, auto-detected.
-                   advances: introduces the named tool the argument leans on.
-    4. mechanism - it can screenshot ANY terminal app: Ratatui dump or universal PTY. (one claim)
-                   advances: HOW the agent sees.
-    5. payoff    - the AI verifies its own visual output, no human in the loop.
-                   advances: lands the payoff before the midpoint.
-    6. mechanism - three specialist agents turn seeing into a QA discipline. (one claim)
-                   advances: HOW seeing becomes testing.
-    7. turn      - it doesn't just spot a bug - it names the exact line of Rust.
-                   advances: the pivot from "can see" to "can diagnose".
-    8. takeaway  - eyes caught a whole class of bugs that every test suite missed.
-                   advances: the durable lesson, shown with real catches.
-    9. takeaway  - install it, and stand on the same shoulders it did.
-                   advances: what the audience does next.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end.
-    Slides = 9 beats + 1 = 10.
+SPINE
+ABT: An AI agent can build a terminal UI and prove its logic with unit tests, BUT unit tests can't see the rendered screen so visual bugs — truncation, misalignment, broken layouts on resize — slip straight past, THEREFORE terminal-tester gives the agent eyes: it spawns the TUI in a real terminal, captures actual screenshots, and lets a vision agent judge them — closing the fix-verify loop itself.
+Payoff: The self-closing visual loop — capture before, act, capture after, compare — the agent now sees the bug and confirms the fix without a human QA in the seat.
+Beats:
+  1. frame     — An AI that builds a terminal UI is effectively blind: it can prove the logic but never sees the screen. advances: opens on the AND+BUT tension as a hook — why passing tests aren't enough and why it matters.
+  2. proof     — terminal-tester ships today: one tui_terminal tool and one tui-test-analyst agent, backed by 167 passing unit tests. advances: grounds the AND in shipped, verified fact so the audience trusts it exists and works.
+  3. tension   — Unit tests pass while the pixels lie: truncation, misalignment, resize breakage never show up in an assertion. advances: sharpens the BUT — names the exact class of bugs logic tests can't catch.
+  4. setup     — The proving ground is amplifier-tui, a Textual-based TUI proof-of-concept — a real screen with real layout to break. advances: introduces the named example before the mechanism leans on it.
+  5. mechanism — tui_terminal runs the real TUI in a genuine pseudo-terminal and drives it with true keystrokes — arrows, Tab, Ctrl combos, F1-F12. advances: shows the first half of HOW eyes are earned — it exercises the actual program, not a mock.
+  6. mechanism — Every frame is captured as a rendered PNG — pyte plus Pillow, full xterm-256 and true-color — so the screen becomes something an AI can look at. advances: shows the second half of HOW — it turns an invisible terminal into an image.
+  7. payoff    — tui-test-analyst reads the screenshots against a visual checklist — capture before, act, capture after, compare — and the agent closes its own fix-verify loop. advances: lands the THEREFORE as the climax.
+  8. takeaway  — Built in ~24 days over 6 commits by Diego Colombo, it's Alpha — but the pattern generalizes: any agent building a visual surface can be handed eyes. advances: what the audience keeps — honest maturity plus the reusable principle.
 -->
 
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Amplifier Bundle &middot; terminal-tester</div>
-        <h1 class="headline" style="max-width: 900px;">The AI finally <span class="accent">saw</span><br>its own broken UI</h1>
-        <p class="subhead" style="max-width: 680px;"><span class="mono">amplifier-bundle-terminal-tester</span> lets an agent spawn, screenshot, and drive any terminal app &mdash; and it went straight to work.</p>
-        <div class="stat-grid" style="max-width: 820px;">
-            <div class="stat-card">
-                <div class="stat-number">~1,700</div>
-                <div class="stat-label">inspector operations</div>
-                <div class="stat-detail">across 37 sessions, 4 days</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">37+</div>
-                <div class="stat-label">bugs unit tests missed</div>
-                <div class="stat-detail">found only via the screen</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">23</div>
-                <div class="stat-label">autonomous QA rounds</div>
-                <div class="stat-detail">no human in the visual loop</div>
-            </div>
-        </div>
-        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center;">
-            <span class="status-badge status-active">Active</span>
-            <span class="small-text">March 2026</span>
-        </div>
+    <!-- TITLE COVER (no beat) -->
+    <div class="slide title-slide active center">
+        <h1>Give the AI <span class="accent">Eyes</span></h1>
+        <p class="subtitle">Visual testing for terminal UIs</p>
     </div>
 
-    <!-- beat 2: tension -->
-    <div class="slide">
-        <div class="section-label">The problem</div>
-        <h2 class="medium-headline">835 tests passing.<br><span class="accent">UI visibly broken.</span></h2>
-
-        <div class="quote-block">
-            <div class="quote-text">"Let's pause and find a way for you to be able to inspect the interactive side of the TUI, since there are very obvious issues with it once you load it up, but since you couldn't see it you have no idea and I cannot be the one to test and report it all back to you."</div>
-            <div class="quote-attr">— Turn 89 of an 89-turn Amplifier TUI session</div>
-        </div>
-
-        <div class="halves">
-            <div class="card">
-                <div class="card-icon">🔇</div>
-                <div class="card-title">Blind AI</div>
-                <div class="card-body">The AI was building a Rust/Ratatui interface but couldn't see the rendered output. Unit tests passed. Integration tests passed. The actual screen? Broken.</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">🧑‍💻</div>
-                <div class="card-title">Human bottleneck</div>
-                <div class="card-body">Every visual bug needed a human to launch the app, spot it, describe it in text, and relay it back. The developer became the sole QA tester for an AI-built app.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 3: setup -->
-    <div class="slide">
-        <div class="section-label">The tool</div>
-        <h2 class="medium-headline">One tool gave the agent <span class="accent">eyes</span></h2>
-        <p class="body-text" style="max-width: 760px;">terminal-tester adds a single tool &mdash; <span class="mono">terminal_inspector</span> &mdash; with nine operations that let an agent launch a TUI, look at it, act on it, and wait on what it sees. No wiring, no config: it auto-detects how to capture the screen.</p>
-        <div class="code-block"><span class="code-comment"># 1 tool, 9 operations</span>
-<span class="code-accent">terminal_inspector</span>  <span class="code-blue">spawn</span> | <span class="code-blue">screenshot</span> | <span class="code-blue">send_keys</span> | <span class="code-blue">send_text</span>
-                     <span class="code-blue">find_text</span> | <span class="code-blue">wait_for_text</span> | <span class="code-blue">resize</span> | <span class="code-blue">close</span> | <span class="code-blue">list</span></div>
-        <p class="body-text" style="max-width: 700px;">Repo: <a class="inline-link" href="https://github.com/microsoft/amplifier-bundle-terminal-tester">microsoft/amplifier-bundle-terminal-tester</a></p>
-    </div>
-
-    <!-- beat 4: mechanism -->
-    <div class="slide">
-        <div class="section-label">How it sees</div>
-        <h2 class="medium-headline">It can screenshot <span class="accent">any</span> terminal app</h2>
-        <p class="body-text" style="max-width: 760px;">The single claim: two capture modes cover everything, and the agent never has to choose &mdash; if the command carries <span class="mono">--screen-dump-path</span> it dumps, otherwise it falls back to PTY.</p>
-        <div class="halves">
-            <div class="card card-accent">
-                <div class="card-icon">📸</div>
-                <div class="card-title">Screen-dump mode</div>
-                <div class="card-body">Reads Ratatui's own render buffer &mdash; pixel-perfect, frame-numbered, zero ANSI parsing.</div>
-                <div style="margin-top: clamp(8px, 1.5vw, 12px);">
-                    <span class="tag">Ratatui</span>
-                    <span class="tag">crossterm</span>
-                </div>
-            </div>
-            <div class="card card-accent">
-                <div class="card-icon">🖥️</div>
-                <div class="card-title">PTY mode</div>
-                <div class="card-body">Universal VT100 emulation via pyte &mdash; works with Textual, Bubble Tea, urwid, or any plain CLI tool.</div>
-                <div style="margin-top: clamp(8px, 1.5vw, 12px);">
-                    <span class="tag">Universal</span>
-                    <span class="tag">pyte</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 5: payoff -->
-    <div class="slide">
-        <div class="section-label">The payoff</div>
-        <h2 class="medium-headline">The AI verifies its own <span class="accent">visual output</span></h2>
-
-        <div class="flow">
-            <div class="flow-step">Build</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-step">Compile</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-step highlight">Test visually</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-step">File bugs</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-step">Dev-machine</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-step">Rebuild</div>
-            <div class="flow-arrow">→</div>
-            <div class="flow-step highlight">Retest</div>
-        </div>
-
-        <div class="halves">
-            <div class="card">
-                <div class="card-icon">🔄</div>
-                <div class="card-title">53 iterations + 23 QA rounds</div>
-                <div class="card-body">terminal-tester became the quality gate in an autonomous build-test-fix cycle &mdash; 53 dev-machine iterations, 23 QA rounds, no human in the loop for visual verification.</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">👁️</div>
-                <div class="card-title">AI verifying AI</div>
-                <div class="card-body">It found the response-doubling bug, confirmed it across 4 prompts, then <strong style="color: var(--text-primary);">called a vision model on its own screenshots</strong> to prove it wasn't a PTY artifact.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">The specialists</div>
-        <h2 class="medium-headline">Three agents turn <span class="accent">seeing</span> into testing</h2>
-        <p class="body-text" style="max-width: 760px;">The one claim here: raw screenshots aren't QA on their own &mdash; three specialist agents give the eyes a job.</p>
-        <div class="thirds">
-            <div class="card">
-                <div class="card-icon">🤖</div>
-                <div class="card-title">terminal-operator</div>
-                <div class="card-body">Launches apps, drives interaction, verifies results &mdash; a 6-step workflow with a 3-attempt failure budget before escalating.</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">📐</div>
-                <div class="card-title">terminal-visual-tester</div>
-                <div class="card-body">Responsive layout testing across 6 breakpoints (60→200 columns), running visual quality checklists on every screen state.</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">🔬</div>
-                <div class="card-title">terminal-debugger</div>
-                <div class="card-body">Frame-by-frame analysis and keystroke-response verification, with root-cause reports carrying file:line citations.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 7: turn -->
-    <div class="slide">
-        <div class="section-label">The turn</div>
-        <h2 class="medium-headline">It doesn't just spot a bug &mdash;<br>it names the <span class="accent">exact line of Rust</span></h2>
-
-        <div class="halves">
-            <div class="card" style="border-color: var(--accent-glow);">
-                <div class="card-body" style="line-height: 1.7;">
-                    Seeing is only half of it. The debugger agent pairs live terminal inspection with Rust source analysis:
-                    <br><br>
-                    ▸ Traced a markdown rendering bug from its visual symptom to <strong style="color: var(--text-primary);">two specific lines of Rust</strong>
-                    <br><br>
-                    ▸ Used frame-counter analysis to tell whether keys were received, handled, or just not re-rendering
-                    <br><br>
-                    ▸ Produced structured root-cause reports with <span class="mono">file:line</span> citations, fixes, and confidence ratings
-                </div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: var(--gap-grid);">
-                <div class="code-block"><span class="code-comment">// Debugger output structure</span>
-{
-  <span class="code-accent">"symptom"</span>: <span class="code-green">"Markdown not rendering"</span>,
-  <span class="code-accent">"root_cause"</span>: {
-    <span class="code-blue">"file"</span>: <span class="code-green">"src/ui/chat.rs"</span>,
-    <span class="code-blue">"lines"</span>: [<span class="code-yellow">142</span>, <span class="code-yellow">147</span>],
-    <span class="code-blue">"issue"</span>: <span class="code-green">"Raw text passed instead
-             of parsed spans"</span>
-  },
-  <span class="code-accent">"confidence"</span>: <span class="code-yellow">0.92</span>,
-  <span class="code-accent">"fix"</span>: <span class="code-green">"Replace raw &amp; with
-        markdown::parse()"</span>
-}</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 8: takeaway -->
-    <div class="slide">
-        <div class="section-label">Why eyes matter</div>
-        <h2 class="medium-headline">A whole class of bugs every test suite missed</h2>
-        <p class="body-text" style="max-width: 760px;">These weren't edge cases &mdash; they were plainly visible on screen and completely invisible to unit and integration tests. A few of the 37+:</p>
-        <div class="thirds">
-            <div class="bug-card">
-                <div class="bug-number">#01</div>
-                <div class="bug-card-title">Response text doubling</div>
-                <div class="bug-card-desc">AI responses rendered twice &mdash; confirmed across 4 prompts plus vision-model analysis.</div>
-            </div>
-            <div class="bug-card">
-                <div class="bug-number">#02</div>
-                <div class="bug-card-title">Ctrl+C inserting literal ^C</div>
-                <div class="bug-card-desc">Instead of quitting the app. Regressed three times during development.</div>
-            </div>
-            <div class="bug-card">
-                <div class="bug-number">#05</div>
-                <div class="bug-card-title">Settings panel inaccessible</div>
-                <div class="bug-card-desc">5 of 6 settings sections unreachable via keyboard navigation.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 9: takeaway -->
     <div class="slide center">
-        <div class="section-label">Get started</div>
-        <h2 class="headline" style="max-width: 800px;">Give your agent <span class="accent">eyes</span></h2>
-        <div class="install-block">
-            <div class="install-label">Install</div>
-            <div class="install-cmd">amplifier bundle add \
-  git+https://github.com/microsoft/amplifier-bundle-terminal-tester@main\
-#subdirectory=behaviors/terminal-tester.yaml \
-  --app</div>
-        </div>
-        <p class="body-text" style="max-width: 680px; text-align: center;">Built standing on shoulders: Diego Colombo (<span class="mono">@colombod</span>) pioneered the PTY/pyte approach and is credited as co-author; the screen-dump mode came out of Amplifier TUI Phase 6; the bundle mirrors the browser-tester pattern.</p>
-        <p class="small-text">Spawn. Screenshot. Ship.</p>
+        <!-- beat 1: frame -->
+        <div class="section-label">The Problem</div>
+        <h1>An AI that builds a terminal UI is effectively blind</h1>
+        <p class="body">It can spawn the program and prove its logic with unit tests — but it never sees the rendered screen. The pixels are invisible to it.</p>
+        <p class="handoff">So what does "shipping" even look like when you can't watch the thing run?</p>
     </div>
 
-    <!-- ==================== SOURCES (audit-trail slide, not a beat) ==================== -->
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">It Ships Today</div>
+            <h2>terminal-tester is a real bundle, not a sketch</h2>
+            <p class="body">One <code>tui_terminal</code> tool and one <code>tui-test-analyst</code> agent, backed by a passing test suite. It exists and it runs.</p>
+            <p class="handoff">Shipped and verified — now here is the gap it was built to close.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-num">1</div>
+                    <div class="stat-label">tool — tui_terminal</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">1</div>
+                    <div class="stat-label">agent — tui-test-analyst</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">167</div>
+                    <div class="stat-label">unit tests passing</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 3: tension -->
+        <div class="col-main">
+            <div class="section-label">Why Tests Aren't Enough</div>
+            <h2>Unit tests pass while the pixels lie</h2>
+            <p class="body">Logic assertions confirm the code is correct. They cannot confirm the screen is right — a whole class of visual bugs never shows up in an assertion.</p>
+            <p class="handoff">To catch these you need a real screen to break — so here's one.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><strong>Truncation</strong> — text cut off past the edge</li>
+                <li><strong>Misalignment</strong> — columns and boxes out of place</li>
+                <li><strong>Resize breakage</strong> — layouts that shatter when the terminal changes size</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="slide center">
+        <!-- beat 4: setup -->
+        <div class="section-label">The Proving Ground</div>
+        <h1>The target is amplifier-tui, a real screen to break</h1>
+        <p class="body">amplifier-tui is a Textual-based TUI proof-of-concept — an actual terminal interface with real layout, launched with <code>uv run amplifier-tui run</code>. Concrete enough to have visual bugs worth catching.</p>
+        <p class="handoff">Now, how does terminal-tester earn its eyes against a real program?</p>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism · Drive It</div>
+            <h2>It runs the real TUI in a genuine pseudo-terminal</h2>
+            <p class="body">tui_terminal spawns the actual program in a PTY (<code>pty.fork</code> + <code>/bin/sh -c</code>) and drives it with true keystrokes — not a mock, the real thing responding.</p>
+            <p class="handoff">Driving the program is half the trick — the other half is seeing it.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><strong>Arrows</strong> — UP mapped to real byte sequences</li>
+                <li><strong>Tab &amp; Ctrl combos</strong> — e.g. CTRL+C</li>
+                <li><strong>F1–F12</strong> — full function-key range</li>
+                <li><strong>Live resize</strong> — TIOCSWINSZ + SIGWINCH re-render</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 6: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Mechanism · See It</div>
+            <h2>Every frame becomes a rendered PNG screenshot</h2>
+            <p class="body">A <code>capture</code> returns the frame three ways — text, ANSI, and an image_path to a PNG rendered from the terminal buffer. The invisible screen turns into something an AI can look at.</p>
+            <p class="handoff">Now the agent has an image — so who does the looking?</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><strong>pyte</strong> — terminal emulation of the buffer</li>
+                <li><strong>Pillow</strong> — renders the buffer to a PNG</li>
+                <li><strong>Full color</strong> — xterm-256, true-color hex RGB, bold</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>The agent closes its own fix-verify loop</h2>
+            <p class="body">The tui-test-analyst agent, backed by a design-intelligence vision dependency, reads the screenshots against a visual checklist. The loop closes without a human QA in the seat.</p>
+            <p class="handoff">Eyes plus judgment — that's the whole idea, and it generalizes.</p>
+        </div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Capture before</strong> — screenshot the starting state</div></div>
+                <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Act</strong> — drive it with real keystrokes</div></div>
+                <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Capture after</strong> — screenshot the result</div></div>
+                <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Compare</strong> — vision agent judges the frames</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 8: takeaway -->
+        <div class="col-main">
+            <div class="section-label">What To Keep</div>
+            <h2>It's Alpha — but the pattern generalizes</h2>
+            <p class="body">Built in ~24 days over 6 commits by Diego Colombo. Honestly early — yet the principle holds: any agent building a visual surface can be handed eyes.</p>
+            <p class="handoff">Capture, act, capture, compare — give the agent a way to see, and it can verify itself.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-num">~24</div>
+                    <div class="stat-label">days of development</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">6</div>
+                    <div class="stat-label">commits, single author</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">Alpha</div>
+                    <div class="stat-label">maturity · MIT license</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SOURCES (no beat) -->
     <div class="slide">
         <div class="section-label">Sources</div>
-        <h2 class="medium-headline">Data &amp; Methodology</h2>
-
-        <div class="sources-content">
-            <p><strong>Data as of:</strong> March 2026</p>
-            <p><strong>Feature status:</strong> Active — <code>microsoft/amplifier-bundle-terminal-tester</code></p>
-            <br>
-            <p><strong>Data sources:</strong></p>
+        <h2>Research Methodology</h2>
+        <div class="sources-body">
+            <p><strong>Primary source:</strong> colombod/amplifier-bundle-tui-tester (default branch <code>main</code>), cloned to <code>/tmp/tui-tester-src</code>.</p>
+            <p><strong>Timeline:</strong> first commit 2026-01-30 (bc903d3), last commit 2026-02-23 (4853402) — ~24 days.</p>
+            <p><strong>Feature status:</strong> Alpha (pyproject classifier "Development Status :: 3 - Alpha"); MIT license.</p>
+            <p><strong>Commands run:</strong></p>
             <ul>
-                <li>Usage metrics (~1,700 operations, 37 sessions, 254 send_keys, 252 screenshots, 33 wait_for_text) from session logs across two projects over 4 days</li>
-                <li>Bug count (37+) from tracked issues found exclusively via terminal_inspector during Amplifier TUI development</li>
-                <li>Autonomous cycle counts (53 dev-machine iterations, 23 QA rounds, 8+ fix-verify cycles) from session records</li>
-                <li>The quoted conversation is from a real 89-turn Amplifier TUI development session</li>
+                <li>Repo confirmed: <code>gh repo view colombod/amplifier-bundle-tui-tester</code>; <code>git -C /tmp/tui-tester-src remote -v</code></li>
+                <li>Tool &amp; agent inventory: <code>cat /tmp/tui-tester-src/README.md ; cat /tmp/tui-tester-src/bundle.md</code></li>
+                <li>Tests re-run: <code>cd modules/tool-tui-tester &amp;&amp; uv run --with pytest --with pytest-asyncio --with pyte --with Pillow python -m pytest tests/ -q</code> → 167 passed in 42.87s</li>
+                <li>Operations &amp; capture: <code>cat amplifier_module_tool_tui_tester/__init__.py</code>; <code>cat session_manager.py</code></li>
+                <li>PTY &amp; resize: <code>grep -n 'pty.fork\|execvpe\|TIOCSWINSZ\|SIGWINCH' session_manager.py</code></li>
+                <li>Keys: <code>cat keys.py</code> (SPECIAL_KEYS table)</li>
+                <li>Render deps: <code>cat pyproject.toml</code> (pyte&gt;=0.8.0, Pillow&gt;=10.0.0)</li>
+                <li>Example target: <code>sed -n '1,25p' examples/test-textual-app.md</code>; amplifier-tui pyproject (textual&gt;=0.47.0)</li>
+                <li>History: <code>git -C /tmp/tui-tester-src rev-list --count HEAD</code> (6); <code>git shortlog -sne --all</code> (Diego Colombo)</li>
             </ul>
-            <br>
-            <p><strong>Qualifiers preserved:</strong></p>
-            <ul>
-                <li>"~1,700" (approximate — aggregated across multiple session logs)</li>
-                <li>"37+" and "8+" (minimum confirmed counts — actual numbers may be higher)</li>
-            </ul>
-            <br>
-            <p><strong>Prior art:</strong> Diego Colombo's <code>amplifier-bundle-tui-tester</code> (PTY/pyte approach)</p>
-            <p><strong>Gaps:</strong> Exact per-session operation breakdowns not individually verified. Bug severity classification is qualitative.</p>
+            <p><strong>Gaps:</strong> No release tags inspected; "catches bugs no unit test can" stated as design intent, not a measured end-to-end case. The "835 tests" and Rust/Ratatui backstory were not verifiable and are excluded.</p>
+            <p><strong>Primary contributor:</strong> Diego Colombo — 6 of 6 commits (the largest commit is co-authored "Generated with Amplifier").</p>
         </div>
     </div>
-
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link - REQUIRED -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
-            // Scroll to top of new slide
-            slides[currentSlide].scrollTop = 0;
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -883,41 +486,34 @@
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard navigation
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click navigation
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe navigation
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
-
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
-
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

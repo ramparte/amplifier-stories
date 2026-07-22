@@ -3,470 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Cross-Repo Bug Hunting — Amplifier Story</title>
+    <title>Two Lines, Two Bugs</title>
     <script>document.documentElement.classList.add('js')</script>
-<style>
-        :root {
-            --accent: #FF375F;
-            --accent-glow: rgba(255, 55, 95, 0.15);
-            --accent-dim: rgba(255, 55, 95, 0.6);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 10vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 32px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 2vw, 15px);
-
-            /* Spacing */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
-
-            /* Surfaces */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-        }
-
+    <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: #fff;
-            overflow: hidden;
-            overscroll-behavior: none;
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #a1a1aa;
+            --accent: #6ee7b7;
+            --accent2: #7dd3fc;
+            --card: #16161f;
+            --border: rgba(255,255,255,0.08);
+        }
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
+        /* Core slide CSS */
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
             padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
+            justify-content: center;
             overflow-y: auto;
             overflow-x: hidden;
+            transition: opacity 0.5s ease, transform 0.5s ease;
         }
 
         .slide.active { display: flex; }
 
-        .slide.center {
+        /* No-JS fallback */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+        /* Fit-safe: cap slides to viewport and allow scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .center {
             text-align: center;
             align-items: center;
             justify-content: center;
+        }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(12px, 2vw, 20px); }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.4vw, 13px);
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: clamp(14px, 2vw, 22px);
+        }
+        .body { color: var(--fg); margin-top: clamp(16px, 2vw, 24px); max-width: 40ch; }
+        .handoff { color: var(--muted); margin-top: clamp(16px, 2vw, 22px); max-width: 40ch; font-style: italic; }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(14px, 2vw, 22px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(18px, 2.5vw, 28px);
+        }
+        .stat-number {
+            font-size: clamp(30px, 5vw, 54px);
+            font-weight: 700;
+            line-height: 1;
+            color: var(--accent);
+            letter-spacing: -0.03em;
+        }
+        .stat-label {
+            margin-top: clamp(8px, 1.2vw, 12px);
+            color: var(--muted);
+            font-size: clamp(12px, 1.5vw, 15px);
+        }
+
+        /* Steps / rules */
+        .steps { display: flex; flex-direction: column; gap: clamp(12px, 1.8vw, 18px); }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: clamp(12px, 1.6vw, 18px);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 20px);
+        }
+        .step-n {
+            flex: 0 0 auto;
+            width: clamp(28px, 3.4vw, 36px);
+            height: clamp(28px, 3.4vw, 36px);
+            border-radius: 50%;
+            background: rgba(110,231,183,0.14);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: clamp(13px, 1.6vw, 16px);
+        }
+        .step-body { min-width: 0; }
+        .step-title { font-weight: 600; font-size: clamp(14px, 1.8vw, 18px); }
+        .step-sub { color: var(--muted); font-size: clamp(12px, 1.5vw, 15px); margin-top: 3px; }
+
+        /* Code block */
+        .code-block {
+            background: #08080d;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(18px, 2.6vw, 28px);
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.7vw, 17px);
+            line-height: 1.7;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            color: #e4e4e7;
+        }
+        .code-comment { color: #71717a; }
+        .code-del { color: #f87171; }
+        .code-add { color: var(--accent); }
+
+        .before-after { display: flex; flex-direction: column; gap: clamp(12px, 1.8vw, 18px); }
+        .ba-row {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(14px, 2vw, 20px);
+        }
+        .ba-call { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: clamp(12px, 1.6vw, 16px); color: #e4e4e7; }
+        .ba-fix { margin-top: 8px; font-size: clamp(12px, 1.5vw, 15px); }
+        .ba-bad { color: #f87171; }
+        .ba-good { color: var(--accent); }
+
+        .sources-body { color: var(--muted); line-height: 1.7; max-width: 70ch; }
+        .sources-body p { margin-bottom: 10px; }
+        .sources-body ul { margin: 8px 0 14px 20px; }
+        .sources-body li { margin-bottom: 6px; }
+        .sources-body code {
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            background: rgba(255,255,255,0.06);
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-size: 0.92em;
+            color: var(--accent2);
+        }
+
+        .badge {
+            display: inline-block;
+            border: 1px solid rgba(125,211,252,0.4);
+            color: var(--accent2);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: clamp(11px, 1.4vw, 13px);
+            letter-spacing: 0.04em;
+            margin-top: 14px;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 26px;
+            right: 30px;
+            display: flex;
+            gap: 9px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter {
+            position: fixed;
+            bottom: 26px;
+            left: 30px;
+            font-size: 12px;
+            color: var(--muted);
+            z-index: 100;
         }
 
         @media (max-height: 500px) and (orientation: landscape) {
             .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
             .slide.center { justify-content: flex-start; }
         }
-
         @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* Typography */
-        .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--accent);
-            margin-bottom: var(--space-sm);
-        }
-
-        .headline {
-            font-size: var(--fs-hero);
-            font-weight: 700;
-            letter-spacing: clamp(-1px, -0.03em, -2px);
-            line-height: 1.1;
-            margin-bottom: var(--space-md);
-        }
-
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -1px;
-            line-height: 1.15;
-            margin-bottom: var(--space-md);
-        }
-
-        .subhead {
-            font-size: var(--fs-h2);
-            font-weight: 400;
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(700px, 90vw);
-        }
-
-        .body-text {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-        }
-
-        /* Grids */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--space-md);
-            width: 100%;
-            margin-top: var(--space-lg);
-        }
-
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-            gap: var(--space-md);
-            width: 100%;
-            margin-top: var(--space-lg);
-        }
-
-        /* Cards */
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-lg);
-        }
-
-        .card h3 {
-            color: var(--text-primary);
-            font-size: var(--fs-h2);
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-        }
-
-        .card p {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.6;
-        }
-
-        .card-icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: var(--space-sm);
-        }
-
-        .card-accent {
-            border-left: 3px solid var(--accent);
-        }
-
-        .card-highlight {
-            background: var(--accent-glow);
-            border: 1px solid rgba(255, 55, 95, 0.25);
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-top: var(--space-md);
-        }
-
-        .code-comment { color: rgba(255,255,255,0.4); }
-        .code-keyword { color: #FF79C6; }
-        .code-fn { color: #50FA7B; }
-        .code-string { color: #F1FA8C; }
-        .code-error { color: #FF375F; }
-        .code-type { color: #8BE9FD; }
-        .code-rust { color: #FF9F0A; }
-        .code-python { color: #0A84FF; }
-        .code-good { color: #30D158; }
-
-        /* Step/flow diagram */
-        .flow-steps {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--space-md);
-            align-items: center;
-            justify-content: center;
-            margin-top: var(--space-lg);
-        }
-
-        .flow-step {
-            background: var(--surface-2);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            text-align: center;
-            min-width: min(160px, 40vw);
-        }
-
-        .flow-step .step-number {
-            font-size: var(--fs-small);
-            color: var(--accent);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .flow-step .step-label {
-            font-size: var(--fs-body);
-            color: var(--text-primary);
-            font-weight: 600;
-            margin-top: var(--space-xs);
-        }
-
-        .flow-step .step-detail {
-            font-size: var(--fs-small);
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .flow-arrow {
-            font-size: clamp(20px, 3vw, 28px);
-            color: var(--text-tertiary);
-        }
-
-        /* Velocity grid */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(160px, 45%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            width: 100%;
-            max-width: min(900px, 95vw);
-        }
-
-        .velocity-stat {
-            text-align: center;
-            padding: var(--space-md);
-        }
-
-        .velocity-number {
-            font-size: clamp(48px, 12vw, 96px);
-            font-weight: 800;
-            letter-spacing: -2px;
-            line-height: 1;
-            background: linear-gradient(135deg, var(--accent), #FF9F0A);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .velocity-label {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
-
-        /* Tag/badge */
-        .badge {
-            display: inline-block;
-            font-size: var(--fs-small);
-            font-weight: 600;
-            padding: 4px 12px;
-            border-radius: 20px;
-            margin-top: var(--space-xs);
-        }
-
-        .badge-status {
-            background: rgba(48, 209, 88, 0.15);
-            color: #30D158;
-            border: 1px solid rgba(48, 209, 88, 0.3);
-        }
-
-        .badge-language {
-            background: var(--surface-2);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-subtle);
-        }
-
-        /* Investigation trail */
-        .trail {
-            position: relative;
-            padding-left: var(--space-lg);
-            margin-top: var(--space-lg);
-        }
-
-        .trail::before {
-            content: '';
-            position: absolute;
-            left: 12px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: linear-gradient(180deg, var(--accent), rgba(255, 55, 95, 0.2));
-        }
-
-        .trail-item {
-            position: relative;
-            margin-bottom: var(--space-lg);
-        }
-
-        .trail-item::before {
-            content: '';
-            position: absolute;
-            left: calc(-1 * var(--space-lg) + 8px);
-            top: 8px;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 12px rgba(255, 55, 95, 0.5);
-        }
-
-        .trail-label {
-            font-size: var(--fs-small);
-            color: var(--accent);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .trail-title {
-            font-size: var(--fs-h2);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-top: 4px;
-        }
-
-        .trail-desc {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: 4px;
-            line-height: 1.5;
-        }
-
-        /* Big quote */
-        .big-quote {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            line-height: 1.3;
-            letter-spacing: -0.5px;
-            max-width: min(800px, 90vw);
-        }
-
-        .big-quote .accent { color: var(--accent); }
-
-        /* Repo map */
-        .repo-map {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            width: 100%;
-        }
-
-        .repo-card {
-            background: var(--surface-2);
-            border: 1px solid var(--border-visible);
-            border-radius: var(--radius-md);
-            padding: var(--space-lg);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .repo-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-        }
-
-        .repo-card.python::before { background: #0A84FF; }
-        .repo-card.rust::before { background: #FF9F0A; }
-        .repo-card.build::before { background: #BF5AF2; }
-
-        .repo-name {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: var(--fs-body);
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .repo-lang {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            margin-top: 4px;
-        }
-
-        .repo-role {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-sm);
-            line-height: 1.5;
-        }
-
-        /* Connection arrow between repos */
-        .connection-label {
-            text-align: center;
-            padding: var(--space-sm) 0;
-            color: var(--text-tertiary);
-            font-size: var(--fs-small);
-        }
-
-        /* Navigation */
-        .nav {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            z-index: 100;
-        }
-
-        .nav-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .nav-dot.active {
-            background: var(--accent);
-            box-shadow: 0 0 8px rgba(255, 55, 95, 0.5);
-        }
-
-        @media (hover: none) {
-            .nav-dot { min-width: 16px; min-height: 16px; }
-        }
-
-        .slide-counter {
-            position: fixed;
-            bottom: 30px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-            z-index: 100;
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
 
         .more-stories {
@@ -479,369 +254,268 @@
             text-decoration: none;
             z-index: 100;
         }
-
         .more-stories:hover { color: rgba(255,255,255,0.5); }
-
-        /* Utility */
-        .mt-lg { margin-top: var(--space-lg); }
-        .mt-md { margin-top: var(--space-md); }
-        .accent-text { color: var(--accent); }
-        .inline-code {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 0.9em;
-            background: var(--surface-2);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-    
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+    </style>
 </head>
 <body>
-    <!--
-      ============================================================
-      NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
-      ============================================================
+<!--
+SPINE
+ABT: AND the brief promised an epic cross-repo, two-language bug hunt ending at a Python/Rust async-cancel seam; BUT the one primary source repo is a single-file Python demo with two commits, two real edge-case bugs, and no Rust, no async, and no second repo anywhere in the evidence; THEREFORE the verifiable story is the honest one: a clean discover-to-analyze-to-fix-to-review-to-ship workflow where each bug's fix is a single line, proven by a full test pass and an open PR.
+Payoff: The whole 'fix' is two one-line changes -- slug.strip(separator) and split() over split(" ") -- and the tests go green: 17 passed in 0.01s.
+Beats:
+  1. frame     -- given a dramatic multi-repo two-language voice-bug brief, the primary source is a single 101-line Python file. advances: opens on the gap in the ABT's AND, setting the epic expectation against the modest reality the deck will honor.
+  2. proof     -- the entire history is two commits by one author on Dec 8 2025, minutes apart. advances: lands hard git-log evidence early that this is a small self-contained repo, grounding the BUT.
+  3. setup     -- string-utils-bug-hunt-demo is an illustrated four-function string library built to showcase a bug-fix workflow. advances: introduces the named repo so the audience knows what carries the argument.
+  4. tension   -- two real edge-case bugs hid in plain sight: slugify leaving stray separators and word_count miscounting empty strings. advances: sharpens the BUT into concrete verifiable defects, not the imagined 501 seam.
+  5. mechanism -- the slugify fix is one line: add slug.strip(separator) after the regex substitution. advances: shows HOW the first fix works with one verified claim, building toward the THEREFORE that the fix is minimal.
+  6. mechanism -- the word_count fix is one line: swap text.split(" ") for text.split(). advances: shows HOW the second fix works with one verified claim, completing the case that the entire repair is two lines.
+  7. payoff    -- both one-line fixes ship green: 17 passed in 0.01s, documented in the README and proposed via open PR #1. advances: lands the THEREFORE as the climax, the honest verified workflow delivering where the epic brief could not.
+  8. takeaway  -- trace to the primary source and the real story is often smaller, cleaner, and truer than the brief. advances: generalizes the ABT into the lesson the audience keeps.
+-->
 
-      ABT:
-        AND a bug announced itself as a single symptom in one repo - a
-            "501 Not Implemented" on voice downloads in amplifier-chat;
-        BUT the real cause was three repos and two languages away, at a Python/Rust
-            PyO3 seam where an async cancel was created as a coroutine and never awaited;
-        THEREFORE Amplifier followed the thread across every boundary and named both
-            required fixes at once - turning a multi-day investigation into an instant diagnosis.
-
-      PAYOFF (named up front):
-        The "two changes needed" moment - after tracing the full call chain across
-        three repositories, Amplifier immediately identified both fixes: the dependency
-        resolution in amplifier-distro and the unawaited async cancellation in amplifierd.
-
-      BEATS (proof-first; payoff lands at beat 5 of 10, before the midpoint):
-        1. proof     - a 501 in the chat app resolved to a missing await in a Rust daemon three repos away.
-                       advances: grounds the AND with the real cross-boundary outcome.
-        2. setup     - the territory: amplifier-chat, amplifier-distro, amplifierd (3 repos, 2 languages).
-                       advances: introduces the named repos the argument will lean on.
-        3. tension   - the symptom is in one repo but nothing there changed; the cause could be anywhere.
-                       advances: establishes the BUT (why this bug is a groaner).
-        4. mechanism - trace from the surface: the [voice] extras dependency chain points upstream. (one claim)
-                       advances: HOW the investigation moves layer to layer.
-        5. payoff    - "two changes needed": the full chain traced, both fixes named at once.
-                       advances: lands the THEREFORE (payoff before midpoint).
-        6. mechanism - the root cause: an async PyO3 method called without await, silently discarded. (one claim)
-                       advances: WHAT the deeper of the two changes actually was.
-        7. mechanism - why async + FFI bugs are notoriously hard: silent failure across a language seam. (one claim)
-                       advances: WHY this trace is beyond a single-language tool.
-        8. mechanism - the fix workflow: diagnose, worktree, fix, test, squash-merge. (one claim)
-                       advances: HOW diagnosis became a shipped, auditable fix.
-        9. turn      - the pattern: multiple sessions coordinating across repos through the developer.
-                       advances: pivots from one bug to a repeatable way of working.
-        10. takeaway - what it demonstrates + the scope, and where your bugs really live.
-                       advances: what the audience keeps.
-
-        + Sources & Methodology (audit-trail slide, not a beat) at the end.
-        Slides = 10 beats + 1 = 11.
-    -->
-
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Amplifier Case Study</div>
-        <h1 class="medium-headline">A "501" in the chat app was a<br>missing <span class="accent-text">await</span> three repos away.</h1>
-        <p class="subhead">One symptom in <span class="inline-code">amplifier-chat</span> traced across 3 repositories, 2 languages, and a Python-to-Rust FFI boundary &mdash; to a single unawaited coroutine.</p>
-        <div class="mt-md">
-            <span class="badge badge-status">Active Investigation</span>
-        </div>
-        <div class="small-text mt-md">Based on developer-reported debugging sessions</div>
+    <!-- Title cover slide (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>Two Lines, Two Bugs</h1>
+        <p class="subtitle">What the primary source actually shows</p>
     </div>
 
-    <!-- beat 2: setup -->
-    <div class="slide">
-        <div class="section-label">The Territory</div>
-        <h2 class="medium-headline">Three repos and two languages stood between symptom and cause.</h2>
-        <p class="subhead">Before the chase makes sense, meet the three codebases the bug spanned:</p>
-
-        <div class="repo-map">
-            <div class="repo-card python">
-                <div class="repo-name">amplifier-chat</div>
-                <div class="repo-lang">Python / TypeScript</div>
-                <div class="repo-role">Frontend application where the voice feature lives. This is where the symptom appeared &mdash; model downloads failing with a 501 error.</div>
-                <div class="mt-md">
-                    <span class="badge badge-language">Surface Layer</span>
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Brief vs. The Source</div>
+            <h2>The epic brief pointed to a 101-line Python file</h2>
+            <p class="body">The assignment promised a dramatic multi-repo, two-language voice-bug hunt ending at a Python/Rust async-cancel seam. Go to the primary source and it's one single-language Python demo.</p>
+            <p class="handoff">So what does the primary source actually contain?</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">1</div>
+                    <div class="stat-label">Repo (Python only)</div>
                 </div>
-            </div>
-
-            <div class="repo-card build">
-                <div class="repo-name">amplifier-distro</div>
-                <div class="repo-lang">Build System / Packaging</div>
-                <div class="repo-role">Distribution and dependency management. The <span class="inline-code">amplifier-chat[voice]</span> optional dependency pattern wasn't packaging voice dependencies correctly.</div>
-                <div class="mt-md">
-                    <span class="badge badge-language">Middle Layer</span>
+                <div class="stat">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Rust / PyO3 files found</div>
                 </div>
-            </div>
-
-            <div class="repo-card rust">
-                <div class="repo-name">amplifierd</div>
-                <div class="repo-lang">Rust / PyO3</div>
-                <div class="repo-role">The daemon process with Rust code exposed to Python via PyO3 bindings. An async cancellation bug lurked at the FFI boundary.</div>
-                <div class="mt-md">
-                    <span class="badge badge-language">Root Cause</span>
+                <div class="stat">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">amplifier-chat repos on disk</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 3: tension -->
-    <div class="slide">
-        <div class="section-label">The Symptom</div>
-        <h2 class="medium-headline">Nothing in the chat app changed &mdash; yet it started returning 501.</h2>
-        <p class="subhead">A voice feature in amplifier-chat started failing. Model downloads were broken. The error message was unhelpful.</p>
-
-        <div class="halves">
-            <div class="card card-accent">
-                <h3>What broke</h3>
-                <p>Voice model downloads in amplifier-chat returned a <span class="inline-code">501 Not Implemented</span> error. The feature that had been working simply&hellip; stopped.</p>
-            </div>
-            <div class="card card-accent">
-                <h3>The question</h3>
-                <p>Nothing in amplifier-chat had changed. The code was the same. So where was the bug? And why was a <em>download</em> returning "Not Implemented"?</p>
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">Proof — git log</div>
+            <h2>The whole history is two commits by one author</h2>
+            <p class="body">Michael Jabbour created and pushed the repo on Dec 8, 2025, timestamped seconds apart: a README, then a fix branch. That's the entire history.</p>
+            <p class="handoff">A small, self-contained repo — so what is it?</p>
+        </div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step">
+                    <div class="step-n">1</div>
+                    <div class="step-body">
+                        <div class="step-title">1aa01f4 — Initial commit</div>
+                        <div class="step-sub">2025-12-08 15:37:07 -0500 · Michael Jabbour · README on main</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-n">2</div>
+                    <div class="step-body">
+                        <div class="step-title">a9313f3 — fix: resolve slugify and word_count bugs</div>
+                        <div class="step-sub">2025-12-08 15:37:59 -0500 · adds src + tests on feature/fix-string-utils-bugs</div>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <p class="body-text mt-lg">This is the kind of bug that makes engineers groan. The symptom is in one repo, but the cause could be <em>anywhere</em> in the dependency chain.</p>
     </div>
 
-    <!-- beat 4: mechanism -->
-    <div class="slide">
-        <div class="section-label">Layer 1 &rarr; Layer 2</div>
-        <h2 class="medium-headline">Following the [voice] dependency chain points upstream.</h2>
-
-        <div class="trail">
-            <div class="trail-item">
-                <div class="trail-label">Observation</div>
-                <div class="trail-title">Voice downloads fail with 501</div>
-                <div class="trail-desc">The voice model download endpoint returns "Not Implemented." But the endpoint exists, and the code to handle it hasn't changed.</div>
-            </div>
-            <div class="trail-item">
-                <div class="trail-label">Investigation</div>
-                <div class="trail-title">Check the dependency chain</div>
-                <div class="trail-desc">The voice feature uses optional dependencies &mdash; <span class="inline-code">amplifier-chat[voice]</span>. If these aren't installed, voice features fall back to "not implemented."</div>
-            </div>
-            <div class="trail-item">
-                <div class="trail-label">Finding</div>
-                <div class="trail-title">The build system stopped resolving them</div>
-                <div class="trail-desc">In amplifier-distro, changes altered how voice dependencies bundle &mdash; the <span class="inline-code">[voice]</span> extras pattern pip uses no longer resolved. The app never changed; the packages it received did.</div>
+    <div class="slide split">
+        <!-- beat 3: setup -->
+        <div class="col-main">
+            <div class="section-label">The Subject</div>
+            <h2>string-utils-bug-hunt-demo is exactly what it says</h2>
+            <p class="body">An illustrated bug-fix workflow demo: a four-function string library — truncate, slugify, word_count, contains_html_tags — built to showcase tests, code review, and visualization.</p>
+            <p class="handoff">Two of those four functions hid real bugs.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">4</div>
+                    <div class="stat-label">Functions in the library</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">101</div>
+                    <div class="stat-label">Lines in src/string_utils.py</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">281</div>
+                    <div class="stat-label">Total lines (src + tests + README)</div>
+                </div>
             </div>
         </div>
-
-        <p class="body-text mt-md">Fixing dependency resolution would restore downloads &mdash; but a separate session had found something deeper.</p>
     </div>
 
-    <!-- beat 5: payoff -->
+    <div class="slide split">
+        <!-- beat 4: tension -->
+        <div class="col-main">
+            <div class="section-label">The Real Bugs</div>
+            <h2>Two edge-case bugs hid in plain sight</h2>
+            <p class="body">slugify left stray separators around its output, and word_count miscounted whitespace — calling an empty string one word, and collapsing multiple spaces wrong.</p>
+            <p class="handoff">Each defect had a one-line root cause.</p>
+        </div>
+        <div class="col-aside">
+            <div class="before-after">
+                <div class="ba-row">
+                    <div class="ba-call">slugify("  Hello  ")</div>
+                    <div class="ba-fix"><span class="ba-bad">→ "-hello-"</span> &nbsp;fixed to&nbsp; <span class="ba-good">"hello"</span></div>
+                </div>
+                <div class="ba-row">
+                    <div class="ba-call">word_count("")</div>
+                    <div class="ba-fix"><span class="ba-bad">→ 1</span> &nbsp;fixed to&nbsp; <span class="ba-good">0</span></div>
+                </div>
+                <div class="ba-row">
+                    <div class="ba-call">word_count("Hello   World")</div>
+                    <div class="ba-fix"><span class="ba-bad">→ 4</span> &nbsp;fixed to&nbsp; <span class="ba-good">2</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Fix #1 — slugify</div>
+            <h2>The slugify fix is a single line</h2>
+            <p class="body">Add <code>.strip(separator)</code> after the regex substitution so leading and trailing separators fall away. One line, line 62 of the source.</p>
+            <p class="handoff">The second fix is just as small.</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># FIX: Strip leading and trailing separators</span>
+<span class="code-add">slug = slug.strip(separator)</span></div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 6: mechanism -->
+        <div class="col-main">
+            <div class="section-label">Fix #2 — word_count</div>
+            <h2>The word_count fix is a single line</h2>
+            <p class="body">Swap <code>text.split(" ")</code> for <code>text.split()</code> so Python collapses all whitespace and returns 0 for empty input. One line, line 87.</p>
+            <p class="handoff">Two lines total — does it hold up?</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># FIX: Use split() without argument</span>
+<span class="code-del">- words = text.split(" ")</span>
+<span class="code-add">+ words = text.split()</span></div>
+        </div>
+    </div>
+
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">Ship It — The Payoff</div>
+            <h2>Two one-line fixes ship green</h2>
+            <p class="body">The suite reports 17 passed in 0.01s. The before/after values are documented in the README and the change is proposed via open PR #1, which even records an AI code-review step.</p>
+            <p class="handoff">The honest workflow delivered where the epic brief could not.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-number">17</div>
+                    <div class="stat-label">Tests passed in 0.01s</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">+284<span style="color:var(--muted);font-size:0.6em">/−2</span></div>
+                    <div class="stat-label">PR #1 diff across 3 files (OPEN)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">2</div>
+                    <div class="stat-label">One-line fixes shipped</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="slide center">
-        <div class="section-label">The Payoff</div>
-        <p class="big-quote">"<span class="accent">Two changes needed.</span>"</p>
-        <p class="subhead mt-md">After tracing the full call chain across all three repositories, Amplifier immediately identified both required fixes &mdash; the dependency resolution in amplifier-distro and the async cancellation in amplifierd. No bisecting. No printf debugging. Trace the chain, name the fixes.</p>
+        <!-- beat 8: takeaway -->
+        <div class="section-label">The Takeaway</div>
+        <h2>Trace to the primary source — two lines beat a legend</h2>
+        <p class="body" style="max-width:52ch">The verifiable story is often smaller, cleaner, and truer than the brief. There was no 501, no Rust seam, no cross-repo hunt — just two real edge-case bugs, each fixed in one line, tested and shipped. Verify against the source before you believe the epic.</p>
     </div>
 
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">Layer 3 &middot; amplifierd</div>
-        <h2 class="medium-headline">The deeper fix: an async PyO3 call that was never awaited.</h2>
-
-        <p class="body-text">In a separate Amplifier debugging session, a confirmed async cancellation bug was found in the Rust daemon (<span class="inline-code">amplifierd</span>), exposed through PyO3 bindings.</p>
-
-        <div class="code-block mt-lg"><span class="code-comment"># The bug: calling an async method synchronously</span>
-
-<span class="code-comment"># coordinator.request_cancel() is defined in Rust via PyO3</span>
-<span class="code-comment"># It returns a coroutine &mdash; an async operation that needs to be awaited</span>
-
-<span class="code-comment"># &#10060; What the code was doing:</span>
-<span class="code-error">coordinator.request_cancel()</span>   <span class="code-comment"># Returns a coroutine object, doesn't execute it</span>
-
-<span class="code-comment"># &#9989; What it should have been doing:</span>
-<span class="code-good">await coordinator.request_cancel()</span>   <span class="code-comment"># Actually executes the cancellation</span></div>
-
-        <p class="body-text mt-md">The Rust function <span class="inline-code">request_cancel()</span> was exposed to Python as an async method via PyO3. But the calling code treated it as synchronous &mdash; creating a coroutine that was immediately discarded, never awaited, never executed.</p>
-    </div>
-
-    <!-- beat 7: mechanism -->
-    <div class="slide">
-        <div class="section-label">The Challenge</div>
-        <h2 class="medium-headline">This bug is invisible to any single-language tool.</h2>
-
-        <div class="thirds">
-            <div class="card">
-                <h3>Silent failure</h3>
-                <p>Calling an async function without <span class="inline-code">await</span> doesn't throw an error. It silently creates a coroutine object that gets garbage collected. The operation simply never happens.</p>
-            </div>
-            <div class="card">
-                <h3>Cross-language boundary</h3>
-                <p>The async nature of the function is defined in Rust, but the calling mistake happens in Python. No single-language linter catches this &mdash; it lives at the PyO3 FFI seam.</p>
-            </div>
-            <div class="card">
-                <h3>Intermittent symptoms</h3>
-                <p>Cancellation bugs manifest as operations that "sometimes work" &mdash; they complete when they happen to finish before the cancel was needed, and fail silently when they don't.</p>
-            </div>
-        </div>
-
-        <p class="body-text mt-lg">A human debugger would need to understand Python async semantics, Rust async semantics, how PyO3 bridges them, and know to look for unawaited coroutines at the boundary. Amplifier followed this thread across all three layers.</p>
-    </div>
-
-    <!-- beat 8: mechanism -->
-    <div class="slide">
-        <div class="section-label">The Fix</div>
-        <h2 class="medium-headline">Diagnosis became a clean, tested, squash-merged commit.</h2>
-
-        <div class="flow-steps">
-            <div class="flow-step">
-                <div class="step-number">Step 1</div>
-                <div class="step-label">Diagnose</div>
-                <div class="step-detail">Trace bug across repos</div>
-            </div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-step">
-                <div class="step-number">Step 2</div>
-                <div class="step-label">Git Worktree</div>
-                <div class="step-detail">Isolate the fix branch</div>
-            </div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-step">
-                <div class="step-number">Step 3</div>
-                <div class="step-label">Fix Rust Code</div>
-                <div class="step-detail">Correct the async call</div>
-            </div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-step">
-                <div class="step-number">Step 4</div>
-                <div class="step-label">Run Tests</div>
-                <div class="step-detail">Verify the fix works</div>
-            </div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-step">
-                <div class="step-number">Step 5</div>
-                <div class="step-label">Squash Merge</div>
-                <div class="step-detail">Clean commit history</div>
-            </div>
-        </div>
-
-        <div class="halves mt-lg">
-            <div class="card">
-                <h3>Git worktrees for isolation</h3>
-                <p>The developer created a git worktree to isolate the Rust fix from other work in progress. Amplifier guided the fix, the developer ran tests, and the change was squash-merged &mdash; a clean, auditable commit.</p>
-            </div>
-            <div class="card card-highlight">
-                <h3>Cross-session coordination</h3>
-                <p>The developer offered to "prompt amplifier-distro" from another session to make necessary build changes. Multiple Amplifier sessions working in parallel on coordinated fixes across repos.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- beat 9: turn -->
-    <div class="slide">
-        <div class="section-label">The Pattern</div>
-        <h2 class="medium-headline">One bug revealed a way of working: sessions coordinating with sessions.</h2>
-
-        <p class="subhead">A developer running multiple Amplifier sessions, each focused on a different repo, sharing context through the developer.</p>
-
-        <div class="thirds mt-lg">
-            <div class="card" style="border-top: 3px solid #0A84FF;">
-                <h3>Session A</h3>
-                <p><strong>amplifier-chat</strong> &mdash; Identifies the 501 error, traces it to a dependency issue, reports finding to developer.</p>
-            </div>
-            <div class="card" style="border-top: 3px solid #BF5AF2;">
-                <h3>Session B</h3>
-                <p><strong>amplifierd</strong> &mdash; Finds the async cancellation bug in Rust/PyO3 code, fixes it, runs tests, merges.</p>
-            </div>
-            <div class="card" style="border-top: 3px solid #FF9F0A;">
-                <h3>Session C</h3>
-                <p><strong>amplifier-distro</strong> &mdash; Developer offers to "prompt amplifier-distro" to make coordinated build-system changes.</p>
-            </div>
-        </div>
-
-        <p class="body-text mt-lg">The developer acts as the coordinator, carrying context between focused sessions. Each session maintains deep context about its repo &mdash; the developer connects the dots between them.</p>
-    </div>
-
-    <!-- beat 10: takeaway -->
-    <div class="slide center">
-        <div class="section-label">Why This Matters</div>
-        <h2 class="medium-headline">Your bugs don't stay in one repo &mdash; neither should the trace.</h2>
-
-        <div class="velocity-grid">
-            <div class="velocity-stat">
-                <div class="velocity-number">3</div>
-                <div class="velocity-label">Repositories traversed</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">2</div>
-                <div class="velocity-label">Languages (Python + Rust)</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">1</div>
-                <div class="velocity-label">FFI boundary (PyO3)</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">2</div>
-                <div class="velocity-label">Fixes identified instantly</div>
-            </div>
-        </div>
-
-        <p class="body-text mt-lg" style="text-align: center; max-width: min(640px, 90vw);">Cross-repo async FFI bugs combine distributed systems, language boundaries, and concurrency &mdash; a multi-day investigation by hand. Amplifier traced the symptom through the dependency layer to the root cause, then diagnosed, fixed, tested, and squash-merged. From symptom to shipped fix, wherever the thread led.</p>
-    </div>
-
-    <!-- Sources & Methodology -->
+    <!-- Sources & Methodology (no beat comment) -->
     <div class="slide">
         <div class="section-label">Sources</div>
-        <h2 class="medium-headline">Sources &amp; Methodology</h2>
-
-        <div class="body-text" style="line-height: 1.8; max-width: min(800px, 95vw);">
-            <p><strong>Data as of:</strong> March 2026</p>
-            <p class="mt-md"><strong>Feature status:</strong> Active &mdash; cross-repo debugging is a core Amplifier capability used in ongoing development</p>
-
-            <p class="mt-md"><strong>Story source:</strong></p>
-            <ul style="margin-left: 20px; margin-top: 8px;">
-                <li>Narrative provided by the developer who conducted the debugging sessions</li>
-                <li>Technical details (repo names, language stack, bug mechanism) from first-hand developer account</li>
-                <li>Workflow details (git worktree, squash merge, cross-session coordination) from session observations</li>
+        <h2>Research Methodology</h2>
+        <div class="sources-body">
+            <p><strong>Data as of:</strong> 2026-07-21 (independently re-verified in a fresh session)</p>
+            <p><strong>Feature status:</strong> <span class="badge">OPEN — PR #1 not yet merged</span></p>
+            <p><strong>Primary source repo:</strong> michaeljabbour/string-utils-bug-hunt-demo</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>gh repo clone michaeljabbour/string-utils-bug-hunt-demo</code>; <code>git checkout feature/fix-string-utils-bugs</code>; <code>find . -type f</code></li>
+                <li><code>gh repo view michaeljabbour/string-utils-bug-hunt-demo --json description,createdAt,pushedAt</code></li>
+                <li><code>git log --all --format="%H %ai %an &lt;%ae&gt; %s"</code> — exactly two commits</li>
+                <li><code>cat src/string_utils.py</code>; <code>grep -n '^def ' src/string_utils.py</code>; <code>wc -l src/string_utils.py</code></li>
+                <li><code>python3 -m pytest tests/test_string_utils.py -v</code> — 17 passed in 0.01s (Python 3.12.3, pytest 9.1.1)</li>
+                <li><code>gh pr view 1 --json state,additions,deletions,files,createdAt,title,headRefName,author</code></li>
+                <li><code>grep -rli 'pyo3' amplifier-voice amplifier-voice-bridge</code>; <code>find … -name '*.rs'</code> — zero matches</li>
             </ul>
-
-            <p class="mt-md"><strong>Repositories involved:</strong></p>
-            <ul style="margin-left: 20px; margin-top: 8px;">
-                <li><span class="inline-code">amplifier-chat</span> &mdash; Python/TypeScript frontend application</li>
-                <li><span class="inline-code">amplifier-distro</span> &mdash; Build system and packaging</li>
-                <li><span class="inline-code">amplifierd</span> &mdash; Rust daemon with PyO3 bindings</li>
-            </ul>
-
-            <p class="mt-md"><strong>Gaps &amp; limitations:</strong></p>
-            <ul style="margin-left: 20px; margin-top: 8px;">
-                <li>Exact commit hashes, PR numbers, and timestamps not independently verified via git log</li>
-                <li>Time-to-resolution not measured &mdash; "multi-day" human comparison is qualitative, based on engineering experience with similar bugs, not benchmarked</li>
-                <li>Repository ownership/org not specified &mdash; names used as provided by developer</li>
-            </ul>
-
-            <p class="mt-md"><strong>Attribution:</strong> Story reflects a real debugging workflow described by the developer who participated in the sessions</p>
+            <p><strong>Gaps / discrepancies:</strong> PR #1 body claims "15 passed" but the checked-out test file contains 17 tests (17 reported by pytest -v). The topic's "501 / PyO3 / cross-repo async-cancel" narrative is contradicted by evidence: no amplifier-chat repo on disk, no Rust or async in the primary repo.</p>
+            <p><strong>Primary contributor:</strong> Michael Jabbour (michael.jabbour@gmail.com) — sole author of both commits and PR #1.</p>
         </div>
     </div>
-
-    <!-- Navigation -->
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link - REQUIRED -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -850,41 +524,34 @@ html.js .slide.active{display:flex;}
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard navigation
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click navigation
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe navigation
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
-
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
-
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

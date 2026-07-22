@@ -3,60 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mock Services — Testing Against the Real World Without the Real World</title>
+    <title>Faking Slack</title>
     <script>document.documentElement.classList.add('js')</script>
-<style>
-        :root {
-            --accent: #FF375F;
-            --accent-glow: rgba(255, 55, 95, 0.15);
-            --accent-dim: rgba(255, 55, 95, 0.6);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --border-visible: rgba(255,255,255,0.20);
-
-            /* Text hierarchy */
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-tertiary: rgba(255,255,255,0.5);
-
-            /* Typography scale */
-            --fs-hero: clamp(36px, 8vw, 72px);
-            --fs-h1: clamp(28px, 6vw, 48px);
-            --fs-h2: clamp(22px, 4vw, 32px);
-            --fs-h3: clamp(18px, 3vw, 24px);
-            --fs-body: clamp(14px, 2vw, 16px);
-            --fs-small: clamp(12px, 1.8vw, 14px);
-            --fs-code: clamp(12px, 2vw, 15px);
-
-            /* Spacing scale */
-            --space-xs: clamp(8px, 1.5vw, 12px);
-            --space-sm: clamp(12px, 2vw, 16px);
-            --space-md: clamp(16px, 3vw, 24px);
-            --space-lg: clamp(24px, 4vw, 40px);
-            --space-xl: clamp(32px, 6vw, 60px);
-
-            /* Border radius */
-            --radius-sm: clamp(8px, 1vw, 12px);
-            --radius-md: clamp(12px, 1.5vw, 16px);
-            --radius-lg: clamp(16px, 2vw, 24px);
-        }
-
+    <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: var(--text-primary);
-            overflow: hidden;
-            overscroll-behavior: none;
+        :root {
+            --bg: #0a0a0f;
+            --fg: #f5f5f7;
+            --muted: #a1a1aa;
+            --accent: #4ade80;
+            --accent2: #60a5fa;
+            --card: rgba(255,255,255,0.05);
+            --border: rgba(255,255,255,0.12);
+        }
+
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
         .slide {
-            display: none;
+            display: flex;
             width: 100vw;
             min-height: 100vh;
             min-height: 100dvh;
@@ -68,360 +38,212 @@
 
         .slide.active { display: flex; }
 
+        /* Progressive enhancement: no-JS fallback */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+
+        /* Fit-safe: cap slides to viewport, scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide {
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
         .center {
             text-align: center;
             align-items: center;
             justify-content: center;
         }
 
-        @media (max-height: 500px) and (orientation: landscape) {
-            .slide {
-                padding: 16px clamp(20px, 5vw, 80px) 60px;
-            }
-            .slide.center {
-                justify-content: flex-start;
-            }
-        }
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); max-width: 30ch; }
 
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* --- Typography --- */
         .section-label {
-            font-size: var(--fs-small);
-            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.5vw, 14px);
             color: var(--accent);
-            margin-bottom: var(--space-sm);
-        }
-
-        .headline {
-            font-size: var(--fs-hero);
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.1;
-            color: var(--text-primary);
-            margin-bottom: var(--space-md);
-        }
-
-        .medium-headline {
-            font-size: var(--fs-h1);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
-            color: var(--text-primary);
-            margin-bottom: var(--space-md);
-        }
-
-        .subhead {
-            font-size: var(--fs-h3);
-            font-weight: 400;
-            color: var(--text-secondary);
-            line-height: 1.4;
-            max-width: min(700px, 90vw);
-        }
-
-        .small-text {
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
-        }
-
-        .body-text {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            max-width: min(800px, 95vw);
-        }
-
-        /* --- Layout --- */
-        .thirds {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            width: 100%;
-        }
-
-        .halves {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-            width: 100%;
-        }
-
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-lg);
-        }
-
-        .card h3 {
-            color: var(--text-primary);
-            font-size: var(--fs-h3);
             font-weight: 600;
-            margin-bottom: var(--space-xs);
+            margin-bottom: clamp(14px, 2.5vw, 22px);
         }
 
-        .card p, .card li {
-            color: var(--text-secondary);
-            font-size: var(--fs-body);
-            line-height: 1.5;
+        .body { color: var(--fg); margin-top: clamp(14px, 2.5vw, 22px); max-width: 40ch; }
+        .handoff { color: var(--muted); margin-top: clamp(16px, 3vw, 26px); max-width: 40ch; font-style: italic; }
+
+        h2 + .body, h1 + .body { margin-top: clamp(16px, 3vw, 26px); }
+
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(14px, 2vw, 22px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.5vw, 26px);
+        }
+        .stat-num {
+            font-size: clamp(30px, 5vw, 54px);
+            font-weight: 700;
+            line-height: 1;
+            color: var(--accent);
+            letter-spacing: -0.02em;
+        }
+        .stat-label {
+            margin-top: clamp(8px, 1.5vw, 12px);
+            color: var(--muted);
+            font-size: clamp(12px, 1.6vw, 15px);
         }
 
-        .card-icon {
-            font-size: clamp(28px, 5vw, 48px);
-            margin-bottom: var(--space-sm);
-            display: block;
+        /* Rules / list block */
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(12px, 2vw, 18px); }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(12px, 2vw, 18px) clamp(14px, 2.5vw, 22px);
+            color: var(--fg);
+        }
+        .rules li strong { color: var(--accent2); }
+
+        /* Steps */
+        .steps { list-style: none; counter-reset: step; display: flex; flex-direction: column; gap: clamp(12px, 2vw, 18px); }
+        .steps li {
+            counter-increment: step;
+            position: relative;
+            padding-left: clamp(44px, 6vw, 58px);
+            color: var(--fg);
+        }
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: clamp(30px, 4vw, 40px);
+            height: clamp(30px, 4vw, 40px);
+            background: var(--accent);
+            color: #0a0a0f;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: clamp(14px, 2vw, 18px);
         }
 
-        /* --- Code blocks --- */
+        /* Code block */
         .code-block {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-            font-size: var(--fs-code);
+            background: #05050a;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(16px, 2.5vw, 26px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(12px, 1.6vw, 16px);
             line-height: 1.6;
             white-space: pre-wrap;
-            word-wrap: break-word;
+            word-break: break-word;
+            color: #e4e4e7;
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-top: var(--space-md);
-            width: 100%;
-            max-width: min(900px, 95vw);
         }
+        .code-comment { color: #6b7280; }
+        .code-key { color: var(--accent2); }
+        .code-str { color: var(--accent); }
 
-        .code-green { color: #30D158; }
-        .code-blue { color: #64D2FF; }
-        .code-comment { color: rgba(255,255,255,0.35); }
-        .code-keyword { color: var(--accent); }
-        .code-string { color: #FFD60A; }
-
-        /* --- Flow diagram --- */
-        .flow {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: var(--space-sm);
-            margin-top: var(--space-lg);
-        }
-
-        .flow-step {
-            background: var(--surface-2);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
-            padding: var(--space-sm) var(--space-md);
-            font-size: var(--fs-body);
-            color: var(--text-primary);
-            font-weight: 500;
-            text-align: center;
-            min-width: min(140px, 40vw);
-        }
-
-        .flow-step.accent {
-            background: var(--accent-glow);
-            border-color: var(--accent-dim);
+        /* Sources slide */
+        .sources-body { max-width: 60ch; color: var(--muted); }
+        .sources-body p { margin-bottom: clamp(8px, 1.5vw, 12px); }
+        .sources-body ul { margin: clamp(8px,1.5vw,12px) 0 clamp(12px,2vw,18px) 1.2em; }
+        .sources-body li { margin-bottom: clamp(6px, 1vw, 10px); }
+        .sources-body code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: 0.9em;
+            background: rgba(255,255,255,0.06);
+            padding: 2px 6px;
+            border-radius: 4px;
             color: var(--accent);
+            word-break: break-word;
         }
+        .sources-body strong { color: var(--fg); }
 
-        .flow-arrow {
-            font-size: var(--fs-h3);
-            color: var(--text-tertiary);
-        }
-
-        /* --- Feature status badge --- */
-        .status-badge {
+        .badge {
             display: inline-block;
-            font-size: var(--fs-small);
+            background: rgba(74,222,128,0.15);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            border-radius: 999px;
+            padding: 4px 14px;
+            font-size: clamp(11px, 1.5vw, 13px);
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            border: 1px solid;
-            margin-top: var(--space-sm);
+            letter-spacing: 0.04em;
         }
 
-        .status-active {
-            color: #30D158;
-            border-color: rgba(48, 209, 88, 0.4);
-            background: rgba(48, 209, 88, 0.1);
-        }
-
-        /* --- Big quote --- */
-        .big-quote {
-            font-size: var(--fs-h2);
-            font-weight: 600;
-            font-style: italic;
-            color: var(--text-primary);
-            line-height: 1.4;
-            max-width: min(800px, 90vw);
-            border-left: 4px solid var(--accent);
-            padding-left: var(--space-lg);
-            margin: var(--space-lg) 0;
-        }
-
-        /* --- Velocity stats --- */
-        .velocity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(160px, 45%), 1fr));
-            gap: var(--space-lg);
-            margin-top: var(--space-xl);
-            width: 100%;
-            max-width: min(900px, 95vw);
-        }
-
-        .velocity-stat {
-            text-align: center;
-        }
-
-        .velocity-number {
-            font-size: clamp(40px, 10vw, 72px);
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            background: linear-gradient(135deg, var(--accent), #FF6B8A);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1;
-        }
-
-        .velocity-label {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
-
-        /* --- Vision grid --- */
-        .vision-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--space-sm);
-            margin-top: var(--space-lg);
-            width: 100%;
-        }
-
-        .vision-item {
-            background: var(--surface-2);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
-            padding: var(--space-md);
-            text-align: center;
-        }
-
-        .vision-item .vi-icon {
-            font-size: clamp(32px, 6vw, 48px);
-            margin-bottom: var(--space-xs);
-            display: block;
-        }
-
-        .vision-item .vi-name {
-            font-size: var(--fs-body);
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .vision-item .vi-desc {
-            font-size: var(--fs-small);
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .vision-item.active-mock {
-            border-color: var(--accent-dim);
-            background: var(--accent-glow);
-        }
-
-        .vision-item.future-mock {
-            border-style: dashed;
-        }
-
-        /* --- Comparison table --- */
-        .comparison {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2px;
-            margin-top: var(--space-lg);
-            width: 100%;
-            max-width: min(900px, 95vw);
-        }
-
-        .comparison-header {
-            font-size: var(--fs-small);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: var(--space-sm) var(--space-md);
-            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-        }
-
-        .comparison-header.before {
-            background: rgba(255, 69, 58, 0.15);
-            color: #FF453A;
-        }
-
-        .comparison-header.after {
-            background: rgba(48, 209, 88, 0.15);
-            color: #30D158;
-        }
-
-        .comparison-cell {
-            background: var(--surface-2);
-            padding: var(--space-sm) var(--space-md);
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .comparison-cell:last-child {
-            border-radius: 0 0 var(--radius-sm) 0;
-        }
-
-        .comparison-cell:nth-last-child(2) {
-            border-radius: 0 0 0 var(--radius-sm);
-        }
-
-        /* --- Navigation --- */
+        /* Navigation */
         .nav {
             position: fixed;
-            bottom: 28px;
+            bottom: 26px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 8px;
+            gap: 10px;
             z-index: 100;
         }
-
         .nav-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px; height: 9px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.25);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background 0.3s, transform 0.3s;
         }
-
-        .nav-dot.active {
-            background: var(--accent);
-            transform: scale(1.3);
-        }
-
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
         .slide-counter {
             position: fixed;
-            bottom: 28px;
-            right: clamp(16px, 3vw, 32px);
-            font-size: var(--fs-small);
-            color: var(--text-tertiary);
+            bottom: 24px;
+            right: 28px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
             z-index: 100;
-            font-variant-numeric: tabular-nums;
         }
 
         .more-stories {
@@ -434,315 +256,270 @@
             text-decoration: none;
             z-index: 100;
         }
-        .more-stories:hover {
-            color: rgba(255,255,255,0.5);
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
         }
 
-        /* --- Utilities --- */
-        .mt-md { margin-top: var(--space-md); }
-        .mt-lg { margin-top: var(--space-lg); }
-        .accent-text { color: var(--accent); }
-        .highlight-line { background: var(--accent-glow); padding: 2px 6px; border-radius: 4px; }
-
-        .list-styled {
-            list-style: none;
-            padding: 0;
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
         }
-
-        .list-styled li {
-            font-size: var(--fs-body);
-            color: var(--text-secondary);
-            line-height: 1.6;
-            padding-left: var(--space-md);
-            position: relative;
-            margin-bottom: var(--space-xs);
-        }
-
-        .list-styled li::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0.6em;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-        }
-
-        @media (hover: none) {
-            .nav-dot {
-                min-width: 16px;
-                min-height: 16px;
-            }
-        }
-    
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+    </style>
 </head>
 <body>
+<!--
+SPINE
+ABT: AND real agent-built software must integrate with external services like Slack; BUT in a factory that spins environments up and down constantly, testing those integrations for real means minting app registrations and OAuth tokens, hitting rate limits, and manual setup; THEREFORE the Digital Twin Universe runs mock services as Docker sidecars and intercepts the real domains, so an unmodified app talks to what it believes is real Slack — no accounts, no OAuth, fully reproducible.
+Payoff: The factory validated itself — while running a real Slack bot in a Digital Twin, Amplifier found and fixed a catch-all that silently returned ok:true, masking integration failures.
+Beats:
+  beat 1 (frame): Agents that constantly rebuild environments can't test real Slack; DTU answers with mock services. advances: orients the audience and states the stakes behind the AND and BUT — why testing external integrations breaks down in an agent-driven factory.
+  beat 2 (proof): One tiny 822-line mock Slack server (6 modules) implements 11 Web API methods plus a Socket Mode WebSocket. advances: establishes the THEREFORE is real and small — concrete evidence the mock exists and works, landing within the first three beats.
+  beat 3 (setup): The mock declares in digital-twin-mock.yaml which real domains it owns and runs as a Docker sidecar on port 3000. advances: introduces the named manifest and sidecar the rest of the argument leans on, before the mechanism explains interception.
+  beat 4 (mechanism): mitmproxy intercepts those declared domains and routes them to the sidecar, so code inside needs no changes. advances: shows the single core mechanism that makes the THEREFORE possible — the app runs unmodified.
+  beat 5 (mechanism): The bot authenticates with fake xapp-/xoxb- tokens the mock never validates; auth.test always returns ok. advances: lands one more mechanism claim proving the BUT is dissolved — the credential/OAuth burden disappears.
+  beat 6 (tension): On main, an unimplemented method quietly returned ok:true, hiding integration failures. advances: introduces the complication that sets up the payoff — a silent-success bug that masks real breakage.
+  beat 7 (payoff): Running a real Slack bot in a Digital Twin, Amplifier found that bug and fixed the catch-all to fail loudly, adding a 7-test smoke suite. advances: lands the THEREFORE as climax — the factory used the mock to catch and fix a real bug in its own tooling.
+  beat 8 (takeaway): Mock stateful services as sidecars, intercept their real domains, and pass real read-only APIs straight through. advances: generalizes the pattern the audience keeps — the mock-vs-passthrough split as a repeatable recipe.
+-->
 
-    <!--
-      ============================================================
-      NARRATIVE SPINE (built from the deck's existing verified content; no fresh research)
-      ============================================================
-
-      ABT:
-        AND real software integrates with external services like Slack;
-        BUT for an agent-driven software factory that spins environments up and
-            tears them down constantly, testing those integrations for real
-            (accounts, OAuth tokens, rate limits, cleanup) is a non-starter;
-        THEREFORE mock services run as sidecar containers with DNS rewriting, so
-            the production app runs completely unmodified and can't tell it isn't
-            talking to the real service - no accounts, no limits, fully reproducible.
-
-      PAYOFF (named up front):
-        Four themed Slack workspaces run simultaneously against mocks with zero
-        real API calls - "what you test is what you ship," because the app is the
-        real thing and only the network destination changed.
-
-      BEATS (proof-first; payoff lands at beat 4 of 8, before the midpoint):
-        1. proof     - a production Slack bot runs unmodified against a mock it can't
-                       distinguish from Slack (822-line mock, 11 endpoints, 0 accounts).
-                       advances: grounds the AND - it actually works, right now.
-        2. tension   - for a software factory, real Slack testing is a non-starter.
-                       advances: establishes the BUT.
-        3. setup     - introduce amplifier-hive-slack and the mock that stands in for Slack.
-                       advances: names the example the payoff will lean on.
-        4. payoff    - four themed workspaces run at once, zero real API calls.
-                       advances: lands the THEREFORE (payoff before midpoint).
-        5. mechanism - DNS rewriting redirects api.slack.com to the sidecar. (one claim)
-                       advances: HOW the app is fooled without code changes.
-        6. mechanism - one DTU profile declares mocks, passthrough, and launch. (one claim)
-                       advances: HOW you wire it up.
-        7. mechanism - you own the mock, so you script the whole scenario. (one claim)
-                       advances: HOW you get full control.
-        8. takeaway  - once a mock exists, everyone reuses it - for any service.
-                       advances: what the audience keeps + how to start.
-
-        + Sources & Methodology (audit-trail slide, not a beat) at the end.
-        Slides = 8 beats + 1 = 9.
-    -->
-
-    <!-- beat 1: proof -->
-    <div class="slide active center">
-        <div class="section-label">Amplifier Digital Twin Universe</div>
-        <h1 class="headline">A production Slack bot runs unmodified &mdash; and can't tell it isn't Slack</h1>
-        <p class="subhead">No test doubles, no code changes. The real app talks to a mock it believes is the real service.</p>
-
-        <div class="velocity-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(160px, 45%), 1fr));">
-            <div class="velocity-stat">
-                <div class="velocity-number">822</div>
-                <div class="velocity-label">lines of Python in the Slack mock</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">11</div>
-                <div class="velocity-label">Slack API endpoints emulated</div>
-            </div>
-            <div class="velocity-stat">
-                <div class="velocity-number">0</div>
-                <div class="velocity-label">real accounts, tokens, or API calls</div>
-            </div>
-        </div>
-        <div class="status-badge status-active">Active &middot; April 2026</div>
+    <!-- Title cover slide (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>Faking Slack</h1>
+        <p class="subtitle">Mocked external services for agent-driven testing</p>
     </div>
 
-    <!-- beat 2: tension -->
-    <div class="slide">
-        <div class="section-label">The Tension</div>
-        <h2 class="medium-headline">For a software factory, testing against real Slack is a non-starter</h2>
-        <p class="body-text">Most real software integrates with external services &mdash; and testing those integrations creates friction that kills velocity. In a factory where agents constantly create and tear down environments, that friction compounds until testing stops happening.</p>
+    <!-- Beat 1 -->
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Problem</div>
+            <h2>Agents that rebuild environments constantly can't test against real Slack</h2>
+            <p class="body">In an agent-driven software factory, agents are constantly creating new app registrations — which may exceed rate limits and require manual setup. Real accounts and OAuth make integration testing a non-starter.</p>
+            <p class="handoff">The Digital Twin Universe answers with mock services.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>New <strong>app registrations</strong> minted per environment</li>
+                <li>May <strong>exceed rate limits</strong></li>
+                <li>Requires <strong>manual setup</strong></li>
+            </ul>
+        </div>
+    </div>
 
-        <div class="thirds">
-            <div class="card">
-                <span class="card-icon">&#128273;</span>
-                <h3>Account Overhead</h3>
-                <p>Slack alone needs an account, an app registration, a workspace, and OAuth tokens &mdash; multiplied for every environment.</p>
-            </div>
-            <div class="card">
-                <span class="card-icon">&#9201;&#65039;</span>
-                <h3>Rate Limits</h3>
-                <p>Real APIs have quotas. Agents spinning environments up and down burn through those limits fast.</p>
-            </div>
-            <div class="card">
-                <span class="card-icon">&#128295;</span>
-                <h3>Manual Setup</h3>
-                <p>Throwaway accounts, hand configuration, cleanup after every run. Non-starter for agent-driven development.</p>
+    <!-- Beat 2 -->
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">The Mock Is Real</div>
+            <h2>One 822-line mock Slack server implements exactly the surface a bot touches</h2>
+            <p class="body">Six Python modules provide 11 named Web API methods and a Socket Mode WebSocket — plus a 7-endpoint control API to simulate user messages during tests.</p>
+            <p class="handoff">Small enough to trust, complete enough to fool a real bot.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat">
+                    <div class="stat-num">822</div>
+                    <div class="stat-label">lines of Python across 6 modules</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">11</div>
+                    <div class="stat-label">named Slack Web API methods (GET + POST)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">7</div>
+                    <div class="stat-label">/mock/* control-API endpoints</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- beat 3: setup -->
-    <div class="slide">
-        <div class="section-label">The Example</div>
-        <h2 class="medium-headline">Meet amplifier-hive-slack &mdash; and the mock that stands in for Slack</h2>
-        <p class="body-text"><strong style="color:var(--text-primary);">amplifier-hive-slack</strong> is a bot that integrates directly with Slack's APIs. To test it for real you'd need the full account-and-token dance above. So instead we built an 822-line mock Slack that the bot talks to exactly as if it were the real thing &mdash; across four surfaces:</p>
-
-        <ul class="list-styled mt-lg" style="max-width: min(820px, 95vw);">
-            <li><strong style="color:var(--text-primary);">Slack Web API</strong> &mdash; 11 GET/POST endpoints (<code>auth.test</code>, <code>chat.postMessage</code>, <code>conversations.history</code>, <code>reactions.add</code>, &hellip;)</li>
-            <li><strong style="color:var(--text-primary);">Socket Mode WebSocket</strong> &mdash; hello handshake, event envelopes, ack, ping/pong keepalive, rewritten to connect over TLS transparently</li>
-            <li><strong style="color:var(--text-primary);">Control API</strong> &mdash; <code>/mock/send-message</code>, <code>/mock/create-user</code>, <code>/mock/create-channel</code> for full programmatic simulation</li>
-            <li><strong style="color:var(--text-primary);">Web UI</strong> &mdash; a vanilla HTML/JS interface with channel list, message feed, and input, so you can drive the mock from a browser</li>
-        </ul>
-    </div>
-
-    <!-- beat 4: payoff -->
-    <div class="slide">
-        <div class="section-label">The Payoff</div>
-        <h2 class="medium-headline">Four themed Slack workspaces, live at once &mdash; zero real API calls</h2>
-        <div class="big-quote">What you test is what you ship. The app is production code; only the network destination changed.</div>
-        <p class="body-text">The multi-workspace demo launches four DTU environments simultaneously, each with unique channels, seeded users, and scripted conversations firing in real time &mdash; the bot responding throughout, and not one real Slack account in sight.</p>
-
-        <ul class="list-styled mt-lg" style="max-width: min(820px, 95vw);">
-            <li>&#128640; <strong style="color:var(--text-primary);">Startup Weekend</strong> &mdash; a team building a meal-prep app in 47 hours; the bot scopes features and structures the pitch.</li>
-            <li>&#127918; <strong style="color:var(--text-primary);">Moonlight Studios</strong> &mdash; an indie game studio prepping for Steam Next Fest; the bot debugs gameplay and shaders.</li>
-            <li>&#128300; <strong style="color:var(--text-primary);">Patel Research Lab</strong> &mdash; a team racing the ICML 2026 deadline; the bot reviews drafts and suggests experiments.</li>
-            <li>&#127960;&#65039; <strong style="color:var(--text-primary);">Oakridge HOA</strong> &mdash; a neighborhood association juggling maintenance, events, and fence disputes.</li>
-        </ul>
-    </div>
-
-    <!-- beat 5: mechanism -->
-    <div class="slide">
-        <div class="section-label">How It Works</div>
-        <h2 class="medium-headline">DNS rewriting redirects api.slack.com to the sidecar &mdash; the app never changes</h2>
-        <p class="body-text">Traffic bound for a real API hostname is transparently redirected to the mock container. The application is installed completely unmodified; mitmproxy does all the work at the network layer.</p>
-
-        <div class="flow">
-            <div class="flow-step">DTU Profile</div>
-            <span class="flow-arrow">&rarr;</span>
-            <div class="flow-step">Build Mock Image</div>
-            <span class="flow-arrow">&rarr;</span>
-            <div class="flow-step accent">Start Sidecar</div>
-            <span class="flow-arrow">&rarr;</span>
-            <div class="flow-step accent">DNS Rewrite via mitmproxy</div>
-            <span class="flow-arrow">&rarr;</span>
-            <div class="flow-step">App Runs Unmodified</div>
+    <!-- Beat 3 -->
+    <div class="slide split">
+        <!-- beat 3: setup -->
+        <div class="col-main">
+            <div class="section-label">The Manifest</div>
+            <h2>The mock declares which real domains it owns in digital-twin-mock.yaml</h2>
+            <p class="body">It claims <code>api.slack.com</code> and <code>slack.com</code>, runs on the Docker runtime built from a Dockerfile, and listens on port 3000 as a sidecar container.</p>
+            <p class="handoff">Declaring the domains is what lets interception know where to point.</p>
         </div>
-
-        <div class="code-block"><span class="code-comment"># Inside the Incus container, the DTU engine:</span>
-<span class="code-comment"># 1. installs mitmproxy and a rewrite addon</span>
-<span class="code-comment">#    api.slack.com &rarr; mock container IP:3000</span>
-<span class="code-comment"># 2. installs the mitmproxy CA cert so TLS just works</span>
-cp ~/.mitmproxy/mitmproxy-ca-cert.pem /usr/local/share/ca-certificates/mitmproxy.crt
-update-ca-certificates
-<span class="code-comment"># 3. sets proxy env vars</span>
-<span class="code-keyword">export</span> HTTPS_PROXY=<span class="code-string">"http://localhost:8080"</span>
-<span class="code-comment"># 4. rewrites the Socket Mode WebSocket URL to wss://api.slack.com/ws</span></div>
-    </div>
-
-    <!-- beat 6: mechanism -->
-    <div class="slide">
-        <div class="section-label">How It Works</div>
-        <h2 class="medium-headline">One DTU profile declares the mocks, the passthrough, and the launch</h2>
-        <p class="body-text">The profile is the single source of truth: what to install, which mocks to wire up, which real APIs to let through, and how to start the app.</p>
-
-        <div class="code-block"><span class="code-comment"># amplifier-hive-slack.yaml &mdash; DTU profile (86 lines)</span>
-<span class="code-keyword">name:</span> <span class="code-string">amplifier-hive-slack</span>
-<span class="code-keyword">base:</span>
-  <span class="code-keyword">image:</span> ubuntu:24.04
-
-<span class="code-keyword">mock_services:</span>                    <span class="code-comment"># &larr; declare mocks here</span>
-  - <span class="code-keyword">source:</span> <span class="code-string">${MOCK_SLACK_PATH}</span>
-
-<span class="code-keyword">passthrough:</span>                      <span class="code-comment"># &larr; real APIs still work</span>
-  <span class="code-keyword">allow_external:</span> <span class="code-green">true</span>
-  <span class="code-keyword">services:</span>
-    - <span class="code-keyword">name:</span> anthropic
-      <span class="code-keyword">key_env:</span> ANTHROPIC_API_KEY
-
-<span class="code-keyword">provision:</span>                        <span class="code-comment"># &larr; install &amp; launch</span>
-  <span class="code-keyword">setup_cmds:</span>
-    - uv tool install amplifier-hive-slack
-    - nohup hive-slack config.yaml &amp;</div>
-    </div>
-
-    <!-- beat 7: mechanism -->
-    <div class="slide">
-        <div class="section-label">How It Works</div>
-        <h2 class="medium-headline">You own the mock, so you script the entire scenario</h2>
-        <p class="body-text">Because the mock is yours, the Control API lets you stage any workspace topology and drive it end to end &mdash; the same lever behind the four-workspace demo.</p>
-
-        <div class="thirds">
-            <div class="card">
-                <span class="card-icon">&#127916;</span>
-                <h3>Prepopulate Scenarios</h3>
-                <p>Seed channels, users, and message history with create-user and create-channel &mdash; any topology on demand.</p>
-            </div>
-            <div class="card">
-                <span class="card-icon">&#129302;</span>
-                <h3>Script Interactions</h3>
-                <p>Send messages, trigger events, simulate multiple users &mdash; automate an entire conversation flow with a shell script.</p>
-            </div>
-            <div class="card">
-                <span class="card-icon">&#9854;&#65039;</span>
-                <h3>No Limits</h3>
-                <p>No quotas, no accounts, no cleanup. Tear down and rebuild in seconds, a thousand times over.</p>
-            </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># digital-twin-mock.yaml</span>
+<span class="code-key">name</span>: <span class="code-str">slack</span>
+<span class="code-key">runtime</span>: <span class="code-str">docker</span>
+<span class="code-key">build</span>: <span class="code-str">Dockerfile</span>
+<span class="code-key">port</span>: <span class="code-str">3000</span>
+<span class="code-key">domains</span>:
+  - <span class="code-str">api.slack.com</span>
+  - <span class="code-str">slack.com</span></div>
         </div>
     </div>
 
-    <!-- beat 8: takeaway -->
-    <div class="slide">
-        <div class="section-label">What You Keep</div>
-        <h2 class="medium-headline">Once a mock exists, everyone reuses it &mdash; for any external service</h2>
-        <p class="body-text">Mocks are standalone repos with a standard <code>digital-twin-mock.yaml</code>. A profile just declares what it needs; DTU clones, builds, starts, and rewrites DNS. Pair it with the browser-tester agent and the loop closes &mdash; end-to-end verification with zero real external calls.</p>
-
-        <div class="flow mt-lg">
-            <div class="flow-step">Launch DTU</div>
-            <span class="flow-arrow">&rarr;</span>
-            <div class="flow-step accent">Mocks Start</div>
-            <span class="flow-arrow">&rarr;</span>
-            <div class="flow-step">App Installs</div>
-            <span class="flow-arrow">&rarr;</span>
-            <div class="flow-step accent">Browser Agent Tests</div>
-            <span class="flow-arrow">&rarr;</span>
-            <div class="flow-step">Integration Verified</div>
+    <!-- Beat 4 -->
+    <div class="slide split">
+        <!-- beat 4: mechanism -->
+        <div class="col-main">
+            <div class="section-label">The Mechanism</div>
+            <h2>mitmproxy intercepts the declared domains so code inside needs no changes</h2>
+            <p class="body">Inside the Incus environment, mitmproxy routes traffic for the declared domains to the mock sidecar — including WebSocket upgrades. It even rewrites the <code>apps.connections.open</code> response from <code>ws://localhost:3000/ws</code> to <code>wss://api.slack.com/ws</code>, so Socket Mode connects via TLS through the proxy.</p>
+            <p class="handoff">The app runs completely unmodified — it can't tell it isn't talking to real Slack.</p>
         </div>
-
-        <p class="body-text mt-lg">Start by telling Amplifier: <em>&ldquo;Make me a DTU with a mock Slack so I can try amplifier-hive-slack.&rdquo;</em></p>
-
-        <div style="margin-top: var(--space-lg); display: flex; gap: var(--space-md); justify-content: flex-start; flex-wrap: wrap;">
-            <a href="https://github.com/microsoft/amplifier-bundle-digital-twin-universe" target="_blank" style="color: var(--accent); text-decoration: none; border: 1px solid var(--accent-dim); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-sm); font-size: var(--fs-body);">amplifier-bundle-digital-twin-universe</a>
-            <a href="https://github.com/DavidKoleczek/digital-twin-mock-slack" target="_blank" style="color: var(--accent); text-decoration: none; border: 1px solid var(--accent-dim); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-sm); font-size: var(--fs-body);">digital-twin-mock-slack</a>
+        <div class="col-aside">
+            <ul class="steps">
+                <li>App calls <strong>api.slack.com</strong> as normal</li>
+                <li>mitmproxy intercepts the declared domain</li>
+                <li>Traffic routes to the mock sidecar on port 3000</li>
+                <li>WebSocket URL rewritten to <strong>wss://</strong> through the proxy</li>
+            </ul>
         </div>
     </div>
 
-    <!-- Sources & Methodology (audit-trail slide, not a beat) -->
+    <!-- Beat 5 -->
+    <div class="slide split">
+        <!-- beat 5: mechanism -->
+        <div class="col-main">
+            <div class="section-label">No Credentials</div>
+            <h2>The bot authenticates with fake tokens the mock never validates</h2>
+            <p class="body">The profile writes fake <code>xapp-</code> and <code>xoxb-</code> tokens the mock doesn't check, and <code>auth.test</code> returns ok unconditionally. Workspace state is fully in-memory and seeded to a fixed starting point on every boot.</p>
+            <p class="handoff">No accounts, no OAuth, fully reproducible — torn down with the environment.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>App token <strong>xapp-mock-token-for-dtu-testing</strong></li>
+                <li>Bot token <strong>xoxb-mock-token-for-dtu-testing</strong></li>
+                <li>Seeded state: <strong>T_MOCK001</strong>, channel <strong>C_GENERAL</strong>, one test user</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Beat 6 -->
+    <div class="slide split">
+        <!-- beat 6: tension -->
+        <div class="col-main">
+            <div class="section-label">The Complication</div>
+            <h2>A mock is only trustworthy if it fails like the real thing</h2>
+            <p class="body">On main, an unimplemented method quietly returned <code>{ok: true}</code>. A silent success like that would hide integration failures — the bot would look healthy while a call it depended on was never really handled.</p>
+            <p class="handoff">So the mock had a bug that could mask exactly the breakage it existed to catch.</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># main (HEAD 132505e) catch-all</span>
+<span class="code-key">return</span> {
+  <span class="code-str">"ok"</span>: <span class="code-str">true</span>,
+  <span class="code-str">"warning"</span>: ...
+}
+<span class="code-comment"># silently succeeds — hides failures</span></div>
+        </div>
+    </div>
+
+    <!-- Beat 7 -->
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>The factory validated itself — Amplifier found and fixed the bug</h2>
+            <p class="body">Found during real Amplifier Slack-bot validation in a Digital Twin, Amplifier changed the catch-all to fail loudly with <code>{ok: false, error: "method_not_implemented"}</code> and added a 7-test smoke suite. It lives on branch <code>fix/catch-all-and-smoke-tests</code> as open PR #1.</p>
+            <p class="handoff">The mock wasn't just a shortcut — the factory used it to fix a bug in its own tooling.</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="code-comment"># fix/catch-all-and-smoke-tests (bc477a1)</span>
+<span class="code-key">json_response</span>({
+  <span class="code-str">"ok"</span>: <span class="code-str">false</span>,
+  <span class="code-str">"error"</span>: <span class="code-str">"method_not_implemented"</span>
+})
+<span class="code-comment"># + test_smoke.py: 7 tests, all pass</span></div>
+        </div>
+    </div>
+
+    <!-- Beat 8 -->
+    <div class="slide split">
+        <!-- beat 8: takeaway -->
+        <div class="col-main">
+            <div class="section-label">The Pattern</div>
+            <h2>Mock stateful services as sidecars; pass real read-only APIs straight through</h2>
+            <p class="body">Stateful services like Slack are mocked as sidecars with their real domains intercepted. Stateless, read-only services — LLM APIs like Anthropic — are proxied through with forwarded credentials rather than mocked.</p>
+            <p class="handoff">Reproducible integration testing for agent-built software, with nothing to provision.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li><strong>Mock</strong> stateful services (Slack) as Docker sidecars</li>
+                <li><strong>Intercept</strong> their real domains with mitmproxy</li>
+                <li><strong>Passthrough</strong> stateless APIs (Anthropic) with forwarded credentials</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Sources & Methodology (no beat comment) -->
     <div class="slide">
         <div class="section-label">Sources</div>
-        <h2 class="medium-headline">Research Methodology</h2>
-        <div class="body-text">
-            <p><strong style="color:var(--text-primary);">Data as of:</strong> April 2026</p>
-            <p><strong style="color:var(--text-primary);">Feature status:</strong> Active</p>
-            <p class="mt-md"><strong style="color:var(--text-primary);">Verified from source:</strong></p>
-            <ul class="list-styled">
-                <li>Slack mock: 822 lines of Python, 11 Web API endpoints, Socket Mode WebSocket, Control API, and Web UI &mdash; <code>DavidKoleczek/digital-twin-mock-slack</code></li>
-                <li>DTU profile <code>amplifier-hive-slack.yaml</code>: 86 lines declaring <code>mock_services</code>, <code>passthrough</code>, and <code>provision</code></li>
-                <li>Multi-workspace demo: 4 environments (Startup Weekend, Moonlight Studios, Patel Research Lab, Oakridge HOA), each with seeded channels/users</li>
-                <li>DNS rewrite path verified against the DTU engine's mitmproxy addon and CA-cert install steps</li>
+        <h2>Research Methodology</h2>
+        <div class="sources-body">
+            <p><span class="badge">Working / in use</span></p>
+            <p><strong>Data as of:</strong> July 6, 2026 (latest commit). Independently re-verified in a fresh session.</p>
+            <p><strong>Primary source:</strong> <code>bkrabach/digital-twin-mock-slack</code> (a fork of <code>DavidKoleczek/digital-twin-mock-slack</code>), grounded against <code>microsoft/amplifier-bundle-digital-twin-universe</code>.</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>find src -type f -name '*.py' | xargs wc -l</code> → 822 total lines across 6 modules</li>
+                <li><code>grep -oP '"\K[a-zA-Z.]+(?=", slack_api\.)' src/mock_slack/server.py | sort -u | wc -l</code> → 11 methods</li>
+                <li><code>grep -oP 'add_(get|post)\("\K/mock/[^"]+' src/mock_slack/server.py</code> → 7 control endpoints</li>
+                <li><code>cat digital-twin-mock.yaml</code> → domains api.slack.com, slack.com; port 3000</li>
+                <li><code>cat profiles/amplifier-hive-slack.yaml</code> → fake xapp-/xoxb- tokens, Anthropic passthrough</li>
+                <li><code>cat src/mock_slack/state.py</code> → seeded state T_MOCK001, C_GENERAL, testuser</li>
+                <li><code>git rev-list --all --count; git shortlog -sne --all</code> → 4 commits (DavidKoleczek 3, Amplifier 1)</li>
+                <li><code>git show bc477a1; gh pr list --state all</code> → catch-all fix + 7 smoke tests, open PR #1 (unmerged)</li>
+                <li><code>sed -n '1,10p' docs/mock-authoring.md</code> (DTU) → "code running inside the environment doesn't need any changes"</li>
             </ul>
-            <p class="mt-md"><strong style="color:var(--text-primary);">Primary repositories:</strong> microsoft/amplifier-bundle-digital-twin-universe, DavidKoleczek/digital-twin-mock-slack</p>
+            <p><strong>Contributors:</strong> DavidKoleczek (3 commits, original author) and Amplifier / microsoft-amplifier bot (1 commit).</p>
+            <p><strong>Gaps:</strong> The fail-loudly catch-all and 7-test smoke suite sit on an unmerged branch (open PR #1) — main's catch-all still returns ok:true. The README's endpoint list is out of date vs. code, so method names are cited from server.py. The DTU "Mock service catalog" of pre-built images is marked TBD in the DTU README (a plan, not shipped).</p>
         </div>
     </div>
 
     <!-- Navigation -->
     <div class="nav" id="nav"></div>
     <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link -->
     <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
+
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
             updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
         function updateNav() {
@@ -751,41 +528,34 @@ update-ca-certificates
             nav.innerHTML = '';
             slides.forEach((_, i) => {
                 const dot = document.createElement('div');
-                dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
-                dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
                 nav.appendChild(dot);
             });
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            counter.textContent = `${current + 1} / ${total}`;
         }
 
-        // Keyboard navigation
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(currentSlide + 1); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(currentSlide - 1); }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click navigation
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav') || e.target.closest('a') || e.target.closest('code')) return;
-            if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
-            else showSlide(currentSlide - 1);
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch/swipe navigation
         let touchStartX = 0;
-        let touchEndX = 0;
         const SWIPE_THRESHOLD = 50;
-
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
-
         document.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            const diff = touchStartX - touchEndX;
+            const diff = touchStartX - e.changedTouches[0].screenX;
             if (Math.abs(diff) > SWIPE_THRESHOLD) {
-                if (diff > 0) showSlide(currentSlide + 1);
-                else showSlide(currentSlide - 1);
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
 

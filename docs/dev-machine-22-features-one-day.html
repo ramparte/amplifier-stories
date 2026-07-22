@@ -1,923 +1,513 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>22 Production Features. 1 Developer. 1 Day.</title>
-  <script>document.documentElement.classList.add('js')</script>
-<style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>You Write Specs, Not Code</title>
+    <script>document.documentElement.classList.add('js')</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0b0d10;
+            --fg: #f5f6f7;
+            --muted: #9aa3ad;
+            --accent: #5ac8fa;
+            --accent2: #ffd479;
+            --card: #16191e;
+            --border: #262b32;
+        }
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
 
-    :root {
-      --bg: #000;
-      --bg-card: #0a0a0a;
-      --surface-1: rgba(255,255,255,0.04);
-      --surface-2: rgba(255,255,255,0.08);
-      --surface-3: rgba(255,255,255,0.13);
-      --accent: #FF2D78;
-      --accent-dim: rgba(255,45,120,0.12);
-      --accent-border: rgba(255,45,120,0.35);
-      --accent-glow: rgba(255,45,120,0.22);
-      --text: #fff;
-      --text-secondary: rgba(255,255,255,0.72);
-      --text-tertiary: rgba(255,255,255,0.45);
-      --green: #30D158;
-      --green-dim: rgba(48,209,88,0.12);
-      --green-border: rgba(48,209,88,0.3);
-      --yellow: #FFD60A;
-      --yellow-dim: rgba(255,214,10,0.12);
-      --yellow-border: rgba(255,214,10,0.3);
-      --blue: #0A84FF;
-      --blue-dim: rgba(10,132,255,0.12);
-      --blue-border: rgba(10,132,255,0.3);
-      --code-bg: #0b0f18;
-      --code-green: #7ee787;
-      --code-comment: rgba(255,255,255,0.32);
-      --border: rgba(255,255,255,0.09);
-      --radius: 12px;
-      --radius-sm: 8px;
-    }
+        /* Core slide CSS */
+        .slide {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .slide.active { display: flex; }
 
-    html, body {
-      width: 100%; height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
-      overflow: hidden;
-      -webkit-font-smoothing: antialiased;
-    }
+        /* Progressive enhancement: no-JS fallback */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
 
-    /* ═══════════════════════════════════════
-       SLIDESHOW ENGINE
-    ═══════════════════════════════════════ */
-    .deck {
-      width: 100%; height: 100%;
-      position: relative;
-    }
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
+        /* Fit-safe: cap to viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
 
-    .slide {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 56px 9% 80px;
-      opacity: 0;
-      transition: opacity 0.35s ease;
-      pointer-events: none;
-      overflow: hidden;
-    }
+        .slide {
+            transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s ease;
+        }
 
-    .slide.active {
-      opacity: 1;
-      pointer-events: all;
-    }
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
 
-    /* Click zones */
-    .zone-prev, .zone-next {
-      position: fixed;
-      top: 0; bottom: 72px;
-      width: 14%;
-      cursor: pointer;
-      z-index: 50;
-    }
-    .zone-prev { left: 0; }
-    .zone-next { right: 0; }
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px, 3vw, 28px); font-weight: 400; }
 
-    /* Nav dots */
-    .nav-dots {
-      position: fixed;
-      bottom: 26px;
-      left: 50%; transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      z-index: 100;
-    }
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: clamp(14px, 2.5vw, 22px);
+        }
+        .body { color: var(--muted); margin-top: clamp(14px, 2.5vw, 22px); max-width: 46ch; }
+        .handoff { color: var(--fg); opacity: 0.85; margin-top: clamp(16px, 3vw, 26px); max-width: 46ch; font-style: italic; }
+        h1 + .body, h2 + .body { margin-top: clamp(16px, 3vw, 24px); }
 
-    .dot {
-      width: 6px; height: 6px;
-      border-radius: 3px;
-      background: rgba(255,255,255,0.22);
-      cursor: pointer;
-      transition: all 0.25s ease;
-      flex-shrink: 0;
-    }
-    .dot.active {
-      width: 22px;
-      background: var(--accent);
-    }
+        /* Split layout */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-    .slide-num {
-      position: fixed;
-      bottom: 22px; right: 32px;
-      font-size: 11px;
-      color: var(--text-tertiary);
-      font-variant-numeric: tabular-nums;
-      letter-spacing: 0.05em;
-      z-index: 100;
-    }
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(12px, 2vw, 20px);
+        }
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: clamp(16px, 2.5vw, 26px);
+        }
+        .stat-num {
+            font-size: clamp(28px, 5vw, 52px);
+            font-weight: 700;
+            line-height: 1;
+            color: var(--accent);
+            letter-spacing: -0.02em;
+        }
+        .stat-num.warm { color: var(--accent2); }
+        .stat-label {
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: var(--muted);
+            margin-top: clamp(6px, 1vw, 10px);
+            line-height: 1.3;
+        }
 
-    /* ═══════════════════════════════════════
-       TYPOGRAPHY
-    ═══════════════════════════════════════ */
-    .eyebrow {
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--accent);
-      font-weight: 600;
-      margin-bottom: 14px;
-    }
+        /* Steps */
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.8vw, 16px); }
+        .steps li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(12px, 2vw, 18px) clamp(14px, 2.2vw, 22px);
+            color: var(--fg);
+        }
+        .steps li strong { color: var(--accent); }
 
-    .slide-title {
-      font-size: clamp(28px, 4.2vw, 54px);
-      font-weight: 700;
-      line-height: 1.1;
-      letter-spacing: -0.025em;
-      color: var(--text);
-    }
+        /* Rules */
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(10px, 1.8vw, 15px); }
+        .rules li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: clamp(12px, 2vw, 18px) clamp(14px, 2.2vw, 22px);
+            color: var(--fg);
+            position: relative;
+            padding-left: clamp(34px, 4vw, 44px);
+        }
+        .rules li::before {
+            content: "✓";
+            position: absolute;
+            left: clamp(14px, 2vw, 20px);
+            color: var(--accent);
+            font-weight: 700;
+        }
 
-    .slide-body {
-      font-size: clamp(15px, 1.8vw, 19px);
-      color: var(--text-secondary);
-      line-height: 1.65;
-    }
+        /* Cards */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: clamp(12px, 2vw, 18px); }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(14px, 2.2vw, 22px);
+        }
+        .card h3 { font-size: clamp(15px, 2vw, 19px); color: var(--accent); margin-bottom: 6px; font-weight: 650; }
+        .card p { font-size: clamp(13px, 1.6vw, 15px); color: var(--muted); }
 
-    .big-num {
-      font-size: clamp(72px, 13vw, 160px);
-      font-weight: 800;
-      line-height: 0.88;
-      letter-spacing: -0.04em;
-      color: var(--accent);
-    }
+        /* Sources slide */
+        .small-text { font-size: clamp(13px, 1.6vw, 15px); color: var(--muted); }
+        .small-text code {
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 1px 6px;
+            font-size: 0.9em;
+            color: var(--accent);
+        }
+        .small-text ul { margin: 8px 0 8px 20px; }
+        .small-text li { margin-bottom: 6px; }
+        .small-text p { margin-bottom: 8px; }
 
-    .accent { color: var(--accent); }
-    .green  { color: var(--green); }
-    .yellow { color: var(--yellow); }
-    .blue   { color: var(--blue); }
-    .dim    { color: var(--text-tertiary); }
+        .badge {
+            display: inline-block;
+            font-size: clamp(11px, 1.5vw, 13px);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            padding: 4px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--accent2);
+            margin-top: clamp(18px, 3vw, 28px);
+        }
 
-    /* ═══════════════════════════════════════
-       SURFACE COMPONENTS
-    ═══════════════════════════════════════ */
-    .card {
-      background: var(--surface-1);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px 24px;
-    }
+        /* Landscape mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: center; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
 
-    .card-accent {
-      background: var(--accent-dim);
-      border: 1px solid var(--accent-border);
-      border-radius: var(--radius);
-      padding: 20px 24px;
-    }
-
-    .card-green {
-      background: var(--green-dim);
-      border: 1px solid var(--green-border);
-      border-radius: var(--radius);
-      padding: 18px 22px;
-    }
-
-    .card-yellow {
-      background: var(--yellow-dim);
-      border: 1px solid var(--yellow-border);
-      border-radius: var(--radius);
-      padding: 18px 22px;
-    }
-
-    /* Status badge */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 13px;
-      border-radius: 100px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .badge-active {
-      background: var(--green-dim);
-      color: var(--green);
-      border: 1px solid var(--green-border);
-    }
-    .badge-active::before {
-      content: '';
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--green);
-      animation: pulse 2s ease infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    /* Gate row */
-    .gate {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 14px;
-      background: var(--green-dim);
-      border: 1px solid var(--green-border);
-      border-radius: var(--radius-sm);
-      font-size: 14px;
-      color: var(--green);
-      font-weight: 600;
-    }
-
-    /* Metric box */
-    .metric {
-      border-radius: var(--radius);
-      padding: 18px 20px;
-      text-align: center;
-    }
-    .metric-val {
-      font-size: clamp(26px, 3.5vw, 46px);
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1;
-      margin-bottom: 7px;
-    }
-    .metric-lbl {
-      font-size: 13px;
-      color: var(--text-secondary);
-      font-weight: 500;
-      line-height: 1.4;
-    }
-
-    /* Code block */
-    .code {
-      background: var(--code-bg);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: var(--radius-sm);
-      padding: 16px 20px;
-      font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-      font-size: 12.5px;
-      line-height: 1.7;
-      color: var(--code-green);
-      white-space: pre;
-      overflow-x: auto;
-    }
-    .code .dim { color: var(--code-comment); }
-    .code .kw  { color: #ff7b72; }
-    .code .str { color: #a5d6ff; }
-    .code .num { color: #f0a450; }
-
-    /* Grids */
-    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
-    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; width: 100%; }
-    .g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; width: 100%; }
-
-    /* Divider line */
-    .rule {
-      width: 100%; height: 1px;
-      background: var(--border);
-      margin: 18px 0;
-    }
-
-    /* Arrow connector */
-    .arrow {
-      color: var(--accent);
-      font-size: 18px;
-      opacity: 0.6;
-      padding: 0 6px;
-      flex-shrink: 0;
-    }
-
-    /* Quote callout */
-    .quote {
-      border-left: 3px solid var(--accent);
-      padding: 12px 20px;
-      background: var(--accent-dim);
-      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-      font-size: clamp(14px, 1.6vw, 17px);
-      color: var(--text-secondary);
-      font-style: italic;
-      line-height: 1.6;
-    }
-
-    /* ═══════════════════════════════════════
-       SLIDE-SPECIFIC BACKGROUNDS
-    ═══════════════════════════════════════ */
-    #s1::before {
-      content: '';
-      position: absolute;
-      top: -240px; right: -180px;
-      width: 700px; height: 700px;
-      background: radial-gradient(circle, rgba(255,45,120,0.13) 0%, transparent 68%);
-      pointer-events: none;
-    }
-    #s1::after {
-      content: '';
-      position: absolute;
-      bottom: -100px; left: -100px;
-      width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(255,45,120,0.06) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    #s6::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 50% 0%, rgba(48,209,88,0.07) 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    #s7::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 30% 50%, rgba(255,45,120,0.09) 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    #s8::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 50% 50%, rgba(255,45,120,0.12) 0%, transparent 65%);
-      pointer-events: none;
-    }
-
-    /* ═══════════════════════════════════════
-       NUMBERED LIST (compact payoff version)
-    ═══════════════════════════════════════ */
-    .rule-list { list-style: none; width: 100%; }
-    .rule-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 14px;
-      color: var(--text-secondary);
-      line-height: 1.5;
-    }
-    .rule-list li:last-child { border-bottom: none; }
-    .rnum {
-      width: 22px; height: 22px;
-      min-width: 22px;
-      border-radius: 50%;
-      background: var(--accent-dim);
-      border: 1px solid var(--accent-border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--accent);
-      margin-top: 1px;
-    }
-
-    /* ═══════════════════════════════════════
-       FLOW DIAGRAM
-    ═══════════════════════════════════════ */
-    .flow {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 4px;
-      width: 100%;
-      justify-content: center;
-    }
-    .flow-box {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 10px 16px;
-      font-size: 13px;
-      font-weight: 600;
-      text-align: center;
-      color: var(--text);
-      white-space: nowrap;
-    }
-    .flow-box.highlight {
-      background: var(--accent-dim);
-      border-color: var(--accent-border);
-      color: var(--accent);
-    }
-    .flow-arrow { color: rgba(255,255,255,0.3); font-size: 16px; padding: 0 4px; }
-
-    /* Comparison bar */
-    .cmp-bar {
-      height: 8px;
-      border-radius: 4px;
-      background: var(--surface-3);
-      margin: 8px 0 4px;
-      overflow: hidden;
-    }
-    .cmp-fill { height: 100%; border-radius: 4px; }
-
-    /* Bundle credit link */
-    .bundle-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 14px;
-      padding: 14px 22px;
-      background: rgba(255,45,120,0.09);
-      border: 1px solid rgba(255,45,120,0.32);
-      border-radius: var(--radius);
-      text-decoration: none;
-      color: inherit;
-      transition: background 0.2s, border-color 0.2s;
-    }
-    .bundle-link:hover {
-      background: rgba(255,45,120,0.16);
-      border-color: rgba(255,45,120,0.5);
-    }
-
-    /* Velocity callout strip */
-    .velocity-strip {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 20px;
-      background: var(--accent-dim);
-      border: 1px solid var(--accent-border);
-      border-radius: var(--radius-sm);
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-      width: 100%;
-    }
-    .velocity-strip .v-icon {
-      font-size: 18px;
-    }
-  
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-
-/* --- fit-safe formatting (injected by fix_deck_fit) --- */
-.slide{overflow-y:auto!important;overflow-x:hidden!important;}
-/* content slides flow from the top so tall content scrolls instead of clipping */
-.slide:not(.center){justify-content:flex-start!important;}
-/* a centered slide that is too tall stops centering and flows from the top */
-@media (max-height:820px){.slide.center{justify-content:flex-start!important;}}
-/* cap runaway hero numbers so a huge stat can't shove content off-screen */
-.velocity-number,.stat-value,.big-number,.metric-value,.stat-num,.hero-number,.stat-number{
-  font-size:clamp(40px,8vw,96px)!important;line-height:1.05!important;}
-
-/* --- BEGIN fit-safe formatting (fix_deck_fit) --- */
-/* every slide can scroll; content flows from the top (no center-clip) */
-.slide{overflow-y:auto!important;overflow-x:hidden!important;}
-.slide:not(.center){justify-content:flex-start!important;}
-@media (max-height:820px){.slide.center{justify-content:flex-start!important;}}
-/* JS slide-mode: cap the slide to the viewport and scroll INSIDE it (escape valve) */
-html.js .slide{max-height:100vh;max-height:100dvh;overflow-y:auto!important;-webkit-overflow-scrolling:touch;}
-/* no-JS: slides are position:relative and the page scrolls naturally */
-/* cap runaway hero numbers so a huge stat can't shove content off-screen */
-.velocity-number,.stat-value,.big-number,.metric-value,.stat-num,.hero-number,.stat-number{
-  font-size:clamp(40px,8vw,96px)!important;line-height:1.05!important;}
-/* --- END fit-safe formatting (fix_deck_fit) --- */
-</style>
+        /* Nav */
+        .nav {
+            position: fixed;
+            bottom: 26px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        .nav-dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.22);
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter {
+            position: fixed;
+            bottom: 22px;
+            right: 26px;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--muted);
+            z-index: 100;
+        }
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
+    </style>
 </head>
 <body>
 <!--
-  ============================================================
-  NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
-  ============================================================
-
-  ABT:
-    AND a single developer set out to build Ridecast2 - a real production app with
-        auth, payments, and cloud deploy;
-    BUT instead of writing code they wrote specs and let a machine build it, which
-        only pays off if the output is trustworthy AND the spec is precise;
-    THEREFORE in one day the machine shipped 22 production features with zero
-        human-written app code, and the developer's job transformed from writing
-        code to writing specs - because spec quality IS output quality.
-
-  PAYOFF (named up front):
-    Better specs, not a faster developer: explicit specs shipped 4 features in one
-    11-minute session, and the role transformed - spec authorship replaced
-    implementation. 22 features, 0 human-written lines, all gates green.
-
-  BEATS (frame-first, proof-early; payoff lands at beat 5 of 8):
-    1. frame     - the stakes: this is a story about what happens to software
-                   development when a machine writes the code and the human writes
-                   the spec - "22 features in one day" is the shape of that shift.
-                   advances: orients the audience on why the numbers matter before
-                   they land - what this is, the problem it reframes, why it
-                   matters. Earns the attention the proof then rewards.
-    2. proof     - the scorecard: 22 features, 8 sessions, +93 tests, 0 human lines.
-                   advances: grounds the AND with hard, git-verified leverage.
-    3. setup     - Ridecast2 is a real production app, machine-written, gates green.
-                   advances: introduces the named example before it carries weight.
-    4. tension   - the machine is only as good as the spec: loose specs stalled.
-                   advances: establishes the BUT (the spec is the bottleneck).
-    5. payoff    - better specs, not a faster dev: 11-minute session, role transformed.
-                   advances: lands the THEREFORE (payoff at the midpoint).
-    6. mechanism - it never forgets because it writes everything down. (one claim)
-                   advances: HOW stateless sessions + STATE.yaml carry truth forward.
-    7. mechanism - even the hard infrastructure was machine-built. (one claim)
-                   advances: HOW deep it goes - production infra, not CRUD toys.
-    8. takeaway  - the 6 spec rules; write the specs, run the machine.
-                   advances: what the audience keeps + how to replicate it.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end.
-    Slides = 8 beats + 1 = 9.
+SPINE
+ABT: AND for decades building software has meant a developer typing application code line by line; BUT a model can't reach real scale in one pass and long agent sessions degrade until the output stops being trustworthy; THEREFORE the developer's job shifts to authoring precise specs while a disposable, gated dev machine implements against them — proven at 278 features on word4.
+Payoff: Spec quality becomes output quality — a gated, disposable machine turns a precise specification into shipped software at scale, so the human writes specs instead of code.
+Beats:
+  1. frame     — What if a developer stopped typing app code and instead wrote specs an Amplifier 'dev machine' builds against?  advances: orients the audience to the AND and the stakes; reframes the developer's job before any evidence lands.
+  2. proof     — On word4 the pattern autonomously shipped 278 features in 5.5 days (106 sessions, 445 commits, 3,714 tests, ~89K LOC).  advances: establishes the AND with verified proof-at-scale; rewards the frame's attention immediately.
+  3. tension   — One model pass can't build at that scale and a long-running session degrades until output can't be trusted.  advances: establishes the BUT; names why naive 'just let the AI code' fails.
+  4. mechanism — The machine is disposable: each session reads STATE.yaml + CONTEXT-TRANSFER.md, does 3-5 features, commits, persists state, exits before context rots.  advances: answers the BUT with one claim; shows HOW bounded zero-context sessions keep quality from degrading.
+  5. mechanism — Trust is enforced: templated health-check, QA, and smoke-test recipes loop the build until the codebase is clean.  advances: answers the BUT's trust half with one claim; gates make autonomous output safe to ship.
+  6. setup     — Ridecast2 is Chris Park's content-to-podcast app, the same developer and spec-driven workflow corroborated by the committed Ridecast Phase 4 story.  advances: introduces the headline instance and its author so the '22 features' number isn't a dead reference.
+  7. payoff    — Point the machine at a precise spec and spec quality becomes output quality: the deck reports 22 production features on Ridecast2 in a single day, zero app code hand-written.  advances: lands the THEREFORE as the climax; the developer writes specs, the gated disposable machine ships the code.
+  8. takeaway  — The foundry that stamps out these machines is ramparte/amplifier-bundle-dev-machine: 3 gated modes, 8 recipe templates, machines with zero dependency on the bundle.  advances: what the audience keeps; the pattern is reusable tooling they can adopt, not a one-off.
 -->
 
-<div class="zone-prev" id="zone-prev"></div>
-<div class="zone-next" id="zone-next"></div>
-
-<div class="deck" id="deck">
-
-  <!-- beat 1: frame -->
-  <div class="slide active" id="s0">
-    <div style="width:100%;max-width:900px;position:relative;z-index:1;">
-      <div class="eyebrow">The Dev Machine &middot; What Changed</div>
-      <div class="slide-title" style="margin-bottom:14px;">What if you never wrote the <span class="accent">code</span> &mdash;<br>only the <span class="accent">spec</span>?</div>
-      <div class="slide-body" style="margin-bottom:22px;max-width:760px;">
-        This is a story about development velocity &mdash; and about the job underneath it changing shape. A single developer stopped writing application code and started writing specifications, then let an Amplifier-driven machine build against them. <strong style="color:var(--text);">&ldquo;22 features in one day&rdquo; is what that shift looks like when it works.</strong>
-      </div>
-      <div class="quote">
-        The interesting number isn&rsquo;t the speed &mdash; it&rsquo;s the <strong style="color:var(--text);">zero</strong>: zero lines of app code written by a human. If that holds up, the developer&rsquo;s job is no longer typing functions. It&rsquo;s authoring the spec the machine builds from.
-      </div>
-      <div class="slide-body" style="margin-top:18px;font-size:15px;color:var(--text-tertiary);">First, the receipts &mdash; because a claim this big should open on evidence.</div>
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>You Write Specs, Not Code</h1>
+        <p class="subtitle">A disposable dev machine builds the rest</p>
     </div>
-  </div>
 
-  <!-- beat 2: proof -->
-  <div class="slide" id="s1">
-    <div style="width:100%;max-width:920px;position:relative;z-index:1;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-        <div class="badge badge-active">Active</div>
-        <span class="dim" style="font-size:12px;letter-spacing:0.04em;">Ridecast2 &middot; verified 2026-03-06</span>
-      </div>
-      <div class="slide-title" style="margin-bottom:6px;">One Day: 22 Features, <span class="accent">Zero Human Lines</span></div>
-      <div class="slide-body" style="margin-bottom:22px;">A single developer wrote specs, not code. The machine did the rest &mdash; and every commit passed the same health gates hand-written code must.</div>
-
-      <div class="g4" style="margin-bottom:16px;">
-        <div class="metric" style="background:var(--accent-dim);border:1px solid var(--accent-border);">
-          <div class="metric-val" style="color:var(--accent);">22</div>
-          <div class="metric-lbl">Production<br>features shipped</div>
-        </div>
-        <div class="metric" style="background:var(--yellow-dim);border:1px solid var(--yellow-border);">
-          <div class="metric-val" style="color:var(--yellow);">8</div>
-          <div class="metric-lbl">Dev sessions<br>total</div>
-        </div>
-        <div class="metric" style="background:var(--green-dim);border:1px solid var(--green-border);">
-          <div class="metric-val" style="color:var(--green);">+93</div>
-          <div class="metric-lbl">Tests added<br>58 &rarr; 151</div>
-        </div>
-        <div class="metric" style="background:var(--blue-dim);border:1px solid var(--blue-border);">
-          <div class="metric-val" style="color:var(--blue);">0</div>
-          <div class="metric-lbl">Lines of app code<br>written by human</div>
-        </div>
-      </div>
-
-      <div class="velocity-strip" style="margin-bottom:16px;">
-        <span class="v-icon">&#9889;</span>
-        <span>Fastest session: <strong style="color:var(--accent);">4 features in 11 minutes</strong> &mdash; one feature every 2.7 minutes</span>
-      </div>
-
-      <div class="g2">
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-tertiary);font-weight:600;margin-bottom:4px;">Health Gates &mdash; All Green</div>
-          <div class="gate"><span>&#10003;</span><span>Lint</span><span style="margin-left:auto;color:rgba(48,209,88,0.7);font-size:13px;">zero warnings</span></div>
-          <div class="gate"><span>&#10003;</span><span>Tests</span><span style="margin-left:auto;color:rgba(48,209,88,0.7);font-size:13px;">151 / 158 passing</span></div>
-          <div class="gate"><span>&#10003;</span><span>Build</span><span style="margin-left:auto;color:rgba(48,209,88,0.7);font-size:13px;">5.1s clean</span></div>
-          <div class="gate"><span>&#10003;</span><span>E2E</span><span style="margin-left:auto;color:rgba(48,209,88,0.7);font-size:13px;">5 / 5 Playwright</span></div>
-        </div>
-        <div class="card" style="display:flex;flex-direction:column;gap:10px;">
-          <div style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-tertiary);font-weight:600;">Velocity Breakdown</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;"><span style="color:var(--text-secondary);">Phase 1 (sessions 1&ndash;2)</span><span style="color:var(--text);font-weight:600;">5 features</span></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;"><span style="color:var(--text-secondary);">Phase 2 (sessions 3&ndash;6)</span><span style="color:var(--text);font-weight:600;">~11 features + 3 fixes</span></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;"><span style="color:var(--text-secondary);">Phase 0 (sessions 7&ndash;8)</span><span style="color:var(--text);font-weight:600;">6 infra features</span></div>
-          <div class="rule" style="margin:4px 0;"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:15px;"><span style="color:var(--text);font-weight:700;">Total verified</span><span style="color:var(--accent);font-weight:800;">22 features</span></div>
-        </div>
-      </div>
+    <div class="slide center">
+        <!-- beat 1: frame -->
+        <div class="section-label">The Reframe</div>
+        <h1>What if you stopped typing app code and wrote the spec the machine builds against?</h1>
+        <p class="body" style="margin-left:auto;margin-right:auto;">For decades, building software has meant a developer typing the application code line by line. This story is a different job: one developer authors precise specifications, and an Amplifier-driven "dev machine" implements against them.</p>
+        <p class="handoff" style="margin-left:auto;margin-right:auto;">The reframe only earns your attention if the machine can actually ship at scale — so here's the proof.</p>
     </div>
-  </div>
 
-  <!-- beat 3: setup -->
-  <div class="slide" id="s2">
-    <div style="width:100%;max-width:960px;">
-      <div class="eyebrow">Meet the app &middot; Ridecast2</div>
-      <div class="slide-title" style="margin-bottom:6px;">Before You Call BS: This Shipped for Real</div>
-      <div class="slide-body" style="margin-bottom:20px;">
-        Ridecast2 is an iOS app that turns any PDF or article into a commute-sized podcast &mdash; with real auth, real payments, and cloud deploy. Every line machine-written.
-      </div>
-
-      <div class="g2" style="margin-bottom:16px;">
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <div class="card-accent">
-            <div style="font-size:13px;color:var(--accent);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">Test Suite</div>
-            <div style="font-size:clamp(36px,4.8vw,60px);font-weight:800;letter-spacing:-0.04em;line-height:1;color:var(--text);">
-              151<span style="font-size:0.45em;color:var(--text-tertiary);font-weight:400;">/158</span>
+    <!-- beat 2: proof -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">Proof at Scale — word4</div>
+            <h2>On word4, the pattern autonomously shipped 278 features in 5.5 days.</h2>
+            <p class="body">word4 is a word processor built by the autonomous dev-machine pattern. Its committed pattern report documents the run — no cherry-picked demo.</p>
+            <p class="handoff">Real leverage, verified. But why can't you just point a model at the whole thing and let it code?</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="stat-num">278</div><div class="stat-label">Features completed</div></div>
+                <div class="stat"><div class="stat-num">106</div><div class="stat-label">Working sessions</div></div>
+                <div class="stat"><div class="stat-num">5.5</div><div class="stat-label">Days (Feb 19–24, 2026)</div></div>
+                <div class="stat"><div class="stat-num warm">3,714</div><div class="stat-label">Tests passing</div></div>
+                <div class="stat"><div class="stat-num warm">445</div><div class="stat-label">Git commits</div></div>
+                <div class="stat"><div class="stat-num">~89K</div><div class="stat-label">Lines of TypeScript</div></div>
             </div>
-            <div style="font-size:14px;color:var(--text-secondary);margin-top:5px;">tests passing &middot; machine-written</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:7px;">
-            <div class="gate"><span>&#10003;</span><span>Lint &mdash; zero warnings</span></div>
-            <div class="gate"><span>&#10003;</span><span>Tests &mdash; 151/158 passing</span></div>
-            <div class="gate"><span>&#10003;</span><span>Build &mdash; 5.1s clean</span></div>
-            <div class="gate"><span>&#10003;</span><span>E2E &mdash; 5/5 Playwright scenarios</span></div>
-          </div>
         </div>
+    </div>
 
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <div class="card" style="flex:1;">
-            <div style="font-size:13px;color:var(--text-tertiary);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:14px;">Production Stack</div>
-            <div style="font-size:clamp(16px,1.8vw,20px);font-weight:600;color:var(--text-secondary);line-height:1.7;letter-spacing:0.01em;">
-              Next.js 16 &middot; Stripe &middot; Clerk<br>Azure &middot; Claude AI
+    <!-- beat 3: tension -->
+    <div class="slide center">
+        <div class="section-label">Why Naive Fails</div>
+        <h1>One model pass can't build software at that scale — and a long session degrades until you can't trust it.</h1>
+        <p class="body" style="margin-left:auto;margin-right:auto;">A model can't reach real scale in one pass. And a session run long enough to try just degrades: context rots, and the output stops being trustworthy.</p>
+        <p class="handoff" style="margin-left:auto;margin-right:auto;">The pattern sidesteps both problems at once — by refusing to run long sessions at all.</p>
+    </div>
+
+    <!-- beat 4: mechanism -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">Mechanism — Disposable Sessions</div>
+            <h2>The machine sidesteps degradation by being disposable.</h2>
+            <p class="body">No session runs long enough to degrade. Memory lives in files, not in the context window — so quality never rots between batches.</p>
+            <p class="handoff">Disposable keeps quality from decaying. But how do you know each batch is actually correct?</p>
+        </div>
+        <div class="col-aside">
+            <ol class="steps">
+                <li><strong>Read</strong> STATE.yaml + CONTEXT-TRANSFER.md</li>
+                <li><strong>Do</strong> a bounded batch of 3–5 features</li>
+                <li><strong>Commit</strong> the work</li>
+                <li><strong>Persist</strong> state back to the files</li>
+                <li><strong>Exit</strong> before context rots</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- beat 5: mechanism -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">Mechanism — Enforced Trust</div>
+            <h2>Trust is enforced, not hoped for.</h2>
+            <p class="body">The bundle ships 8 templated recipes that gate the build loop. The health check loops until the codebase is clean — autonomous output only ships once the gates pass.</p>
+            <p class="handoff">Disposable plus gated makes autonomous output safe to ship. Now watch it run on a real app.</p>
+        </div>
+        <div class="col-aside">
+            <ul class="rules">
+                <li>Build + test health checks loop until clean</li>
+                <li>QA recipes verify each iteration</li>
+                <li>Smoke test validates the structure</li>
+                <li>8 recipe templates gate the whole loop</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- beat 6: setup -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The Instance — Ridecast2</div>
+            <h2>Ridecast2 is Chris Park's content-to-podcast app.</h2>
+            <p class="body">Chris Park is the single developer behind Ridecast. The same developer, product, and spec-driven workflow are independently corroborated by the committed Ridecast Phase 4 story he submitted.</p>
+            <p class="handoff">Now the headline number has a home — here's what one day of the machine produced.</p>
+        </div>
+        <div class="col-aside">
+            <div class="cards">
+                <div class="card"><h3>Developer</h3><p>Chris Park — single developer behind Ridecast / Ridecast2</p></div>
+                <div class="card"><h3>Corroboration</h3><p>Ridecast Phase 4 story (.docx), committed 2026-03-14</p></div>
+                <div class="card"><h3>Prior work</h3><p>Phase 4 story: 17 sessions, 44 features across earlier Ridecast phases</p></div>
             </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div class="card" style="display:flex;align-items:center;gap:10px;padding:14px 16px;">
-              <span style="font-size:20px;">&#128272;</span>
-              <div><div style="font-size:13px;font-weight:700;color:var(--text);">Clerk + Stripe</div><div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Real auth &middot; $10/mo gate</div></div>
+        </div>
+    </div>
+
+    <!-- beat 7: payoff -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The Payoff</div>
+            <h2>Point the machine at a precise spec, and spec quality becomes output quality.</h2>
+            <p class="body">Per the committed deck, one day on Ridecast2 shipped 22 production features across 8 dev sessions — with zero lines of app code written by a human.</p>
+            <p class="handoff">The developer wrote the spec; the gated, disposable machine shipped the code.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="stat-num warm">22</div><div class="stat-label">Production features shipped</div></div>
+                <div class="stat"><div class="stat-num">8</div><div class="stat-label">Dev sessions total</div></div>
+                <div class="stat"><div class="stat-num">+93</div><div class="stat-label">Tests added (58 → 151)</div></div>
+                <div class="stat"><div class="stat-num warm">0</div><div class="stat-label">Lines of app code written by human</div></div>
             </div>
-            <div class="card" style="display:flex;align-items:center;gap:10px;padding:14px 16px;">
-              <span style="font-size:20px;">&#9729;&#65039;</span>
-              <div><div style="font-size:13px;font-weight:700;color:var(--text);">Azure-deployed</div><div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">CI/CD &middot; push-to-ship</div></div>
+        </div>
+    </div>
+
+    <!-- beat 8: takeaway -->
+    <div class="slide split">
+        <div class="col-main">
+            <div class="section-label">The Takeaway — The Foundry</div>
+            <h2>The foundry that stamps out these machines is ramparte/amplifier-bundle-dev-machine.</h2>
+            <p class="body">It's reusable tooling, not a one-off: a hard-gated three-mode progression and templated recipes. The generated machine lives in your project repo with zero runtime dependency on the bundle.</p>
+            <p class="handoff">Write the spec. Let the machine ship the code.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="stat-num">3</div><div class="stat-label">Gated modes</div></div>
+                <div class="stat"><div class="stat-num">8</div><div class="stat-label">Recipe templates</div></div>
+                <div class="stat"><div class="stat-num">6</div><div class="stat-label">Agent files</div></div>
+                <div class="stat"><div class="stat-num warm">164</div><div class="stat-label">Commits (Feb 25 → Jun 18, 2026)</div></div>
             </div>
-          </div>
         </div>
-      </div>
-
-      <div class="quote" style="font-style:normal;font-size:15px;">
-        This isn't a prototype. Every commit passed the same 4 health gates that hand-written code must pass.
-      </div>
     </div>
-  </div>
 
-  <!-- beat 4: tension -->
-  <div class="slide" id="s3">
-    <div style="width:100%;max-width:880px;">
-      <div class="eyebrow">The complication &middot; Sessions 1&ndash;3</div>
-      <div class="slide-title" style="margin-bottom:8px;">The Machine Is Only as Good as the Spec</div>
-      <div class="slide-body" style="margin-bottom:24px;">Hand it a loose spec and it stalls. Phase 1 used light specs and burned <strong style="color:var(--yellow);">2 sessions to ship just 5 features</strong> &mdash; the bottleneck was never the machine.</div>
-
-      <div class="g2" style="margin-bottom:22px;">
-        <div class="card" style="position:relative;overflow:hidden;">
-          <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-tertiary);font-weight:600;margin-bottom:14px;">Phase 1 &middot; Light Specs</div>
-          <div style="font-size:clamp(32px,4vw,48px);font-weight:800;letter-spacing:-0.03em;color:var(--yellow);margin-bottom:4px;">2 sessions</div>
-          <div style="font-size:15px;color:var(--text-secondary);margin-bottom:16px;">for 5 features</div>
-          <div class="cmp-bar"><div class="cmp-fill" style="width:100%;background:var(--yellow);opacity:0.6;"></div></div>
-          <div style="font-size:12px;color:var(--text-tertiary);margin-top:8px;">Full bar = baseline effort</div>
-          <div style="margin-top:14px;display:flex;flex-direction:column;gap:7px;">
-            <div style="font-size:14px;color:var(--text-tertiary);">&#10007; No explicit mock patterns</div>
-            <div style="font-size:14px;color:var(--text-tertiary);">&#10007; No code quoted in spec</div>
-            <div style="font-size:14px;color:var(--text-tertiary);">&#10007; Scope loosely defined</div>
-          </div>
+    <!-- Sources & Methodology (no beat comment) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Sources &amp; Research Methodology</h2>
+        <div class="small-text" style="max-width: 70ch;">
+            <p><strong>Feature status:</strong> Foundry (amplifier-bundle-dev-machine) live/complete, last commit 2026-06-18. word4 shipped. Ridecast2 reported Active, verified 2026-03-06 in the committed deck.</p>
+            <p><strong>Research performed:</strong></p>
+            <ul>
+                <li>Bundle remote: <code>cd amplifier-bundle-dev-machine &amp;&amp; git remote -v</code> → git@github.com:ramparte/amplifier-bundle-dev-machine.git</li>
+                <li>Commit count / span: <code>git rev-list --count HEAD</code> = 164; <code>git log --format='%ai'</code> → 2026-02-25 to 2026-06-18</li>
+                <li>Contributors: <code>git log --format='%an' | sort | uniq -c | sort -rn</code> → Sam Schillace 80, Marc Goodner 76, Samuel Lee 4, ramparte 4</li>
+                <li>Mechanism &amp; modes: <code>sed -n '1,60p' bundle.md</code>; <code>ls modes/*.md</code> (3); <code>ls agents/</code> (6)</li>
+                <li>Recipes: <code>ls templates/recipes/*.yaml | wc -l</code> = 8</li>
+                <li>word4 metrics: <code>cd word4 &amp;&amp; sed -n '540,560p' docs/autonomous-development-machine-pattern.md</code> (278 features, 106 sessions, 5.5 days, 445 commits, 3,714 tests, ~89K LOC); <code>git rev-list --count HEAD</code> = 5,246 at current HEAD</li>
+                <li>Deck provenance: <code>cd amplifier-stories &amp;&amp; git log --diff-filter=A --all -- '*dev-machine-22-features-one-day.html'</code> → c05d143, cpark4x, 2026-03-07</li>
+                <li>Ridecast corroboration: <code>git log -- 'stories/ridecast-phase4/*'</code> → 91c9f84, Chris Park, 2026-03-14</li>
+            </ul>
+            <p><strong>Gaps:</strong> The Ridecast2 source repository is NOT present under /home/ramparte/dev/ANext. All Ridecast2-specific numbers (22 features, 8 sessions, tests 58 → 151, +93, zero human-written app code) come only from the committed deck ("verified 2026-03-06" from that repo's git log + STATE.yaml) and could not be independently re-verified from git here.</p>
+            <p><strong>Primary contributors:</strong> Sam Schillace (80 commits) and Marc Goodner (76) on the foundry; Chris Park, the single developer behind Ridecast/Ridecast2.</p>
         </div>
-        <div class="card" style="display:flex;flex-direction:column;justify-content:center;gap:14px;">
-          <div style="font-size:20px;">&#129504;</div>
-          <div style="font-size:clamp(16px,2vw,20px);font-weight:700;color:var(--text);line-height:1.35;">Loose specs make the machine guess.</div>
-          <div style="font-size:14px;color:var(--text-secondary);line-height:1.6;">Ambiguous mock patterns create failing tests. Undefined scope invites the machine to optimistically build things you didn't ask for &mdash; and each miss costs another whole session.</div>
-        </div>
-      </div>
-
-      <div class="quote">
-        Garbage in, garbage out. The developer didn't need to code faster &mdash; the <strong style="color:var(--text);">specs</strong> needed to get sharper.
-      </div>
     </div>
-  </div>
 
-  <!-- beat 5: payoff -->
-  <div class="slide" id="s4">
-    <div style="width:100%;max-width:980px;position:relative;z-index:1;">
-      <div class="eyebrow">The payoff &middot; Phase 2</div>
-      <div class="slide-title" style="margin-bottom:8px;">Better Specs, Not a Faster Developer</div>
-      <div class="slide-body" style="margin-bottom:22px;">Explicit specs shipped <strong style="color:var(--accent);">4 features in one 11-minute session</strong> &mdash; half the sessions, comparable scope. The developer didn't speed up. The spec did.</div>
+    <!-- Navigation -->
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
 
-      <div class="g2" style="align-items:start;gap:32px;">
-        <div class="card-accent" style="position:relative;overflow:hidden;">
-          <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:14px;">Phase 2 &middot; Explicit Specs</div>
-          <div style="font-size:clamp(32px,4vw,48px);font-weight:800;letter-spacing:-0.03em;color:var(--accent);margin-bottom:4px;">1 session</div>
-          <div style="font-size:15px;color:var(--text-secondary);margin-bottom:16px;">for 4 features &mdash; in <strong style="color:var(--accent);">11 minutes</strong></div>
-          <div class="cmp-bar"><div class="cmp-fill" style="width:50%;background:var(--accent);"></div></div>
-          <div style="font-size:12px;color:var(--text-tertiary);margin-top:8px;">Half the sessions, comparable scope</div>
-          <div style="margin-top:14px;display:flex;flex-direction:column;gap:7px;">
-            <div style="font-size:14px;color:var(--text-secondary);">&#10003; vi.mock() patterns explicitly shown</div>
-            <div style="font-size:14px;color:var(--text-secondary);">&#10003; Current code quoted in spec</div>
-            <div style="font-size:14px;color:var(--text-secondary);">&#10003; Scope section + guard in instructions</div>
-          </div>
-        </div>
+    <!-- More stories link - REQUIRED -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
-        <div style="display:flex;flex-direction:column;gap:16px;">
-          <div>
-            <div style="font-size:clamp(20px,2.8vw,32px);font-weight:700;line-height:1.15;letter-spacing:-0.02em;color:var(--text);margin-bottom:6px;">The developer's job didn't disappear.</div>
-            <div style="font-size:clamp(18px,2.6vw,28px);font-weight:800;letter-spacing:-0.02em;color:var(--accent);">It transformed.</div>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius-sm);opacity:0.7;">
-            <span style="font-size:15px;color:var(--text-tertiary);font-weight:600;white-space:nowrap;">Before</span>
-            <span style="font-size:14px;color:var(--text-secondary);">Writes functions &middot; debugs failures &middot; holds state in head</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;background:var(--accent-dim);border:1px solid var(--accent-border);border-radius:var(--radius-sm);">
-            <span style="font-size:15px;color:var(--accent);font-weight:600;white-space:nowrap;">After</span>
-            <span style="font-size:14px;color:var(--text-secondary);"><strong style="color:var(--text);">Spec authorship replaced implementation.</strong> Architecture &amp; quality via discipline.</span>
-          </div>
-          <div style="font-size:clamp(15px,1.8vw,18px);font-weight:700;color:var(--text);line-height:1.4;padding-top:12px;border-top:1px solid var(--border);">Quality of output = quality of spec.</div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-  <!-- beat 6: mechanism -->
-  <div class="slide" id="s5">
-    <div style="width:100%;max-width:900px;">
-      <div class="eyebrow">The engine</div>
-      <div class="slide-title" style="margin-bottom:8px;">It Never Forgets Because It Writes Everything Down</div>
-      <div class="slide-body" style="margin-bottom:28px;">Context lives in files, not memory. Every session is stateless &mdash; so it starts clean, then reads the truth back off disk.</div>
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
 
-      <div class="flow" style="margin-bottom:28px;">
-        <div class="flow-box highlight">Write Spec<br><span style="font-size:10px;font-weight:400;color:rgba(255,45,120,0.7);">&le;5 files &middot; mock patterns</span></div>
-        <span class="flow-arrow">&rarr;</span>
-        <div class="flow-box">Fresh Session<br><span style="font-size:10px;font-weight:400;color:var(--text-tertiary);">stateless &middot; no memory</span></div>
-        <span class="flow-arrow">&rarr;</span>
-        <div class="flow-box">TDD Loop<br><span style="font-size:10px;font-weight:400;color:var(--text-tertiary);">red &rarr; green &rarr; refactor</span></div>
-        <span class="flow-arrow">&rarr;</span>
-        <div class="flow-box">4 Gates<br><span style="font-size:10px;font-weight:400;color:var(--text-tertiary);">lint &middot; test &middot; build &middot; e2e</span></div>
-        <span class="flow-arrow">&rarr;</span>
-        <div class="flow-box highlight">Commit<br><span style="font-size:10px;font-weight:400;color:rgba(255,45,120,0.7);">write STATE.yaml</span></div>
-        <span class="flow-arrow">&#8617;</span>
-      </div>
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
 
-      <div class="g2">
-        <div class="card" style="display:flex;flex-direction:column;gap:12px;">
-          <div style="font-size:14px;font-weight:700;color:var(--text);letter-spacing:0.04em;">&#128193; State Files</div>
-          <div class="code" style="font-size:12px;"><span class="dim"># STATE.yaml &mdash; machine's memory</span>
-session: 6
-features_completed: 17
-tests: 151
-last_commit: "feat(ux): smart-resume"
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
 
-<span class="dim"># CONTEXT-TRANSFER.md &mdash; next session brief</span>
-<span class="kw">##</span> Completed This Session
-<span class="kw">##</span> Ready To Build Next
-<span class="kw">##</span> Architectural Decisions Made</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <div class="card" style="display:flex;align-items:flex-start;gap:12px;">
-            <span style="font-size:20px;margin-top:2px;">&#129504;</span>
-            <div><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">Why stateless sessions?</div><div style="font-size:14px;color:var(--text-secondary);">Long-running sessions accumulate hallucinations. Fresh sessions start clean. Files carry truth forward.</div></div>
-          </div>
-          <div class="card" style="display:flex;align-items:flex-start;gap:12px;">
-            <span style="font-size:20px;margin-top:2px;">&#128257;</span>
-            <div><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">Recipe orchestration</div><div style="font-size:14px;color:var(--text-secondary);">An outer loop drives sessions. STATE.yaml is the handoff. Human only touches the spec.</div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+            void next.offsetWidth;
 
-  <!-- beat 7: mechanism -->
-  <div class="slide" id="s6">
-    <div style="width:100%;max-width:900px;position:relative;z-index:1;">
-      <div class="eyebrow">Phase 0 &middot; Sessions 7&ndash;8 &middot; The Foundation</div>
-      <div class="slide-title" style="margin-bottom:8px;">Even the Hard Infrastructure Was Machine-Built</div>
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
 
-      <div style="display:flex;align-items:flex-end;gap:32px;margin:18px 0 24px;flex-wrap:wrap;">
-        <div>
-          <div style="font-size:clamp(72px,12vw,136px);font-weight:800;line-height:0.88;letter-spacing:-0.04em;color:var(--accent);">31</div>
-          <div style="font-size:clamp(16px,2.2vw,24px);font-weight:600;color:var(--text-secondary);margin-top:8px;">minutes</div>
-        </div>
-        <div style="padding-bottom:10px;">
-          <div style="font-size:clamp(18px,2.6vw,32px);font-weight:700;color:var(--text);line-height:1.2;margin-bottom:8px;">6 production-grade<br>infrastructure features.</div>
-          <div style="font-size:15px;color:var(--text-secondary);">Real auth. Real payments. Real deployment.<br>Human only touched API key setup.</div>
-        </div>
-      </div>
+            current = n;
+            updateNav();
 
-      <div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
-        <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface-1);"><span style="font-size:18px;">&#128483;</span><span style="font-size:15px;font-weight:600;color:var(--text);">Google Cloud TTS</span><span style="margin-left:auto;font-size:13px;color:var(--text-tertiary);">Provider client &middot; voice selection &middot; SSML rate control</span></div>
-        <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface-1);"><span style="font-size:18px;">&#128272;</span><span style="font-size:15px;font-weight:600;color:var(--text);">Clerk Authentication</span><span style="margin-left:auto;font-size:13px;color:var(--text-tertiary);">Auth middleware &middot; protected routes &middot; webhooks</span></div>
-        <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface-1);"><span style="font-size:18px;">&#9729;&#65039;</span><span style="font-size:15px;font-weight:600;color:var(--text);">Azure Blob Storage</span><span style="margin-left:auto;font-size:13px;color:var(--text-tertiary);">SAS tokens &middot; upload/download &middot; per-user paths</span></div>
-        <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface-1);"><span style="font-size:18px;">&#128101;</span><span style="font-size:15px;font-weight:600;color:var(--text);">Multi-User Schema</span><span style="margin-left:auto;font-size:13px;color:var(--text-tertiary);">Prisma migration &middot; userId &middot; backfill &middot; row-level access</span></div>
-        <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface-1);"><span style="font-size:18px;">&#128179;</span><span style="font-size:15px;font-weight:600;color:var(--text);">Stripe $10/mo Gate</span><span style="margin-left:auto;font-size:13px;color:var(--text-tertiary);">Checkout &middot; webhooks &middot; freemium entitlement checks</span></div>
-        <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;background:var(--surface-1);"><span style="font-size:18px;">&#128640;</span><span style="font-size:15px;font-weight:600;color:var(--text);">Azure Container Apps CI/CD</span><span style="margin-left:auto;font-size:13px;color:var(--text-tertiary);">Dockerfile &middot; GitHub Actions &middot; push-to-deploy on main</span></div>
-      </div>
-    </div>
-  </div>
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
+        }
 
-  <!-- beat 8: takeaway -->
-  <div class="slide" id="s7">
-    <div style="width:100%;max-width:980px;position:relative;z-index:1;">
-      <div class="eyebrow">Replicate it</div>
-      <div class="slide-title" style="margin-bottom:20px;">Write the Specs. <span class="accent">Run the Machine.</span></div>
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
 
-      <div class="g2" style="align-items:start;gap:36px;">
-        <div style="display:flex;flex-direction:column;gap:14px;">
-          <div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-tertiary);font-weight:600;">The 6 Spec Quality Rules</div>
-          <ul class="rule-list">
-            <li><div class="rnum">1</div><div><strong style="color:var(--text);">Quote current code in the spec.</strong> <span>The machine can't refactor what it can't see.</span></div></li>
-            <li><div class="rnum">2</div><div><strong style="color:var(--text);">Show vi.mock() patterns explicitly.</strong> <span>Pattern ambiguity creates test failures that cost extra sessions.</span></div></li>
-            <li><div class="rnum">3</div><div><strong style="color:var(--text);">Scope each spec to &le;5 files.</strong> <span>5-file scopes ship. 15-file scopes get stuck.</span></div></li>
-            <li><div class="rnum">4</div><div><strong style="color:var(--text);">Infra specs need human setup steps.</strong> <span>List API keys and cloud resources as pre-conditions.</span></div></li>
-            <li><div class="rnum">5</div><div><strong style="color:var(--text);">Scope section is mandatory.</strong> <span>"In scope: X. Out of scope: Y." Without it, the machine over-extends.</span></div></li>
-            <li><div class="rnum">6</div><div><strong style="color:var(--text);">Add a scope guard to session instructions.</strong> <span>"Do not build anything not in the spec." Belt and suspenders.</span></div></li>
-          </ul>
-        </div>
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
+        });
 
-        <div style="display:flex;flex-direction:column;gap:18px;">
-          <div style="font-size:15px;color:var(--text-secondary);line-height:1.6;">The pattern is replicable. Start with one feature, apply the 6 rules, and let the machine ship it.</div>
-          <a href="https://github.com/ramparte/amplifier-bundle-dev-machine" target="_blank" class="bundle-link" style="padding:18px 24px;">
-            <span style="font-size:28px;">&#9881;&#65039;</span>
-            <div><div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-tertiary);font-weight:600;margin-bottom:3px;">The toolchain that made this possible</div><div style="font-size:18px;font-weight:800;color:var(--accent);letter-spacing:-0.01em;margin-bottom:2px;">amplifier-bundle-dev-machine</div><div style="font-size:12px;color:var(--text-secondary);">github.com/ramparte/amplifier-bundle-dev-machine</div></div>
-          </a>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <div style="padding:10px 18px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--text);"><span style="color:var(--accent);margin-right:7px;">&#9312;</span>Write the spec</div>
-            <span style="color:rgba(255,255,255,0.25);font-size:16px;">&rarr;</span>
-            <div style="padding:10px 18px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--text);"><span style="color:var(--accent);margin-right:7px;">&#9313;</span>Run the machine</div>
-            <span style="color:rgba(255,255,255,0.25);font-size:16px;">&rarr;</span>
-            <div style="padding:10px 18px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--text);"><span style="color:var(--accent);margin-right:7px;">&#9314;</span>Review &middot; improve the spec</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
+        });
 
-  <!-- Sources & Methodology (audit-trail slide, not a beat) -->
-  <div class="slide" id="s8">
-    <div style="width:100%;max-width:820px;position:relative;z-index:1;">
-      <div class="eyebrow">Sources</div>
-      <div class="slide-title" style="margin-bottom:18px;">Research Methodology</div>
-      <div class="slide-body" style="font-size:15px;line-height:1.7;">
-        <p style="margin-bottom:10px;"><strong style="color:var(--text);">Data as of:</strong> March 6, 2026</p>
-        <p style="margin-bottom:10px;"><strong style="color:var(--text);">Feature status:</strong> Active</p>
-        <p style="margin-bottom:6px;"><strong style="color:var(--text);">Research performed:</strong></p>
-        <ul style="margin:0 0 12px 20px;display:flex;flex-direction:column;gap:5px;">
-          <li>Git log analysis: <span style="color:var(--code-green);">git log --oneline</span> across the Ridecast2 repo (feature commits by session)</li>
-          <li>Machine state: <span style="color:var(--code-green);">STATE.yaml</span> &middot; features_completed, tests, session count</li>
-          <li>Test + gate counts: lint, Vitest (151/158), 5.1s build, 5/5 Playwright E2E</li>
-          <li>Session timings: per-session durations (fastest 4 features / 11 minutes)</li>
-        </ul>
-        <p style="margin-bottom:10px;"><strong style="color:var(--text);">Gaps:</strong> Velocity is from one project over one day; not a controlled benchmark. 7 tests remained failing (151/158).</p>
-        <p><strong style="color:var(--text);">Sole author:</strong> 1 developer &middot; all commits &middot; every line of app code machine-written</p>
-      </div>
-    </div>
-  </div>
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
+            }
+        }, { passive: true });
 
-</div><!-- /deck -->
-
-<!-- Nav dots (generated by JS) -->
-<div class="nav-dots" id="nav-dots"></div>
-<div class="slide-num" id="slide-num">1 / 9</div>
-<a href="index.html" style="position:fixed;bottom:22px;left:32px;font-size:11px;letter-spacing:0.04em;color:var(--text-tertiary);text-decoration:none;z-index:100;">&larr; More Amplifier Stories</a>
-
-<script>
-  (function () {
-    const slides = document.querySelectorAll('.slide');
-    const navDots = document.getElementById('nav-dots');
-    const slideNum = document.getElementById('slide-num');
-    const TOTAL = slides.length;
-    let current = 0;
-
-    for (let i = 0; i < TOTAL; i++) {
-      const dot = document.createElement('div');
-      dot.className = 'dot' + (i === 0 ? ' active' : '');
-      dot.addEventListener('click', () => goTo(i));
-      navDots.appendChild(dot);
-    }
-
-    function goTo(n) {
-      const dots = navDots.querySelectorAll('.dot');
-      slides[current].classList.remove('active');
-      dots[current].classList.remove('active');
-      current = ((n % TOTAL) + TOTAL) % TOTAL;
-      slides[current].classList.add('active');
-      dots[current].classList.add('active');
-      slideNum.textContent = (current + 1) + ' / ' + TOTAL;
-    }
-
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'ArrowDown') { e.preventDefault(); goTo(current + 1); }
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goTo(current - 1); }
-      if (e.key === 'Home') goTo(0);
-      if (e.key === 'End') goTo(TOTAL - 1);
-    });
-
-    document.getElementById('zone-prev').addEventListener('click', () => goTo(current - 1));
-    document.getElementById('zone-next').addEventListener('click', () => goTo(current + 1));
-
-    let touchStartX = 0;
-    let touchStartY = 0;
-    document.addEventListener('touchstart', function (e) {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-    document.addEventListener('touchend', function (e) {
-      const dx = touchStartX - e.changedTouches[0].clientX;
-      const dy = touchStartY - e.changedTouches[0].clientY;
-      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 44) { goTo(current + (dx > 0 ? 1 : -1)); }
-    }, { passive: true });
-  })();
-</script>
-
+        updateNav();
+    </script>
 </body>
 </html>

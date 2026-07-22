@@ -1,692 +1,527 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Reality-Check Validates Itself</title>
-<script>document.documentElement.classList.add('js')</script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap');
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>A DTU Inside a DTU</title>
+    <script>document.documentElement.classList.add('js')</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  :root {
-    --bg: #F4F5F9;
-    --surface: #FFFFFF;
-    --surface-recessed: #EDEDF2;
-    --text-primary: #74757d;
-    --text-secondary: #727482;
-    --text-tertiary: #8B8D9C;
-    --accent: #3E5C8A;
-    --accent-soft: #E4E9F2;
-    --code-bg: #F0F0F5;
-    --border: #D8D9E3;
-    --border-light: #E8E9EF;
+        :root {
+            --bg: #0a0e14;
+            --bg2: #111826;
+            --fg: #f5f7fa;
+            --muted: #aab4c4;
+            --accent: #5e82ff;
+            --accent2: #38e1b0;
+            --line: rgba(255,255,255,0.12);
+        }
 
-    --kernel: #9B7B3E;
-    --kernel-soft: #F5F0E4;
-    --modules: #3E7D8A;
-    --modules-soft: #E4F0F2;
-    --bundles: #5C6B9E;
-    --bundles-soft: #ECEEF5;
-    --foundation: #5A7D5A;
-    --foundation-soft: #E8F0E8;
-    --boundary: #8A5A4A;
-    --boundary-soft: #F2EAE6;
-    --apps: #7B6B8A;
-    --apps-soft: #F0ECF2;
-    --ecosystem: #8A7B8A;
-    --ecosystem-soft: #F2EEF2;
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
 
-    --accent-green: #3D7A4A;
-    --accent-green-soft: #E8F0E8;
-    --accent-red: #8A4A3E;
-    --accent-red-soft: #F2EAE6;
+        .slide {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: radial-gradient(120% 120% at 15% 0%, var(--bg2) 0%, var(--bg) 60%);
+        }
 
-    --font-heading: 'Inter', system-ui, sans-serif;
-    --font-body: 'Source Serif 4', Georgia, serif;
-    --font-code: 'JetBrains Mono', 'SF Mono', monospace;
-  }
+        .slide.active { display: flex; }
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        /* Progressive enhancement: no-JS fallback -- all slides visible, scrollable */
+        html:not(.js) .slide {
+            display: flex !important;
+            position: relative !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            transform: none !important;
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
 
-  html, body {
-    height: 100%;
-    overflow: hidden;
-    font-family: var(--font-body);
-    background: var(--bg);
-    color: var(--text-primary);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+        /* Progressive enhancement: JS-only slide mode */
+        html.js { overflow: hidden; }
+        html.js body { overflow: hidden; overscroll-behavior: none; }
+        html.js .slide { display: none; }
+        html.js .slide.active { display: flex; }
 
-  .deck { position: relative; width: 100%; height: 100%; }
+        /* Fit-safe: cap slides to viewport and let them scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
 
-  .slide {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: clamp(32px, 5vw, 80px) clamp(32px, 8vw, 120px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 400ms ease;
-  }
+        .slide { transition: transform 0.5s ease, opacity 0.5s ease; }
 
-  .slide.active {
-    opacity: 1;
-    pointer-events: auto;
-  }
+        /* Centering opt-in */
+        .center { text-align: center; align-items: center; justify-content: center; }
 
-  .slide-inner {
-    max-width: 1100px;
-    width: 100%;
-  }
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px,3vw,28px); font-weight: 400; }
 
-  .slide-label {
-    font-family: var(--font-heading);
-    font-size: clamp(10px, 1.2vw, 13px);
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
+        .section-label {
+            font-size: clamp(11px, 1.5vw, 13px);
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--accent2);
+            font-weight: 700;
+            margin-bottom: clamp(14px, 2vw, 22px);
+        }
 
-  .slide-title {
-    font-family: var(--font-heading);
-    font-size: clamp(28px, 4.5vw, 56px);
-    font-weight: 600;
-    line-height: 1.1;
-    letter-spacing: -0.025em;
-    margin-bottom: 20px;
-  }
+        h1, h2 { color: var(--fg); }
+        .body { color: var(--muted); margin-top: clamp(14px,2.4vw,22px); max-width: 46ch; }
+        .handoff {
+            color: var(--accent);
+            margin-top: clamp(18px,3vw,28px);
+            font-weight: 600;
+            max-width: 46ch;
+        }
+        strong { color: var(--fg); }
 
-  .slide-subtitle {
-    font-family: var(--font-body);
-    font-size: clamp(16px, 2vw, 24px);
-    font-weight: 400;
-    line-height: 1.5;
-    color: var(--text-secondary);
-    max-width: 800px;
-  }
+        /* Horizontal split -- narrative left, supporting visual right */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
 
-  h2 {
-    font-family: var(--font-heading);
-    font-size: clamp(24px, 3.5vw, 44px);
-    font-weight: 600;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-    margin-bottom: 24px;
-  }
+        /* Supporting blocks */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: clamp(14px,2vw,20px); }
+        .stat {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px,2.4vw,24px);
+        }
+        .stat-value {
+            font-size: clamp(28px, 5vw, 52px);
+            font-weight: 800;
+            color: var(--accent2);
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+        .stat-label { color: var(--muted); font-size: clamp(12px,1.6vw,15px); margin-top: 10px; }
 
-  h3 {
-    font-family: var(--font-heading);
-    font-size: clamp(16px, 2vw, 22px);
-    font-weight: 600;
-    line-height: 1.35;
-    margin-bottom: 12px;
-  }
+        .steps { list-style: none; display: flex; flex-direction: column; gap: clamp(12px,1.8vw,16px); }
+        .steps li {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--accent);
+            border-radius: 10px;
+            padding: clamp(12px,1.8vw,16px) clamp(14px,2vw,20px);
+            color: var(--fg);
+            counter-increment: step;
+            position: relative;
+            padding-left: clamp(46px,6vw,58px);
+        }
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: clamp(14px,2vw,18px);
+            top: 50%;
+            transform: translateY(-50%);
+            width: clamp(24px,3vw,28px);
+            height: clamp(24px,3vw,28px);
+            border-radius: 50%;
+            background: var(--accent);
+            color: #06101f;
+            font-weight: 800;
+            font-size: clamp(13px,1.6vw,15px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .steps { counter-reset: step; }
 
-  p, li {
-    font-family: var(--font-body);
-    font-size: clamp(14px, 1.5vw, 18px);
-    line-height: 1.65;
-    color: var(--text-secondary);
-  }
+        .rules { list-style: none; display: flex; flex-direction: column; gap: clamp(10px,1.6vw,14px); }
+        .rules li {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: clamp(12px,1.8vw,16px) clamp(14px,2vw,18px);
+            color: var(--fg);
+            position: relative;
+            padding-left: clamp(34px,4vw,42px);
+        }
+        .rules li::before {
+            content: "";
+            position: absolute;
+            left: clamp(14px,2vw,18px);
+            top: 50%;
+            transform: translateY(-50%);
+            width: 9px; height: 9px;
+            border-radius: 2px;
+            background: var(--accent2);
+        }
+        .rules code, .body code, .steps code, .handoff code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            background: rgba(94,130,255,0.14);
+            padding: 1px 6px;
+            border-radius: 5px;
+            font-size: 0.86em;
+            color: #cdd9ff;
+        }
 
-  strong { color: var(--text-primary); font-weight: 600; }
+        .code-block {
+            background: #05080e;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: clamp(16px,2.4vw,24px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(12px,1.5vw,15px);
+            line-height: 1.7;
+            color: #d5deec;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .code-comment { color: #6b7789; }
+        .code-key { color: var(--accent2); }
 
-  code {
-    font-family: var(--font-code);
-    font-size: 0.88em;
-    background: var(--code-bg);
-    padding: 2px 7px;
-    border-radius: 4px;
-    color: var(--accent);
-  }
+        .sources-body { max-width: 60ch; }
+        .sources-body p { color: var(--muted); margin-top: 10px; }
+        .sources-body ul { margin: 10px 0 0 1.1em; }
+        .sources-body li { color: var(--muted); margin-top: 6px; }
+        .sources-body code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            background: rgba(255,255,255,0.06);
+            padding: 1px 6px; border-radius: 5px; font-size: 0.85em; color: #cdd9ff;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(56,225,176,0.14);
+            color: var(--accent2);
+            border: 1px solid rgba(56,225,176,0.4);
+            border-radius: 999px;
+            padding: 5px 14px;
+            font-size: clamp(11px,1.5vw,13px);
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            margin-top: clamp(18px,3vw,26px);
+        }
 
-  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
-  a:hover { border-bottom-color: var(--accent); }
+        /* Navigation */
+        .nav { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 90; }
+        .nav-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.22); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+        .nav-dot.active { background: var(--accent2); transform: scale(1.3); }
+        .slide-counter { position: fixed; bottom: 24px; right: 26px; font-size: clamp(11px,1.5vw,13px); color: rgba(255,255,255,0.4); z-index: 90; font-variant-numeric: tabular-nums; }
 
-  .grid-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: clamp(16px, 3vw, 40px);
-    margin-top: 24px;
-  }
+        .more-stories {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
 
-  .grid-3 {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: clamp(12px, 2vw, 24px);
-    margin-top: 24px;
-  }
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px,5vw,80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
 
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border-light);
-    border-radius: 4px;
-    padding: clamp(16px, 2vw, 28px);
-    box-shadow: 0 1px 2px rgba(28,30,43,0.04);
-  }
-
-  .card h3 {
-    font-size: clamp(14px, 1.5vw, 18px);
-    margin-bottom: 8px;
-  }
-
-  .card p {
-    font-size: clamp(13px, 1.3vw, 16px);
-  }
-
-  /* Code block */
-  .code-block {
-    background: var(--code-bg);
-    border: 1px solid var(--border-light);
-    border-radius: 4px;
-    padding: clamp(16px, 2vw, 24px);
-    font-family: var(--font-code);
-    font-size: clamp(12px, 1.2vw, 14px);
-    line-height: 1.7;
-    color: var(--text-secondary);
-    overflow-x: auto;
-    white-space: pre;
-  }
-
-  .code-block .kw { color: var(--accent); }
-  .code-block .val { color: var(--foundation); }
-  .code-block .cmt { color: var(--text-tertiary); font-style: italic; }
-  .code-block .str { color: var(--kernel); }
-  .code-block .del { color: var(--accent-red); }
-  .code-block .add { color: var(--accent-green); }
-
-  .pull-quote {
-    font-family: var(--font-heading);
-    font-size: clamp(20px, 2.8vw, 36px);
-    font-weight: 500;
-    line-height: 1.35;
-    letter-spacing: -0.01em;
-    color: var(--text-primary);
-    border-left: 4px solid;
-    padding-left: clamp(16px, 2vw, 28px);
-    margin: 24px 0;
-  }
-
-  /* Navigation */
-  .nav-dots {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    z-index: 100;
-  }
-
-  .nav-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--border);
-    border: none;
-    cursor: pointer;
-    transition: background 200ms;
-    padding: 0;
-  }
-
-  .nav-dot.active { background: var(--accent); }
-  .nav-dot:hover { background: var(--text-tertiary); }
-
-  .slide-counter {
-    position: fixed;
-    bottom: 24px;
-    right: 32px;
-    font-family: var(--font-heading);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-tertiary);
-    z-index: 100;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .ctrl-btn {
-    position: fixed;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text-tertiary);
-    cursor: pointer;
-    text-decoration: none;
-    transition: color 150ms, border-color 150ms, background 150ms;
-    touch-action: manipulation;
-  }
-  .ctrl-btn:hover {
-    color: var(--text-primary);
-    border-color: var(--text-secondary);
-    background: var(--surface);
-  }
-
-  .ctrl-prev {
-    top: 50%;
-    left: 20px;
-    transform: translateY(-50%);
-  }
-  .ctrl-next {
-    top: 50%;
-    right: 20px;
-    transform: translateY(-50%);
-  }
-
-  .click-zone {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    width: 20%;
-    z-index: 50;
-    cursor: pointer;
-  }
-  .click-zone.left { left: 0; }
-  .click-zone.right { right: 0; }
-
-  /* Title slide */
-  .title-slide .slide-inner { text-align: center; }
-  .title-slide .slide-title { font-size: clamp(32px, 5vw, 64px); font-weight: 600; margin-bottom: 16px; }
-  .title-slide .slide-subtitle { margin: 0 auto 32px; }
-
-  .title-meta {
-    display: flex;
-    gap: 32px;
-    justify-content: center;
-    margin-top: 24px;
-  }
-
-  .title-meta span {
-    font-family: var(--font-heading);
-    font-size: clamp(12px, 1.2vw, 14px);
-    color: var(--text-tertiary);
-  }
-
-  .title-meta strong { color: var(--text-secondary); }
-
-  /* CTA slide */
-  .cta-slide .slide-inner { text-align: center; }
-
-  /* Section transition slide */
-  .section-slide .slide-inner {
-    text-align: center;
-  }
-
-  .section-slide .section-num {
-    font-family: var(--font-heading);
-    font-size: clamp(12px, 1.3vw, 15px);
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    margin-bottom: 24px;
-  }
-
-  .section-slide .section-title {
-    font-family: var(--font-heading);
-    font-size: clamp(36px, 6vw, 80px);
-    font-weight: 600;
-    line-height: 1.05;
-    letter-spacing: -0.03em;
-    margin-bottom: 24px;
-  }
-
-  .section-slide .section-rule {
-    width: 80px;
-    height: 4px;
-    border-radius: 2px;
-    margin: 0 auto 24px;
-  }
-
-  .section-slide .section-tagline {
-    font-family: var(--font-body);
-    font-size: clamp(16px, 2vw, 24px);
-    font-weight: 400;
-    line-height: 1.5;
-    color: var(--text-secondary);
-    max-width: 700px;
-    margin: 0 auto;
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .grid-2 { grid-template-columns: 1fr; }
-    .grid-3 { grid-template-columns: 1fr 1fr; }
-    html, body { overscroll-behavior: none; }
-    .slide {
-      padding: 24px 20px calc(64px + env(safe-area-inset-bottom, 0px)) 20px;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      justify-content: flex-start;
-      touch-action: pan-y;
-    }
-    .slide-inner { margin-top: auto; margin-bottom: auto; }
-    .click-zone { display: none; }
-    .nav-dots { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
-    .slide-counter {
-      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-      right: 12px;
-      font-size: 11px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .nav-dots { gap: 0; }
-    .nav-dot {
-      width: 16px; height: 36px; background: transparent; border-radius: 0;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .nav-dot::before {
-      content: ''; width: 6px; height: 6px; border-radius: 50%;
-      background: var(--border); flex-shrink: 0; transition: background 200ms, transform 200ms;
-    }
-    .nav-dot.active { background: transparent; }
-    .nav-dot.active::before { background: var(--accent); transform: scale(1.3); }
-    .nav-dot:hover::before { background: var(--text-tertiary); }
-    .grid-3 { grid-template-columns: 1fr; }
-    .title-meta { gap: 8px 16px; flex-wrap: wrap; }
-    h2 { margin-bottom: 14px; }
-    .slide-label { margin-bottom: 8px; }
-  }
-
-/* --- progressive enhancement (no-JS fallback) — injected by fix_deck_chrome --- */
-html:not(.js) .slide{display:flex!important;position:relative!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important;transform:none!important;width:100%;min-height:100vh;min-height:100dvh;}
-html.js{overflow:hidden;}
-html.js body{overflow:hidden;overscroll-behavior:none;}
-html.js .slide{display:none;}
-html.js .slide.active{display:flex;}
-</style>
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+    </style>
 </head>
 <body>
 <!--
-  ============================================================
-  NARRATIVE SPINE (built from this deck's existing verified content; no fresh research)
-  ============================================================
-
-  ABT:
-    AND Reality-Check is Amplifier's testing bundle, built to validate software inside
-        disposable Digital Twin Universe (DTU) sandboxes;
-    BUT the tool made for testing couldn't be pointed at itself - a container can't
-        cleanly launch the containers it needs to test;
-    THEREFORE let a DTU host its own DTU, and Reality-Check validates itself end to end -
-        a loop you can then aim at anything.
-
-  PAYOFF (named up front):
-    The self-validation loop - profile -> run -> evidence -> summary - running green with
-    Reality-Check testing a copy of Reality-Check, one DTU nested inside another. The same
-    loop generalizes to any bug report or feature request.
-
-  BEATS (proof-first; payoff lands at beat 4 of 9, before the midpoint of 5):
-    1. proof     - Reality-Check now validates itself, a DTU nested in a DTU, loop green.
-                   advances: grounds the THEREFORE - self-validation is real and working.
-    2. tension   - the irony: the tool built for testing couldn't test itself.
-                   advances: establishes the BUT (container-in-container blocked it).
-    3. mechanism - a DTU can host its own DTU. (one claim)
-                   advances: HOW the irony is resolved - nesting makes self-testing possible.
-    4. payoff    - profile -> run -> evidence -> summary, aim it at anything.
-                   advances: lands the named payoff before midpoint.
-    5. turn      - nesting earned its keep immediately: it caught a real hang.
-                   advances: the pivot - self-testing found a bug the moment it existed.
-    6. mechanism - the fix: hand subprocess tempfiles, not pipes. (one claim)
-                   advances: HOW the hang was killed.
-    7. mechanism - a profile stands up the outer DTU. (one claim)
-                   advances: HOW you set the loop up in practice.
-    8. mechanism - run inside, pull the evidence, let Amplifier summarize. (one claim)
-                   advances: HOW the loop executes and reports.
-    9. takeaway  - self-validation is a reusable pattern for any request.
-                   advances: the durable lesson the audience keeps.
-
-    + Sources & Methodology (audit-trail slide, not a beat) at the end.
-    Slides = 9 beats + 1 = 10.
+SPINE
+ABT: AND Reality-Check validates software inside disposable Digital Twin Universe sandboxes so that "done" actually means done; BUT the tool built for testing couldn't be aimed at itself, because its own stack is a container full of containers that a plain container can't cleanly launch; THEREFORE they let a DTU host its own DTU, so Reality-Check validates itself end-to-end -- and the same loop can then be aimed at anything.
+Payoff: Reality-Check validates itself end-to-end inside a nested DTU, turning a self-test into a reusable loop that can be aimed at any software (web_app | cli_tool | api_service | library).
+Beats:
+  1. frame     -- advances: Orients the audience on what Reality-Check is and the problem it solves -- establishes the stakes behind the AND.
+  2. proof     -- advances: Establishes the AND with hard evidence -- the disposable-sandbox testing is real and in main.
+  3. tension   -- advances: Establishes the BUT -- the self-referential blind spot that motivates the whole fix.
+  4. mechanism -- advances: Shows HOW the blocker is removed -- the single nesting/privileged move that makes DTU-in-DTU possible.
+  5. mechanism -- advances: Shows HOW the nested loop becomes observable end-to-end, completing the mechanism started in beat 4.
+  6. turn      -- advances: Pivots from AND-to-THEREFORE -- the manual blocker becomes a single automated, repeatable run.
+  7. payoff    -- advances: Lands the THEREFORE -- the climax: self-validation proves the loop, and the loop generalizes.
+  8. takeaway  -- advances: The generalized principle the audience keeps -- self-validation as the proof of a trustworthy testing loop.
 -->
 
-<div class="deck" id="deck">
+<!-- TITLE COVER (before beat 1; only slide with 'active') -->
+<div class="slide title-slide active center">
+    <h1>A DTU Inside a DTU</h1>
+    <p class="subtitle">how Reality-Check learned to test itself</p>
+</div>
 
-<!-- beat 1: proof -->
-<div class="slide title-slide active" data-slide="0">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--foundation);">Self-Validation, Green</div>
-    <h1 class="slide-title">Reality-Check now tests a copy of itself.</h1>
-    <p class="slide-subtitle"><strong>Reality-Check</strong> is Amplifier's testing bundle; a <strong>Digital Twin Universe (DTU)</strong> is the disposable Linux sandbox it runs inside. Today the loop runs green end to end — Reality-Check validating a copy of Reality-Check, one DTU nested inside another.</p>
-    <div class="card" style="margin: 28px auto 0; max-width: 760px; border-left: 3px solid var(--foundation); border-top: none; text-align: left;">
-      <p><strong style="color: var(--foundation);">profile → run → evidence → summary:</strong> the whole self-validation loop completed against the testing tool itself.</p>
+<div class="slide center">
+    <!-- beat 1: frame -->
+    <div class="section-label">The Frame</div>
+    <h2>Agents say &ldquo;done&rdquo; when it isn&rsquo;t &mdash; Reality-Check closes that gap.</h2>
+    <p class="body">Amplifier&rsquo;s Reality-Check bundle captures what the user actually wanted, derives verifiable criteria, and &ldquo;tests the result in a Digital Twin Universe environment so that &lsquo;done&rsquo; means done.&rdquo;</p>
+    <p class="handoff">So the promise is real testing in a disposable sandbox. Is it actually shipped?</p>
+</div>
+
+<div class="slide split">
+    <!-- beat 2: proof -->
+    <div class="col-main">
+        <div class="section-label">The Proof</div>
+        <h2>It isn&rsquo;t a mock &mdash; it&rsquo;s a shipped bundle built ON DTU sandboxes.</h2>
+        <p class="body">Reality-Check depends transitively on the Digital Twin Universe bundle (which itself depends on Gitea) &mdash; a real testing tool standing on real disposable sandboxes, present in <code>main</code>.</p>
+        <p class="handoff">Real, and in main. So what was the one thing it couldn&rsquo;t test?</p>
     </div>
-    <div class="title-meta">
-      <span><strong>Author</strong> David Koleczek</span>
+    <div class="col-aside">
+        <ul class="rules">
+            <li><code>reality-check</code> &rarr; <code>digital-twin-universe</code> &rarr; <code>gitea</code></li>
+            <li>Repo created 2026-04-14, last pushed 2026-07-09</li>
+            <li>Also pulls <code>browser-tester</code> + <code>terminal-tester</code></li>
+        </ul>
     </div>
-  </div>
 </div>
 
-<!-- beat 2: tension -->
-<div class="slide" data-slide="1">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--boundary);">The Irony</div>
-    <h2>The tool built for testing couldn't test itself.</h2>
-    <p>As I built out the Digital Twin Universe bundles, I hit the irony head-on: I literally couldn't use the thing for the one job it exists to do — testing. A container can't cleanly launch the containers it needs to test. <strong>Container-in-container is the wall.</strong></p>
-  </div>
-</div>
-
-<!-- beat 3: mechanism -->
-<div class="slide" data-slide="2">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--foundation);">Nesting</div>
-    <h2>A DTU can host its own DTU.</h2>
-    <p>The unlock is a single move: let the outer DTU stand up an inner one. Now the testing infrastructure can test itself — and anything else riding on it — because the sandbox it needs lives one level down, cleanly isolated from the sandbox it runs in.</p>
-  </div>
-</div>
-
-<!-- beat 4: payoff -->
-<div class="slide" data-slide="3">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--foundation);">The Loop</div>
-    <h2>Profile → run → evidence → summary — aim it at anything.</h2>
-    <p style="margin-bottom: 20px;">With nesting in place, self-validation becomes a repeatable four-step loop. Point it at Reality-Check to test Reality-Check today; point it at any app tomorrow.</p>
-    <div class="grid-3">
-      <div class="card" style="border-top: 3px solid var(--foundation);">
-        <h3 style="color: var(--foundation);">Profile → Run</h3>
-        <p>A profile stands up the outer DTU; Amplifier runs the check inside it.</p>
-      </div>
-      <div class="card" style="border-top: 3px solid var(--bundles);">
-        <h3 style="color: var(--bundles);">Evidence</h3>
-        <p>Logs and session artifacts are pulled back out of the DTU.</p>
-      </div>
-      <div class="card" style="border-top: 3px solid var(--accent-green);">
-        <h3 style="color: var(--accent-green);">Summary</h3>
-        <p>Amplifier reads the evidence and tells you what happened.</p>
-      </div>
+<div class="slide split">
+    <!-- beat 3: tension -->
+    <div class="col-main">
+        <div class="section-label">The Tension</div>
+        <h2>The one thing it couldn&rsquo;t test was itself.</h2>
+        <p class="body">Reality-Check&rsquo;s own stack IS a container full of containers &mdash; Incus as the inner container runtime, Docker Engine for inner Gitea and sidecars &mdash; and a plain container can&rsquo;t cleanly launch the containers it needs to test.</p>
+        <p class="handoff">A testing tool with a self-referential blind spot. So how do you point it inward?</p>
     </div>
-  </div>
-</div>
-
-<!-- beat 5: turn -->
-<div class="slide" data-slide="4">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--accent-red);">Earning Its Keep</div>
-    <h2>Nesting caught a real hang the moment it existed.</h2>
-    <div class="card" style="border-left: 3px solid var(--accent-red); border-top: none; margin-top: 16px;">
-      <p><strong style="color: var(--accent-red);">Root cause:</strong> <code>subprocess.run</code> with <code>capture_output=True</code> was waiting for grandchildren (like <code>lxc monitor</code> spawned by a nested <code>incus launch</code>) to close inherited file descriptors — even after <code>incus exec</code> itself had exited. Self-testing surfaced the bug immediately.</p>
+    <div class="col-aside">
+        <ul class="rules">
+            <li>Incus &mdash; inner container runtime</li>
+            <li>Docker Engine &mdash; inner Gitea + mock sidecars</li>
+            <li>To test itself, this stack must run <em>inside</em> a DTU</li>
+        </ul>
     </div>
-  </div>
 </div>
 
-<!-- beat 6: mechanism -->
-<div class="slide" data-slide="5">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--foundation);">The Fix</div>
-    <h2>Hand subprocess tempfiles, not pipes.</h2>
-<div class="code-block" style="margin-top: 8px; font-size: clamp(11px, 1.15vw, 14px); line-height: 1.55;"><span class="cmt"># incus.py :: exec_command()</span>
-
-<span class="del">- result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)</span>
-<span class="del">- return result.returncode, result.stdout, result.stderr</span>
-
-<span class="add">+ with tempfile.TemporaryFile("w+") as out_f, tempfile.TemporaryFile("w+") as err_f:</span>
-<span class="add">+     result = subprocess.run(</span>
-<span class="add">+         cmd,</span>
-<span class="add">+         stdin=subprocess.DEVNULL,</span>
-<span class="add">+         stdout=out_f,</span>
-<span class="add">+         stderr=err_f,</span>
-<span class="add">+         text=True,</span>
-<span class="add">+         timeout=timeout,</span>
-<span class="add">+     )</span>
-<span class="add">+     out_f.seek(0); err_f.seek(0)</span>
-<span class="add">+     return result.returncode, out_f.read(), err_f.read()</span></div>
-    <p style="margin-top: 16px; font-size: clamp(12px, 1.2vw, 14px); color: var(--text-tertiary);"><code>subprocess.run</code> now returns as soon as <code>incus exec</code> exits, regardless of what grandchildren are still holding inherited fds. <code>stdin=DEVNULL</code> keeps the child from blocking on inherited input.</p>
-  </div>
-</div>
-
-<!-- beat 7: mechanism -->
-<div class="slide" data-slide="6">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--foundation);">Setup</div>
-    <h2>A profile stands up the outer DTU.</h2>
-    <p style="margin-bottom: 20px;"><code>reality-check-in-incus.yaml</code> builds the outer DTU, ready to host an inner one — installing prereqs, sourcing the bundle, and confirming it works before any test runs.</p>
-    <div class="grid-3">
-      <div class="card" style="border-top: 3px solid var(--foundation);">
-        <h3 style="color: var(--foundation);">Installs</h3>
-        <p>Incus, Docker, and other prereqs. Configures Amplifier and bundles.</p>
-      </div>
-      <div class="card" style="border-top: 3px solid var(--bundles);">
-        <h3 style="color: var(--bundles);">Sources</h3>
-        <p>Uses the reality-check bundle from Gitea if provided — local changes flow in without hitting GitHub.</p>
-      </div>
-      <div class="card" style="border-top: 3px solid var(--accent-green);">
-        <h3 style="color: var(--accent-green);">Verifies</h3>
-        <p>Confirms it works with commands like <code>amplifier bundle list</code>.</p>
-      </div>
+<div class="slide split">
+    <!-- beat 4: mechanism -->
+    <div class="col-main">
+        <div class="section-label">The Mechanism &middot; 1 of 2</div>
+        <h2>The fix: let a DTU host its own DTU.</h2>
+        <p class="body">The <code>reality-check-in-incus</code> profile sets <code>security.nesting: "true"</code> and makes the inner default profile privileged, so the outer DTU can itself launch inner DTUs and run the reality-check pipeline.</p>
+        <p class="handoff">The blocker is gone. But can you actually see the nested loop working?</p>
     </div>
-  </div>
+    <div class="col-aside">
+        <div class="code-block"><span class="code-comment"># profile base.config</span>
+<span class="code-key">security.nesting</span>: "true"
+
+<span class="code-comment"># provision</span>
+incus admin init --minimal
+incus profile set default \
+  <span class="code-key">security.privileged</span>=true
+
+<span class="code-comment"># header: "the DTU can itself launch</span>
+<span class="code-comment"># inner DTUs (DTU-in-DTU)"</span></div>
+    </div>
 </div>
 
-<!-- beat 8: mechanism -->
-<div class="slide" data-slide="7">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--foundation);">Run &amp; Report</div>
-    <h2>Run inside, pull the evidence, let Amplifier summarize.</h2>
-    <p style="margin-bottom: 20px;">Drive reality-check against the inner app, tee the output to a log, then pull the artifacts back out and let Amplifier read them.</p>
-<div class="code-block" style="margin-top: 8px; font-size: clamp(11px, 1.15vw, 14px); line-height: 1.55;"><span class="cmt"># inside the outer DTU</span>
-<span class="kw">amplifier run</span> <span class="str">"Run the reality-check-pipeline recipe against</span>
-<span class="str">              the app at /software"</span> | tee <span class="val">$OUT/run.log</span>
-
-<span class="cmt"># then pulled back out of the DTU</span>
-/root/home                <span class="kw">-&gt;</span> <span class="val">$OUT/home/</span>
-/root/.amplifier/projects <span class="kw">-&gt;</span> <span class="val">$OUT/sessions/</span></div>
-    <p style="margin-top: 16px; font-size: clamp(12px, 1.2vw, 14px); color: var(--text-tertiary);">Amplifier then generates a summary of what happened based on the logs.</p>
-  </div>
+<div class="slide split">
+    <!-- beat 5: mechanism -->
+    <div class="col-main">
+        <div class="section-label">The Mechanism &middot; 2 of 2</div>
+        <h2>The loop closes when the inner UI is proxied up to the host.</h2>
+        <p class="body">The inner DTU binds its chat UI on port 8410 to the outer DTU&rsquo;s localhost, and an <code>access.ports</code> block forwards it up to the host &mdash; validation you can actually see from outside the nest.</p>
+        <p class="handoff">The nested loop is now observable end-to-end. Now make it repeatable.</p>
+    </div>
+    <div class="col-aside">
+        <div class="code-block"><span class="code-comment"># access.ports (outer DTU -&gt; host)</span>
+- host:      ${HOST_PORT}
+  container: <span class="code-key">8410</span>
+  label:     "Inner Chat UI"
+  path:      /chat/
+  verify:    false</div>
+    </div>
 </div>
 
-<!-- beat 9: takeaway -->
-<div class="slide cta-slide" data-slide="8">
-  <div class="slide-inner">
-    <div class="pull-quote" style="border-color: var(--foundation); text-align: center; border-left: none; border-bottom: 4px solid var(--foundation); padding-bottom: 32px; padding-left: 0; font-size: clamp(24px, 3.5vw, 48px);">
-      One profile. Any target.<br>Self-validation on tap.
+<div class="slide split">
+    <!-- beat 6: turn -->
+    <div class="col-main">
+        <div class="section-label">The Turn</div>
+        <h2>One script drives the whole self-validation, launch to artifacts.</h2>
+        <p class="body"><code>run-reality-check-validation.sh</code> &mdash; added in commit <code>0800490</code> (2026-04-22) &mdash; turns the manual blocker into a single automated, repeatable run.</p>
+        <p class="handoff">A manual dead-end becomes one repeatable command. So what does that unlock?</p>
     </div>
-    <p style="margin-top: 32px; text-align: center; max-width: 700px; margin-left: auto; margin-right: auto;">The loop that tests Reality-Check tests anything: get a bug report or feature request, start from a DTU profile, and have Amplifier write the script that drives the DTU and validates it — automatically.</p>
-    <div style="text-align: center; margin-top: 40px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;">
-      <a href="https://github.com/microsoft/amplifier-bundle-reality-check">amplifier-bundle-reality-check</a>
-      <a href="https://github.com/microsoft/amplifier-bundle-digital-twin-universe">amplifier-bundle-digital-twin-universe</a>
+    <div class="col-aside">
+        <ol class="steps">
+            <li>Launch the outer DTU</li>
+            <li>Wait for readiness</li>
+            <li>Run the reality-check-pipeline recipe inside</li>
+            <li>Pull out <code>/root/home</code> + <code>/root/.amplifier/projects</code></li>
+        </ol>
     </div>
-    <div class="title-meta" style="margin-top: 32px;">
-      <span><strong>Author</strong> David Koleczek</span>
-    </div>
-  </div>
 </div>
 
-<!-- Sources & Methodology -->
-<div class="slide" data-slide="9">
-  <div class="slide-inner">
-    <div class="slide-label" style="color: var(--text-tertiary);">Sources</div>
-    <h3>Sources &amp; Methodology</h3>
-    <div class="grid-2" style="margin-top: 8px;">
-      <div class="card">
-        <h3 style="font-size: clamp(14px,1.5vw,18px);">What is documented</h3>
-        <p><strong>Bundles</strong> — <code>amplifier-bundle-reality-check</code> and <code>amplifier-bundle-digital-twin-universe</code>.</p>
-        <p style="margin-top:10px;"><strong>The fix</strong> — the tempfile + <code>stdin=DEVNULL</code> change in <code>incus.py :: exec_command()</code>.</p>
-        <p style="margin-top:10px;"><strong>The loop</strong> — <code>reality-check-in-incus.yaml</code> profile plus the run/pull commands shown.</p>
-      </div>
-      <div class="card">
-        <h3 style="font-size: clamp(14px,1.5vw,18px);">Gaps &amp; caveats</h3>
-        <p>The self-validation run is described qualitatively (loop completed green); no benchmark numbers are claimed.</p>
-        <p style="margin-top:10px;">Author account: David Koleczek. Commands are illustrative of the pattern, lightly trimmed for the slide.</p>
-      </div>
+<div class="slide split">
+    <!-- beat 7: payoff -->
+    <div class="col-main">
+        <div class="section-label">The Payoff</div>
+        <h2>It now validates itself &mdash; and that self-test is a loop you can aim at anything.</h2>
+        <p class="body">Because the same reality-check-pipeline checks any software via browser, cli, or other validators, once it can validate itself it can be pointed at anything.</p>
+        <p class="handoff">Self-validation proves the loop; the loop generalizes.</p>
     </div>
-  </div>
+    <div class="col-aside">
+        <div class="stat-grid">
+            <div class="stat">
+                <div class="stat-value">4</div>
+                <div class="stat-label">software types: web_app &middot; cli_tool &middot; api_service &middot; library</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">3</div>
+                <div class="stat-label">validator types: browser &middot; cli &middot; other</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">5</div>
+                <div class="stat-label">agents in the bundle</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">3</div>
+                <div class="stat-label">recipes, incl. reality-check-pipeline</div>
+            </div>
+        </div>
+    </div>
 </div>
 
-</div><!-- /deck -->
+<div class="slide center">
+    <!-- beat 8: takeaway -->
+    <div class="section-label">The Takeaway</div>
+    <h2>A tool that can honestly test itself is one you can trust to test everything else.</h2>
+    <p class="body">Self-validation isn&rsquo;t a stunt &mdash; it&rsquo;s the proof that the testing loop actually holds. Prove it on itself first; then aim it at the rest.</p>
+</div>
 
-<!-- Presentation controls -->
-<button class="ctrl-btn ctrl-prev" onclick="prevSlide()" title="Previous slide">
-  <svg width="18" height="18" viewBox="0 0 18 18"><path d="M11 14L6 9l5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-</button>
-<button class="ctrl-btn ctrl-next" onclick="nextSlide()" title="Next slide">
-  <svg width="18" height="18" viewBox="0 0 18 18"><path d="M7 4l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-</button>
+<!-- SOURCES & METHODOLOGY (no beat comment) -->
+<div class="slide">
+    <div class="section-label">Sources</div>
+    <h2>Research Methodology</h2>
+    <div class="sources-body">
+        <p><strong>Data as of:</strong> 2026-07-21 (independently verified by fresh git clone + <code>gh repo view</code>)</p>
+        <p><strong>Feature status:</strong> <span class="badge">Shipped / present in main</span></p>
+        <p><strong>Primary sources:</strong> <code>microsoft/amplifier-bundle-reality-check</code>, <code>microsoft/amplifier-bundle-digital-twin-universe</code>, <code>bkrabach/reality-check-greeting-app</code></p>
+        <p><strong>Commands run:</strong></p>
+        <ul>
+            <li><code>gh repo view microsoft/amplifier-bundle-reality-check --json createdAt,description,pushedAt</code> (created 2026-04-14, pushed 2026-07-09)</li>
+            <li><code>git show 0800490 --stat</code> &mdash; &ldquo;feat: add local validation workflow for reality-check&rdquo; (2026-04-22; 5 files, 676 insertions)</li>
+            <li><code>cat profiles/reality-check-in-incus.yaml</code> &mdash; confirmed <code>security.nesting:"true"</code>, privileged default, port-8410 <code>access.ports</code></li>
+            <li><code>head scripts/run-reality-check-validation.sh</code> &mdash; launch &rarr; readiness &rarr; <code>amplifier run</code> &rarr; file-pull</li>
+            <li><code>cat README.md &amp;&amp; ls agents recipes</code> &mdash; 4 software types, 3 validator types, 5 agents, 3 recipes</li>
+        </ul>
+        <p><strong>Primary contributors:</strong> DavidKoleczek (reality-check bundle + self-validation workflow, commit <code>0800490</code>); bkrabach (greeting-app fixture, PRs #8/#7/#6)</p>
+        <p><strong>Gaps / scope:</strong> No live end-to-end run was executed (profiles require Incus/Docker + provisioning + an API key). All claims are grounded in source/commit inspection. The causal phrase &ldquo;a container can&rsquo;t cleanly launch the containers it needs to test&rdquo; is an editorial summary of why nesting/privileged are required, not a literal commit message.</p>
+    </div>
+</div>
 
-<div class="nav-dots" id="navDots"></div>
-<div class="slide-counter" id="slideCounter">1 / 10</div>
-<a href="index.html" class="more-stories" style="position: fixed; bottom: 24px; left: 32px; font-size: 12px; color: var(--text-tertiary); z-index: 100; border: none;">More Amplifier Stories</a>
+<!-- Navigation -->
+<div class="nav" id="nav"></div>
+<div class="slide-counter" id="counter"></div>
 
-<!-- Click zones for desktop -->
-<div class="click-zone left" onclick="prevSlide()"></div>
-<div class="click-zone right" onclick="nextSlide()"></div>
+<a href="index.html" class="more-stories">More Amplifier Stories</a>
 
 <script>
-(function() {
-  const slides = document.querySelectorAll('.slide');
-  const totalSlides = slides.length;
-  let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const total = slides.length;
+    let current = 0;
+    let transitioning = false;
 
-  const dotsContainer = document.getElementById('navDots');
-  slides.forEach((_, i) => {
-    const dot = document.createElement('button');
-    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
-    dot.onclick = () => goToSlide(i);
-    dotsContainer.appendChild(dot);
-  });
+    function goTo(n) {
+        n = ((n % total) + total) % total;
+        if (transitioning || n === current) return;
+        transitioning = true;
+        var direction = n > current ? 1 : -1;
+        var prev = slides[current];
+        var next = slides[n];
 
-  function goToSlide(n) {
-    if (n < 0 || n >= totalSlides) return;
-    slides[currentSlide].classList.remove('active');
-    dotsContainer.children[currentSlide].classList.remove('active');
-    currentSlide = n;
-    slides[currentSlide].classList.add('active');
-    dotsContainer.children[currentSlide].classList.add('active');
-    document.getElementById('slideCounter').textContent = (currentSlide + 1) + ' / ' + totalSlides;
-  }
+        prev.classList.remove('active');
+        prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+        prev.style.opacity = '0';
 
-  window.nextSlide = () => goToSlide(currentSlide + 1);
-  window.prevSlide = () => goToSlide(currentSlide - 1);
+        next.style.transition = 'none';
+        next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+        next.style.opacity = '0';
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
-      e.preventDefault(); nextSlide();
+        void next.offsetWidth;
+
+        next.style.transition = '';
+        next.style.transform = 'translateX(0)';
+        next.style.opacity = '1';
+        next.classList.add('active');
+
+        current = n;
+        updateNav();
+
+        setTimeout(function() {
+            prev.style.transform = '';
+            prev.style.opacity = '';
+            next.style.transform = '';
+            next.style.opacity = '';
+            transitioning = false;
+        }, 500);
     }
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault(); prevSlide();
-    }
-  });
 
-  let touchStartX = 0;
-  let touchStartY = 0;
-  document.addEventListener('touchstart', (e) => {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, { passive: true });
-  document.addEventListener('touchend', (e) => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-      dx < 0 ? nextSlide() : prevSlide();
+    function updateNav() {
+        const nav = document.getElementById('nav');
+        const counter = document.getElementById('counter');
+        nav.innerHTML = '';
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === current ? ' active' : '');
+            dot.onclick = () => goTo(i);
+            nav.appendChild(dot);
+        });
+        counter.textContent = `${current + 1} / ${total}`;
     }
-  }, { passive: true });
-})();
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+        if (e.key === 'ArrowLeft') goTo(current - 1);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.nav')) return;
+        if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+        else goTo(current - 1);
+    });
+
+    let touchStartX = 0;
+    const SWIPE_THRESHOLD = 50;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        const diff = touchStartX - e.changedTouches[0].screenX;
+        if (Math.abs(diff) > SWIPE_THRESHOLD) {
+            if (diff > 0) goTo(current + 1);
+            else goTo(current - 1);
+        }
+    }, { passive: true });
+
+    updateNav();
 </script>
-
-</body></html>
+</body>
+</html>

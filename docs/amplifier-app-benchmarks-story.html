@@ -3,491 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Building a Complete Regression Test Suite in Hours | amplifier-app-benchmarks</title>
+    <title>The Tool Tests Itself</title>
     <script>document.documentElement.classList.add('js')</script>
-
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --accent-color: #00E5FF;
-            --accent-dim: rgba(0, 229, 255, 0.15);
-            --font-headline: clamp(32px, 8vw, 72px);
-            --font-medium-headline: clamp(24px, 5vw, 48px);
-            --font-subhead: clamp(16px, 3vw, 28px);
-            --font-body: clamp(14px, 2vw, 18px);
-            --font-big-number: clamp(48px, 15vw, 140px);
-            --padding-slide: clamp(24px, 5vw, 80px);
-            --gap-grid: clamp(16px, 3vw, 40px);
-
-            /* Surface hierarchy */
-            --surface-1: rgba(255,255,255,0.06);
-            --surface-2: rgba(255,255,255,0.10);
-            --surface-3: rgba(255,255,255,0.15);
-            --border-subtle: rgba(255,255,255,0.12);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.7);
-            --text-readable: rgba(255,255,255,0.7);
-            --text-muted-floor: rgba(255,255,255,0.5);
+            --bg: #0a0c10;
+            --bg2: #12161d;
+            --fg: #f2f5f8;
+            --muted: #9aa7b4;
+            --accent: #5eb0ef;
+            --accent2: #7ee0c0;
+            --line: rgba(255,255,255,0.10);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: #fff;
-        }
-
-        .slide-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            height: 100dvh;
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
         .slide {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            padding: var(--padding-slide);
             display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px) clamp(80px, 12vw, 100px);
             flex-direction: column;
-            opacity: 0;
-            transition: opacity 0.4s ease;
+            justify-content: flex-start;
             overflow-y: auto;
             overflow-x: hidden;
+            background:
+                radial-gradient(1200px 600px at 12% -10%, rgba(94,176,239,0.10), transparent 60%),
+                radial-gradient(1000px 500px at 100% 110%, rgba(126,224,192,0.08), transparent 55%),
+                var(--bg);
         }
 
-        .slide.active {
-            display: flex;
-            opacity: 1;
-        }
+        .slide.active { display: flex; }
 
-        /* Centering class — applied only to title and CTA slides */
-        .center {
-            text-align: center;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .section-label {
-            font-size: clamp(12px, 1.5vw, 14px);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: var(--accent-color);
-            margin-bottom: 16px;
-        }
-
-        .headline {
-            font-size: var(--font-headline);
-            font-weight: 700;
-            letter-spacing: -2px;
-            line-height: 1.1;
-            margin-bottom: 24px;
-        }
-
-        .subhead {
-            font-size: var(--font-subhead);
-            font-weight: 400;
-            color: rgba(255, 255, 255, 0.7);
-            line-height: 1.5;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .medium-headline {
-            font-size: var(--font-medium-headline);
-            font-weight: 600;
-            letter-spacing: -1px;
-            line-height: 1.2;
-            margin-bottom: 32px;
-        }
-
-        /* Title slide specific */
-        .title-slide {
-            text-align: center;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .title-slide .headline {
-            max-width: 900px;
-        }
-
-        .title-slide .subhead {
-            text-align: center;
-            margin: 0 auto;
-        }
-
-        .title-meta {
-            margin-top: 48px;
-            font-size: clamp(12px, 1.5vw, 14px);
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        /* Card grids */
-        .card-grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: var(--gap-grid);
-            margin-top: 32px;
-            width: 100%;
-            max-width: 1200px;
-        }
-
-        .card-grid > .card {
-            flex: 0 0 auto;
-            width: min(480px, calc(50% - var(--gap-grid) / 2));
-        }
-
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            padding: clamp(20px, 4vw, 32px);
-        }
-
-        .card-title {
-            font-size: clamp(16px, 2.5vw, 20px);
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: var(--accent-color);
-        }
-
-        .card-description {
-            font-size: var(--font-body);
-            color: rgba(255, 255, 255, 0.7);
-            line-height: 1.6;
-        }
-
-        /* Stats grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-            gap: var(--gap-grid);
-            margin-top: 48px;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: var(--font-big-number);
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent-color), #00FFB2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1;
-        }
-
-        .stat-label {
-            font-size: clamp(14px, 2vw, 18px);
-            color: rgba(255, 255, 255, 0.6);
-            margin-top: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* Table styles */
-        .table-container {
-            margin-top: 32px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            width: 100%;
-            max-width: 900px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: var(--font-body);
-        }
-
-        th, td {
-            padding: clamp(12px, 2vw, 16px) clamp(16px, 3vw, 24px);
-            text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        th {
-            font-weight: 600;
-            color: var(--accent-color);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: clamp(11px, 1.5vw, 13px);
-        }
-
-        td:first-child {
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        td:last-child {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        tr:hover {
-            background: rgba(255, 255, 255, 0.03);
-        }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--surface-1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: clamp(16px, 3vw, 24px);
-            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-            font-size: clamp(12px, 1.8vw, 15px);
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-top: 24px;
-            width: 100%;
-            max-width: 800px;
-            text-align: left;
-        }
-
-        .code-comment {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .code-command {
-            color: #30D158;
-        }
-
-        .code-string {
-            color: #FF9F0A;
-        }
-
-        /* Bullet list */
-        .bullet-list {
-            list-style: none;
-            margin-top: 32px;
-            width: 100%;
-            max-width: 800px;
-        }
-
-        .bullet-list li {
-            font-size: var(--font-subhead);
-            padding: 16px 24px;
-            position: relative;
-            color: rgba(255, 255, 255, 0.85);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            text-align: left;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .bullet-list li::before {
-            content: '';
-            flex-shrink: 0;
-            width: 8px;
-            height: 8px;
-            background: var(--accent-color);
-            border-radius: 50%;
-        }
-
-        .bullet-list li:last-child {
-            border-bottom: none;
-        }
-
-        /* Takeaway cards */
-        .takeaway-grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 24px;
-            margin-top: 32px;
-            width: 100%;
-            max-width: 1200px;
-        }
-
-        .takeaway-grid > .takeaway-card {
-            flex: 0 0 auto;
-            width: min(340px, 100%);
-        }
-
-        .takeaway-card {
-            background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(0, 255, 178, 0.04));
-            border: 1px solid rgba(0, 229, 255, 0.2);
-            border-radius: 16px;
-            padding: clamp(20px, 3vw, 28px);
-        }
-
-        .takeaway-number {
-            font-size: clamp(32px, 5vw, 48px);
-            font-weight: 700;
-            color: var(--accent-color);
-            opacity: 0.5;
-            line-height: 1;
-            margin-bottom: 12px;
-        }
-
-        .takeaway-title {
-            font-size: clamp(16px, 2.5vw, 20px);
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .takeaway-description {
-            font-size: var(--font-body);
-            color: rgba(255, 255, 255, 0.7);
-            line-height: 1.5;
-        }
-
-        /* CTA slide */
-        .cta-slide {
-            text-align: center;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .cta-links {
-            margin-top: 48px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            align-items: center;
-        }
-
-        .cta-link {
-            display: inline-block;
-            padding: 16px 32px;
-            background: var(--accent-color);
-            color: #000;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: clamp(14px, 2vw, 16px);
-            transition: transform 0.2s, background 0.2s;
-        }
-
-        .cta-link:hover {
-            transform: scale(1.05);
-            background: #00FFB2;
-        }
-
-        .cta-secondary {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: clamp(12px, 1.5vw, 14px);
-        }
-
-        /* Navigation */
-        .nav-dots {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            z-index: 100;
-        }
-
-        .nav-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            cursor: pointer;
-            transition: background 0.3s, transform 0.3s;
-        }
-
-        .nav-dot:hover {
-            background: rgba(255, 255, 255, 0.5);
-        }
-
-        .nav-dot.active {
-            background: var(--accent-color);
-            transform: scale(1.3);
-        }
-
-        .slide-counter {
-            position: fixed;
-            bottom: 24px;
-            right: 32px;
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.4);
-            font-family: 'SF Mono', monospace;
-            z-index: 100;
-        }
-
-        /* Architecture diagram */
-        .architecture {
-            background: var(--surface-1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: clamp(16px, 3vw, 24px);
-            font-family: 'SF Mono', monospace;
-            font-size: clamp(11px, 1.5vw, 14px);
-            line-height: 1.8;
-            margin-top: 24px;
-            color: rgba(255, 255, 255, 0.8);
-            width: 100%;
-            max-width: 500px;
-            text-align: left;
-            white-space: pre;
-        }
-
-        .folder {
-            color: var(--accent-color);
-        }
-
-        .file {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .comment {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        /* Highlight text */
-        .highlight {
-            color: var(--accent-color);
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .slide {
-                padding: 20px;
-                padding-bottom: 80px;
-            }
-
-            .headline {
-                letter-spacing: -1px;
-            }
-
-            .stat-number {
-                font-size: clamp(40px, 12vw, 80px);
-            }
-
-            table {
-                font-size: 13px;
-            }
-
-            th, td {
-                padding: 10px 12px;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .slide, .slide * { animation: none !important; transition: none !important; }
-        }
-    
-
-        /* Progressive enhancement: no-JS fallback — all slides visible, scrollable */
+        /* Progressive enhancement: no-JS fallback */
         html:not(.js) .slide {
             display: flex !important;
             position: relative !important;
@@ -505,279 +61,497 @@
         html.js body { overflow: hidden; overscroll-behavior: none; }
         html.js .slide { display: none; }
         html.js .slide.active { display: flex; }
+        /* Fit-safe: cap to viewport and scroll if needed */
+        html.js .slide { max-height: 100dvh; overflow-y: auto; }
+
+        .slide {
+            transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        /* Centering is OPT-IN */
+        .center {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Conservative type scale */
+        h1 { font-size: clamp(32px, 7vw, 76px); line-height: 1.06; font-weight: 700; letter-spacing: -0.02em; }
+        h2 { font-size: clamp(22px, 4vw, 40px); line-height: 1.14; max-width: 24ch; font-weight: 650; letter-spacing: -0.01em; }
+        p, li { font-size: clamp(14px, 1.9vw, 19px); line-height: 1.45; color: var(--fg); }
+        .title-slide h1 { font-size: clamp(40px, 10vw, 104px); }
+        .subtitle { font-size: clamp(16px, 2.4vw, 24px); color: var(--muted); margin-top: clamp(16px,3vw,28px); max-width: 30ch; }
+
+        .section-label {
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: clamp(11px, 1.5vw, 13px);
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: clamp(14px, 2.5vw, 22px);
+        }
+
+        h1 + p.body, h2 + p.body { margin-top: clamp(16px, 3vw, 26px); }
+        p.body { color: var(--muted); max-width: 42ch; }
+        p.body + p.body { margin-top: 0.7em; }
+        p.handoff {
+            margin-top: clamp(20px, 3.5vw, 34px);
+            color: var(--accent2);
+            font-size: clamp(13px, 1.7vw, 17px);
+            max-width: 40ch;
+        }
+
+        /* Horizontal split */
+        .slide.split { flex-direction: column; }
+        @media (min-width: 880px) and (min-height: 480px) {
+            .slide.split {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(32px, 5vw, 84px);
+            }
+            html.js .slide.split.active { display: flex; }
+            .slide.split > .col-main  { flex: 1 1 0; min-width: 0; max-width: 48%; }
+            .slide.split > .col-aside { flex: 1 1 0; min-width: 0; max-width: 52%; }
+            .slide.split .col-aside > * { margin-top: 0; }
+            .slide.split .col-aside .stat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        .col-main > *:first-child, .col-aside > *:first-child { margin-top: 0; }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: clamp(12px, 2vw, 20px);
+            width: 100%;
+        }
+        .stat {
+            background: var(--bg2);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: clamp(16px, 2.4vw, 26px);
+        }
+        .stat .num {
+            font-size: clamp(30px, 6vw, 56px);
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            color: var(--accent);
+        }
+        .stat .num.alt { color: var(--accent2); }
+        .stat .lab {
+            margin-top: 0.5em;
+            font-size: clamp(12px, 1.5vw, 14px);
+            color: var(--muted);
+            line-height: 1.35;
+        }
+
+        /* Numbered steps / rules */
+        .steps { display: flex; flex-direction: column; gap: clamp(10px, 1.8vw, 16px); width: 100%; }
+        .step {
+            display: flex; gap: clamp(12px,1.8vw,18px); align-items: flex-start;
+            background: var(--bg2);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(12px, 2vw, 18px) clamp(14px,2.2vw,20px);
+        }
+        .step .n {
+            flex: 0 0 auto;
+            width: clamp(26px,3.4vw,34px); height: clamp(26px,3.4vw,34px);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(94,176,239,0.16);
+            color: var(--accent);
+            font-weight: 700;
+            font-size: clamp(13px,1.7vw,16px);
+        }
+        .step .t { font-size: clamp(13px,1.7vw,16px); color: var(--fg); line-height: 1.4; }
+        .step .t b { color: var(--fg); }
+        .step .t span { color: var(--muted); }
+
+        /* Chips / tag list */
+        .chips { display: flex; flex-wrap: wrap; gap: clamp(8px,1.4vw,12px); }
+        .chip {
+            background: var(--bg2);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: clamp(8px,1.3vw,11px) clamp(12px,1.8vw,18px);
+            font-size: clamp(12px,1.6vw,15px);
+            color: var(--fg);
+        }
+
+        /* Code block */
+        .code-block {
+            background: #05070a;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(16px,2.5vw,26px);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: clamp(12px,1.6vw,16px);
+            line-height: 1.6;
+            color: #d6e2ee;
+            white-space: pre-wrap;
+            word-break: break-word;
+            width: 100%;
+        }
+        .code-block .c { color: var(--accent2); }
+        .code-block .k { color: var(--accent); }
+
+        /* Big single stat for payoff */
+        .loop {
+            display: flex; flex-direction: column; gap: clamp(10px,1.8vw,16px);
+            width: 100%;
+        }
+        .loop .node {
+            background: var(--bg2);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: clamp(14px,2.2vw,22px);
+            font-size: clamp(13px,1.8vw,17px);
+        }
+        .loop .node b { color: var(--accent); }
+        .loop .arrow { text-align: center; color: var(--accent2); font-size: clamp(16px,2.4vw,22px); }
+
+        .badge {
+            display: inline-block;
+            border: 1px solid var(--accent2);
+            color: var(--accent2);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: clamp(11px,1.5vw,13px);
+            letter-spacing: 0.06em;
+            margin-bottom: clamp(14px,2.5vw,20px);
+        }
+
+        /* Sources slide */
+        .sources { max-width: 60ch; }
+        .sources ul { margin: 0.6em 0 0.6em 1.1em; }
+        .sources li { margin-bottom: 0.45em; color: var(--muted); }
+        .sources code {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: 0.92em;
+            color: var(--accent);
+            background: rgba(94,176,239,0.10);
+            padding: 1px 5px; border-radius: 5px;
+            word-break: break-word;
+        }
+        .sources p { margin-bottom: 0.5em; }
+        .sources strong { color: var(--fg); }
+
+        /* Navigation */
+        .nav {
+            position: fixed; bottom: clamp(26px,4vw,40px); left: 50%;
+            transform: translateX(-50%);
+            display: flex; gap: 10px; z-index: 100;
+        }
+        .nav-dot {
+            width: 9px; height: 9px; border-radius: 50%;
+            background: rgba(255,255,255,0.22);
+            cursor: pointer; transition: background 0.3s, transform 0.3s;
+        }
+        .nav-dot.active { background: var(--accent); transform: scale(1.3); }
+        .slide-counter {
+            position: fixed; bottom: clamp(24px,4vw,38px); right: clamp(20px,4vw,40px);
+            font-size: clamp(11px,1.5vw,13px); color: var(--muted); z-index: 100;
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .slide { padding: 16px clamp(20px, 5vw, 80px) 60px; }
+            .slide.center { justify-content: flex-start; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .slide, .slide * { animation: none !important; transition: none !important; }
+        }
+
+        .more-stories {
+            position: fixed; bottom: 10px; left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(11px, 1.5vw, 12px);
+            color: rgba(255,255,255,0.3);
+            text-decoration: none; z-index: 100;
+        }
+        .more-stories:hover { color: rgba(255,255,255,0.5); }
     </style>
 </head>
 <body>
-    <div class="slide-container">
+<!--
+SPINE
+ABT: AND the Amplifier CLI has to keep working across many providers and capabilities (bash, web, PDF, recipes, sub-agents, bundle context); BUT regression-testing all of that by hand would mean weeks of brittle, string-matching plumbing; THEREFORE David Koleczek built a YAML-driven, Docker-isolated, semantically-graded suite on Microsoft's eval-recipes — and generated the harness with Amplifier itself.
+Payoff: The tool-that-tests-the-tool — the benchmarking CLI was generated with Amplifier, and now guards Amplifier: one command runs 11 semantically-graded checks across 3 providers.
+Beats:
+  beat 1 (frame)     — The Amplifier CLI spans many providers and capabilities; keeping all of it from silently breaking is the real problem this suite solves. advances: orients the audience on the AND — the wide surface area that must keep working and why regression testing it matters.
+  beat 2 (proof)     — It exists and runs today: one command drives 11 test invocations over 9 task definitions across 3 providers. advances: delivers early evidence that the AND is real and already covered — concrete verified scope up front.
+  beat 3 (tension)   — Doing this by hand would be weeks of brittle plumbing, and string-matching would flake on non-deterministic LLM output. advances: establishes the BUT — the cost and fragility of the naive approach.
+  beat 4 (setup)     — Rather than build from scratch, the suite stands on Microsoft's eval-recipes framework, pinned to v0.0.34. advances: introduces the named foundation before the mechanism beats lean on it — sets up the THEREFORE.
+  beat 5 (mechanism) — Each test is graded by eval-recipes' semantic_test against an LLM rubric — judging meaning, not matching strings. advances: shows HOW the fragility from the BUT is solved.
+  beat 6 (mechanism) — Every agent runs in its own Docker image that installs the Amplifier CLI fresh, and tasks run in parallel via --max-parallel. advances: shows HOW the suite stays isolated and fast — the second half of the THEREFORE.
+  beat 7 (payoff)    — The benchmarking CLI itself was generated with Amplifier — the tool built the harness that now guards the tool. advances: lands the THEREFORE as the climax — the self-referential loop is the point.
+  beat 8 (takeaway)  — Seeded from 3 smoke-test tasks on Jan 26 with CI an hour later, the pattern generalizes: lean on a framework, grade semantically, isolate in Docker. advances: gives the audience the reusable pattern and grounds the timeline.
+-->
 
-        <!--
-        NARRATIVE SPINE
-        ABT: AND regression-testing the Amplifier CLI is genuinely hard -- many AI
-             providers, and capabilities from bash to web to PDF to sub-agents, all
-             need validating before users hit a break; BUT the traditional path to a
-             real harness is weeks of custom plumbing; THEREFORE one developer used
-             Amplifier itself, on Microsoft's eval-recipes framework, to stand up a
-             complete YAML-driven regression suite in hours -- Docker-isolated,
-             parallel, and semantically evaluated.
-        Payoff: hours, not weeks -- a runnable regression suite (10+ tests across 3
-                providers) built by using the tool to test the tool.
-        Beats:
-          1. proof     -- the suite runs today: 10+ tests, 3 providers, one command. advances: makes the AND concrete -- it exists and executes
-          2. setup     -- what amplifier-app-benchmarks is, built on eval-recipes.    advances: names the project + framework before leaning on them
-          3. tension   -- validating the CLI is complex; the old way is weeks.        advances: establishes the BUT
-          4. payoff    -- built in hours by using the tool to test the tool.          advances: lands the THEREFORE before the midpoint
-          5. mechanism -- Docker isolation + parallelism make results reproducible.   advances: HOW the results can be trusted at scale
-          6. mechanism -- semantic, YAML-driven tests catch what assertions miss.     advances: HOW it evaluates meaning, not string matches
-          7. proof     -- every core capability has a regression test.                advances: shows the breadth is real, not aspirational
-          8. takeaway  -- the pattern: use the tool to build the tool.                advances: the lessons the audience keeps
-        -->
+    <!-- Title cover (no beat comment) -->
+    <div class="slide title-slide active center">
+        <h1>The Tool Tests Itself</h1>
+        <p class="subtitle">A regression suite for the Amplifier CLI</p>
+    </div>
 
-        <!-- beat 1: proof -->
-        <div class="slide center title-slide active">
-            <div class="section-label">Case Study &middot; amplifier-app-benchmarks</div>
-            <h1 class="headline">A complete regression suite for the Amplifier CLI &mdash; runnable with <span class="highlight">one command</span></h1>
-            <div class="stats-grid" style="max-width:800px;">
-                <div class="stat-item">
-                    <div class="stat-number">10+</div>
-                    <div class="stat-label">Critical Tests</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">3</div>
-                    <div class="stat-label">AI Providers</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">Hours</div>
-                    <div class="stat-label">Not Weeks</div>
-                </div>
-            </div>
-            <div class="title-meta">Open Source &middot; MIT Licensed &middot; DavidKoleczek/amplifier-app-benchmarks &middot; Active</div>
+    <div class="slide split">
+        <!-- beat 1: frame -->
+        <div class="col-main">
+            <div class="section-label">The Problem</div>
+            <h2>Keeping the whole Amplifier CLI from silently breaking is the real problem</h2>
+            <p class="body">The CLI spans three AI providers and a wide set of capabilities. Any of them can regress quietly with the next change.</p>
+            <p class="handoff">So how much of that surface is actually covered today?</p>
         </div>
-
-        <!-- beat 2: setup -->
-        <div class="slide">
-            <div class="section-label">The Project</div>
-            <h2 class="medium-headline">amplifier-app-benchmarks was built with Amplifier, on Microsoft's eval-recipes</h2>
-            <p class="subhead" style="margin-left:0;text-align:left;">A regression suite for the Amplifier CLI &mdash; assembled using Amplifier itself and standing on <span class="highlight">eval-recipes</span>, Microsoft's battle-tested evaluation framework, which brings Docker isolation and parallel execution for free.</p>
-            <div class="architecture"><span class="folder">data/</span>
-  <span class="folder">agents/</span>       <span class="comment"># Provider configs</span>
-  <span class="folder">tasks/</span>        <span class="comment"># Test definitions</span>
-  <span class="folder">run-configs/</span>  <span class="comment"># Suite compositions</span>
-<span class="folder">src/</span>            <span class="comment"># CLI entry point</span></div>
-            <div class="card-grid" style="margin-top: 28px;">
-                <div class="card">
-                    <div class="card-title">eval-recipes foundation</div>
-                    <div class="card-description">Built on Microsoft's proven evaluation framework &mdash; isolation and concurrency are inherited, not reinvented.</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Modern, type-checked tooling</div>
-                    <div class="card-description">Full type annotations, <code>uv</code> for packages, <code>ruff</code> for linting, pre-commit hooks.</div>
-                </div>
+        <div class="col-aside">
+            <div class="chips">
+                <span class="chip">provider response</span>
+                <span class="chip">bash execution</span>
+                <span class="chip">agent delegation</span>
+                <span class="chip">web search</span>
+                <span class="chip">web fetch</span>
+                <span class="chip">PDF extraction</span>
+                <span class="chip">recipe list</span>
+                <span class="chip">bundle context</span>
+                <span class="chip">AGENTS.md injection</span>
             </div>
         </div>
+    </div>
 
+    <div class="slide split">
+        <!-- beat 2: proof -->
+        <div class="col-main">
+            <div class="section-label">It Runs Today</div>
+            <h2>One command drives 11 invocations over 9 tasks across 3 providers</h2>
+            <p class="body">The regression benchmark config schedules 11 test invocations over 9 distinct task definitions, spanning anthropic, openai, and gemini.</p>
+            <p class="handoff">Real, verified scope — but why not just script it by hand?</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">11</div><div class="lab">test invocations (8 + 1 + 1 + 1)</div></div>
+                <div class="stat"><div class="num alt">9</div><div class="lab">distinct regression tasks</div></div>
+                <div class="stat"><div class="num">3</div><div class="lab">providers: anthropic, openai, gemini</div></div>
+                <div class="stat"><div class="num alt">1</div><div class="lab">command against a YAML benchmark file</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide split">
         <!-- beat 3: tension -->
-        <div class="slide">
-            <div class="section-label">The Challenge</div>
-            <h2 class="headline">Validating the CLI is complex &mdash; the traditional path is <span class="highlight">weeks</span></h2>
-            <ul class="bullet-list">
-                <li>Validate capabilities across multiple AI providers</li>
-                <li>Ensure bash, web, PDF, and agent tools all work correctly</li>
-                <li>Catch regressions before users ever hit them</li>
-                <li>Traditional approach: <strong>weeks of harness development</strong></li>
-            </ul>
+        <div class="col-main">
+            <div class="section-label">Why Not By Hand</div>
+            <h2>By-hand string matching would flake on non-deterministic LLM output</h2>
+            <p class="body">Custom plumbing across every provider and capability is weeks of work — and brittle assertions break the moment a model phrases an answer differently.</p>
+            <p class="handoff">The fix starts with not building it from scratch.</p>
         </div>
-
-        <!-- beat 4: payoff -->
-        <div class="slide center">
-            <div class="section-label">The Payoff</div>
-            <h2 class="headline">Hours, not weeks &mdash; because the tool tested the tool</h2>
-            <p class="subhead">The strongest validation of a dev tool is using it to build its own infrastructure. Amplifier drafted the tasks, wired the configs, and ran the evaluations &mdash; turning weeks of harness work into an afternoon, with a suite you launch in one line:</p>
-            <div class="code-block"><span class="code-comment"># Execute the full regression suite</span>
-<span class="code-command">uv run</span> amplifier-benchmarks run data/run-configs/regression.yaml <span class="code-command">--max-parallel</span> 15</div>
+        <div class="col-aside">
+            <div class="steps">
+                <div class="step"><div class="n">✕</div><div class="t"><b>Brittle</b> <span>— exact string matches flake on valid but reworded answers</span></div></div>
+                <div class="step"><div class="n">✕</div><div class="t"><b>Wide</b> <span>— every provider and capability needs its own plumbing</span></div></div>
+                <div class="step"><div class="n">✕</div><div class="t"><b>Slow</b> <span>— weeks of custom test scaffolding to maintain</span></div></div>
+            </div>
         </div>
+    </div>
 
+    <div class="slide split">
+        <!-- beat 4: setup -->
+        <div class="col-main">
+            <div class="section-label">The Foundation</div>
+            <h2>The suite stands on Microsoft's eval-recipes, pinned to v0.0.34</h2>
+            <p class="body">eval-recipes is Microsoft's evaluation framework. Rather than reinvent grading and orchestration, the project depends on it directly.</p>
+            <p class="handoff">That framework is what makes semantic grading possible.</p>
+        </div>
+        <div class="col-aside">
+            <div class="code-block"><span class="c"># pyproject.toml dependency</span>
+eval-recipes @ git+https://github.com/
+  microsoft/eval-recipes<span class="k">@v0.0.34</span></div>
+        </div>
+    </div>
+
+    <div class="slide split">
         <!-- beat 5: mechanism -->
-        <div class="slide">
-            <div class="section-label">How It Works &middot; 1 of 2</div>
-            <h2 class="medium-headline">Docker isolation and parallelism make every result reproducible</h2>
-            <div class="card-grid">
-                <div class="card">
-                    <div class="card-title">Clean-container isolation</div>
-                    <div class="card-description">Each test runs in a fresh Docker container, so results are reproducible and never leak state between runs &mdash; a pass means the same thing every time.</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Parallel execution</div>
-                    <div class="card-description">Configurable concurrency (<code>--max-parallel 15</code>) runs many tests at once, so a full suite finishes fast instead of crawling test-by-test.</div>
-                </div>
+        <div class="col-main">
+            <div class="section-label">Semantic Grading</div>
+            <h2>Each test is judged by meaning, not by matching strings</h2>
+            <p class="body">All 9 regression tests use eval-recipes' <code>semantic_test</code> with an LLM rubric — e.g. provider_responds scores file-exists 40 pts + correct-content 60 pts, summed 0–100.</p>
+            <p class="handoff">Grading is solved; next is isolation and speed.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">9/9</div><div class="lab">tests use semantic_test + an LLM RUBRIC</div></div>
+                <div class="stat"><div class="num alt">0–100</div><div class="lab">rubric score (40 + 60 for provider_responds)</div></div>
             </div>
         </div>
+    </div>
 
+    <div class="slide split">
         <!-- beat 6: mechanism -->
-        <div class="slide">
-            <div class="section-label">How It Works &middot; 2 of 2</div>
-            <h2 class="medium-headline">Semantic, YAML-driven tests catch failures a string-match would miss</h2>
-            <div class="card-grid">
-                <div class="card">
-                    <div class="card-title">Semantic evaluation</div>
-                    <div class="card-description">AI-powered checks judge whether a response is <em>actually</em> correct in context &mdash; catching nuanced regressions that brittle exact-match assertions sail right past.</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Declarative YAML</div>
-                    <div class="card-description">Tests are readable, reviewable configuration &mdash; not code. Adding a new case is editing YAML, which keeps the suite extensible by anyone.</div>
-                </div>
+        <div class="col-main">
+            <div class="section-label">Isolation &amp; Speed</div>
+            <h2>Every agent runs in its own Docker image, in parallel</h2>
+            <p class="body">8 of 8 agent configs carry a dockerfile_portion that installs the Amplifier CLI fresh; Docker is a stated prerequisite. A <code>--max-parallel</code> flag runs tasks concurrently.</p>
+            <p class="handoff">Which raises the twist behind the whole harness.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">8/8</div><div class="lab">agents build a Docker image installing the CLI</div></div>
+                <div class="stat"><div class="num alt">~12–15</div><div class="lab">default --max-parallel (README 12 / code 15)</div></div>
             </div>
         </div>
+    </div>
 
-        <!-- beat 7: proof -->
-        <div class="slide">
-            <div class="section-label">Test Coverage</div>
-            <h2 class="medium-headline">Every core capability has its own regression test</h2>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Test</th>
-                            <th>What It Validates</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>Provider Response</td><td>AI providers (Anthropic, OpenAI, Gemini) respond correctly</td></tr>
-                        <tr><td>Bash Execution</td><td>Shell commands execute and return results</td></tr>
-                        <tr><td>Agent Delegation</td><td>Task tool spawns and coordinates sub-agents</td></tr>
-                        <tr><td>Web Search</td><td>Search capabilities find relevant, recent results</td></tr>
-                        <tr><td>Web Fetch</td><td>Content retrieval from URLs works correctly</td></tr>
-                        <tr><td>Recipe Listing</td><td>Recipe system discovers and lists available recipes</td></tr>
-                        <tr><td>PDF Extraction</td><td>Reading and extracting content from PDF documents</td></tr>
-                        <tr><td>AGENTS.md Injection</td><td>AGENTS.md files are properly loaded into context</td></tr>
-                        <tr><td>Bundle Context</td><td>Bundle composition and context injection work correctly</td></tr>
-                    </tbody>
-                </table>
+    <div class="slide split">
+        <!-- beat 7: payoff -->
+        <div class="col-main">
+            <div class="section-label">The Loop</div>
+            <h2>The benchmarking CLI was generated with Amplifier — and now guards it</h2>
+            <p class="body">The CLI commit (30dceab) is co-authored by Amplifier and marked "Generated with Amplifier." The tool built the harness that now tests the tool.</p>
+            <p class="handoff">A self-referential loop — and a pattern worth keeping.</p>
+        </div>
+        <div class="col-aside">
+            <div class="loop">
+                <div class="node"><b>Amplifier</b> generates the benchmarking CLI (commit 30dceab)</div>
+                <div class="arrow">↓</div>
+                <div class="node">The CLI runs the regression suite</div>
+                <div class="arrow">↓</div>
+                <div class="node">The suite <b>guards the Amplifier CLI</b></div>
             </div>
         </div>
+    </div>
 
+    <div class="slide split">
         <!-- beat 8: takeaway -->
-        <div class="slide">
-            <div class="section-label">The Takeaway</div>
-            <h2 class="medium-headline">Use the tool to build the tool &mdash; and stand on giants</h2>
-            <div class="takeaway-grid">
-                <div class="takeaway-card">
-                    <div class="takeaway-number">01</div>
-                    <div class="takeaway-title">Use the tool to build the tool</div>
-                    <div class="takeaway-description">The best validation of a dev tool is using it to build its own infrastructure.</div>
-                </div>
-                <div class="takeaway-card">
-                    <div class="takeaway-number">02</div>
-                    <div class="takeaway-title">Stand on giants' shoulders</div>
-                    <div class="takeaway-description">Leaning on eval-recipes delivered Docker isolation and parallel execution out of the box.</div>
-                </div>
-                <div class="takeaway-card">
-                    <div class="takeaway-number">03</div>
-                    <div class="takeaway-title">Semantic + YAML wins</div>
-                    <div class="takeaway-description">Declarative configs stay readable; AI evaluation catches what assertions miss.</div>
-                </div>
-            </div>
-            <div class="cta-links" style="margin-top:32px;">
-                <a href="https://github.com/DavidKoleczek/amplifier-app-benchmarks" class="cta-link" target="_blank">View on GitHub</a>
-                <div class="cta-secondary">MIT Licensed &middot; Community contributions welcome</div>
+        <div class="col-main">
+            <div class="section-label">The Pattern</div>
+            <h2>Seeded from 3 smoke-test tasks, the pattern generalizes</h2>
+            <p class="body">The suite began Jan 26, 2026 with 3 tasks converted from the amplifier smoke-test bundle (c93e50f); CI followed about an hour later (9aee498). Lean on a framework, grade semantically, isolate in Docker.</p>
+            <p class="handoff">The same harness already carries 28 full-benchmark and 23 comparison tasks.</p>
+        </div>
+        <div class="col-aside">
+            <div class="stat-grid">
+                <div class="stat"><div class="num">3</div><div class="lab">tasks in the first regression commit (c93e50f)</div></div>
+                <div class="stat"><div class="num alt">~1 hr</div><div class="lab">later, scheduled CI workflow (9aee498)</div></div>
+                <div class="stat"><div class="num">28</div><div class="lab">full_benchmark tasks in the same repo</div></div>
+                <div class="stat"><div class="num alt">23</div><div class="lab">comparison tasks in the same repo</div></div>
             </div>
         </div>
+    </div>
 
-        <!-- Slide: Sources & Methodology -->
-        <div class="slide">
-            <div style="max-width: 800px; width: 100%;">
-                <div class="section-label">Sources</div>
-                <h2 class="medium-headline">Research Methodology</h2>
-                <div style="color: rgba(255,255,255,0.7); line-height: 1.8; text-align: left;">
-                    <p><strong>Data as of:</strong> February 20, 2026</p>
-                    <p><strong>Feature status:</strong> Active</p>
-                    <p><strong>Research performed:</strong></p>
-                    <ul style="list-style: disc; padding-left: 24px; margin: 12px 0;">
-                        <li>GitHub: <code>gh repo view DavidKoleczek/amplifier-app-benchmarks</code> &mdash; confirmed active, last updated 2026-02-10</li>
-                        <li>Repository owner: DavidKoleczek (personal repo, not microsoft/)</li>
-                        <li>Search: no local clone found in development workspace</li>
-                    </ul>
-                    <p><strong>Gaps:</strong> No local clone to verify exact test count, line counts, or license. "Hours" development time is qualitative, not measured. MIT license claim from repo &mdash; not independently verified.</p>
-                    <p><strong>Primary contributors:</strong> David Koleczek (repo owner)</p>
-                </div>
-            </div>
+    <!-- Sources & Methodology (no beat comment) -->
+    <div class="slide">
+        <div class="section-label">Sources</div>
+        <h2>Research Methodology</h2>
+        <div class="sources">
+            <p><strong>Data as of:</strong> February 2026 (local clone HEAD 634dedc, 2026-02-10)</p>
+            <p><strong>Feature status:</strong> Real and runnable — working Click CLI, regression.yaml config, 9 YAML tasks, 8 Docker agent configs, eval-recipes v0.0.34. Not executed here (no API keys / Docker run).</p>
+            <p><strong>Repository:</strong> DavidKoleczek/amplifier-app-benchmarks (canonical; bkrabach's is a fork).</p>
+            <p><strong>Commands run:</strong></p>
+            <ul>
+                <li><code>ls -d data/tasks/regression/*/ | wc -l</code> — 9 regression tasks</li>
+                <li><code>cat data/benchmarks/regression.yaml</code> — 11 invocations across 4 agent blocks</li>
+                <li><code>grep -n 'provider|--model' data/agents/amplifier_foundation*/agent.yaml</code> — anthropic, openai, gemini</li>
+                <li><code>grep -l semantic_test data/tasks/regression/*/test.py | wc -l</code> — 9/9 semantic_test + RUBRIC</li>
+                <li><code>grep -l dockerfile_portion data/agents/*/agent.yaml | wc -l</code> — 8/8 agents</li>
+                <li><code>sed -n '56,60p' src/amplifier_app_benchmarks/cli.py</code> — --max-parallel default 15 (README 12)</li>
+                <li><code>grep eval-recipes pyproject.toml</code> + <code>gh api .../tags/v0.0.34</code> — eval-recipes @ v0.0.34</li>
+                <li><code>git show --stat 30dceab</code> — CLI commit co-authored by Amplifier</li>
+                <li><code>git show --stat c93e50f</code> &amp; <code>git log --format='%h %ci %an %s'</code> — first 3 tasks + CI 9aee498</li>
+            </ul>
+            <p><strong>Gaps:</strong> Suite not executed in this environment; Docker-run internals inferred from agent dockerfile_portion + README prerequisite + eval_recipes.semantic_test imports. "Hours" is an order-of-magnitude claim about the initial suite; the full 9-task suite spanned Jan 26–28.</p>
+            <p><strong>Primary contributor:</strong> David Koleczek (author of the regression tasks, multi-provider agents, and CLI). Brian Krabach contributed the README/venv-setup commit + PR #1. Amplifier bot co-authored the initial CLI commit.</p>
         </div>
-
     </div>
 
     <!-- Navigation -->
-    <div class="nav-dots"></div>
-    <div class="slide-counter">1 / 10</div>
+    <div class="nav" id="nav"></div>
+    <div class="slide-counter" id="counter"></div>
+
+    <!-- More stories link -->
+    <a href="index.html" class="more-stories">More Amplifier Stories</a>
 
     <script>
         const slides = document.querySelectorAll('.slide');
-        const navDots = document.querySelector('.nav-dots');
-        const counter = document.querySelector('.slide-counter');
-        let currentSlide = 0;
+        const total = slides.length;
+        let current = 0;
+        let transitioning = false;
 
-        // Create nav dots
-        slides.forEach((_, i) => {
-            const dot = document.createElement('div');
-            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
-            dot.addEventListener('click', () => goToSlide(i));
-            navDots.appendChild(dot);
-        });
+        function goTo(n) {
+            n = ((n % total) + total) % total;
+            if (transitioning || n === current) return;
+            transitioning = true;
+            var direction = n > current ? 1 : -1;
+            var prev = slides[current];
+            var next = slides[n];
 
-        function goToSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            document.querySelectorAll('.nav-dot')[currentSlide].classList.remove('active');
-            
-            currentSlide = (n + slides.length) % slides.length;
-            
-            slides[currentSlide].classList.add('active');
-            document.querySelectorAll('.nav-dot')[currentSlide].classList.add('active');
-            counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+            prev.classList.remove('active');
+            prev.style.transform = direction > 0 ? 'translateX(-40px)' : 'translateX(40px)';
+            prev.style.opacity = '0';
+
+            next.style.transition = 'none';
+            next.style.transform = direction > 0 ? 'translateX(40px)' : 'translateX(-40px)';
+            next.style.opacity = '0';
+
+            void next.offsetWidth;
+
+            next.style.transition = '';
+            next.style.transform = 'translateX(0)';
+            next.style.opacity = '1';
+            next.classList.add('active');
+
+            current = n;
+            updateNav();
+
+            setTimeout(function() {
+                prev.style.transform = '';
+                prev.style.opacity = '';
+                next.style.transform = '';
+                next.style.opacity = '';
+                transitioning = false;
+            }, 500);
         }
 
-        // Keyboard navigation
+        function updateNav() {
+            const nav = document.getElementById('nav');
+            const counter = document.getElementById('counter');
+            nav.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === current ? ' active' : '');
+                dot.onclick = () => goTo(i);
+                nav.appendChild(dot);
+            });
+            counter.textContent = `${current + 1} / ${total}`;
+        }
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') {
-                e.preventDefault();
-                goToSlide(currentSlide + 1);
-            } else if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                goToSlide(currentSlide - 1);
-            } else if (e.key === 'Home') {
-                e.preventDefault();
-                goToSlide(0);
-            } else if (e.key === 'End') {
-                e.preventDefault();
-                goToSlide(slides.length - 1);
-            }
+            if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+            if (e.key === 'ArrowLeft') goTo(current - 1);
         });
 
-        // Click navigation (left/right halves)
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav-dots') || e.target.closest('a')) return;
-            if (e.clientX > window.innerWidth / 2) {
-                goToSlide(currentSlide + 1);
-            } else {
-                goToSlide(currentSlide - 1);
-            }
+            if (e.target.closest('.nav')) return;
+            if (e.clientX > window.innerWidth / 2) goTo(current + 1);
+            else goTo(current - 1);
         });
 
-        // Touch navigation
         let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50;
         document.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
+            touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
-
         document.addEventListener('touchend', (e) => {
-            const touchEndX = e.changedTouches[0].clientX;
-            const diff = touchStartX - touchEndX;
-            if (Math.abs(diff) > 50) {
-                if (diff > 0) {
-                    goToSlide(currentSlide + 1);
-                } else {
-                    goToSlide(currentSlide - 1);
-                }
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > SWIPE_THRESHOLD) {
+                if (diff > 0) goTo(current + 1);
+                else goTo(current - 1);
             }
         }, { passive: true });
+
+        updateNav();
     </script>
-    <a href="index.html" style="position:fixed;bottom:10px;left:50%;transform:translateX(-50%);font-size:12px;color:rgba(255,255,255,0.3);text-decoration:none;z-index:100;">More Amplifier Stories</a>
 </body>
 </html>
