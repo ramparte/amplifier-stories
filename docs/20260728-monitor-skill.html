@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>/monitor — Amplifier Skill</title>
+<style>
+:root {
+    --accent: #7D7AFF;
+
+    --surface-1: rgba(255,255,255,0.06);
+    --surface-2: rgba(255,255,255,0.10);
+    --border-subtle: rgba(255,255,255,0.12);
+    --border-visible: rgba(255,255,255,0.20);
+
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255,255,255,0.72);
+    --text-tertiary: rgba(255,255,255,0.52);
+
+    --ok:     #30D158;
+    --warn:   #FFD60A;
+    --bad:    #FF6B6B;
+    --paused: #64D2FF;
+
+    --font-headline:        clamp(36px, 8vw, 72px);
+    --font-medium-headline: clamp(24px, 4.4vw, 42px);
+    --font-subhead:         clamp(17px, 3vw, 28px);
+    --font-big-number:      clamp(48px, 12vw, 108px);
+
+    --fs-body:  clamp(15px, 2.1vw, 19px);
+    --fs-small: clamp(12px, 1.8vw, 15px);
+    --fs-code:  clamp(13px, 2vw, 17px);
+
+    --padding-slide: clamp(20px, 5vw, 80px);
+    --gap-grid: clamp(14px, 2.2vw, 24px);
+    --space-md: clamp(14px, 2.4vw, 22px);
+    --space-lg: clamp(24px, 4vw, 40px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    background: #000;
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+                 Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+}
+
+.slide {
+    display: none;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    padding: clamp(40px, 7vw, 84px) var(--padding-slide) clamp(64px, 9vw, 80px);
+    flex-direction: column;
+    gap: var(--space-md);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.slide.active { display: flex; }
+.slide.center { text-align: center; align-items: center; justify-content: center; }
+
+.section-label {
+    font-size: var(--fs-small);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+}
+
+.headline {
+    font-size: var(--font-headline);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+}
+.medium-headline {
+    font-size: var(--font-medium-headline);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+    max-width: 22ch;
+}
+.slide.center .medium-headline, .slide.center .headline { max-width: none; }
+.medium-headline.mh-wide { max-width: 46ch; }
+
+.subhead {
+    font-size: var(--font-subhead);
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    max-width: 40ch;
+}
+.slide.center .subhead { max-width: 24ch; }
+.slide.center .subhead.wide { max-width: 60ch; }
+
+.body-text {
+    font-size: var(--fs-body);
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 68ch;
+}
+.body-text.narrow { max-width: 50ch; }
+.small-text {
+    font-size: var(--fs-small);
+    color: var(--text-tertiary);
+    line-height: 1.6;
+}
+.footnote {
+    font-size: var(--fs-body);
+    color: var(--text-secondary);
+    line-height: 1.55;
+    max-width: 68ch;
+}
+.date-line {
+    font-size: var(--fs-body);
+    color: var(--text-tertiary);
+    letter-spacing: 0.5px;
+}
+.mono { font-family: "SF Mono", "Cascadia Mono", "Fira Code", ui-monospace, "Courier New", monospace; }
+.accent { color: var(--accent); }
+.emph { color: var(--text-primary); font-weight: 600; }
+
+.badge {
+    display: inline-block;
+    font-size: var(--fs-body);
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ok);
+    border: 1px solid rgba(48,209,88,0.45);
+    background: rgba(48,209,88,0.10);
+    border-radius: 100px;
+    padding: 6px 16px;
+}
+
+.grid-2, .grid-3 {
+    display: grid;
+    gap: var(--gap-grid);
+    width: 100%;
+}
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
+.grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
+
+.card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: clamp(12px, 2vw, 16px);
+    padding: clamp(16px, 2.8vw, 24px);
+}
+.card.elevated { background: var(--surface-2); border-color: var(--border-visible); }
+.card h3 {
+    font-size: clamp(17px, 2.5vw, 22px);
+    font-weight: 650;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+}
+.card p, .card li { font-size: var(--fs-body); color: var(--text-secondary); line-height: 1.55; }
+.card ul { margin: 8px 0 0 18px; }
+.card li { margin-bottom: 6px; }
+.card .kicker {
+    font-size: var(--fs-small);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+.code-block {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid var(--accent);
+    border-radius: 12px;
+    padding: clamp(14px, 3vw, 22px) clamp(16px, 3.5vw, 26px);
+    font-family: "SF Mono", "Cascadia Mono", "Fira Code", ui-monospace, "Courier New", monospace;
+    font-size: var(--fs-code);
+    line-height: 1.75;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+}
+.code-comment { color: var(--text-tertiary); }
+.code-cmd { color: var(--accent); font-weight: 600; }
+
+.quote {
+    font-size: clamp(22px, 4.4vw, 44px);
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    border-left: 3px solid var(--accent);
+    padding-left: clamp(16px, 3vw, 28px);
+    max-width: 24ch;
+}
+
+.verdict-list { display: flex; flex-direction: column; gap: clamp(8px, 1.3vw, 11px); width: 100%; }
+.verdict {
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: clamp(11px, 2vw, 15px) clamp(14px, 3vw, 22px);
+    font-family: "SF Mono", "Cascadia Mono", "Fira Code", ui-monospace, "Courier New", monospace;
+    font-size: var(--fs-code);
+    line-height: 1.5;
+    color: var(--text-secondary);
+    word-wrap: break-word;
+}
+.verdict b { font-weight: 700; }
+.v-ok b     { color: var(--ok); }
+.v-warn b   { color: var(--warn); }
+.v-bad b    { color: var(--bad); }
+.v-paused b { color: var(--paused); }
+
+.flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: clamp(8px, 1.4vw, 14px);
+    width: 100%;
+}
+.flow-step {
+    flex: 1 1 150px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-visible);
+    border-radius: 12px;
+    padding: clamp(14px, 2.6vw, 22px);
+}
+.flow-step .n {
+    font-size: var(--fs-small);
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 1.5px;
+    display: block;
+    margin-bottom: 8px;
+}
+.flow-step h4 { font-size: clamp(15px, 2.2vw, 19px); font-weight: 650; margin-bottom: 6px; }
+.flow-step p { font-size: var(--fs-small); color: var(--text-secondary); line-height: 1.5; }
+.flow-arrow {
+    align-self: center;
+    color: var(--accent);
+    font-size: clamp(18px, 3vw, 26px);
+    font-weight: 700;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: var(--gap-grid);
+    width: 100%;
+}
+.stat {
+    background: var(--surface-2);
+    border: 1px solid var(--border-visible);
+    border-radius: clamp(12px, 2vw, 16px);
+    padding: clamp(18px, 3.2vw, 30px);
+}
+.stat-number {
+    font-size: clamp(34px, 6.5vw, 56px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 12px;
+}
+.stat-label { font-size: var(--fs-body); color: var(--text-secondary); line-height: 1.5; }
+
+.big-number {
+    font-size: var(--font-big-number);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: var(--accent);
+    line-height: 1;
+}
+
+.link-list { display: flex; flex-direction: column; gap: clamp(9px, 1.4vw, 13px); width: 100%; }
+.link-row {
+    display: block;
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: clamp(12px, 2.2vw, 17px) clamp(16px, 3vw, 24px);
+    text-decoration: none;
+    min-height: 44px;
+}
+.link-row:hover { background: var(--surface-2); border-color: var(--border-visible); }
+.link-row .link-label {
+    font-size: var(--fs-small);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 6px;
+}
+.link-row .link-url {
+    font-family: "SF Mono", "Cascadia Mono", "Fira Code", ui-monospace, "Courier New", monospace;
+    font-size: var(--fs-code);
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.sources-body { font-size: var(--fs-body); color: var(--text-secondary); line-height: 1.65; max-width: 76ch; }
+.sources-body p { margin-bottom: 10px; }
+.sources-body ul { margin: 0 0 12px 20px; }
+.sources-body li { margin-bottom: 5px; }
+.sources-body strong { color: var(--text-primary); }
+.sources-body code {
+    font-family: "SF Mono", "Cascadia Mono", "Fira Code", ui-monospace, monospace;
+    color: var(--accent);
+    font-size: 0.95em;
+}
+
+.nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0;
+    z-index: 100;
+}
+.nav-dot {
+    width: clamp(22px, 4.5vw, 40px);
+    height: 44px;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.nav-dot::before {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.30);
+}
+.nav-dot.active::before { background: var(--accent); }
+.nav-dot:hover::before { background: rgba(255,255,255,0.6); }
+.nav-dot.active:hover::before { background: var(--accent); }
+
+.slide-counter {
+    position: fixed;
+    bottom: clamp(14px, 2.5vw, 26px);
+    right: clamp(16px, 3vw, 32px);
+    font-size: var(--fs-small);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    z-index: 100;
+}
+
+.hint {
+    position: fixed;
+    bottom: clamp(14px, 2.5vw, 26px);
+    left: clamp(16px, 3vw, 32px);
+    font-size: var(--fs-small);
+    color: rgba(255,255,255,0.30);
+    z-index: 100;
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .slide { padding: 20px var(--padding-slide) 56px; }
+    .slide.center { justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .slide, .slide * { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- 1. TITLE -->
+<section class="slide center active">
+    <div class="section-label">Amplifier Skill</div>
+    <h1 class="headline mono accent">/monitor</h1>
+    <p class="subhead">A turn that doesn't end until the thing you're watching is actually done.</p>
+    <div class="badge">Shipped &middot; amplifier-bundle-skills</div>
+    <p class="date-line">July 2026</p>
+</section>
+
+<!-- 2. THE HOOK -->
+<section class="slide">
+    <div class="section-label">The Problem</div>
+    <p class="quote">&ldquo;I'll keep working on it and let you know when it's done.&rdquo;</p>
+    <p class="body-text">Then the turn ends. The prompt sits there. Nothing is watching anything. You come back forty minutes later to find out the agent has been waiting on <span class="emph">you</span> the whole time.</p>
+    <div class="grid-3">
+        <div class="card">
+            <div class="kicker">The promise</div>
+            <p>The model says it will follow up when a build, a CI run, or a deploy finishes.</p>
+        </div>
+        <div class="card">
+            <div class="kicker">The reality</div>
+            <p>The turn completes immediately. There is no timer, no background process, no callback.</p>
+        </div>
+        <div class="card elevated">
+            <div class="kicker">The gap</div>
+            <p>Nothing in the loop was ever wired to keep that promise. It was never a capability &mdash; it was a habit.</p>
+        </div>
+    </div>
+</section>
+
+<!-- 3. WHAT IT IS -->
+<section class="slide">
+    <div class="section-label">What It Is</div>
+    <h2 class="medium-headline">A bounded loop that holds the turn open.</h2>
+    <div class="flow">
+        <div class="flow-step">
+            <span class="n">01</span>
+            <h4>Sleep</h4>
+            <p>Wait your interval in short bounded waits.</p>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+            <span class="n">02</span>
+            <h4>Check</h4>
+            <p>Narrowest shell command that answers the question &mdash; exit code, status code, <span class="mono">grep -c</span>.</p>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step">
+            <span class="n">03</span>
+            <h4>Decide</h4>
+            <p>Not yet &rarr; loop again. Otherwise stop and report.</p>
+        </div>
+    </div>
+    <p class="body-text">The turn ends on exactly three conditions: the thing is <span class="emph">DONE</span>, it has <span class="emph">FAILED</span>, or it <span class="emph">genuinely needs you</span>. Because Amplifier's notification fires on turn completion, holding the turn open is what makes the ping land at the right moment &mdash; desktop, terminal, or phone via ntfy. Walk away.</p>
+</section>
+
+<!-- 4. HOW TO USE IT -->
+<section class="slide">
+    <div class="section-label">Usage</div>
+    <h2 class="medium-headline">Describe the thing and the bounds.</h2>
+    <div class="code-block"><span class="code-cmd">/monitor</span> the CI run for PR 412, check every 2m, stop after 1h
+<span class="code-cmd">/monitor</span> the deploy job, ping me if it fails
+<span class="code-cmd">/monitor</span> ./build.log until the migration finishes</div>
+    <div class="grid-2">
+        <div class="card">
+            <div class="kicker">What it can watch</div>
+            <p>Anything checkable from a shell: CI runs, log files, HTTP endpoints, background jobs, long builds, deploys.</p>
+        </div>
+        <div class="card elevated">
+            <div class="kicker">It also invokes itself</div>
+            <p>The skill is model-invocable. When the agent is about to promise a follow-up on something bounded and checkable, it can reach for <span class="mono accent">/monitor</span> instead &mdash; turning a hollow promise into a real one without you asking.</p>
+        </div>
+    </div>
+</section>
+
+<!-- 5. VERDICTS -->
+<section class="slide">
+    <div class="section-label">What Lands On Your Phone</div>
+    <h2 class="medium-headline mh-wide">Verdict first. The verdict is the notification.</h2>
+    <p class="body-text">The notification body is the first <span class="emph">~100 characters</span> of the final message &mdash; everything past that is invisible on a phone. So line one is a state token plus the single most decision-relevant fact.</p>
+    <div class="verdict-list">
+        <div class="verdict v-ok"><b>DONE:</b> CI green on PR 412, 318 tests passed</div>
+        <div class="verdict v-warn"><b>NEEDS YOU:</b> deploy blocked on manual approval gate, job 4471</div>
+        <div class="verdict v-bad"><b>GAVE UP:</b> 2h elapsed, endpoint still returning 502</div>
+        <div class="verdict v-paused"><b>PAUSED:</b> stopped watching at your request -- run still going</div>
+    </div>
+    <p class="footnote">PAUSED means it stopped <em>watching</em> &mdash; not that it stopped the thing being watched.</p>
+</section>
+
+<!-- 6. COST -->
+<section class="slide">
+    <div class="section-label">Cost</div>
+    <h2 class="medium-headline">Measured on real runs.</h2>
+    <div class="stat-grid">
+        <div class="stat">
+            <div class="stat-number">~1.2&cent;</div>
+            <div class="stat-label">per check</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">$0.16</div>
+            <div class="stat-label">total for a 13-check monitor</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">&lt;$2</div>
+            <div class="stat-label">8 hours at 5-minute intervals</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">~15K</div>
+            <div class="stat-label">input tokens per check &mdash; flat, however long it runs</div>
+        </div>
+    </div>
+    <p class="body-text">By default the polling loop is delegated to a sub-agent with clean context on a fast model, so each check pays the bundle's system-prompt floor rather than re-sending your whole session. Prompt caching holds that input flat. It can also run <span class="emph">inline</span> when you want to watch progress happen or steer it mid-flight.</p>
+</section>
+
+<!-- 7. HOW IT SHIPS -->
+<section class="slide center">
+    <div class="section-label">How It Ships</div>
+    <div class="big-number">1</div>
+    <h2 class="medium-headline">SKILL.md file. That's the whole feature.</h2>
+    <p class="body-text narrow">No new module. No new code. No new mechanism. It uses the existing bash tool and the orchestrator's normal turn behavior &mdash; the same primitives that were already there.</p>
+    <p class="subhead wide">The missing piece was never capability. It was discipline.</p>
+</section>
+
+<!-- 8. TRY IT -->
+<section class="slide">
+    <div class="section-label">Try It</div>
+    <h2 class="medium-headline">Next long-running thing you kick off, hand it over.</h2>
+    <div class="code-block"><span class="code-comment"># update your bundle, then:</span>
+<span class="code-cmd">/monitor</span> the CI run for PR 412, check every 2m, stop after 1h</div>
+    <div class="link-list">
+        <a class="link-row" href="https://github.com/microsoft/amplifier-bundle-skills/blob/main/skills/monitor/SKILL.md">
+            <span class="link-label">Docs &mdash; SKILL.md</span>
+            <span class="link-url">github.com/microsoft/amplifier-bundle-skills/blob/main/skills/monitor/SKILL.md</span>
+        </a>
+        <a class="link-row" href="https://github.com/microsoft/amplifier-bundle-skills/pull/46">
+            <span class="link-label">Pull Request</span>
+            <span class="link-url">github.com/microsoft/amplifier-bundle-skills/pull/46</span>
+        </a>
+        <a class="link-row" href="https://github.com/microsoft/amplifier-bundle-skills">
+            <span class="link-label">Repository</span>
+            <span class="link-url">github.com/microsoft/amplifier-bundle-skills</span>
+        </a>
+    </div>
+</section>
+
+<!-- 9. SOURCES -->
+<section class="slide">
+    <div class="section-label">Sources</div>
+    <h2 class="medium-headline">Where these numbers come from.</h2>
+    <p class="body-text"><span class="emph">Data as of</span> 2026-07-28 &middot; <span class="emph">Status</span> shipped, active &middot; <span class="emph">Source</span> <span class="mono accent">microsoft/amplifier-bundle-skills</span>, <span class="mono accent">skills/monitor/SKILL.md</span> &mdash; one&nbsp;file, 276&nbsp;lines, PR&nbsp;#46.</p>
+    <div class="grid-2">
+        <div class="card">
+            <div class="kicker">Verified against the shipped SKILL.md</div>
+            <ul>
+                <li>All four verdict tokens and their example lines, verbatim.</li>
+                <li>The ~100-character notification-body limit and the verdict-first rule.</li>
+                <li>Delegated-by-default execution: sub-agent, clean context, fast model role. Inline is documented as the alternative.</li>
+                <li>Single-file delivery, no accompanying module or source code.</li>
+            </ul>
+        </div>
+        <div class="card">
+            <div class="kicker">Cost figures &amp; caveats</div>
+            <ul>
+                <li>~1.2&cent;/check and the $0.16 / 13-check total are measured from real monitor runs.</li>
+                <li>The &lt;$2 / 8-hour figure is projected from that per-check cost (96 checks), not a completed 8-hour run.</li>
+                <li>Per-check cost varies with bundle size and model role &mdash; representative, not guaranteed.</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<div class="nav" id="nav"></div>
+<div class="slide-counter" id="counter"></div>
+<div class="hint">&larr; &rarr; or click to navigate</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let currentSlide = 0;
+
+function showSlide(n) {
+    slides[currentSlide].classList.remove('active');
+    currentSlide = (n + slides.length) % slides.length;
+    slides[currentSlide].classList.add('active');
+    slides[currentSlide].scrollTop = 0;
+    updateNav();
+}
+
+function updateNav() {
+    const nav = document.getElementById('nav');
+    const counter = document.getElementById('counter');
+    nav.innerHTML = '';
+    slides.forEach((_, i) => {
+        const dot = document.createElement('button');
+        dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+        dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+        dot.onclick = (e) => { e.stopPropagation(); showSlide(i); };
+        nav.appendChild(dot);
+    });
+    counter.textContent = (currentSlide + 1) + ' / ' + slides.length;
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); showSlide(currentSlide + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); showSlide(currentSlide - 1); }
+    if (e.key === 'Home') showSlide(0);
+    if (e.key === 'End') showSlide(slides.length - 1);
+});
+
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.nav')) return;
+    if (e.target.closest('a')) return;
+    if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+    else showSlide(currentSlide - 1);
+});
+
+let touchStartX = 0;
+const SWIPE_THRESHOLD = 50;
+document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+    const diff = touchStartX - e.changedTouches[0].screenX;
+    if (Math.abs(diff) > SWIPE_THRESHOLD) {
+        if (diff > 0) showSlide(currentSlide + 1);
+        else showSlide(currentSlide - 1);
+    }
+}, { passive: true });
+
+updateNav();
+</script>
+</body>
+</html>
