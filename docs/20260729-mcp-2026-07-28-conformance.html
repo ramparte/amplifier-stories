@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MCP Tool Module — Three Silent Failures, Fixed</title>
+<style>
+    :root {
+        --accent: #5E5CE6;
+        --surface-1: rgba(255,255,255,0.06);
+        --surface-2: rgba(255,255,255,0.10);
+        --surface-3: rgba(255,255,255,0.15);
+        --border-subtle: rgba(255,255,255,0.12);
+        --border-visible: rgba(255,255,255,0.20);
+        --text-primary: #ffffff;
+        --text-secondary: rgba(255,255,255,0.7);
+        --text-tertiary: rgba(255,255,255,0.5);
+        --bad: #FF6B6B;
+        --good: #30D158;
+
+        --font-headline: clamp(32px, 6vw, 60px);
+        --font-medium-headline: clamp(22px, 4vw, 38px);
+        --font-subhead: clamp(15px, 2.2vw, 20px);
+        --font-body: clamp(14px, 1.8vw, 17px);
+        --font-small: clamp(12px, 1.6vw, 14px);
+        --font-code: clamp(11px, 1.5vw, 13.5px);
+
+        --padding-slide: clamp(24px, 6vw, 90px);
+        --gap-grid: clamp(14px, 2.5vw, 28px);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+        background: #000;
+        color: var(--text-primary);
+        overflow: hidden;
+        overscroll-behavior: none;
+    }
+
+    .slide {
+        display: none;
+        width: 100vw;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: clamp(60px, 9vw, 100px) var(--padding-slide) clamp(70px, 10vw, 90px);
+        flex-direction: column;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    .slide.active { display: flex; }
+    .slide.center { text-align: center; align-items: center; justify-content: center; }
+
+    @media (max-height: 500px) and (orientation: landscape) {
+        .slide { padding: 16px var(--padding-slide) 60px; }
+        .slide.center { justify-content: flex-start; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .slide, .slide * { animation: none !important; transition: none !important; }
+    }
+
+    .section-label {
+        font-size: var(--font-small);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--accent);
+        margin-bottom: clamp(10px, 2vw, 18px);
+    }
+
+    .headline {
+        font-size: var(--font-headline);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.12;
+        margin: 0 0 clamp(12px, 2vw, 20px) 0;
+        max-width: 22ch;
+    }
+    .slide.center .headline { max-width: 26ch; margin-left: auto; margin-right: auto; }
+
+    .medium-headline {
+        font-size: var(--font-medium-headline);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+        margin: 0 0 clamp(10px, 2vw, 16px) 0;
+    }
+
+    .subhead {
+        font-size: var(--font-subhead);
+        color: var(--text-secondary);
+        line-height: 1.5;
+        max-width: 56ch;
+        margin: 0 0 clamp(16px, 3vw, 28px) 0;
+    }
+    .slide.center .subhead { margin-left: auto; margin-right: auto; }
+
+    p, li { font-size: var(--font-body); color: var(--text-secondary); line-height: 1.55; }
+
+    .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: clamp(8px, 1.5vw, 12px);
+        margin-top: clamp(18px, 3vw, 30px);
+    }
+    .badge {
+        font-size: var(--font-small);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+        background: var(--surface-1);
+        border: 1px solid var(--border-subtle);
+        border-radius: 999px;
+        padding: 6px 16px;
+    }
+    .badge.accent { color: #fff; border-color: var(--accent); background: rgba(94,92,230,0.18); }
+
+    .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+        gap: var(--gap-grid);
+        width: 100%;
+        margin-top: clamp(10px, 2vw, 20px);
+    }
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+        gap: var(--gap-grid);
+        width: 100%;
+        margin-top: clamp(10px, 2vw, 20px);
+    }
+
+    .card {
+        background: var(--surface-1);
+        border: 1px solid var(--border-subtle);
+        border-radius: clamp(10px, 1.5vw, 14px);
+        padding: clamp(16px, 3vw, 24px);
+    }
+    .card.bad-edge { border-left: 3px solid var(--bad); }
+    .card.good-edge { border-left: 3px solid var(--good); }
+    .card h3 {
+        color: var(--text-primary);
+        font-size: clamp(16px, 2.2vw, 19px);
+        margin: 0 0 8px 0;
+        font-weight: 700;
+    }
+    .card p { margin: 0; font-size: clamp(13px, 1.8vw, 15.5px); color: var(--text-secondary); }
+    .card .tag {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--bad);
+        margin-bottom: 8px;
+    }
+    .card .tag.good { color: var(--good); }
+
+    .code-block {
+        background: var(--surface-1);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        padding: clamp(12px, 2.5vw, 18px) clamp(14px, 3vw, 22px);
+        font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+        font-size: var(--font-code);
+        line-height: 1.65;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-x: auto;
+        color: rgba(255,255,255,0.75);
+        margin: clamp(8px,1.5vw,14px) 0;
+    }
+    .code-block .err { color: var(--bad); }
+    .code-block .ok { color: var(--good); }
+    .code-block .dim { color: var(--text-tertiary); }
+    .code-block .hl { color: #fff; font-weight: 600; }
+
+    .wire-cols {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+        gap: var(--gap-grid);
+        width: 100%;
+        margin-top: clamp(6px, 1.5vw, 12px);
+    }
+    .wire-col-label {
+        font-size: var(--font-small);
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+    .wire-col-label.before { color: var(--bad); }
+    .wire-col-label.after { color: var(--good); }
+    .wire-col-sub { color: var(--text-tertiary); font-size: 12px; margin: -4px 0 8px 0; }
+
+    .arrow-line {
+        text-align: center;
+        color: var(--text-tertiary);
+        font-size: clamp(20px, 4vw, 32px);
+        margin: 4px 0;
+    }
+
+    table.plain {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: clamp(10px, 2vw, 18px);
+    }
+    table.plain th {
+        color: var(--accent);
+        font-size: var(--font-small);
+        font-weight: 700;
+        text-align: left;
+        padding: clamp(8px, 1.5vw, 12px) clamp(8px,1.5vw,12px);
+        border-bottom: 1px solid var(--border-visible);
+    }
+    table.plain td {
+        color: var(--text-secondary);
+        font-size: clamp(13px, 1.8vw, 15px);
+        padding: clamp(8px, 1.5vw, 12px) clamp(8px,1.5vw,12px);
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        vertical-align: top;
+    }
+
+    .closer-line {
+        font-size: clamp(16px, 2.4vw, 20px);
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-top: clamp(16px, 3vw, 26px);
+        border-left: 3px solid var(--accent);
+        padding-left: 14px;
+    }
+
+    .links-list a {
+        color: var(--accent);
+        text-decoration: none;
+        font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+        font-size: var(--font-body);
+        word-break: break-all;
+    }
+    .links-list a:hover { text-decoration: underline; }
+    .links-list li { margin-bottom: 10px; }
+
+    /* Navigation */
+    .nav {
+        position: fixed;
+        bottom: clamp(14px, 2vw, 24px);
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        z-index: 100;
+    }
+    .nav-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.25);
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .nav-dot.active { background: var(--accent); }
+    .slide-counter {
+        position: fixed;
+        bottom: clamp(14px, 2vw, 24px);
+        right: clamp(16px, 3vw, 30px);
+        font-size: 12px;
+        color: var(--text-tertiary);
+        font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+        z-index: 100;
+    }
+</style>
+</head>
+<body>
+
+<!-- 1. TITLE -->
+<div class="slide active center">
+    <div class="section-label">Amplifier · tool-mcp module</div>
+    <h1 class="headline">Three silent failures. Fixed.</h1>
+    <p class="subhead">The MCP client now works on the SDK you actually have installed, speaks the protocol you think it does, and stops losing tools mid-list.</p>
+    <div class="badge-row" style="justify-content:center;">
+        <span class="badge accent">Merged · PR #11</span>
+        <span class="badge">Commit 22f3d14</span>
+        <span class="badge">2026-07-29</span>
+    </div>
+</div>
+
+<!-- 2. FRAME -->
+<div class="slide">
+    <div class="section-label">The pattern</div>
+    <h2 class="headline">None of them told you.</h2>
+    <p class="subhead">Three separate defects, three different layers of the client. The thing they had in common: not one of them produced a warning, an error, or a log line that pointed at the real problem.</p>
+    <div class="grid-3">
+        <div class="card bad-edge">
+            <div class="tag">Wrong SDK</div>
+            <h3>A connect that raised no useful error</h3>
+            <p>The real cause was buried two exception-group levels deep, or didn't error at all.</p>
+        </div>
+        <div class="card bad-edge">
+            <div class="tag">Wrong protocol</div>
+            <h3>A handshake with no warning it was outdated</h3>
+            <p>The client silently ran a year-old negotiation path with nothing to say so.</p>
+        </div>
+        <div class="card bad-edge">
+            <div class="tag">Wrong tool list</div>
+            <h3>A truncation with no error at all</h3>
+            <p>Tools past page one simply weren't there. No exception, no log.</p>
+        </div>
+    </div>
+    <div class="closer-line">Every one of these shipped and worked — right up until it silently didn't.</div>
+</div>
+
+<!-- 3. ACT 1 -->
+<div class="slide">
+    <div class="section-label">Act 1 — the SDK moved</div>
+    <h2 class="medium-headline">mcp 2.0.0 shipped the same day as the new spec. Our pin had no ceiling.</h2>
+    <p><code>pyproject.toml</code> declared <code>mcp&gt;=1.0.0</code> — unbounded. SDK 2.0.0 renamed its model fields camelCase → snake_case (<code>Tool.inputSchema</code> → <code>Tool.input_schema</code>). A fresh install pulled 2.0.0. Every MCP server: dead on connect.</p>
+    <div class="code-block"><span class="dim"># what the user saw</span>
+<span class="err">RuntimeError: MCP server connection failed: unhandled errors in a TaskGroup (1 sub-exception)</span>
+
+<span class="dim"># the real cause, two ExceptionGroup levels down</span>
+<span class="err">AttributeError: 'Tool' object has no attribute 'inputSchema'</span></div>
+    <div class="grid-2">
+        <div class="card bad-edge">
+            <div class="tag">The quiet sibling</div>
+            <h3>No error at all</h3>
+            <p><code>resource.mimeType if hasattr(resource, "mimeType") else None</code> — <code>hasattr</code> evaluated False on the renamed 2.x field and silently returned <code>None</code>. Real data, dropped, zero error.</p>
+        </div>
+        <div class="card good-edge">
+            <div class="tag good">The fix</div>
+            <h3>Reads either spelling, fails loud on the rest</h3>
+            <p>Bridges both field names. Floor corrected to <code>mcp&gt;=1.24</code> (1.23 and earlier fail at import for an unrelated symbol rename). Truly unknown SDK shapes now raise a self-describing error.</p>
+        </div>
+    </div>
+</div>
+
+<!-- 4. ACT 2 setup -->
+<div class="slide">
+    <div class="section-label">Act 2 — the wrong protocol</div>
+    <h2 class="medium-headline"><code>session.initialize()</code> drives the SDK down its legacy path</h2>
+    <p>Found by tapping the stdio pipe and reading raw JSON-RPC — not by reading documentation.</p>
+    <div class="grid-2">
+        <div class="card bad-edge">
+            <div class="tag">Before</div>
+            <h3><code>initialize()</code></h3>
+            <p>Handshake-era negotiation. Protocol <strong>2025-11-25</strong>. No <code>_meta</code> field on any request — a concept that protocol doesn't have.</p>
+        </div>
+        <div class="card good-edge">
+            <div class="tag good">After</div>
+            <h3><code>negotiate_auto()</code></h3>
+            <p>Stateless negotiation via <code>server/discover</code>. No handshake. Full <code>_meta</code> on every request. Protocol <strong>2026-07-28</strong>.</p>
+        </div>
+    </div>
+    <p style="margin-top: clamp(10px,2vw,18px);">Falls back to the legacy path automatically when the installed SDK is 1.x — and logs it at <strong style="color:#fff;">WARNING</strong>, not silently.</p>
+</div>
+
+<!-- 5. ACT 2 evidence -->
+<div class="slide">
+    <div class="section-label">Act 2 — the evidence</div>
+    <h2 class="medium-headline">Same client code. Same tool call. Two different wires.</h2>
+    <div class="wire-cols">
+        <div>
+            <div class="wire-col-label before">Before · mcp 1.29.0</div>
+            <div class="wire-col-sub">real stdio capture, trimmed</div>
+            <div class="code-block">C→S <span class="hl">{"method":"initialize","params":
+  {"protocolVersion":"2025-11-25", ...}}</span>
+S→C {"result":{"protocolVersion":
+  "2025-11-25", ...}}
+C→S <span class="hl">{"method":"notifications/initialized"}</span>
+C→S {"method":"tools/list","id":1}
+<span class="dim">           ^ no _meta anywhere in the exchange</span></div>
+        </div>
+        <div>
+            <div class="wire-col-label after">After · mcp 2.0.0</div>
+            <div class="wire-col-sub">real stdio capture, trimmed</div>
+            <div class="code-block">C→S <span class="hl">{"method":"server/discover","params":
+  {"_meta":{
+    "io.modelcontextprotocol/protocolVersion":
+      "2026-07-28",
+    "io.modelcontextprotocol/clientCapabilities":{}
+  }}}</span>
+S→C {"result":{"resultType":"complete",
+  "supportedVersions":["2026-07-28"], ...}}
+C→S {"method":"tools/list","params":
+  <span class="hl">{"_meta":{ ...same 3 keys... }}</span>}
+<span class="dim">           ^ _meta on every request, no handshake</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- 6. ACT 3 -->
+<div class="slide">
+    <div class="section-label">Act 3 — the tool list was shrinking</div>
+    <h2 class="medium-headline"><code>nextCursor</code> was ignored. Multi-page tool lists were silently cut short.</h2>
+    <p>A live bug in the protocol the module was <em>already</em> running — independent of the 2026-07-28 rewrite. Any MCP server returning more than one page of tools lost everything past page one. No error, no warning, no signal at all.</p>
+    <div class="code-block"><span class="dim"># verified against a real multi-page stdio server</span>
+<span class="ok">cursor chain followed: None → '' → 'c2' → None</span>
+<span class="dim"># the empty-string cursor is the trap:</span>
+<span class="dim"># spec says it is a valid cursor and MUST NOT be</span>
+<span class="dim"># read as end-of-results — a naive falsy check gets this wrong</span></div>
+    <p>The fix follows the full cursor chain, including that empty-string case, before treating discovery as complete.</p>
+</div>
+
+<!-- 7. ACT 4 -->
+<div class="slide">
+    <div class="section-label">Act 4 — caught by review, not by tests</div>
+    <h2 class="medium-headline">The pagination fix reintroduced the pagination bug.</h2>
+    <p>Before peer review, the PR went through independent cold review — two reviewers with zero prior context, plus a six-lens review council. They converged on two real blockers, both in the newly-added code.</p>
+    <div class="grid-2">
+        <div class="card bad-edge">
+            <div class="tag">Blocker 1</div>
+            <h3><code>default=None</code></h3>
+            <p><code>pagination.py</code> read the cursor with a default. An unrecognized page shape was treated as terminal — silently returning a partial list. Twelve lines below the docstring that forbade exactly this pattern.</p>
+        </div>
+        <div class="card bad-edge">
+            <div class="tag">Blocker 2</div>
+            <h3>bare <code>except Exception</code></h3>
+            <p><code>discovery.py</code> swallowed the deliberate <code>RuntimeError</code> safety nets the pagination fix had just added. A misbehaving server returned <code>[]</code> with zero signal.</p>
+        </div>
+    </div>
+    <div class="closer-line">We wrote the rule. Then broke it. An outside reader caught it — not the tests. Both fixed, with regression tests confirmed to fail against the pre-fix code.</div>
+</div>
+
+<!-- 8. ACT 5 proof -->
+<div class="slide">
+    <div class="section-label">Act 5 — proof, not assertion</div>
+    <h2 class="medium-headline">Every claim above was executed.</h2>
+    <table class="plain">
+        <tr><th>Check</th><th>How</th></tr>
+        <tr><td>Both wire formats</td><td>Raw stdio JSON-RPC capture on <code>mcp</code> 1.29.0 and 2.0.0</td></tr>
+        <tr><td>Pagination</td><td>Real multi-page stdio server, full cursor chain confirmed</td></tr>
+        <tr><td>HTTP headers</td><td>Streamable HTTP capture behind a logging proxy — all required headers present on every request</td></tr>
+        <tr><td>As a real module</td><td>Mounted via normal bundle + <code>mcp.json</code> in a Digital Twin — not just unit tests. Tools appeared in the live tool list; an agent called one end-to-end, negotiating 2026-07-28 against SDK 2.0.0</td></tr>
+        <tr><td>Regression</td><td>Tests: <strong style="color:#fff;">57 → 99</strong>, zero skips, green on both <code>mcp</code> 1.29.0 and 2.0.0</td></tr>
+    </table>
+</div>
+
+<!-- 9. WHAT TO DO -->
+<div class="slide">
+    <div class="section-label">What to do</div>
+    <h2 class="medium-headline">Update the module. Watch the logs once.</h2>
+    <div class="grid-2">
+        <div class="card">
+            <h3>Update</h3>
+            <p>Pull the latest <code>amplifier-module-tool-mcp</code> and connect any MCP server as usual.</p>
+        </div>
+        <div class="card">
+            <h3>Check the log line once</h3>
+            <p>A <strong style="color:#fff;">WARNING</strong> about legacy negotiation means your installed <code>mcp</code> SDK is still 1.x. The module still works — automatic fallback — but you're not on the current protocol.</p>
+        </div>
+    </div>
+    <p style="margin-top: clamp(12px,2vw,20px);">No warning printed → you're negotiating 2026-07-28.</p>
+</div>
+
+<!-- 10. HONEST SCOPE -->
+<div class="slide">
+    <div class="section-label">Honest scope</div>
+    <h2 class="medium-headline">This is not full conformance. The PR says so.</h2>
+    <div class="grid-2">
+        <div class="card bad-edge">
+            <h3>Still unimplemented</h3>
+            <p>
+            <code>x-mcp-header</code> mirroring (a client MUST)<br>
+            <code>subscriptions/listen</code> — <code>listChanged</code> is never observed<br>
+            MRTR / elicitation<br>
+            Cache hints (<code>ttlMs</code> / <code>cacheScope</code>)
+            </p>
+        </div>
+        <div class="card">
+            <h3>Deliberately excluded</h3>
+            <p>
+            Roots — deprecated in 2026-07-28<br>
+            Sampling — deprecated in 2026-07-28<br>
+            HTTP+SSE transport — deprecated, Streamable HTTP only
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- 11. SOURCES & LINKS -->
+<div class="slide">
+    <div class="section-label">Sources &amp; links</div>
+    <h2 class="medium-headline">Everything here traces back to something you can read or run.</h2>
+    <ul class="links-list" style="list-style: none; padding: 0;">
+        <li>PR: <a href="https://github.com/microsoft/amplifier-module-tool-mcp/pull/11" target="_blank">github.com/microsoft/amplifier-module-tool-mcp/pull/11</a></li>
+        <li>Commit: <a href="#">22f3d14</a> (squash-merged to <code>main</code>, 2026-07-29)</li>
+        <li>Per-obligation conformance table: <a href="#"><code>docs/GAP_ANALYSIS.md</code></a></li>
+    </ul>
+    <p style="margin-top: clamp(14px,2vw,22px); color: var(--text-tertiary); font-size: var(--font-small);">
+    Data as of 2026-07-29. Sourced from the original evidence-based gap analysis (2026-07-28 spec vs. module HEAD <code>b32b7ce</code>), the current per-obligation conformance table in <code>docs/GAP_ANALYSIS.md</code>, real stdio and Streamable HTTP wire captures, and a Digital Twin Universe run mounting the module as a live Amplifier tool.
+    </p>
+</div>
+
+<div class="nav" id="nav"></div>
+<div class="slide-counter" id="counter"></div>
+
+<script>
+    const slides = document.querySelectorAll('.slide');
+    let currentSlide = 0;
+
+    function showSlide(n) {
+        slides[currentSlide].classList.remove('active');
+        currentSlide = (n + slides.length) % slides.length;
+        slides[currentSlide].classList.add('active');
+        updateNav();
+    }
+
+    function updateNav() {
+        const nav = document.getElementById('nav');
+        const counter = document.getElementById('counter');
+        nav.innerHTML = '';
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot' + (i === currentSlide ? ' active' : '');
+            dot.onclick = () => showSlide(i);
+            nav.appendChild(dot);
+        });
+        counter.textContent = `${currentSlide + 1} / ${slides.length}`;
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') showSlide(currentSlide + 1);
+        if (e.key === 'ArrowLeft') showSlide(currentSlide - 1);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.nav') || e.target.closest('a')) return;
+        if (e.clientX > window.innerWidth / 2) showSlide(currentSlide + 1);
+        else showSlide(currentSlide - 1);
+    });
+
+    let touchStartX = 0, touchEndX = 0;
+    const SWIPE_THRESHOLD = 50;
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > SWIPE_THRESHOLD) {
+            if (diff > 0) showSlide(currentSlide + 1);
+            else showSlide(currentSlide - 1);
+        }
+    }, { passive: true });
+
+    updateNav();
+</script>
+</body>
+</html>
